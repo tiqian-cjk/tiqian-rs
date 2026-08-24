@@ -72,22 +72,28 @@ pub fn build_line_boxes(
         .iter()
         .enumerate()
         .map(|(line_index, candidate)| {
+            // Kotlin's sumOf starts from +0f. Rust's f32::sum yields -0.0
+            // for an empty iterator, so add +0.0 to retain the same
+            // observable width for empty mandatory-break lines.
             let adjusted_width: f32 = candidate
                 .cluster_range
                 .into_iter()
                 .filter(|index| !candidate.hanging_cluster_indices.contains(index))
                 .map(|index| trimmed_clusters[index as usize].advance)
-                .sum();
+                .sum::<f32>()
+                + 0.0;
             let visual_width: f32 = candidate
                 .cluster_range
                 .into_iter()
                 .map(|index| final_clusters[index as usize].advance)
-                .sum();
+                .sum::<f32>()
+                + 0.0;
             let hanging_punctuation_advance: f32 = candidate
                 .hanging_cluster_indices
                 .iter()
                 .map(|index| final_clusters[*index as usize].advance)
-                .sum();
+                .sum::<f32>()
+                + 0.0;
             let drawable = !candidate.cluster_range.is_empty()
                 && candidate
                     .cluster_range
