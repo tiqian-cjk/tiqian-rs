@@ -827,7 +827,7 @@ impl LineBreaker for LookaheadLineBreaker {
             }
             let mut candidates: Vec<_> = ((greedy_end - self.window)..=greedy_end)
                 .filter(|end| {
-                    *end >= line_start + 1
+                    *end > line_start
                         && *end <= adjusted.len() as i32
                         && *end <= segment_end_exclusive
                 })

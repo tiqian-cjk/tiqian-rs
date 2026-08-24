@@ -4,7 +4,7 @@ use super::super::core::Geometry::TextRange;
 use super::super::core::IntRange::IntRange;
 use super::super::core::LayoutModel::{Cluster, LineEndReason};
 use super::KinsokuRule::KinsokuRule;
-use super::LineBreaker::{empty_line_candidate, line_gap_count, rebuild_line};
+use super::LineBreaker::{line_gap_count, rebuild_line};
 use super::LineOptimization::{
     LineCandidate, LineSolution, PushInAllocation, RepairCandidate, RepairOption,
 };
@@ -432,7 +432,7 @@ pub fn apply_fill_push_in(
         };
         let current_break = progressive.get(&(previous.cluster_range.last() + 1));
         let mut next_break = progressive.get(&(end + 1));
-        let mut added: (f32) = (current.cluster_range.first()..=end)
+        let mut added: f32 = (current.cluster_range.first()..=end)
             .map(|index| adjusted[index as usize].advance)
             .sum();
         let mut promotes = current_break
@@ -441,9 +441,9 @@ pub fn apply_fill_push_in(
                 before.span_range == after.span_range
                     && after.tier.priority() < before.tier.priority()
             });
-        if promotes && added < deficit - PROGRESSIVE_TIER_PROMOTION_FILL_EPSILON {
-            if let Some(before) = current_break {
-                if let Some(boundary) =
+        if promotes && added < deficit - PROGRESSIVE_TIER_PROMOTION_FILL_EPSILON
+            && let Some(before) = current_break
+                && let Some(boundary) =
                     ((end + 2)..=current.cluster_range.last() + 1).find(|boundary| {
                         progressive.get(boundary).is_some_and(|candidate| {
                             candidate.span_range == before.span_range
@@ -458,8 +458,6 @@ pub fn apply_fill_push_in(
                         .sum();
                     promotes = false
                 }
-            }
-        }
         if current_break
             .zip(next_break)
             .is_some_and(|(before, after)| {

@@ -89,7 +89,7 @@ pub fn decide_progressive_break(
                     && opportunity.tier.priority() == best_priority
             })
         })
-        .last()
+        .next_back()
         .unwrap_or(overflow_at)
 }
 
@@ -183,7 +183,7 @@ fn progressive_break_priority_for_line(
                         && opportunity.tier.priority() == *priority
                 })
             })
-            .last()
+            .next_back()
         else {
             continue;
         };
@@ -213,7 +213,7 @@ fn progressive_break_priority_for_line(
                     && opportunity.tier == ProgressiveBreakTier::Emergency
             })
         })
-        .last();
+        .next_back();
     if emergency_boundary.is_some_and(|boundary| boundary >= least_loose_boundary) {
         ProgressiveBreakTier::Emergency.priority()
     } else {

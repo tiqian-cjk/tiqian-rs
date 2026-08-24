@@ -206,13 +206,13 @@ fn canonical_tie_break(digits: &str, value: f32) -> String {
     if mantissa == 0 && biased_exponent == 0 {
         return digits.to_owned();
     }
-    let exponent: i32;
-    if biased_exponent == 0 {
-        exponent = -149;
+    
+    let exponent: i32 = if biased_exponent == 0 {
+        -149
     } else {
         mantissa |= 0x80_0000;
-        exponent = biased_exponent as i32 - 150;
-    }
+        biased_exponent as i32 - 150
+    };
     let mut exact = mantissa.to_string();
     for _ in 0..exponent.max(0) {
         exact = times_small(&exact, 2);
@@ -230,7 +230,7 @@ fn canonical_tie_break(digits: &str, value: f32) -> String {
     let round_up = match remainder.as_bytes()[0] {
         b'6'..=b'9' => true,
         b'0'..=b'4' => false,
-        _ => past_half || (keep.as_bytes()[keep.len() - 1] - b'0') % 2 != 0,
+        _ => past_half || !(keep.as_bytes()[keep.len() - 1] - b'0').is_multiple_of(2),
     };
     let canonical = if round_up {
         increment_decimal(keep)

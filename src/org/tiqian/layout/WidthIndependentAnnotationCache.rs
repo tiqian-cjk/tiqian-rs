@@ -981,7 +981,7 @@ pub fn build_paragraph_layout_prep(
             .compress_cjk_closing_before_ascii_point_mark(&atoms, text, font_size)
             .adjustments,
     );
-    let spacing_plan = PunctuationSpacingCompressionResult::new(adjustments);
+    let _spacing_plan = PunctuationSpacingCompressionResult::new(adjustments);
     let mut ruby_spread = HashMap::new();
     if !annotation.pinyin_spans.is_empty() {
         let word_space = annotation.ruby_font_size * RUBY_MIN_GAP_EM_OF_RUBY;
@@ -1066,8 +1066,7 @@ pub fn build_paragraph_layout_prep(
             .pinyin_spans
             .iter()
             .filter_map(|ruby| {
-                cluster_index_range_for(&natural, ruby.base_range).and_then(|(first, last)| {
-                    Some({
+                cluster_index_range_for(&natural, ruby.base_range).map(|(first, last)| {
                         let geometry = annotation
                             .ruby_font_geometry_by_span
                             .get(ruby)
@@ -1081,7 +1080,6 @@ pub fn build_paragraph_layout_prep(
                             geometry.width,
                         )
                     })
-                })
             })
             .collect();
         measures.sort_by_key(|entry| entry.0);
@@ -1147,18 +1145,15 @@ pub fn build_paragraph_layout_prep(
                 Some(
                     PunctuationClass::Opening | PunctuationClass::Closing | PunctuationClass::Quote,
                 ) => 4,
-                Some(PunctuationClass::PauseOrStop) => {
+                Some(PunctuationClass::PauseOrStop)
                     if cluster
                         .display_text
                         .chars()
                         .next()
                         .is_some_and(|character| INLINE_STOPS.contains(&character))
-                    {
+                    => {
                         7
-                    } else {
-                        5
                     }
-                }
                 _ => 5,
             };
             let end_only = tier == 7 && !adjustment.allow_inline_stop_compression;

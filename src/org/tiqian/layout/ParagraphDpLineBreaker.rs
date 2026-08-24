@@ -435,7 +435,7 @@ impl ParagraphDpLineBreaker {
                 .collect()
         };
         let mut candidates = tier_preferred_pool;
-        if baseline >= start + 1 && baseline <= segment_end_exclusive && promotions.is_empty() {
+        if baseline > start && baseline <= segment_end_exclusive && promotions.is_empty() {
             candidates.push(baseline);
         }
         let mut result = Vec::new();

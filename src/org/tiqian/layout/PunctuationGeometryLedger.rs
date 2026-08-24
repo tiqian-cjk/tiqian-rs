@@ -158,8 +158,7 @@ impl PunctuationGeometryLedger {
             attachments.len() == self.natural_clusters.len(),
             "Inline attachments must align with punctuation geometry clusters."
         );
-        if self.budgets.is_empty() || !attachments.iter().any(|a| *a == InlineAttachment::Previous)
-        {
+        if self.budgets.is_empty() || !attachments.contains(&InlineAttachment::Previous) {
             return AttachedInlinePunctuationBoundaryResult {
                 geometry: self.clone(),
                 trailing_glue_by_cluster: HashMap::new(),
@@ -197,11 +196,11 @@ impl PunctuationGeometryLedger {
                 budgets.insert(prev, p);
             }
             let kept = right.min(adjusted);
-            if let (Some(n), Some(mut nb)) = (next, next_budget) {
-                if kept < right {
-                    nb.leading_consumed = nb.leading_natural - kept;
-                    budgets.insert(n, nb);
-                }
+            if let (Some(n), Some(mut nb)) = (next, next_budget)
+                && kept < right
+            {
+                nb.leading_consumed = nb.leading_natural - kept;
+                budgets.insert(n, nb);
             }
             let target = (adjusted - kept).max(0.);
             if target > 0. {
@@ -572,10 +571,10 @@ fn consume<F: Fn(GlueBudget, f32) -> GlueBudget>(
 ) -> HashMap<i32, GlueBudget> {
     let mut out = source.clone();
     for (i, a) in amounts {
-        if *a > 0. {
-            if let Some(b) = out.get(i).copied() {
-                out.insert(*i, apply(b, *a));
-            }
+        if *a > 0.
+            && let Some(b) = out.get(i).copied()
+        {
+            out.insert(*i, apply(b, *a));
         }
     }
     out

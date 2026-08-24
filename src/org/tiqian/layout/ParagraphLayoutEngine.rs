@@ -28,8 +28,7 @@ use super::ProgressiveBreakDecisions::ProgressiveBreakTier;
 use super::PunctuationModel::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
 use super::QuotePairAnalyzer::QuotePairAnalyzer;
 use super::WidthIndependentAnnotationCache::{
-    LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
-    WidthIndependentParagraphAnnotation, build_paragraph_layout_prep,
+    LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache, build_paragraph_layout_prep,
     prepare_width_independent_annotation, to_width_independent_annotation_key,
 };
 

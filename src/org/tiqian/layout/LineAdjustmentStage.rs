@@ -12,7 +12,7 @@ use super::super::font::FontMetrics::BaselineClass;
 use super::super::font::FontPolicy::FallbackResolver;
 use super::super::shaping::TextShaper::TextShaper;
 use super::AnnotationGeometryStage::{AnnotationGeometryRequest, resolve_annotation_geometry};
-use super::Justifier::{JustificationPlan, JustificationRequest, Justifier};
+use super::Justifier::{JustificationRequest, Justifier};
 use super::LayoutDebugAssembly::{LayoutDebugStageInput, build_layout_debug_info};
 use super::LineBreakPlanningStage::{LineBreakPlanningStageResult, ParagraphLayoutPrep};
 use super::LineGeometryStage::{

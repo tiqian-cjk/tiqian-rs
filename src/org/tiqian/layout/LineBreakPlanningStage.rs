@@ -222,7 +222,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                     .font_metrics_normalizer
                     .normalize(&FontMetricsNormalizationInput {
                         request: metric_request.clone(),
-                        raw_metrics: raw_metrics.clone(),
+                        raw_metrics,
                     });
             ClusterMetricDecision {
                 range: decision.range,
@@ -785,7 +785,7 @@ fn cluster_index_range_for_source_range(
     first.map(|first| IntRange::new(first, last))
 }
 
-fn source_slice<'a>(text: &'a str, range: TextRange) -> &'a str {
+fn source_slice(text: &str, range: TextRange) -> &str {
     let start = utf16_offset_to_utf8_byte_index(text, range.start())
         .expect("source range start must lie on scalar boundary");
     let end = utf16_offset_to_utf8_byte_index(text, range.end())

@@ -367,8 +367,8 @@ fn dump_result(
         fmt(result.size.width),
         fmt(result.size.height)
     );
-    if let Some(grid) = &result.debug.line_length_grid_decision {
-        if grid.enabled && grid.slack > 0.0 {
+    if let Some(grid) = &result.debug.line_length_grid_decision
+        && grid.enabled && grid.slack > 0.0 {
             out.push_str(&format!(
                 "grid container={} measure={}({}字) slack={} body={}@{}\n",
                 fmt(grid.container_width),
@@ -379,9 +379,8 @@ fn dump_result(
                 fmt(grid.body_offset)
             ));
         }
-    }
-    if let Some(indent) = &result.debug.first_line_indent_decision {
-        if indent.source != "Explicit" {
+    if let Some(indent) = &result.debug.first_line_indent_decision
+        && indent.source != "Explicit" {
             out.push_str(&format!(
                 "firstindent {}字 measure={}字 threshold={}字 {}\n",
                 fmt(indent.resolved_em),
@@ -390,7 +389,6 @@ fn dump_result(
                 indent.source
             ));
         }
-    }
     if let Some(kinsoku) = &result.debug.kinsoku_decision {
         out.push_str(&format!(
             "kinsoku measure={}字 level={} hang={} reason={}\n",

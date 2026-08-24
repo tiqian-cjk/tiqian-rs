@@ -96,7 +96,7 @@ pub fn shape_paragraph(
                     .display_text(source)
                     .open_type_features(cjk_punctuation_full_width_features(
                         decision.role,
-                        &source_slice(text, range),
+                        source_slice(text, range),
                     ))
                     .build(),
             )
@@ -735,9 +735,7 @@ fn camel_case_cuts(text: &str, range: TextRange) -> Vec<i32> {
         .filter(|hump| {
             hump - bounds
                 .iter()
-                .copied()
-                .filter(|bound| *bound < *hump)
-                .last()
+                .copied().rfind(|bound| *bound < *hump)
                 .unwrap()
                 >= 2
                 && bounds.iter().copied().find(|bound| *bound > *hump).unwrap() - hump >= 2

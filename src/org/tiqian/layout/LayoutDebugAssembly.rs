@@ -436,7 +436,7 @@ fn is_inside(inner: TextRange, outer: TextRange) -> bool {
     inner.start() >= outer.start() && inner.end() <= outer.end()
 }
 
-fn source_slice<'a>(text: &'a str, range: TextRange) -> &'a str {
+fn source_slice(text: &str, range: TextRange) -> &str {
     let start = utf16_offset_to_utf8_byte_index(text, range.start())
         .expect("source range start must lie on scalar boundary");
     let end = utf16_offset_to_utf8_byte_index(text, range.end())
