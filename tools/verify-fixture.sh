@@ -15,7 +15,7 @@ trap 'rm -f "$actual"' EXIT
     ./gradlew -q :engine:exportLayoutFixture -PfixtureId="$fixture_id"
 ) | (
     cd "$tiqian_rs_root"
-    cargo run --quiet --bin fixture_layout_dump
+    RUSTFLAGS="-A warnings" cargo run --quiet --bin fixture_layout_dump
 ) > "$actual"
 
 if diff -u "$golden" "$actual"; then
