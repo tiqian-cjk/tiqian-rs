@@ -1,9 +1,13 @@
 [package]
-name = "tiqian"
-version = "0.1.0"
+description = "Universal CJK Layouting Implementation in Rust"
 edition = "2024"
+exclude = ["examples"]
+license = "MPL-2.0"
+name = "tiqian"
+repository = "https://github.com/Icemic/tiqian-rs"
+version = "0.1.0"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 unicode-general-category = "1.1.0"
