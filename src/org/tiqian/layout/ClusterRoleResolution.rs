@@ -1,0 +1,316 @@
+// 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ClusterRoleResolution.kt
+
+use std::collections::{HashMap, HashSet};
+
+use unicode_general_category::{GeneralCategory, get_general_category};
+
+use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies};
+use super::super::core::Geometry::TextRange;
+use super::super::core::LayoutModel::Cluster;
+use super::super::core::TextModel::InlineObjectSpan;
+use super::super::font::FontPolicy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
+use super::super::linebreak::LineBreak::{
+    is_mandatory_break_code_point, is_zero_width_space_code_point,
+};
+
+/**
+ * Kotlin `clusterRoleRanges` 的可选参数映射。sized span 的边界切开 Latin/coalesced 标点 run，
+ * 使每个 cluster 只有一个 font size（ADR 0030）；`inline_objects_by_start` 的 key 为对象 range 的
+ * UTF-16 source start。
+ */
+#[derive(Clone, Debug, Default)]
+pub struct ClusterRoleRangeOptions {
+    pub span_boundaries: HashSet<i32>,
+    pub inline_objects_by_start: HashMap<i32, InlineObjectSpan>,
+}
+
+impl ClusterRoleRangeOptions {
+    pub fn builder() -> ClusterRoleRangeOptionsBuilder {
+        ClusterRoleRangeOptionsBuilder {
+            options: Self::default(),
+        }
+    }
+}
+
+pub struct ClusterRoleRangeOptionsBuilder {
+    options: ClusterRoleRangeOptions,
+}
+
+impl ClusterRoleRangeOptionsBuilder {
+    pub fn span_boundaries(mut self, value: HashSet<i32>) -> Self {
+        self.options.span_boundaries = value;
+        self
+    }
+
+    pub fn inline_objects_by_start(mut self, value: HashMap<i32, InlineObjectSpan>) -> Self {
+        self.options.inline_objects_by_start = value;
+        self
+    }
+
+    pub fn build(self) -> ClusterRoleRangeOptions {
+        self.options
+    }
+}
+
+pub fn cluster_role_ranges(
+    text: &str,
+    classifier: &dyn FontRoleClassifier,
+    context: &FontRoleContext,
+    profile: &ClreqProfile,
+) -> Vec<ResolvedClusterRange> {
+    cluster_role_ranges_with_options(
+        text,
+        classifier,
+        context,
+        profile,
+        &ClusterRoleRangeOptions::default(),
+    )
+}
+
+pub fn cluster_role_ranges_with_options(
+    text: &str,
+    classifier: &dyn FontRoleClassifier,
+    context: &FontRoleContext,
+    profile: &ClreqProfile,
+    options: &ClusterRoleRangeOptions,
+) -> Vec<ResolvedClusterRange> {
+    let text_length = utf16_length(text);
+    let coalesce_set = &profile.coalesce_repeatable_punctuation;
+    let mut ranges = Vec::new();
+    let mut index = 0_i32;
+    while index < text_length {
+        if let Some(inline_object) = options.inline_objects_by_start.get(&index) {
+            ranges.push(ResolvedClusterRange::new(inline_object.range, FontRole::Unknown));
+            index = inline_object.range.end();
+            continue;
+        }
+
+        let code_point = code_point_at_compat(text, index);
+        let code_point_length = char_count(code_point);
+        let start = index;
+        if is_mandatory_break_code_point_at(code_point, text, index) {
+            let end = if code_point == 0x000D
+                && index + 1 < text_length
+                && utf16_code_unit_at(text, index + 1) == 0x000A
+            {
+                index + 2
+            } else {
+                index + code_point_length
+            };
+            ranges.push(ResolvedClusterRange::mandatory_break(TextRange::new(start, end)));
+            index = end;
+            continue;
+        }
+        if is_zero_width_space_code_point(code_point) {
+            let end = index + code_point_length;
+            ranges.push(ResolvedClusterRange::zero_width_soft_break(TextRange::new(start, end)));
+            index = end;
+            continue;
+        }
+
+        let first_range = TextRange::new(start, start + code_point_length);
+        let role = classifier.classify(text, first_range, context);
+        let previous_range = ranges.last();
+        let attached_ascii_point_mark = role == FontRole::LatinText
+            && is_ascii_point_mark_code_point(code_point)
+            && previous_range.is_some_and(|previous| {
+                previous.role != FontRole::Unknown
+                    && previous.range.end() == start
+                    && !is_whitespace_code_unit(utf16_code_unit_at(text, previous.range.end() - 1))
+            });
+
+        index += code_point_length;
+        if role == FontRole::LatinText {
+            if attached_ascii_point_mark {
+                // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
+                // 这样 kinsoku 无须移动整个 `,anyway` token。
+                while index < text_length && !options.span_boundaries.contains(&index) {
+                    let next_code_point = code_point_at_compat(text, index);
+                    if !is_ascii_point_mark_code_point(next_code_point) {
+                        break;
+                    }
+                    index += char_count(next_code_point);
+                }
+            } else {
+                // Latin run 或 coalesced 标点 run 内的 sized-span edge 在此结束 cluster，
+                // 从而令每个 cluster 携带单个 font size（ADR 0030）。
+                while index < text_length && !options.span_boundaries.contains(&index) {
+                    let next_code_point = code_point_at_compat(text, index);
+                    let next_char_count = char_count(next_code_point);
+                    let next_range = TextRange::new(index, index + next_char_count);
+                    if classifier.classify(text, next_range, context) != FontRole::LatinText {
+                        break;
+                    }
+                    index += next_char_count;
+                }
+            }
+        } else if role == FontRole::CjkPunctuation && coalesce_set.contains(&code_point) {
+            while index < text_length && !options.span_boundaries.contains(&index) {
+                let next_code_point = code_point_at_compat(text, index);
+                if next_code_point != code_point {
+                    break;
+                }
+                index += char_count(next_code_point);
+            }
+        }
+
+        /*
+         * `GraphemeExtendStaysWithBaseCluster`：common code 可通过 Char.category 分类 BMP Mn/Mc/Me；
+         * BMP 与 supplementary variation selector 会显式覆盖。若将这些 extender shape 为独立的
+         * Unknown run，会丢失 base context 并产生合理的 zero advance，而 web capability validation
+         * 会将其错认为损坏的 visible glyph。保持 source range 完整，让 base 与每个受覆盖的 extending
+         * mark 通过同一个 font decision 与 shaping call。其他 supplementary combining category 有意
+         * 处于这个窄辅助函数范围之外。
+         */
+        while index < text_length && !options.span_boundaries.contains(&index) {
+            let extender = code_point_at_compat(text, index);
+            if !is_combining_mark_code_point(extender) && !is_variation_selector_code_point(extender) {
+                break;
+            }
+            index += char_count(extender);
+        }
+
+        ranges.push(ResolvedClusterRange::new(TextRange::new(start, index), role));
+    }
+    ranges
+}
+
+pub fn require_covered_by(clusters: &[Cluster], font_decisions: &[FontDecision]) {
+    let mut cluster_index = 0_usize;
+    for decision in font_decisions {
+        while cluster_index < clusters.len()
+            && clusters[cluster_index].range.end() <= decision.range.start()
+        {
+            cluster_index += 1;
+        }
+        let mut cursor = decision.range.start();
+        while cluster_index < clusters.len()
+            && clusters[cluster_index].range.start() < decision.range.end()
+        {
+            let cluster = &clusters[cluster_index];
+            assert!(
+                is_inside(cluster.range, decision.range),
+                "TextShaper returned cluster {} crossing {}",
+                kotlin_text_range_string(cluster.range),
+                kotlin_text_range_string(decision.range)
+            );
+            assert!(
+                cluster.range.start() == cursor,
+                "TextShaper returned non-contiguous clusters for {}; expected start={cursor}, actual={}",
+                kotlin_text_range_string(decision.range),
+                cluster.range.start()
+            );
+            cursor = cluster.range.end();
+            cluster_index += 1;
+        }
+        assert!(
+            cursor == decision.range.end(),
+            "TextShaper must return clusters covering {}; coveredUntil={cursor}",
+            kotlin_text_range_string(decision.range)
+        );
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResolvedClusterRange {
+    pub range: TextRange,
+    pub role: FontRole,
+    pub mandatory_break: bool,
+    pub zero_width_soft_break: bool,
+}
+
+impl ResolvedClusterRange {
+    pub fn new(range: TextRange, role: FontRole) -> Self {
+        Self {
+            range,
+            role,
+            mandatory_break: false,
+            zero_width_soft_break: false,
+        }
+    }
+
+    pub fn mandatory_break(range: TextRange) -> Self {
+        Self {
+            range,
+            role: FontRole::Unknown,
+            mandatory_break: true,
+            zero_width_soft_break: false,
+        }
+    }
+
+    pub fn zero_width_soft_break(range: TextRange) -> Self {
+        Self {
+            range,
+            role: FontRole::Unknown,
+            mandatory_break: false,
+            zero_width_soft_break: true,
+        }
+    }
+}
+
+fn is_mandatory_break_code_point_at(code_point: i32, text: &str, index: i32) -> bool {
+    is_mandatory_break_code_point(code_point)
+        && !(code_point == 0x000A && index > 0 && utf16_code_unit_at(text, index - 1) == 0x000D)
+}
+
+fn code_point_at_compat(text: &str, index: i32) -> i32 {
+    let high = utf16_code_unit_at(text, index);
+    let text_length = utf16_length(text);
+    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= text_length {
+        return high;
+    }
+    let low = utf16_code_unit_at(text, index + 1);
+    if !(0xDC00..=0xDFFF).contains(&low) {
+        return high;
+    }
+    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
+}
+
+fn utf16_length(text: &str) -> i32 {
+    text.encode_utf16().count() as i32
+}
+
+fn utf16_code_unit_at(text: &str, index: i32) -> i32 {
+    text.encode_utf16()
+        .nth(index as usize)
+        .expect("cluster role offset must address a UTF-16 code unit") as i32
+}
+
+fn char_count(code_point: i32) -> i32 {
+    if code_point > 0xFFFF { 2 } else { 1 }
+}
+
+fn is_variation_selector_code_point(code_point: i32) -> bool {
+    (0xFE00..=0xFE0F).contains(&code_point) || (0xE0100..=0xE01EF).contains(&code_point)
+}
+
+fn is_combining_mark_code_point(code_point: i32) -> bool {
+    code_point <= 0xFFFF
+        && char::from_u32(code_point as u32).is_some_and(|character| {
+            matches!(
+                get_general_category(character),
+                GeneralCategory::NonspacingMark
+                    | GeneralCategory::SpacingMark
+                    | GeneralCategory::EnclosingMark
+            )
+        })
+}
+
+fn is_ascii_point_mark_code_point(code_point: i32) -> bool {
+    code_point <= 0xFFFF
+        && char::from_u32(code_point as u32)
+            .is_some_and(clreq_punctuation_policies::is_ascii_point_mark)
+}
+
+fn is_whitespace_code_unit(code_unit: i32) -> bool {
+    char::from_u32(code_unit as u32).is_some_and(char::is_whitespace)
+}
+
+fn is_inside(range: TextRange, other: TextRange) -> bool {
+    range.start() >= other.start() && range.end() <= other.end()
+}
+
+/// Kotlin data class `TextRange` 的稳定 `toString()` 格式，供固定的 `requireCoveredBy` 错误使用。
+fn kotlin_text_range_string(range: TextRange) -> String {
+    format!("TextRange(start={}, end={})", range.start(), range.end())
+}
