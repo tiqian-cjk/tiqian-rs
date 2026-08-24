@@ -38,7 +38,9 @@ impl KinsokuRule for ClreqKinsokuRule {
             .display_text
             .chars()
             .next()
-            .is_some_and(|character| clreq_punctuation_policies::forbidden_at_line_start(character, self.level))
+            .is_some_and(|character| {
+                clreq_punctuation_policies::forbidden_at_line_start(character, self.level)
+            })
     }
 
     fn forbidden_at_line_end(&self, cluster: &Cluster) -> bool {
@@ -46,6 +48,8 @@ impl KinsokuRule for ClreqKinsokuRule {
             .display_text
             .chars()
             .next()
-            .is_some_and(|character| clreq_punctuation_policies::forbidden_at_line_end(character, self.level))
+            .is_some_and(|character| {
+                clreq_punctuation_policies::forbidden_at_line_end(character, self.level)
+            })
     }
 }

@@ -25,24 +25,89 @@ pub struct Cluster {
 
 impl Cluster {
     pub fn new(range: TextRange, text: String, font_key: String, advance: f32) -> Self {
-        Self { display_text: text.clone(), range, text, font_key, advance, baseline_shift: 0.0, leading_layout_advance: 0.0, glyph_inline_shift: 0.0 }
+        Self {
+            display_text: text.clone(),
+            range,
+            text,
+            font_key,
+            advance,
+            baseline_shift: 0.0,
+            leading_layout_advance: 0.0,
+            glyph_inline_shift: 0.0,
+        }
     }
-    pub fn with_display_text(range: TextRange, text: String, display_text: String, font_key: String, advance: f32) -> Self {
-        Self { range, text, display_text, font_key, advance, baseline_shift: 0.0, leading_layout_advance: 0.0, glyph_inline_shift: 0.0 }
+    pub fn with_display_text(
+        range: TextRange,
+        text: String,
+        display_text: String,
+        font_key: String,
+        advance: f32,
+    ) -> Self {
+        Self {
+            range,
+            text,
+            display_text,
+            font_key,
+            advance,
+            baseline_shift: 0.0,
+            leading_layout_advance: 0.0,
+            glyph_inline_shift: 0.0,
+        }
     }
-    pub fn with_baseline_shift(range: TextRange, text: String, display_text: String, font_key: String, advance: f32, baseline_shift: f32) -> Self {
-        Self { range, text, display_text, font_key, advance, baseline_shift, leading_layout_advance: 0.0, glyph_inline_shift: 0.0 }
+    pub fn with_baseline_shift(
+        range: TextRange,
+        text: String,
+        display_text: String,
+        font_key: String,
+        advance: f32,
+        baseline_shift: f32,
+    ) -> Self {
+        Self {
+            range,
+            text,
+            display_text,
+            font_key,
+            advance,
+            baseline_shift,
+            leading_layout_advance: 0.0,
+            glyph_inline_shift: 0.0,
+        }
     }
-    pub fn builder(range: TextRange, text: String, font_key: String, advance: f32) -> ClusterBuilder { ClusterBuilder { cluster: Self::new(range, text, font_key, advance) } }
+    pub fn builder(
+        range: TextRange,
+        text: String,
+        font_key: String,
+        advance: f32,
+    ) -> ClusterBuilder {
+        ClusterBuilder {
+            cluster: Self::new(range, text, font_key, advance),
+        }
+    }
 }
 
-pub struct ClusterBuilder { cluster: Cluster }
+pub struct ClusterBuilder {
+    cluster: Cluster,
+}
 impl ClusterBuilder {
-    pub fn display_text(mut self, value: String) -> Self { self.cluster.display_text = value; self }
-    pub fn baseline_shift(mut self, value: f32) -> Self { self.cluster.baseline_shift = value; self }
-    pub fn leading_layout_advance(mut self, value: f32) -> Self { self.cluster.leading_layout_advance = value; self }
-    pub fn glyph_inline_shift(mut self, value: f32) -> Self { self.cluster.glyph_inline_shift = value; self }
-    pub fn build(self) -> Cluster { self.cluster }
+    pub fn display_text(mut self, value: String) -> Self {
+        self.cluster.display_text = value;
+        self
+    }
+    pub fn baseline_shift(mut self, value: f32) -> Self {
+        self.cluster.baseline_shift = value;
+        self
+    }
+    pub fn leading_layout_advance(mut self, value: f32) -> Self {
+        self.cluster.leading_layout_advance = value;
+        self
+    }
+    pub fn glyph_inline_shift(mut self, value: f32) -> Self {
+        self.cluster.glyph_inline_shift = value;
+        self
+    }
+    pub fn build(self) -> Cluster {
+        self.cluster
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -56,8 +121,30 @@ pub struct GlyphRun {
     pub open_type_features: Vec<String>,
 }
 impl GlyphRun {
-    pub fn new(range: TextRange, font_key: String, glyphs: Vec<Glyph>, advance: f32) -> Self { Self { range, font_key, glyphs, advance, open_type_features: Vec::new() } }
-    pub fn with_open_type_features(range: TextRange, font_key: String, glyphs: Vec<Glyph>, advance: f32, open_type_features: Vec<String>) -> Self { Self { range, font_key, glyphs, advance, open_type_features } }
+    pub fn new(range: TextRange, font_key: String, glyphs: Vec<Glyph>, advance: f32) -> Self {
+        Self {
+            range,
+            font_key,
+            glyphs,
+            advance,
+            open_type_features: Vec::new(),
+        }
+    }
+    pub fn with_open_type_features(
+        range: TextRange,
+        font_key: String,
+        glyphs: Vec<Glyph>,
+        advance: f32,
+        open_type_features: Vec<String>,
+    ) -> Self {
+        Self {
+            range,
+            font_key,
+            glyphs,
+            advance,
+            open_type_features,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -86,18 +173,52 @@ pub struct Glyph {
 }
 impl Glyph {
     pub fn builder(id: u32, cluster_range: TextRange, advance: f32) -> GlyphBuilder {
-        GlyphBuilder { glyph: Self { id, cluster_range, advance, x: 0.0, y: 0.0, render_font_key: None, bounds: None, halt_advance: None, halt_placement_x: None } }
+        GlyphBuilder {
+            glyph: Self {
+                id,
+                cluster_range,
+                advance,
+                x: 0.0,
+                y: 0.0,
+                render_font_key: None,
+                bounds: None,
+                halt_advance: None,
+                halt_placement_x: None,
+            },
+        }
     }
 }
-pub struct GlyphBuilder { glyph: Glyph }
+pub struct GlyphBuilder {
+    glyph: Glyph,
+}
 impl GlyphBuilder {
-    pub fn x(mut self, value: f32) -> Self { self.glyph.x = value; self }
-    pub fn y(mut self, value: f32) -> Self { self.glyph.y = value; self }
-    pub fn render_font_key(mut self, value: Option<String>) -> Self { self.glyph.render_font_key = value; self }
-    pub fn bounds(mut self, value: Option<Rect>) -> Self { self.glyph.bounds = value; self }
-    pub fn halt_advance(mut self, value: Option<f32>) -> Self { self.glyph.halt_advance = value; self }
-    pub fn halt_placement_x(mut self, value: Option<f32>) -> Self { self.glyph.halt_placement_x = value; self }
-    pub fn build(self) -> Glyph { self.glyph }
+    pub fn x(mut self, value: f32) -> Self {
+        self.glyph.x = value;
+        self
+    }
+    pub fn y(mut self, value: f32) -> Self {
+        self.glyph.y = value;
+        self
+    }
+    pub fn render_font_key(mut self, value: Option<String>) -> Self {
+        self.glyph.render_font_key = value;
+        self
+    }
+    pub fn bounds(mut self, value: Option<Rect>) -> Self {
+        self.glyph.bounds = value;
+        self
+    }
+    pub fn halt_advance(mut self, value: Option<f32>) -> Self {
+        self.glyph.halt_advance = value;
+        self
+    }
+    pub fn halt_placement_x(mut self, value: Option<f32>) -> Self {
+        self.glyph.halt_placement_x = value;
+        self
+    }
+    pub fn build(self) -> Glyph {
+        self.glyph
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -132,30 +253,94 @@ pub struct LineBox {
     pub debug: LineDebugInfo,
 }
 impl LineBox {
-    pub fn builder(range: TextRange, cluster_range: IntRange, baseline: f32, top: f32, bottom: f32, natural_width: f32, adjusted_width: f32, visual_width: f32) -> LineBoxBuilder {
-        LineBoxBuilder { line: Self { range, cluster_range, baseline, top, bottom, natural_width, adjusted_width, visual_width, hanging_punctuation_advance: 0.0, indent: 0.0, end_reason: LineEndReason::ParagraphEnd, hyphen_advance: 0.0, hyphen_glyphs: Vec::new(), debug: LineDebugInfo::default() } }
+    pub fn builder(
+        range: TextRange,
+        cluster_range: IntRange,
+        baseline: f32,
+        top: f32,
+        bottom: f32,
+        natural_width: f32,
+        adjusted_width: f32,
+        visual_width: f32,
+    ) -> LineBoxBuilder {
+        LineBoxBuilder {
+            line: Self {
+                range,
+                cluster_range,
+                baseline,
+                top,
+                bottom,
+                natural_width,
+                adjusted_width,
+                visual_width,
+                hanging_punctuation_advance: 0.0,
+                indent: 0.0,
+                end_reason: LineEndReason::ParagraphEnd,
+                hyphen_advance: 0.0,
+                hyphen_glyphs: Vec::new(),
+                debug: LineDebugInfo::default(),
+            },
+        }
     }
 }
-pub struct LineBoxBuilder { line: LineBox }
+pub struct LineBoxBuilder {
+    line: LineBox,
+}
 impl LineBoxBuilder {
-    pub fn hanging_punctuation_advance(mut self, value: f32) -> Self { self.line.hanging_punctuation_advance = value; self }
-    pub fn indent(mut self, value: f32) -> Self { self.line.indent = value; self }
-    pub fn end_reason(mut self, value: LineEndReason) -> Self { self.line.end_reason = value; self }
-    pub fn hyphen_advance(mut self, value: f32) -> Self { self.line.hyphen_advance = value; self }
-    pub fn hyphen_glyphs(mut self, value: Vec<Glyph>) -> Self { self.line.hyphen_glyphs = value; self }
-    pub fn debug(mut self, value: LineDebugInfo) -> Self { self.line.debug = value; self }
-    pub fn build(self) -> LineBox { self.line }
+    pub fn hanging_punctuation_advance(mut self, value: f32) -> Self {
+        self.line.hanging_punctuation_advance = value;
+        self
+    }
+    pub fn indent(mut self, value: f32) -> Self {
+        self.line.indent = value;
+        self
+    }
+    pub fn end_reason(mut self, value: LineEndReason) -> Self {
+        self.line.end_reason = value;
+        self
+    }
+    pub fn hyphen_advance(mut self, value: f32) -> Self {
+        self.line.hyphen_advance = value;
+        self
+    }
+    pub fn hyphen_glyphs(mut self, value: Vec<Glyph>) -> Self {
+        self.line.hyphen_glyphs = value;
+        self
+    }
+    pub fn debug(mut self, value: LineDebugInfo) -> Self {
+        self.line.debug = value;
+        self
+    }
+    pub fn build(self) -> LineBox {
+        self.line
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LineEndReason { AutoWrap, MandatoryBreak, ParagraphEnd }
+pub enum LineEndReason {
+    AutoWrap,
+    MandatoryBreak,
+    ParagraphEnd,
+}
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct LineDebugInfo { pub repair: Option<String>, pub notes: Vec<String> }
+pub struct LineDebugInfo {
+    pub repair: Option<String>,
+    pub notes: Vec<String>,
+}
 impl LineDebugInfo {
-    pub fn new() -> Self { Self::default() }
-    pub fn with_repair(repair: Option<String>) -> Self { Self { repair, notes: Vec::new() } }
-    pub fn with_all(repair: Option<String>, notes: Vec<String>) -> Self { Self { repair, notes } }
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn with_repair(repair: Option<String>) -> Self {
+        Self {
+            repair,
+            notes: Vec::new(),
+        }
+    }
+    pub fn with_all(repair: Option<String>, notes: Vec<String>) -> Self {
+        Self { repair, notes }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -168,11 +353,38 @@ pub struct LayoutResult {
     pub debug: LayoutDebugInfo,
 }
 impl LayoutResult {
-    pub fn new(input: LayoutInput, size: Size, clusters: Vec<Cluster>, glyph_runs: Vec<GlyphRun>, lines: Vec<LineBox>) -> Self {
-        Self { input, size, clusters, glyph_runs, lines, debug: LayoutDebugInfo::default() }
+    pub fn new(
+        input: LayoutInput,
+        size: Size,
+        clusters: Vec<Cluster>,
+        glyph_runs: Vec<GlyphRun>,
+        lines: Vec<LineBox>,
+    ) -> Self {
+        Self {
+            input,
+            size,
+            clusters,
+            glyph_runs,
+            lines,
+            debug: LayoutDebugInfo::default(),
+        }
     }
-    pub fn with_debug(input: LayoutInput, size: Size, clusters: Vec<Cluster>, glyph_runs: Vec<GlyphRun>, lines: Vec<LineBox>, debug: LayoutDebugInfo) -> Self {
-        Self { input, size, clusters, glyph_runs, lines, debug }
+    pub fn with_debug(
+        input: LayoutInput,
+        size: Size,
+        clusters: Vec<Cluster>,
+        glyph_runs: Vec<GlyphRun>,
+        lines: Vec<LineBox>,
+        debug: LayoutDebugInfo,
+    ) -> Self {
+        Self {
+            input,
+            size,
+            clusters,
+            glyph_runs,
+            lines,
+            debug,
+        }
     }
 }
 
@@ -204,7 +416,8 @@ pub struct LayoutDebugInfo {
     pub first_line_indent_decision: Option<FirstLineIndentDecisionInfo>,
     pub inline_box_decisions: Vec<InlineBoxDecisionInfo>,
     pub inline_object_decisions: Vec<InlineObjectDecisionInfo>,
-    pub inline_object_punctuation_attachment_decisions: Vec<InlineObjectPunctuationAttachmentDecisionInfo>,
+    pub inline_object_punctuation_attachment_decisions:
+        Vec<InlineObjectPunctuationAttachmentDecisionInfo>,
     pub zero_width_break_decisions: Vec<ZeroWidthBreakDecisionInfo>,
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
@@ -223,37 +436,144 @@ pub struct LayoutDebugInfoBuilder {
 }
 
 impl LayoutDebugInfoBuilder {
-    pub fn font_decisions(mut self, value: Vec<FontDecisionInfo>) -> Self { self.debug.font_decisions = value; self }
-    pub fn shaping_decisions(mut self, value: Vec<ShapingDecisionInfo>) -> Self { self.debug.shaping_decisions = value; self }
-    pub fn metric_decisions(mut self, value: Vec<MetricDecisionInfo>) -> Self { self.debug.metric_decisions = value; self }
-    pub fn punctuation_decisions(mut self, value: Vec<PunctuationDecisionInfo>) -> Self { self.debug.punctuation_decisions = value; self }
-    pub fn geometry_decisions(mut self, value: Vec<ClusterGeometryDecisionInfo>) -> Self { self.debug.geometry_decisions = value; self }
-    pub fn spacing_decisions(mut self, value: Vec<SpacingDecisionInfo>) -> Self { self.debug.spacing_decisions = value; self }
-    pub fn role_overrides(mut self, value: Vec<RoleOverrideInfo>) -> Self { self.debug.role_overrides = value; self }
-    pub fn line_decisions(mut self, value: Vec<LineDecisionInfo>) -> Self { self.debug.line_decisions = value; self }
-    pub fn justification_decisions(mut self, value: Vec<JustificationDecisionInfo>) -> Self { self.debug.justification_decisions = value; self }
-    pub fn auto_space_decisions(mut self, value: Vec<AutoSpaceDecisionInfo>) -> Self { self.debug.auto_space_decisions = value; self }
-    pub fn line_edge_trim_decisions(mut self, value: Vec<LineEdgeTrimDecisionInfo>) -> Self { self.debug.line_edge_trim_decisions = value; self }
-    pub fn decoration_decisions(mut self, value: Vec<DecorationDecisionInfo>) -> Self { self.debug.decoration_decisions = value; self }
-    pub fn decoration_segments(mut self, value: Vec<DecorationSegmentInfo>) -> Self { self.debug.decoration_segments = value; self }
-    pub fn ruby_decisions(mut self, value: Vec<RubyDecisionInfo>) -> Self { self.debug.ruby_decisions = value; self }
-    pub fn bopomofo_decisions(mut self, value: Vec<BopomofoDecisionInfo>) -> Self { self.debug.bopomofo_decisions = value; self }
-    pub fn mandatory_break_decisions(mut self, value: Vec<MandatoryBreakDecisionInfo>) -> Self { self.debug.mandatory_break_decisions = value; self }
-    pub fn max_lines_decision(mut self, value: Option<MaxLinesDecisionInfo>) -> Self { self.debug.max_lines_decision = value; self }
-    pub fn line_spacing_decision(mut self, value: Option<LineSpacingDecisionInfo>) -> Self { self.debug.line_spacing_decision = value; self }
-    pub fn ruby_line_height_decision(mut self, value: Option<RubyLineHeightDecisionInfo>) -> Self { self.debug.ruby_line_height_decision = value; self }
-    pub fn inline_object_line_height_decision(mut self, value: Option<InlineObjectLineHeightDecisionInfo>) -> Self { self.debug.inline_object_line_height_decision = value; self }
-    pub fn kinsoku_decision(mut self, value: Option<KinsokuDecisionInfo>) -> Self { self.debug.kinsoku_decision = value; self }
-    pub fn contextual_kinsoku_decisions(mut self, value: Vec<ContextualKinsokuDecisionInfo>) -> Self { self.debug.contextual_kinsoku_decisions = value; self }
-    pub fn line_length_grid_decision(mut self, value: Option<LineLengthGridDecisionInfo>) -> Self { self.debug.line_length_grid_decision = value; self }
-    pub fn first_line_indent_decision(mut self, value: Option<FirstLineIndentDecisionInfo>) -> Self { self.debug.first_line_indent_decision = value; self }
-    pub fn inline_box_decisions(mut self, value: Vec<InlineBoxDecisionInfo>) -> Self { self.debug.inline_box_decisions = value; self }
-    pub fn inline_object_decisions(mut self, value: Vec<InlineObjectDecisionInfo>) -> Self { self.debug.inline_object_decisions = value; self }
-    pub fn inline_object_punctuation_attachment_decisions(mut self, value: Vec<InlineObjectPunctuationAttachmentDecisionInfo>) -> Self { self.debug.inline_object_punctuation_attachment_decisions = value; self }
-    pub fn zero_width_break_decisions(mut self, value: Vec<ZeroWidthBreakDecisionInfo>) -> Self { self.debug.zero_width_break_decisions = value; self }
-    pub fn break_opportunity_decisions(mut self, value: Vec<BreakOpportunityDecisionInfo>) -> Self { self.debug.break_opportunity_decisions = value; self }
-    pub fn emergency_tracking_eligibility_decisions(mut self, value: Vec<EmergencyTrackingEligibilityDecisionInfo>) -> Self { self.debug.emergency_tracking_eligibility_decisions = value; self }
-    pub fn build(self) -> LayoutDebugInfo { self.debug }
+    pub fn font_decisions(mut self, value: Vec<FontDecisionInfo>) -> Self {
+        self.debug.font_decisions = value;
+        self
+    }
+    pub fn shaping_decisions(mut self, value: Vec<ShapingDecisionInfo>) -> Self {
+        self.debug.shaping_decisions = value;
+        self
+    }
+    pub fn metric_decisions(mut self, value: Vec<MetricDecisionInfo>) -> Self {
+        self.debug.metric_decisions = value;
+        self
+    }
+    pub fn punctuation_decisions(mut self, value: Vec<PunctuationDecisionInfo>) -> Self {
+        self.debug.punctuation_decisions = value;
+        self
+    }
+    pub fn geometry_decisions(mut self, value: Vec<ClusterGeometryDecisionInfo>) -> Self {
+        self.debug.geometry_decisions = value;
+        self
+    }
+    pub fn spacing_decisions(mut self, value: Vec<SpacingDecisionInfo>) -> Self {
+        self.debug.spacing_decisions = value;
+        self
+    }
+    pub fn role_overrides(mut self, value: Vec<RoleOverrideInfo>) -> Self {
+        self.debug.role_overrides = value;
+        self
+    }
+    pub fn line_decisions(mut self, value: Vec<LineDecisionInfo>) -> Self {
+        self.debug.line_decisions = value;
+        self
+    }
+    pub fn justification_decisions(mut self, value: Vec<JustificationDecisionInfo>) -> Self {
+        self.debug.justification_decisions = value;
+        self
+    }
+    pub fn auto_space_decisions(mut self, value: Vec<AutoSpaceDecisionInfo>) -> Self {
+        self.debug.auto_space_decisions = value;
+        self
+    }
+    pub fn line_edge_trim_decisions(mut self, value: Vec<LineEdgeTrimDecisionInfo>) -> Self {
+        self.debug.line_edge_trim_decisions = value;
+        self
+    }
+    pub fn decoration_decisions(mut self, value: Vec<DecorationDecisionInfo>) -> Self {
+        self.debug.decoration_decisions = value;
+        self
+    }
+    pub fn decoration_segments(mut self, value: Vec<DecorationSegmentInfo>) -> Self {
+        self.debug.decoration_segments = value;
+        self
+    }
+    pub fn ruby_decisions(mut self, value: Vec<RubyDecisionInfo>) -> Self {
+        self.debug.ruby_decisions = value;
+        self
+    }
+    pub fn bopomofo_decisions(mut self, value: Vec<BopomofoDecisionInfo>) -> Self {
+        self.debug.bopomofo_decisions = value;
+        self
+    }
+    pub fn mandatory_break_decisions(mut self, value: Vec<MandatoryBreakDecisionInfo>) -> Self {
+        self.debug.mandatory_break_decisions = value;
+        self
+    }
+    pub fn max_lines_decision(mut self, value: Option<MaxLinesDecisionInfo>) -> Self {
+        self.debug.max_lines_decision = value;
+        self
+    }
+    pub fn line_spacing_decision(mut self, value: Option<LineSpacingDecisionInfo>) -> Self {
+        self.debug.line_spacing_decision = value;
+        self
+    }
+    pub fn ruby_line_height_decision(mut self, value: Option<RubyLineHeightDecisionInfo>) -> Self {
+        self.debug.ruby_line_height_decision = value;
+        self
+    }
+    pub fn inline_object_line_height_decision(
+        mut self,
+        value: Option<InlineObjectLineHeightDecisionInfo>,
+    ) -> Self {
+        self.debug.inline_object_line_height_decision = value;
+        self
+    }
+    pub fn kinsoku_decision(mut self, value: Option<KinsokuDecisionInfo>) -> Self {
+        self.debug.kinsoku_decision = value;
+        self
+    }
+    pub fn contextual_kinsoku_decisions(
+        mut self,
+        value: Vec<ContextualKinsokuDecisionInfo>,
+    ) -> Self {
+        self.debug.contextual_kinsoku_decisions = value;
+        self
+    }
+    pub fn line_length_grid_decision(mut self, value: Option<LineLengthGridDecisionInfo>) -> Self {
+        self.debug.line_length_grid_decision = value;
+        self
+    }
+    pub fn first_line_indent_decision(
+        mut self,
+        value: Option<FirstLineIndentDecisionInfo>,
+    ) -> Self {
+        self.debug.first_line_indent_decision = value;
+        self
+    }
+    pub fn inline_box_decisions(mut self, value: Vec<InlineBoxDecisionInfo>) -> Self {
+        self.debug.inline_box_decisions = value;
+        self
+    }
+    pub fn inline_object_decisions(mut self, value: Vec<InlineObjectDecisionInfo>) -> Self {
+        self.debug.inline_object_decisions = value;
+        self
+    }
+    pub fn inline_object_punctuation_attachment_decisions(
+        mut self,
+        value: Vec<InlineObjectPunctuationAttachmentDecisionInfo>,
+    ) -> Self {
+        self.debug.inline_object_punctuation_attachment_decisions = value;
+        self
+    }
+    pub fn zero_width_break_decisions(mut self, value: Vec<ZeroWidthBreakDecisionInfo>) -> Self {
+        self.debug.zero_width_break_decisions = value;
+        self
+    }
+    pub fn break_opportunity_decisions(mut self, value: Vec<BreakOpportunityDecisionInfo>) -> Self {
+        self.debug.break_opportunity_decisions = value;
+        self
+    }
+    pub fn emergency_tracking_eligibility_decisions(
+        mut self,
+        value: Vec<EmergencyTrackingEligibilityDecisionInfo>,
+    ) -> Self {
+        self.debug.emergency_tracking_eligibility_decisions = value;
+        self
+    }
+    pub fn build(self) -> LayoutDebugInfo {
+        self.debug
+    }
 }
 
 /// 在原本不可分割的 shaping segment 内暴露干净 line-break offset 的具名 source-level policy。
@@ -268,11 +588,34 @@ pub struct BreakOpportunityDecisionInfo {
     pub tier: Option<String>,
 }
 impl BreakOpportunityDecisionInfo {
-    pub fn new(range: TextRange, source_text: String, break_offsets: Vec<i32>, reason: String) -> Self {
-        Self { range, source_text, break_offsets, reason, tier: None }
+    pub fn new(
+        range: TextRange,
+        source_text: String,
+        break_offsets: Vec<i32>,
+        reason: String,
+    ) -> Self {
+        Self {
+            range,
+            source_text,
+            break_offsets,
+            reason,
+            tier: None,
+        }
     }
-    pub fn with_tier(range: TextRange, source_text: String, break_offsets: Vec<i32>, reason: String, tier: Option<String>) -> Self {
-        Self { range, source_text, break_offsets, reason, tier }
+    pub fn with_tier(
+        range: TextRange,
+        source_text: String,
+        break_offsets: Vec<i32>,
+        reason: String,
+        tier: Option<String>,
+    ) -> Self {
+        Self {
+            range,
+            source_text,
+            break_offsets,
+            reason,
+            tier,
+        }
     }
 }
 
@@ -296,11 +639,42 @@ pub struct InlineBoxDecisionInfo {
     pub reason: String,
 }
 impl InlineBoxDecisionInfo {
-    pub fn new(range: TextRange, inline_start: f32, inline_end: f32, outer_spacing: String, first_cluster_index: i32, last_cluster_index: i32) -> Self {
-        Self { range, inline_start, inline_end, outer_spacing, first_cluster_index, last_cluster_index, reason: "InlineBoxBoundaryAdvance".to_owned() }
+    pub fn new(
+        range: TextRange,
+        inline_start: f32,
+        inline_end: f32,
+        outer_spacing: String,
+        first_cluster_index: i32,
+        last_cluster_index: i32,
+    ) -> Self {
+        Self {
+            range,
+            inline_start,
+            inline_end,
+            outer_spacing,
+            first_cluster_index,
+            last_cluster_index,
+            reason: "InlineBoxBoundaryAdvance".to_owned(),
+        }
     }
-    pub fn with_reason(range: TextRange, inline_start: f32, inline_end: f32, outer_spacing: String, first_cluster_index: i32, last_cluster_index: i32, reason: String) -> Self {
-        Self { range, inline_start, inline_end, outer_spacing, first_cluster_index, last_cluster_index, reason }
+    pub fn with_reason(
+        range: TextRange,
+        inline_start: f32,
+        inline_end: f32,
+        outer_spacing: String,
+        first_cluster_index: i32,
+        last_cluster_index: i32,
+        reason: String,
+    ) -> Self {
+        Self {
+            range,
+            inline_start,
+            inline_end,
+            outer_spacing,
+            first_cluster_index,
+            last_cluster_index,
+            reason,
+        }
     }
 }
 
@@ -331,41 +705,118 @@ pub struct InlineObjectDecisionInfo {
     pub reason: String,
 }
 impl InlineObjectDecisionInfo {
-    pub fn builder(range: TextRange, advance: f32, ascent: f32, descent: f32, cluster_index: i32, line_index: i32) -> InlineObjectDecisionInfoBuilder {
-        InlineObjectDecisionInfoBuilder { decision: Self {
-            range, advance, ascent, descent, cluster_index, line_index,
-            leading_uniform_stretch: false, leading_preferred_stretch_kind: None,
-            leading_preferred_stretch_natural_width: 0.0, leading_preferred_stretch_target_width: 0.0,
-            leading_preferred_stretch_capacity: 0.0, leading_prevents_line_break: false,
-            leading_shrink_capacity: 0.0, leading_line_end_discardable_advance: 0.0,
-            trailing_uniform_stretch: false, trailing_preferred_stretch_kind: None,
-            trailing_preferred_stretch_natural_width: 0.0, trailing_preferred_stretch_target_width: 0.0,
-            trailing_preferred_stretch_capacity: 0.0, trailing_prevents_line_break: false,
-            trailing_shrink_capacity: 0.0, trailing_line_end_discardable_advance: 0.0,
-            reason: "MeasurableOpaqueInlineObject".to_owned(),
-        } }
+    pub fn builder(
+        range: TextRange,
+        advance: f32,
+        ascent: f32,
+        descent: f32,
+        cluster_index: i32,
+        line_index: i32,
+    ) -> InlineObjectDecisionInfoBuilder {
+        InlineObjectDecisionInfoBuilder {
+            decision: Self {
+                range,
+                advance,
+                ascent,
+                descent,
+                cluster_index,
+                line_index,
+                leading_uniform_stretch: false,
+                leading_preferred_stretch_kind: None,
+                leading_preferred_stretch_natural_width: 0.0,
+                leading_preferred_stretch_target_width: 0.0,
+                leading_preferred_stretch_capacity: 0.0,
+                leading_prevents_line_break: false,
+                leading_shrink_capacity: 0.0,
+                leading_line_end_discardable_advance: 0.0,
+                trailing_uniform_stretch: false,
+                trailing_preferred_stretch_kind: None,
+                trailing_preferred_stretch_natural_width: 0.0,
+                trailing_preferred_stretch_target_width: 0.0,
+                trailing_preferred_stretch_capacity: 0.0,
+                trailing_prevents_line_break: false,
+                trailing_shrink_capacity: 0.0,
+                trailing_line_end_discardable_advance: 0.0,
+                reason: "MeasurableOpaqueInlineObject".to_owned(),
+            },
+        }
     }
 }
-pub struct InlineObjectDecisionInfoBuilder { decision: InlineObjectDecisionInfo }
+pub struct InlineObjectDecisionInfoBuilder {
+    decision: InlineObjectDecisionInfo,
+}
 impl InlineObjectDecisionInfoBuilder {
-    pub fn leading_uniform_stretch(mut self, value: bool) -> Self { self.decision.leading_uniform_stretch = value; self }
-    pub fn leading_preferred_stretch_kind(mut self, value: Option<String>) -> Self { self.decision.leading_preferred_stretch_kind = value; self }
-    pub fn leading_preferred_stretch_natural_width(mut self, value: f32) -> Self { self.decision.leading_preferred_stretch_natural_width = value; self }
-    pub fn leading_preferred_stretch_target_width(mut self, value: f32) -> Self { self.decision.leading_preferred_stretch_target_width = value; self }
-    pub fn leading_preferred_stretch_capacity(mut self, value: f32) -> Self { self.decision.leading_preferred_stretch_capacity = value; self }
-    pub fn leading_prevents_line_break(mut self, value: bool) -> Self { self.decision.leading_prevents_line_break = value; self }
-    pub fn leading_shrink_capacity(mut self, value: f32) -> Self { self.decision.leading_shrink_capacity = value; self }
-    pub fn leading_line_end_discardable_advance(mut self, value: f32) -> Self { self.decision.leading_line_end_discardable_advance = value; self }
-    pub fn trailing_uniform_stretch(mut self, value: bool) -> Self { self.decision.trailing_uniform_stretch = value; self }
-    pub fn trailing_preferred_stretch_kind(mut self, value: Option<String>) -> Self { self.decision.trailing_preferred_stretch_kind = value; self }
-    pub fn trailing_preferred_stretch_natural_width(mut self, value: f32) -> Self { self.decision.trailing_preferred_stretch_natural_width = value; self }
-    pub fn trailing_preferred_stretch_target_width(mut self, value: f32) -> Self { self.decision.trailing_preferred_stretch_target_width = value; self }
-    pub fn trailing_preferred_stretch_capacity(mut self, value: f32) -> Self { self.decision.trailing_preferred_stretch_capacity = value; self }
-    pub fn trailing_prevents_line_break(mut self, value: bool) -> Self { self.decision.trailing_prevents_line_break = value; self }
-    pub fn trailing_shrink_capacity(mut self, value: f32) -> Self { self.decision.trailing_shrink_capacity = value; self }
-    pub fn trailing_line_end_discardable_advance(mut self, value: f32) -> Self { self.decision.trailing_line_end_discardable_advance = value; self }
-    pub fn reason(mut self, value: String) -> Self { self.decision.reason = value; self }
-    pub fn build(self) -> InlineObjectDecisionInfo { self.decision }
+    pub fn leading_uniform_stretch(mut self, value: bool) -> Self {
+        self.decision.leading_uniform_stretch = value;
+        self
+    }
+    pub fn leading_preferred_stretch_kind(mut self, value: Option<String>) -> Self {
+        self.decision.leading_preferred_stretch_kind = value;
+        self
+    }
+    pub fn leading_preferred_stretch_natural_width(mut self, value: f32) -> Self {
+        self.decision.leading_preferred_stretch_natural_width = value;
+        self
+    }
+    pub fn leading_preferred_stretch_target_width(mut self, value: f32) -> Self {
+        self.decision.leading_preferred_stretch_target_width = value;
+        self
+    }
+    pub fn leading_preferred_stretch_capacity(mut self, value: f32) -> Self {
+        self.decision.leading_preferred_stretch_capacity = value;
+        self
+    }
+    pub fn leading_prevents_line_break(mut self, value: bool) -> Self {
+        self.decision.leading_prevents_line_break = value;
+        self
+    }
+    pub fn leading_shrink_capacity(mut self, value: f32) -> Self {
+        self.decision.leading_shrink_capacity = value;
+        self
+    }
+    pub fn leading_line_end_discardable_advance(mut self, value: f32) -> Self {
+        self.decision.leading_line_end_discardable_advance = value;
+        self
+    }
+    pub fn trailing_uniform_stretch(mut self, value: bool) -> Self {
+        self.decision.trailing_uniform_stretch = value;
+        self
+    }
+    pub fn trailing_preferred_stretch_kind(mut self, value: Option<String>) -> Self {
+        self.decision.trailing_preferred_stretch_kind = value;
+        self
+    }
+    pub fn trailing_preferred_stretch_natural_width(mut self, value: f32) -> Self {
+        self.decision.trailing_preferred_stretch_natural_width = value;
+        self
+    }
+    pub fn trailing_preferred_stretch_target_width(mut self, value: f32) -> Self {
+        self.decision.trailing_preferred_stretch_target_width = value;
+        self
+    }
+    pub fn trailing_preferred_stretch_capacity(mut self, value: f32) -> Self {
+        self.decision.trailing_preferred_stretch_capacity = value;
+        self
+    }
+    pub fn trailing_prevents_line_break(mut self, value: bool) -> Self {
+        self.decision.trailing_prevents_line_break = value;
+        self
+    }
+    pub fn trailing_shrink_capacity(mut self, value: f32) -> Self {
+        self.decision.trailing_shrink_capacity = value;
+        self
+    }
+    pub fn trailing_line_end_discardable_advance(mut self, value: f32) -> Self {
+        self.decision.trailing_line_end_discardable_advance = value;
+        self
+    }
+    pub fn reason(mut self, value: String) -> Self {
+        self.decision.reason = value;
+        self
+    }
+    pub fn build(self) -> InlineObjectDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -377,10 +828,25 @@ pub struct ZeroWidthBreakDecisionInfo {
 }
 impl ZeroWidthBreakDecisionInfo {
     pub fn new(range: TextRange, source_text: String, cluster_index: i32) -> Self {
-        Self { range, source_text, cluster_index, reason: "ZeroWidthSpaceSoftBreakNoShape".to_owned() }
+        Self {
+            range,
+            source_text,
+            cluster_index,
+            reason: "ZeroWidthSpaceSoftBreakNoShape".to_owned(),
+        }
     }
-    pub fn with_reason(range: TextRange, source_text: String, cluster_index: i32, reason: String) -> Self {
-        Self { range, source_text, cluster_index, reason }
+    pub fn with_reason(
+        range: TextRange,
+        source_text: String,
+        cluster_index: i32,
+        reason: String,
+    ) -> Self {
+        Self {
+            range,
+            source_text,
+            cluster_index,
+            reason,
+        }
     }
 }
 
@@ -402,10 +868,18 @@ pub struct MaxLinesDecisionInfo {
 }
 impl MaxLinesDecisionInfo {
     pub fn new(laid_out_lines: i32, visible_lines: i32) -> Self {
-        Self { laid_out_lines, visible_lines, reason: "MaxLinesLineTruncation".to_owned() }
+        Self {
+            laid_out_lines,
+            visible_lines,
+            reason: "MaxLinesLineTruncation".to_owned(),
+        }
     }
     pub fn with_reason(laid_out_lines: i32, visible_lines: i32, reason: String) -> Self {
-        Self { laid_out_lines, visible_lines, reason }
+        Self {
+            laid_out_lines,
+            visible_lines,
+            reason,
+        }
     }
 }
 
@@ -460,11 +934,38 @@ pub struct ContextualKinsokuDecisionInfo {
     pub impossible_measure_fallback: Option<String>,
 }
 impl ContextualKinsokuDecisionInfo {
-    pub fn new(range: TextRange, source_text: String, cluster_index: i32, forbidden_position: String, reason: String) -> Self {
-        Self { range, source_text, cluster_index, forbidden_position, reason, impossible_measure_fallback: None }
+    pub fn new(
+        range: TextRange,
+        source_text: String,
+        cluster_index: i32,
+        forbidden_position: String,
+        reason: String,
+    ) -> Self {
+        Self {
+            range,
+            source_text,
+            cluster_index,
+            forbidden_position,
+            reason,
+            impossible_measure_fallback: None,
+        }
     }
-    pub fn with_impossible_measure_fallback(range: TextRange, source_text: String, cluster_index: i32, forbidden_position: String, reason: String, impossible_measure_fallback: Option<String>) -> Self {
-        Self { range, source_text, cluster_index, forbidden_position, reason, impossible_measure_fallback }
+    pub fn with_impossible_measure_fallback(
+        range: TextRange,
+        source_text: String,
+        cluster_index: i32,
+        forbidden_position: String,
+        reason: String,
+        impossible_measure_fallback: Option<String>,
+    ) -> Self {
+        Self {
+            range,
+            source_text,
+            cluster_index,
+            forbidden_position,
+            reason,
+            impossible_measure_fallback,
+        }
     }
 }
 
@@ -483,11 +984,42 @@ pub struct InlineObjectPunctuationAttachmentDecisionInfo {
     pub reason: String,
 }
 impl InlineObjectPunctuationAttachmentDecisionInfo {
-    pub fn new(object_range: TextRange, separator_range: TextRange, punctuation_range: TextRange, punctuation_text: String, protected_range: TextRange, collapsed_advance: f32) -> Self {
-        Self { object_range, separator_range, punctuation_range, punctuation_text, protected_range, collapsed_advance, reason: "InlineObjectPunctuationSeparatorSpaceCollapse".to_owned() }
+    pub fn new(
+        object_range: TextRange,
+        separator_range: TextRange,
+        punctuation_range: TextRange,
+        punctuation_text: String,
+        protected_range: TextRange,
+        collapsed_advance: f32,
+    ) -> Self {
+        Self {
+            object_range,
+            separator_range,
+            punctuation_range,
+            punctuation_text,
+            protected_range,
+            collapsed_advance,
+            reason: "InlineObjectPunctuationSeparatorSpaceCollapse".to_owned(),
+        }
     }
-    pub fn with_reason(object_range: TextRange, separator_range: TextRange, punctuation_range: TextRange, punctuation_text: String, protected_range: TextRange, collapsed_advance: f32, reason: String) -> Self {
-        Self { object_range, separator_range, punctuation_range, punctuation_text, protected_range, collapsed_advance, reason }
+    pub fn with_reason(
+        object_range: TextRange,
+        separator_range: TextRange,
+        punctuation_range: TextRange,
+        punctuation_text: String,
+        protected_range: TextRange,
+        collapsed_advance: f32,
+        reason: String,
+    ) -> Self {
+        Self {
+            object_range,
+            separator_range,
+            punctuation_range,
+            punctuation_text,
+            protected_range,
+            collapsed_advance,
+            reason,
+        }
     }
 }
 
@@ -570,20 +1102,70 @@ pub struct RubyDecisionInfo {
     pub glyphs: Vec<Glyph>,
 }
 impl RubyDecisionInfo {
-    pub fn builder(base_range: TextRange, text: String, line_index: i32, center_x: f32, baseline_y: f32, font_size: f32, overhang: f32) -> RubyDecisionInfoBuilder {
-        RubyDecisionInfoBuilder { decision: Self { base_range, text, line_index, center_x, baseline_y, font_size, ascent: 0.0, descent: 0.0, width: 0.0, overhang, font_families: Vec::new(), font_weight: 400, locale: "zh-Hans".to_owned(), glyphs: Vec::new() } }
+    pub fn builder(
+        base_range: TextRange,
+        text: String,
+        line_index: i32,
+        center_x: f32,
+        baseline_y: f32,
+        font_size: f32,
+        overhang: f32,
+    ) -> RubyDecisionInfoBuilder {
+        RubyDecisionInfoBuilder {
+            decision: Self {
+                base_range,
+                text,
+                line_index,
+                center_x,
+                baseline_y,
+                font_size,
+                ascent: 0.0,
+                descent: 0.0,
+                width: 0.0,
+                overhang,
+                font_families: Vec::new(),
+                font_weight: 400,
+                locale: "zh-Hans".to_owned(),
+                glyphs: Vec::new(),
+            },
+        }
     }
 }
-pub struct RubyDecisionInfoBuilder { decision: RubyDecisionInfo }
+pub struct RubyDecisionInfoBuilder {
+    decision: RubyDecisionInfo,
+}
 impl RubyDecisionInfoBuilder {
-    pub fn ascent(mut self, value: f32) -> Self { self.decision.ascent = value; self }
-    pub fn descent(mut self, value: f32) -> Self { self.decision.descent = value; self }
-    pub fn width(mut self, value: f32) -> Self { self.decision.width = value; self }
-    pub fn font_families(mut self, value: Vec<String>) -> Self { self.decision.font_families = value; self }
-    pub fn font_weight(mut self, value: i32) -> Self { self.decision.font_weight = value; self }
-    pub fn locale(mut self, value: String) -> Self { self.decision.locale = value; self }
-    pub fn glyphs(mut self, value: Vec<Glyph>) -> Self { self.decision.glyphs = value; self }
-    pub fn build(self) -> RubyDecisionInfo { self.decision }
+    pub fn ascent(mut self, value: f32) -> Self {
+        self.decision.ascent = value;
+        self
+    }
+    pub fn descent(mut self, value: f32) -> Self {
+        self.decision.descent = value;
+        self
+    }
+    pub fn width(mut self, value: f32) -> Self {
+        self.decision.width = value;
+        self
+    }
+    pub fn font_families(mut self, value: Vec<String>) -> Self {
+        self.decision.font_families = value;
+        self
+    }
+    pub fn font_weight(mut self, value: i32) -> Self {
+        self.decision.font_weight = value;
+        self
+    }
+    pub fn locale(mut self, value: String) -> Self {
+        self.decision.locale = value;
+        self
+    }
+    pub fn glyphs(mut self, value: Vec<Glyph>) -> Self {
+        self.decision.glyphs = value;
+        self
+    }
+    pub fn build(self) -> RubyDecisionInfo {
+        self.decision
+    }
 }
 
 /// 注音 geometry（ADR 0033）：line `line_index` 上 `base_range` 右侧区域内的 ㄅㄆㄇ symbol + 调号。
@@ -603,17 +1185,52 @@ pub struct BopomofoDecisionInfo {
     pub locale: String,
 }
 impl BopomofoDecisionInfo {
-    pub fn new(base_range: TextRange, text: String, line_index: i32, placements: Vec<BopomofoGlyphPlacement>) -> Self {
-        Self { base_range, text, line_index, placements, font_families: Vec::new(), font_weight: 400, locale: "zh-Hans".to_owned() }
+    pub fn new(
+        base_range: TextRange,
+        text: String,
+        line_index: i32,
+        placements: Vec<BopomofoGlyphPlacement>,
+    ) -> Self {
+        Self {
+            base_range,
+            text,
+            line_index,
+            placements,
+            font_families: Vec::new(),
+            font_weight: 400,
+            locale: "zh-Hans".to_owned(),
+        }
     }
-    pub fn builder(base_range: TextRange, text: String, line_index: i32, placements: Vec<BopomofoGlyphPlacement>) -> BopomofoDecisionInfoBuilder { BopomofoDecisionInfoBuilder { decision: Self::new(base_range, text, line_index, placements) } }
+    pub fn builder(
+        base_range: TextRange,
+        text: String,
+        line_index: i32,
+        placements: Vec<BopomofoGlyphPlacement>,
+    ) -> BopomofoDecisionInfoBuilder {
+        BopomofoDecisionInfoBuilder {
+            decision: Self::new(base_range, text, line_index, placements),
+        }
+    }
 }
-pub struct BopomofoDecisionInfoBuilder { decision: BopomofoDecisionInfo }
+pub struct BopomofoDecisionInfoBuilder {
+    decision: BopomofoDecisionInfo,
+}
 impl BopomofoDecisionInfoBuilder {
-    pub fn font_families(mut self, value: Vec<String>) -> Self { self.decision.font_families = value; self }
-    pub fn font_weight(mut self, value: i32) -> Self { self.decision.font_weight = value; self }
-    pub fn locale(mut self, value: String) -> Self { self.decision.locale = value; self }
-    pub fn build(self) -> BopomofoDecisionInfo { self.decision }
+    pub fn font_families(mut self, value: Vec<String>) -> Self {
+        self.decision.font_families = value;
+        self
+    }
+    pub fn font_weight(mut self, value: i32) -> Self {
+        self.decision.font_weight = value;
+        self
+    }
+    pub fn locale(mut self, value: String) -> Self {
+        self.decision.locale = value;
+        self
+    }
+    pub fn build(self) -> BopomofoDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -631,18 +1248,63 @@ pub struct BopomofoGlyphPlacement {
     pub font_size: f32,
 }
 impl BopomofoGlyphPlacement {
-    pub fn new(text: String, left: f32, top: f32, width: f32, height: f32, role: BopomofoGlyphRole) -> Self {
-        Self { text, left, top, width, height, role, glyphs: Vec::new(), draw_x: left, baseline_y: top + height, font_size: height }
+    pub fn new(
+        text: String,
+        left: f32,
+        top: f32,
+        width: f32,
+        height: f32,
+        role: BopomofoGlyphRole,
+    ) -> Self {
+        Self {
+            text,
+            left,
+            top,
+            width,
+            height,
+            role,
+            glyphs: Vec::new(),
+            draw_x: left,
+            baseline_y: top + height,
+            font_size: height,
+        }
     }
-    pub fn builder(text: String, left: f32, top: f32, width: f32, height: f32, role: BopomofoGlyphRole) -> BopomofoGlyphPlacementBuilder { BopomofoGlyphPlacementBuilder { placement: Self::new(text, left, top, width, height, role) } }
+    pub fn builder(
+        text: String,
+        left: f32,
+        top: f32,
+        width: f32,
+        height: f32,
+        role: BopomofoGlyphRole,
+    ) -> BopomofoGlyphPlacementBuilder {
+        BopomofoGlyphPlacementBuilder {
+            placement: Self::new(text, left, top, width, height, role),
+        }
+    }
 }
-pub struct BopomofoGlyphPlacementBuilder { placement: BopomofoGlyphPlacement }
+pub struct BopomofoGlyphPlacementBuilder {
+    placement: BopomofoGlyphPlacement,
+}
 impl BopomofoGlyphPlacementBuilder {
-    pub fn glyphs(mut self, value: Vec<Glyph>) -> Self { self.placement.glyphs = value; self }
-    pub fn draw_x(mut self, value: f32) -> Self { self.placement.draw_x = value; self }
-    pub fn baseline_y(mut self, value: f32) -> Self { self.placement.baseline_y = value; self }
-    pub fn font_size(mut self, value: f32) -> Self { self.placement.font_size = value; self }
-    pub fn build(self) -> BopomofoGlyphPlacement { self.placement }
+    pub fn glyphs(mut self, value: Vec<Glyph>) -> Self {
+        self.placement.glyphs = value;
+        self
+    }
+    pub fn draw_x(mut self, value: f32) -> Self {
+        self.placement.draw_x = value;
+        self
+    }
+    pub fn baseline_y(mut self, value: f32) -> Self {
+        self.placement.baseline_y = value;
+        self
+    }
+    pub fn font_size(mut self, value: f32) -> Self {
+        self.placement.font_size = value;
+        self
+    }
+    pub fn build(self) -> BopomofoGlyphPlacement {
+        self.placement
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -690,17 +1352,55 @@ pub struct DecorationDecisionInfo {
     pub dot_diameter: f32,
 }
 impl DecorationDecisionInfo {
-    pub fn new(cluster_range: TextRange, source_text: String, kind: String, applied: bool, reason: String) -> Self {
-        Self { cluster_range, source_text, kind, applied, reason, anchor_x: 0.0, anchor_y: 0.0, dot_diameter: 0.0 }
+    pub fn new(
+        cluster_range: TextRange,
+        source_text: String,
+        kind: String,
+        applied: bool,
+        reason: String,
+    ) -> Self {
+        Self {
+            cluster_range,
+            source_text,
+            kind,
+            applied,
+            reason,
+            anchor_x: 0.0,
+            anchor_y: 0.0,
+            dot_diameter: 0.0,
+        }
     }
-    pub fn builder(cluster_range: TextRange, source_text: String, kind: String, applied: bool, reason: String) -> DecorationDecisionInfoBuilder { DecorationDecisionInfoBuilder { decision: Self::new(cluster_range, source_text, kind, applied, reason) } }
+    pub fn builder(
+        cluster_range: TextRange,
+        source_text: String,
+        kind: String,
+        applied: bool,
+        reason: String,
+    ) -> DecorationDecisionInfoBuilder {
+        DecorationDecisionInfoBuilder {
+            decision: Self::new(cluster_range, source_text, kind, applied, reason),
+        }
+    }
 }
-pub struct DecorationDecisionInfoBuilder { decision: DecorationDecisionInfo }
+pub struct DecorationDecisionInfoBuilder {
+    decision: DecorationDecisionInfo,
+}
 impl DecorationDecisionInfoBuilder {
-    pub fn anchor_x(mut self, value: f32) -> Self { self.decision.anchor_x = value; self }
-    pub fn anchor_y(mut self, value: f32) -> Self { self.decision.anchor_y = value; self }
-    pub fn dot_diameter(mut self, value: f32) -> Self { self.decision.dot_diameter = value; self }
-    pub fn build(self) -> DecorationDecisionInfo { self.decision }
+    pub fn anchor_x(mut self, value: f32) -> Self {
+        self.decision.anchor_x = value;
+        self
+    }
+    pub fn anchor_y(mut self, value: f32) -> Self {
+        self.decision.anchor_y = value;
+        self
+    }
+    pub fn dot_diameter(mut self, value: f32) -> Self {
+        self.decision.dot_diameter = value;
+        self
+    }
+    pub fn build(self) -> DecorationDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -767,21 +1467,77 @@ pub struct ShapingDecisionInfo {
     pub capability_issue: Option<String>,
 }
 impl ShapingDecisionInfo {
-    pub fn builder(range: TextRange, source_text: String, display_text: String, font_key: String, glyph_count: i32, advance: f32, source: String, reason: String) -> ShapingDecisionInfoBuilder {
-        ShapingDecisionInfoBuilder { decision: Self { range, source_text, display_text, font_key, glyph_count, advance, source, reason, glyphs_without_ink_bounds: 0, missing_glyphs: 0, resolved_face: None, script: None, language: None, strategy: None, feature_evidence: None, capability_issue: None } }
+    pub fn builder(
+        range: TextRange,
+        source_text: String,
+        display_text: String,
+        font_key: String,
+        glyph_count: i32,
+        advance: f32,
+        source: String,
+        reason: String,
+    ) -> ShapingDecisionInfoBuilder {
+        ShapingDecisionInfoBuilder {
+            decision: Self {
+                range,
+                source_text,
+                display_text,
+                font_key,
+                glyph_count,
+                advance,
+                source,
+                reason,
+                glyphs_without_ink_bounds: 0,
+                missing_glyphs: 0,
+                resolved_face: None,
+                script: None,
+                language: None,
+                strategy: None,
+                feature_evidence: None,
+                capability_issue: None,
+            },
+        }
     }
 }
-pub struct ShapingDecisionInfoBuilder { decision: ShapingDecisionInfo }
+pub struct ShapingDecisionInfoBuilder {
+    decision: ShapingDecisionInfo,
+}
 impl ShapingDecisionInfoBuilder {
-    pub fn glyphs_without_ink_bounds(mut self, value: i32) -> Self { self.decision.glyphs_without_ink_bounds = value; self }
-    pub fn missing_glyphs(mut self, value: i32) -> Self { self.decision.missing_glyphs = value; self }
-    pub fn resolved_face(mut self, value: Option<String>) -> Self { self.decision.resolved_face = value; self }
-    pub fn script(mut self, value: Option<String>) -> Self { self.decision.script = value; self }
-    pub fn language(mut self, value: Option<String>) -> Self { self.decision.language = value; self }
-    pub fn strategy(mut self, value: Option<String>) -> Self { self.decision.strategy = value; self }
-    pub fn feature_evidence(mut self, value: Option<String>) -> Self { self.decision.feature_evidence = value; self }
-    pub fn capability_issue(mut self, value: Option<String>) -> Self { self.decision.capability_issue = value; self }
-    pub fn build(self) -> ShapingDecisionInfo { self.decision }
+    pub fn glyphs_without_ink_bounds(mut self, value: i32) -> Self {
+        self.decision.glyphs_without_ink_bounds = value;
+        self
+    }
+    pub fn missing_glyphs(mut self, value: i32) -> Self {
+        self.decision.missing_glyphs = value;
+        self
+    }
+    pub fn resolved_face(mut self, value: Option<String>) -> Self {
+        self.decision.resolved_face = value;
+        self
+    }
+    pub fn script(mut self, value: Option<String>) -> Self {
+        self.decision.script = value;
+        self
+    }
+    pub fn language(mut self, value: Option<String>) -> Self {
+        self.decision.language = value;
+        self
+    }
+    pub fn strategy(mut self, value: Option<String>) -> Self {
+        self.decision.strategy = value;
+        self
+    }
+    pub fn feature_evidence(mut self, value: Option<String>) -> Self {
+        self.decision.feature_evidence = value;
+        self
+    }
+    pub fn capability_issue(mut self, value: Option<String>) -> Self {
+        self.decision.capability_issue = value;
+        self
+    }
+    pub fn build(self) -> ShapingDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -839,28 +1595,112 @@ pub struct PunctuationDecisionInfo {
     pub trailing_glue_initially_consumed: f32,
 }
 impl PunctuationDecisionInfo {
-    pub fn builder(range: TextRange, ch: char, punctuation_class: String, advance: f32, body_width: f32, leading_glue_natural: f32, trailing_glue_natural: f32, anchor: String) -> PunctuationDecisionInfoBuilder {
-        PunctuationDecisionInfoBuilder { decision: Self { range, ch, punctuation_class, advance, body_width, leading_glue_natural, trailing_glue_natural, anchor, ink_bounds: None, geometry_source: "PolicyDerived".to_owned(), policy_body_floor: body_width, ink_width: None, ink_center: None, ink_containment_body_floor: None, ink_containment_applied: false, ink_bounds_fallback: None, halt_advance: None, halt_validation: None, advance_expansion: 0.0, glyph_inline_shift: 0.0, glyph_placement_reason: None, leading_glue_initially_consumed: 0.0, trailing_glue_initially_consumed: 0.0 } }
+    pub fn builder(
+        range: TextRange,
+        ch: char,
+        punctuation_class: String,
+        advance: f32,
+        body_width: f32,
+        leading_glue_natural: f32,
+        trailing_glue_natural: f32,
+        anchor: String,
+    ) -> PunctuationDecisionInfoBuilder {
+        PunctuationDecisionInfoBuilder {
+            decision: Self {
+                range,
+                ch,
+                punctuation_class,
+                advance,
+                body_width,
+                leading_glue_natural,
+                trailing_glue_natural,
+                anchor,
+                ink_bounds: None,
+                geometry_source: "PolicyDerived".to_owned(),
+                policy_body_floor: body_width,
+                ink_width: None,
+                ink_center: None,
+                ink_containment_body_floor: None,
+                ink_containment_applied: false,
+                ink_bounds_fallback: None,
+                halt_advance: None,
+                halt_validation: None,
+                advance_expansion: 0.0,
+                glyph_inline_shift: 0.0,
+                glyph_placement_reason: None,
+                leading_glue_initially_consumed: 0.0,
+                trailing_glue_initially_consumed: 0.0,
+            },
+        }
     }
 }
-pub struct PunctuationDecisionInfoBuilder { decision: PunctuationDecisionInfo }
+pub struct PunctuationDecisionInfoBuilder {
+    decision: PunctuationDecisionInfo,
+}
 impl PunctuationDecisionInfoBuilder {
-    pub fn ink_bounds(mut self, value: Option<Rect>) -> Self { self.decision.ink_bounds = value; self }
-    pub fn geometry_source(mut self, value: String) -> Self { self.decision.geometry_source = value; self }
-    pub fn policy_body_floor(mut self, value: f32) -> Self { self.decision.policy_body_floor = value; self }
-    pub fn ink_width(mut self, value: Option<f32>) -> Self { self.decision.ink_width = value; self }
-    pub fn ink_center(mut self, value: Option<f32>) -> Self { self.decision.ink_center = value; self }
-    pub fn ink_containment_body_floor(mut self, value: Option<f32>) -> Self { self.decision.ink_containment_body_floor = value; self }
-    pub fn ink_containment_applied(mut self, value: bool) -> Self { self.decision.ink_containment_applied = value; self }
-    pub fn ink_bounds_fallback(mut self, value: Option<String>) -> Self { self.decision.ink_bounds_fallback = value; self }
-    pub fn halt_advance(mut self, value: Option<f32>) -> Self { self.decision.halt_advance = value; self }
-    pub fn halt_validation(mut self, value: Option<String>) -> Self { self.decision.halt_validation = value; self }
-    pub fn advance_expansion(mut self, value: f32) -> Self { self.decision.advance_expansion = value; self }
-    pub fn glyph_inline_shift(mut self, value: f32) -> Self { self.decision.glyph_inline_shift = value; self }
-    pub fn glyph_placement_reason(mut self, value: Option<String>) -> Self { self.decision.glyph_placement_reason = value; self }
-    pub fn leading_glue_initially_consumed(mut self, value: f32) -> Self { self.decision.leading_glue_initially_consumed = value; self }
-    pub fn trailing_glue_initially_consumed(mut self, value: f32) -> Self { self.decision.trailing_glue_initially_consumed = value; self }
-    pub fn build(self) -> PunctuationDecisionInfo { self.decision }
+    pub fn ink_bounds(mut self, value: Option<Rect>) -> Self {
+        self.decision.ink_bounds = value;
+        self
+    }
+    pub fn geometry_source(mut self, value: String) -> Self {
+        self.decision.geometry_source = value;
+        self
+    }
+    pub fn policy_body_floor(mut self, value: f32) -> Self {
+        self.decision.policy_body_floor = value;
+        self
+    }
+    pub fn ink_width(mut self, value: Option<f32>) -> Self {
+        self.decision.ink_width = value;
+        self
+    }
+    pub fn ink_center(mut self, value: Option<f32>) -> Self {
+        self.decision.ink_center = value;
+        self
+    }
+    pub fn ink_containment_body_floor(mut self, value: Option<f32>) -> Self {
+        self.decision.ink_containment_body_floor = value;
+        self
+    }
+    pub fn ink_containment_applied(mut self, value: bool) -> Self {
+        self.decision.ink_containment_applied = value;
+        self
+    }
+    pub fn ink_bounds_fallback(mut self, value: Option<String>) -> Self {
+        self.decision.ink_bounds_fallback = value;
+        self
+    }
+    pub fn halt_advance(mut self, value: Option<f32>) -> Self {
+        self.decision.halt_advance = value;
+        self
+    }
+    pub fn halt_validation(mut self, value: Option<String>) -> Self {
+        self.decision.halt_validation = value;
+        self
+    }
+    pub fn advance_expansion(mut self, value: f32) -> Self {
+        self.decision.advance_expansion = value;
+        self
+    }
+    pub fn glyph_inline_shift(mut self, value: f32) -> Self {
+        self.decision.glyph_inline_shift = value;
+        self
+    }
+    pub fn glyph_placement_reason(mut self, value: Option<String>) -> Self {
+        self.decision.glyph_placement_reason = value;
+        self
+    }
+    pub fn leading_glue_initially_consumed(mut self, value: f32) -> Self {
+        self.decision.leading_glue_initially_consumed = value;
+        self
+    }
+    pub fn trailing_glue_initially_consumed(mut self, value: f32) -> Self {
+        self.decision.trailing_glue_initially_consumed = value;
+        self
+    }
+    pub fn build(self) -> PunctuationDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -887,23 +1727,85 @@ pub struct ClusterGeometryDecisionInfo {
     pub reason: String,
 }
 impl ClusterGeometryDecisionInfo {
-    pub fn builder(range: TextRange, source_text: String, display_text: String, base_advance: f32, body_width: f32, leading_glue_natural: f32, leading_glue_consumed: f32, trailing_glue_natural: f32, trailing_glue_consumed: f32, justification_delta: f32, resolved_advance: f32, source: String, reason: String) -> ClusterGeometryDecisionInfoBuilder {
-        ClusterGeometryDecisionInfoBuilder { decision: Self { range, source_text, display_text, base_advance, body_width, leading_glue_natural, leading_glue_consumed, trailing_glue_natural, trailing_glue_consumed, justification_delta, ruby_spread: 0.0, glyph_inline_shift: 0.0, glyph_placement_reason: None, resolved_advance, source, reason } }
+    pub fn builder(
+        range: TextRange,
+        source_text: String,
+        display_text: String,
+        base_advance: f32,
+        body_width: f32,
+        leading_glue_natural: f32,
+        leading_glue_consumed: f32,
+        trailing_glue_natural: f32,
+        trailing_glue_consumed: f32,
+        justification_delta: f32,
+        resolved_advance: f32,
+        source: String,
+        reason: String,
+    ) -> ClusterGeometryDecisionInfoBuilder {
+        ClusterGeometryDecisionInfoBuilder {
+            decision: Self {
+                range,
+                source_text,
+                display_text,
+                base_advance,
+                body_width,
+                leading_glue_natural,
+                leading_glue_consumed,
+                trailing_glue_natural,
+                trailing_glue_consumed,
+                justification_delta,
+                ruby_spread: 0.0,
+                glyph_inline_shift: 0.0,
+                glyph_placement_reason: None,
+                resolved_advance,
+                source,
+                reason,
+            },
+        }
     }
 }
-pub struct ClusterGeometryDecisionInfoBuilder { decision: ClusterGeometryDecisionInfo }
+pub struct ClusterGeometryDecisionInfoBuilder {
+    decision: ClusterGeometryDecisionInfo,
+}
 impl ClusterGeometryDecisionInfoBuilder {
-    pub fn ruby_spread(mut self, value: f32) -> Self { self.decision.ruby_spread = value; self }
-    pub fn glyph_inline_shift(mut self, value: f32) -> Self { self.decision.glyph_inline_shift = value; self }
-    pub fn glyph_placement_reason(mut self, value: Option<String>) -> Self { self.decision.glyph_placement_reason = value; self }
-    pub fn build(self) -> ClusterGeometryDecisionInfo { self.decision }
+    pub fn ruby_spread(mut self, value: f32) -> Self {
+        self.decision.ruby_spread = value;
+        self
+    }
+    pub fn glyph_inline_shift(mut self, value: f32) -> Self {
+        self.decision.glyph_inline_shift = value;
+        self
+    }
+    pub fn glyph_placement_reason(mut self, value: Option<String>) -> Self {
+        self.decision.glyph_placement_reason = value;
+        self
+    }
+    pub fn build(self) -> ClusterGeometryDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SpacingDecisionInfo { pub range: TextRange, pub left_char: char, pub right_char: char, pub natural_inner_glue: f32, pub adjusted_inner_glue: f32, pub reduction: f32, pub reduction_target_range: TextRange, pub reason: String }
+pub struct SpacingDecisionInfo {
+    pub range: TextRange,
+    pub left_char: char,
+    pub right_char: char,
+    pub natural_inner_glue: f32,
+    pub adjusted_inner_glue: f32,
+    pub reduction: f32,
+    pub reduction_target_range: TextRange,
+    pub reason: String,
+}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RoleOverrideInfo { pub range: TextRange, pub source_text: String, pub original_role: String, pub overridden_role: String, pub source: String, pub reason: String }
+pub struct RoleOverrideInfo {
+    pub range: TextRange,
+    pub source_text: String,
+    pub original_role: String,
+    pub overridden_role: String,
+    pub source: String,
+    pub reason: String,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineDecisionInfo {
@@ -916,17 +1818,50 @@ pub struct LineDecisionInfo {
     pub notes: Vec<String>,
 }
 impl LineDecisionInfo {
-    pub fn new(range: TextRange, kind: String) -> Self { Self { range, kind, repair: None, repair_penalty: 0, repair_decision: None, repair_candidates: Vec::new(), notes: Vec::new() } }
-    pub fn builder(range: TextRange, kind: String) -> LineDecisionInfoBuilder { LineDecisionInfoBuilder { decision: Self::new(range, kind) } }
+    pub fn new(range: TextRange, kind: String) -> Self {
+        Self {
+            range,
+            kind,
+            repair: None,
+            repair_penalty: 0,
+            repair_decision: None,
+            repair_candidates: Vec::new(),
+            notes: Vec::new(),
+        }
+    }
+    pub fn builder(range: TextRange, kind: String) -> LineDecisionInfoBuilder {
+        LineDecisionInfoBuilder {
+            decision: Self::new(range, kind),
+        }
+    }
 }
-pub struct LineDecisionInfoBuilder { decision: LineDecisionInfo }
+pub struct LineDecisionInfoBuilder {
+    decision: LineDecisionInfo,
+}
 impl LineDecisionInfoBuilder {
-    pub fn repair(mut self, value: Option<String>) -> Self { self.decision.repair = value; self }
-    pub fn repair_penalty(mut self, value: i32) -> Self { self.decision.repair_penalty = value; self }
-    pub fn repair_decision(mut self, value: Option<LineRepairDecisionInfo>) -> Self { self.decision.repair_decision = value; self }
-    pub fn repair_candidates(mut self, value: Vec<LineRepairCandidateInfo>) -> Self { self.decision.repair_candidates = value; self }
-    pub fn notes(mut self, value: Vec<String>) -> Self { self.decision.notes = value; self }
-    pub fn build(self) -> LineDecisionInfo { self.decision }
+    pub fn repair(mut self, value: Option<String>) -> Self {
+        self.decision.repair = value;
+        self
+    }
+    pub fn repair_penalty(mut self, value: i32) -> Self {
+        self.decision.repair_penalty = value;
+        self
+    }
+    pub fn repair_decision(mut self, value: Option<LineRepairDecisionInfo>) -> Self {
+        self.decision.repair_decision = value;
+        self
+    }
+    pub fn repair_candidates(mut self, value: Vec<LineRepairCandidateInfo>) -> Self {
+        self.decision.repair_candidates = value;
+        self
+    }
+    pub fn notes(mut self, value: Vec<String>) -> Self {
+        self.decision.notes = value;
+        self
+    }
+    pub fn build(self) -> LineDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -947,18 +1882,56 @@ pub struct LineRepairDecisionInfo {
 }
 impl LineRepairDecisionInfo {
     pub fn new(kind: String, reason_code: String, offender_range: TextRange, penalty: i32) -> Self {
-        Self { kind, reason_code, offender_range, penalty, target_cluster_index: None, carried_cluster_index: None, shrink: 0.0, available_capacity: 0.0, push_in_allocations: Vec::new() }
+        Self {
+            kind,
+            reason_code,
+            offender_range,
+            penalty,
+            target_cluster_index: None,
+            carried_cluster_index: None,
+            shrink: 0.0,
+            available_capacity: 0.0,
+            push_in_allocations: Vec::new(),
+        }
     }
-    pub fn builder(kind: String, reason_code: String, offender_range: TextRange, penalty: i32) -> LineRepairDecisionInfoBuilder { LineRepairDecisionInfoBuilder { decision: Self::new(kind, reason_code, offender_range, penalty) } }
+    pub fn builder(
+        kind: String,
+        reason_code: String,
+        offender_range: TextRange,
+        penalty: i32,
+    ) -> LineRepairDecisionInfoBuilder {
+        LineRepairDecisionInfoBuilder {
+            decision: Self::new(kind, reason_code, offender_range, penalty),
+        }
+    }
 }
-pub struct LineRepairDecisionInfoBuilder { decision: LineRepairDecisionInfo }
+pub struct LineRepairDecisionInfoBuilder {
+    decision: LineRepairDecisionInfo,
+}
 impl LineRepairDecisionInfoBuilder {
-    pub fn target_cluster_index(mut self, value: Option<i32>) -> Self { self.decision.target_cluster_index = value; self }
-    pub fn carried_cluster_index(mut self, value: Option<i32>) -> Self { self.decision.carried_cluster_index = value; self }
-    pub fn shrink(mut self, value: f32) -> Self { self.decision.shrink = value; self }
-    pub fn available_capacity(mut self, value: f32) -> Self { self.decision.available_capacity = value; self }
-    pub fn push_in_allocations(mut self, value: Vec<LineRepairAllocationInfo>) -> Self { self.decision.push_in_allocations = value; self }
-    pub fn build(self) -> LineRepairDecisionInfo { self.decision }
+    pub fn target_cluster_index(mut self, value: Option<i32>) -> Self {
+        self.decision.target_cluster_index = value;
+        self
+    }
+    pub fn carried_cluster_index(mut self, value: Option<i32>) -> Self {
+        self.decision.carried_cluster_index = value;
+        self
+    }
+    pub fn shrink(mut self, value: f32) -> Self {
+        self.decision.shrink = value;
+        self
+    }
+    pub fn available_capacity(mut self, value: f32) -> Self {
+        self.decision.available_capacity = value;
+        self
+    }
+    pub fn push_in_allocations(mut self, value: Vec<LineRepairAllocationInfo>) -> Self {
+        self.decision.push_in_allocations = value;
+        self
+    }
+    pub fn build(self) -> LineRepairDecisionInfo {
+        self.decision
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -983,20 +1956,70 @@ pub struct LineRepairCandidateInfo {
     pub available_capacity: f32,
 }
 impl LineRepairCandidateInfo {
-    pub fn new(kind: String, reason_code: String, offender_range: TextRange, penalty: i32, accepted: bool) -> Self {
-        Self { kind, reason_code, offender_range, penalty, accepted, rejection_reason: None, target_cluster_index: None, carried_cluster_index: None, shrink: 0.0, required_shrink: 0.0, available_capacity: 0.0 }
+    pub fn new(
+        kind: String,
+        reason_code: String,
+        offender_range: TextRange,
+        penalty: i32,
+        accepted: bool,
+    ) -> Self {
+        Self {
+            kind,
+            reason_code,
+            offender_range,
+            penalty,
+            accepted,
+            rejection_reason: None,
+            target_cluster_index: None,
+            carried_cluster_index: None,
+            shrink: 0.0,
+            required_shrink: 0.0,
+            available_capacity: 0.0,
+        }
     }
-    pub fn builder(kind: String, reason_code: String, offender_range: TextRange, penalty: i32, accepted: bool) -> LineRepairCandidateInfoBuilder { LineRepairCandidateInfoBuilder { candidate: Self::new(kind, reason_code, offender_range, penalty, accepted) } }
+    pub fn builder(
+        kind: String,
+        reason_code: String,
+        offender_range: TextRange,
+        penalty: i32,
+        accepted: bool,
+    ) -> LineRepairCandidateInfoBuilder {
+        LineRepairCandidateInfoBuilder {
+            candidate: Self::new(kind, reason_code, offender_range, penalty, accepted),
+        }
+    }
 }
-pub struct LineRepairCandidateInfoBuilder { candidate: LineRepairCandidateInfo }
+pub struct LineRepairCandidateInfoBuilder {
+    candidate: LineRepairCandidateInfo,
+}
 impl LineRepairCandidateInfoBuilder {
-    pub fn rejection_reason(mut self, value: Option<String>) -> Self { self.candidate.rejection_reason = value; self }
-    pub fn target_cluster_index(mut self, value: Option<i32>) -> Self { self.candidate.target_cluster_index = value; self }
-    pub fn carried_cluster_index(mut self, value: Option<i32>) -> Self { self.candidate.carried_cluster_index = value; self }
-    pub fn shrink(mut self, value: f32) -> Self { self.candidate.shrink = value; self }
-    pub fn required_shrink(mut self, value: f32) -> Self { self.candidate.required_shrink = value; self }
-    pub fn available_capacity(mut self, value: f32) -> Self { self.candidate.available_capacity = value; self }
-    pub fn build(self) -> LineRepairCandidateInfo { self.candidate }
+    pub fn rejection_reason(mut self, value: Option<String>) -> Self {
+        self.candidate.rejection_reason = value;
+        self
+    }
+    pub fn target_cluster_index(mut self, value: Option<i32>) -> Self {
+        self.candidate.target_cluster_index = value;
+        self
+    }
+    pub fn carried_cluster_index(mut self, value: Option<i32>) -> Self {
+        self.candidate.carried_cluster_index = value;
+        self
+    }
+    pub fn shrink(mut self, value: f32) -> Self {
+        self.candidate.shrink = value;
+        self
+    }
+    pub fn required_shrink(mut self, value: f32) -> Self {
+        self.candidate.required_shrink = value;
+        self
+    }
+    pub fn available_capacity(mut self, value: f32) -> Self {
+        self.candidate.available_capacity = value;
+        self
+    }
+    pub fn build(self) -> LineRepairCandidateInfo {
+        self.candidate
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

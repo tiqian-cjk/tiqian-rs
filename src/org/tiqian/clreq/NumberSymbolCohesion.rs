@@ -71,8 +71,9 @@ pub mod number_symbol_cohesion {
     }
 
     fn is_digit(code_unit: u16) -> bool {
-        char::from_u32(code_unit as u32)
-            .is_some_and(|character| get_general_category(character) == GeneralCategory::DecimalNumber)
+        char::from_u32(code_unit as u32).is_some_and(|character| {
+            get_general_category(character) == GeneralCategory::DecimalNumber
+        })
     }
 
     const PREFIX_SIGN: [u16; 3] = ['+' as u16, '-' as u16, '±' as u16];

@@ -89,7 +89,9 @@ impl Hyphenator for LiangHyphenator {
             return explicit
                 .iter()
                 .copied()
-                .filter(|offset| *offset >= self.left_min && *offset <= word_length - self.right_min)
+                .filter(|offset| {
+                    *offset >= self.left_min && *offset <= word_length - self.right_min
+                })
                 .collect();
         }
 
@@ -163,7 +165,10 @@ pub fn parse_tex_hyphenation_patterns(
                 let last = levels
                     .last_mut()
                     .expect("hyphenation pattern levels must contain an initial gap");
-                *last = character.to_digit(10).expect("ASCII digit must have a radix-10 value") as i32;
+                *last = character
+                    .to_digit(10)
+                    .expect("ASCII digit must have a radix-10 value")
+                    as i32;
             } else {
                 key.push(character);
                 levels.push(0);

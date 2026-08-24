@@ -19,7 +19,8 @@ pub mod english_hyphenation {
 
     pub fn en_us() -> &'static dyn Hyphenator {
         EN_US.get_or_init(|| {
-            let (patterns, exceptions) = parse_tex_hyphenation_patterns(load_bundled_english_hyphenation_patterns());
+            let (patterns, exceptions) =
+                parse_tex_hyphenation_patterns(load_bundled_english_hyphenation_patterns());
             LiangHyphenator::with_options(patterns, exceptions, 2, 3)
         })
     }

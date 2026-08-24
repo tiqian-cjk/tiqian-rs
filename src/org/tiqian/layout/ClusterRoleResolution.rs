@@ -80,7 +80,10 @@ pub fn cluster_role_ranges_with_options(
     let mut index = 0_i32;
     while index < text_length {
         if let Some(inline_object) = options.inline_objects_by_start.get(&index) {
-            ranges.push(ResolvedClusterRange::new(inline_object.range, FontRole::Unknown));
+            ranges.push(ResolvedClusterRange::new(
+                inline_object.range,
+                FontRole::Unknown,
+            ));
             index = inline_object.range.end();
             continue;
         }
@@ -97,13 +100,17 @@ pub fn cluster_role_ranges_with_options(
             } else {
                 index + code_point_length
             };
-            ranges.push(ResolvedClusterRange::mandatory_break(TextRange::new(start, end)));
+            ranges.push(ResolvedClusterRange::mandatory_break(TextRange::new(
+                start, end,
+            )));
             index = end;
             continue;
         }
         if is_zero_width_space_code_point(code_point) {
             let end = index + code_point_length;
-            ranges.push(ResolvedClusterRange::zero_width_soft_break(TextRange::new(start, end)));
+            ranges.push(ResolvedClusterRange::zero_width_soft_break(TextRange::new(
+                start, end,
+            )));
             index = end;
             continue;
         }
@@ -164,13 +171,18 @@ pub fn cluster_role_ranges_with_options(
          */
         while index < text_length && !options.span_boundaries.contains(&index) {
             let extender = code_point_at_compat(text, index);
-            if !is_combining_mark_code_point(extender) && !is_variation_selector_code_point(extender) {
+            if !is_combining_mark_code_point(extender)
+                && !is_variation_selector_code_point(extender)
+            {
                 break;
             }
             index += char_count(extender);
         }
 
-        ranges.push(ResolvedClusterRange::new(TextRange::new(start, index), role));
+        ranges.push(ResolvedClusterRange::new(
+            TextRange::new(start, index),
+            role,
+        ));
     }
     ranges
 }

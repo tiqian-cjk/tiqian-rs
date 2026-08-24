@@ -225,7 +225,11 @@ pub struct InlineObjectPreferredStretch {
 }
 
 impl InlineObjectPreferredStretch {
-    pub fn new(kind: InlineObjectPreferredStretchKind, natural_width: f32, target_width: f32) -> Self {
+    pub fn new(
+        kind: InlineObjectPreferredStretchKind,
+        natural_width: f32,
+        target_width: f32,
+    ) -> Self {
         assert!(
             natural_width.is_finite() && natural_width >= 0.0,
             "Inline-object preferred stretch natural width must be finite and non-negative"
@@ -366,7 +370,12 @@ pub struct InlineObjectSpan {
 }
 
 impl InlineObjectSpan {
-    pub fn with_fixed_boundaries(range: TextRange, advance: f32, ascent: f32, descent: f32) -> Self {
+    pub fn with_fixed_boundaries(
+        range: TextRange,
+        advance: f32,
+        ascent: f32,
+        descent: f32,
+    ) -> Self {
         Self {
             range,
             advance,
@@ -473,14 +482,37 @@ pub struct TextStyleBuilder {
 }
 
 impl TextStyleBuilder {
-    pub fn font_families(mut self, value: Vec<String>) -> Self { self.style.font_families = value; self }
-    pub fn font_size(mut self, value: f32) -> Self { self.style.font_size = value; self }
-    pub fn locale(mut self, value: String) -> Self { self.style.locale = value; self }
-    pub fn font_weight(mut self, value: i32) -> Self { self.style.font_weight = value; self }
-    pub fn italic(mut self, value: bool) -> Self { self.style.italic = value; self }
-    pub fn baseline_shift(mut self, value: f32) -> Self { self.style.baseline_shift = value; self }
-    pub fn inline_attachment(mut self, value: InlineAttachment) -> Self { self.style.inline_attachment = value; self }
-    pub fn build(self) -> TextStyle { self.style }
+    pub fn font_families(mut self, value: Vec<String>) -> Self {
+        self.style.font_families = value;
+        self
+    }
+    pub fn font_size(mut self, value: f32) -> Self {
+        self.style.font_size = value;
+        self
+    }
+    pub fn locale(mut self, value: String) -> Self {
+        self.style.locale = value;
+        self
+    }
+    pub fn font_weight(mut self, value: i32) -> Self {
+        self.style.font_weight = value;
+        self
+    }
+    pub fn italic(mut self, value: bool) -> Self {
+        self.style.italic = value;
+        self
+    }
+    pub fn baseline_shift(mut self, value: f32) -> Self {
+        self.style.baseline_shift = value;
+        self
+    }
+    pub fn inline_attachment(mut self, value: InlineAttachment) -> Self {
+        self.style.inline_attachment = value;
+        self
+    }
+    pub fn build(self) -> TextStyle {
+        self.style
+    }
 }
 
 /// 对一个 SOURCE text range 的行内装饰（ADR 0018）。display substitution 不影响 span 语义。
@@ -514,7 +546,11 @@ pub struct RichTextSpan {
 
 impl RichTextSpan {
     pub fn new(range: TextRange, role: RichTextRole) -> Self {
-        Self { range, role, paint: RichTextPaint::default() }
+        Self {
+            range,
+            role,
+            paint: RichTextPaint::default(),
+        }
     }
 
     pub fn with_paint(range: TextRange, role: RichTextRole, paint: RichTextPaint) -> Self {
@@ -547,24 +583,45 @@ impl Default for RichTextPaint {
 }
 
 impl RichTextPaint {
-    pub fn builder() -> RichTextPaintBuilder { RichTextPaintBuilder { paint: Self::default() } }
+    pub fn builder() -> RichTextPaintBuilder {
+        RichTextPaintBuilder {
+            paint: Self::default(),
+        }
+    }
 
     fn checked(self) -> Self {
         assert!(
-            self.adjacent_same_style_clearance.is_finite() && self.adjacent_same_style_clearance >= 0.0
+            self.adjacent_same_style_clearance.is_finite()
+                && self.adjacent_same_style_clearance >= 0.0
         );
         self
     }
 }
 
-pub struct RichTextPaintBuilder { paint: RichTextPaint }
+pub struct RichTextPaintBuilder {
+    paint: RichTextPaint,
+}
 
 impl RichTextPaintBuilder {
-    pub fn argb(mut self, value: i32) -> Self { self.paint.argb = Some(value); self }
-    pub fn line_pattern(mut self, value: RichTextLinePattern) -> Self { self.paint.line_pattern = value; self }
-    pub fn background(mut self, value: RichTextBackgroundPaint) -> Self { self.paint.background = value; self }
-    pub fn adjacent_same_style_clearance(mut self, value: f32) -> Self { self.paint.adjacent_same_style_clearance = value; self }
-    pub fn build(self) -> RichTextPaint { self.paint.checked() }
+    pub fn argb(mut self, value: i32) -> Self {
+        self.paint.argb = Some(value);
+        self
+    }
+    pub fn line_pattern(mut self, value: RichTextLinePattern) -> Self {
+        self.paint.line_pattern = value;
+        self
+    }
+    pub fn background(mut self, value: RichTextBackgroundPaint) -> Self {
+        self.paint.background = value;
+        self
+    }
+    pub fn adjacent_same_style_clearance(mut self, value: f32) -> Self {
+        self.paint.adjacent_same_style_clearance = value;
+        self
+    }
+    pub fn build(self) -> RichTextPaint {
+        self.paint.checked()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -609,7 +666,9 @@ impl RichTextBackgroundPaint {
         assert!(self.horizontal_padding.is_finite() && self.horizontal_padding >= 0.0);
         assert!(self.vertical_padding.is_finite() && self.vertical_padding >= 0.0);
         assert!(self.corner_radius.is_finite() && self.corner_radius >= 0.0);
-        assert!(self.continuation_corner_radius.is_finite() && self.continuation_corner_radius >= 0.0);
+        assert!(
+            self.continuation_corner_radius.is_finite() && self.continuation_corner_radius >= 0.0
+        );
         self
     }
 }
@@ -620,16 +679,31 @@ pub struct RichTextBackgroundPaintBuilder {
 }
 
 impl RichTextBackgroundPaintBuilder {
-    pub fn horizontal_padding(mut self, value: f32) -> Self { self.paint.horizontal_padding = value; self }
-    pub fn vertical_padding(mut self, value: f32) -> Self { self.paint.vertical_padding = value; self }
-    pub fn corner_radius(mut self, value: f32) -> Self { self.paint.corner_radius = value; self }
+    pub fn horizontal_padding(mut self, value: f32) -> Self {
+        self.paint.horizontal_padding = value;
+        self
+    }
+    pub fn vertical_padding(mut self, value: f32) -> Self {
+        self.paint.vertical_padding = value;
+        self
+    }
+    pub fn corner_radius(mut self, value: f32) -> Self {
+        self.paint.corner_radius = value;
+        self
+    }
     pub fn continuation_corner_radius(mut self, value: f32) -> Self {
         self.paint.continuation_corner_radius = value;
         self.continuation_corner_radius_was_set = true;
         self
     }
-    pub fn metric_policy(mut self, value: RichTextBackgroundMetricPolicy) -> Self { self.paint.metric_policy = value; self }
-    pub fn draw_style(mut self, value: RichTextBackgroundDrawStyle) -> Self { self.paint.draw_style = value; self }
+    pub fn metric_policy(mut self, value: RichTextBackgroundMetricPolicy) -> Self {
+        self.paint.metric_policy = value;
+        self
+    }
+    pub fn draw_style(mut self, value: RichTextBackgroundDrawStyle) -> Self {
+        self.paint.draw_style = value;
+        self
+    }
     pub fn build(mut self) -> RichTextBackgroundPaint {
         if !self.continuation_corner_radius_was_set {
             self.paint.continuation_corner_radius = self.paint.corner_radius;
@@ -643,7 +717,9 @@ impl RichTextBackgroundPaintBuilder {
 pub enum RichTextBackgroundDrawStyle {
     Fill,
     /// 由 frontend 保持在 resolved box 内的物理 layout-unit stroke。
-    Border { stroke_width: f32 },
+    Border {
+        stroke_width: f32,
+    },
 }
 
 impl RichTextBackgroundDrawStyle {
@@ -670,9 +746,16 @@ pub enum RichTextBackgroundMetricPolicy {
 pub enum RichTextLinePattern {
     Solid,
     /// 由 frontend 提供的物理 layout-unit dash geometry。
-    Dashed { stroke_width: f32, dash_length: f32, gap_length: f32 },
+    Dashed {
+        stroke_width: f32,
+        dash_length: f32,
+        gap_length: f32,
+    },
     /// 具有 frontend 提供 diameter 与可见 edge-to-edge gap 的圆点。
-    Dotted { dot_diameter: f32, gap_length: f32 },
+    Dotted {
+        dot_diameter: f32,
+        gap_length: f32,
+    },
 }
 
 impl RichTextLinePattern {
@@ -680,13 +763,20 @@ impl RichTextLinePattern {
         assert!(stroke_width.is_finite() && stroke_width > 0.0);
         assert!(dash_length.is_finite() && dash_length > 0.0);
         assert!(gap_length.is_finite() && gap_length > 0.0);
-        Self::Dashed { stroke_width, dash_length, gap_length }
+        Self::Dashed {
+            stroke_width,
+            dash_length,
+            gap_length,
+        }
     }
 
     pub fn dotted(dot_diameter: f32, gap_length: f32) -> Self {
         assert!(dot_diameter.is_finite() && dot_diameter > 0.0);
         assert!(gap_length.is_finite() && gap_length > 0.0);
-        Self::Dotted { dot_diameter, gap_length }
+        Self::Dotted {
+            dot_diameter,
+            gap_length,
+        }
     }
 }
 
@@ -738,8 +828,18 @@ impl RubySpan {
     }
 
     pub fn with_kind(base_range: TextRange, text: String, kind: RubyKind) -> Self {
-        let locale = if kind == RubyKind::Bopomofo { Some("zh-TW".to_owned()) } else { None };
-        Self { base_range, text, font_families: Vec::new(), kind, locale }
+        let locale = if kind == RubyKind::Bopomofo {
+            Some("zh-TW".to_owned())
+        } else {
+            None
+        };
+        Self {
+            base_range,
+            text,
+            font_families: Vec::new(),
+            kind,
+            locale,
+        }
     }
 
     pub fn builder(base_range: TextRange, text: String) -> RubySpanBuilder {
@@ -756,8 +856,14 @@ pub struct RubySpanBuilder {
 }
 
 impl RubySpanBuilder {
-    pub fn font_families(mut self, value: Vec<String>) -> Self { self.span.font_families = value; self }
-    pub fn kind(mut self, value: RubyKind) -> Self { self.span.kind = value; self }
+    pub fn font_families(mut self, value: Vec<String>) -> Self {
+        self.span.font_families = value;
+        self
+    }
+    pub fn kind(mut self, value: RubyKind) -> Self {
+        self.span.kind = value;
+        self
+    }
     pub fn locale(mut self, value: Option<String>) -> Self {
         self.span.locale = value;
         self.locale_was_set = true;
@@ -879,23 +985,61 @@ impl Default for ParagraphStyle {
 }
 
 impl ParagraphStyle {
-    pub fn builder() -> ParagraphStyleBuilder { ParagraphStyleBuilder { style: Self::default() } }
+    pub fn builder() -> ParagraphStyleBuilder {
+        ParagraphStyleBuilder {
+            style: Self::default(),
+        }
+    }
 }
 
-pub struct ParagraphStyleBuilder { style: ParagraphStyle }
+pub struct ParagraphStyleBuilder {
+    style: ParagraphStyle,
+}
 
 impl ParagraphStyleBuilder {
-    pub fn last_line_alignment(mut self, value: LastLineAlignment) -> Self { self.style.last_line_alignment = value; self }
-    pub fn writing_mode(mut self, value: WritingMode) -> Self { self.style.writing_mode = value; self }
-    pub fn line_height(mut self, value: Option<f32>) -> Self { self.style.line_height = value; self }
-    pub fn first_line_indent(mut self, value: Option<Ic>) -> Self { self.style.first_line_indent = value; self }
-    pub fn block_indent(mut self, value: Ic) -> Self { self.style.block_indent = value; self }
-    pub fn first_line_indent_policy(mut self, value: MeasureAdaptiveFirstLineIndent) -> Self { self.style.first_line_indent_policy = value; self }
-    pub fn line_length_grid(mut self, value: LineLengthGrid) -> Self { self.style.line_length_grid = value; self }
-    pub fn ruby_line_height_mode(mut self, value: RubyLineHeightMode) -> Self { self.style.ruby_line_height_mode = value; self }
-    pub fn inline_object_minimum_clearance_em(mut self, value: f32) -> Self { self.style.inline_object_minimum_clearance_em = value; self }
-    pub fn emphasis_dot_gap_em(mut self, value: f32) -> Self { self.style.emphasis_dot_gap_em = value; self }
-    pub fn build(self) -> ParagraphStyle { self.style }
+    pub fn last_line_alignment(mut self, value: LastLineAlignment) -> Self {
+        self.style.last_line_alignment = value;
+        self
+    }
+    pub fn writing_mode(mut self, value: WritingMode) -> Self {
+        self.style.writing_mode = value;
+        self
+    }
+    pub fn line_height(mut self, value: Option<f32>) -> Self {
+        self.style.line_height = value;
+        self
+    }
+    pub fn first_line_indent(mut self, value: Option<Ic>) -> Self {
+        self.style.first_line_indent = value;
+        self
+    }
+    pub fn block_indent(mut self, value: Ic) -> Self {
+        self.style.block_indent = value;
+        self
+    }
+    pub fn first_line_indent_policy(mut self, value: MeasureAdaptiveFirstLineIndent) -> Self {
+        self.style.first_line_indent_policy = value;
+        self
+    }
+    pub fn line_length_grid(mut self, value: LineLengthGrid) -> Self {
+        self.style.line_length_grid = value;
+        self
+    }
+    pub fn ruby_line_height_mode(mut self, value: RubyLineHeightMode) -> Self {
+        self.style.ruby_line_height_mode = value;
+        self
+    }
+    pub fn inline_object_minimum_clearance_em(mut self, value: f32) -> Self {
+        self.style.inline_object_minimum_clearance_em = value;
+        self
+    }
+    pub fn emphasis_dot_gap_em(mut self, value: f32) -> Self {
+        self.style.emphasis_dot_gap_em = value;
+        self
+    }
+    pub fn build(self) -> ParagraphStyle {
+        self.style
+    }
 }
 
 /// `MeasureAdaptiveFirstLineIndent`（ADR 0021 amendment）：段首缩进随行长自适应——窄行
@@ -915,16 +1059,30 @@ pub struct MeasureAdaptiveFirstLineIndent {
 }
 
 impl Default for MeasureAdaptiveFirstLineIndent {
-    fn default() -> Self { Self { short_below_em: 14.0, short_em: 1.0, long_em: 2.0 } }
+    fn default() -> Self {
+        Self {
+            short_below_em: 14.0,
+            short_em: 1.0,
+            long_em: 2.0,
+        }
+    }
 }
 
 impl MeasureAdaptiveFirstLineIndent {
     pub fn new(short_below_em: f32, short_em: f32, long_em: f32) -> Self {
-        Self { short_below_em, short_em, long_em }
+        Self {
+            short_below_em,
+            short_em,
+            long_em,
+        }
     }
 
     pub fn resolve_em(self, measure_em: f32) -> f32 {
-        if measure_em < self.short_below_em { self.short_em } else { self.long_em }
+        if measure_em < self.short_below_em {
+            self.short_em
+        } else {
+            self.long_em
+        }
     }
 }
 
@@ -945,14 +1103,32 @@ pub struct LineLengthGrid {
 }
 
 impl Default for LineLengthGrid {
-    fn default() -> Self { Self { enabled: true, body_alignment: None } }
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            body_alignment: None,
+        }
+    }
 }
 
 impl LineLengthGrid {
-    pub fn new(enabled: bool, body_alignment: Option<LastLineAlignment>) -> Self { Self { enabled, body_alignment } }
-    pub fn with_enabled(enabled: bool) -> Self { Self { enabled, body_alignment: None } }
+    pub fn new(enabled: bool, body_alignment: Option<LastLineAlignment>) -> Self {
+        Self {
+            enabled,
+            body_alignment,
+        }
+    }
+    pub fn with_enabled(enabled: bool) -> Self {
+        Self {
+            enabled,
+            body_alignment: None,
+        }
+    }
     pub fn with_body_alignment(body_alignment: Option<LastLineAlignment>) -> Self {
-        Self { enabled: true, body_alignment }
+        Self {
+            enabled: true,
+            body_alignment,
+        }
     }
 }
 
@@ -980,7 +1156,9 @@ pub mod built_in_layout_profiles {
     use super::LayoutProfileId;
 
     pub fn clreq_horizontal() -> LayoutProfileId {
-        LayoutProfileId { value: "clreq-horizontal".to_owned() }
+        LayoutProfileId {
+            value: "clreq-horizontal".to_owned(),
+        }
     }
 }
 
@@ -998,7 +1176,10 @@ pub struct LayoutInput {
 }
 
 impl LayoutInput {
-    pub fn builder(content: TiqianTextContent, constraints: super::Geometry::LayoutConstraints) -> LayoutInputBuilder {
+    pub fn builder(
+        content: TiqianTextContent,
+        constraints: super::Geometry::LayoutConstraints,
+    ) -> LayoutInputBuilder {
         LayoutInputBuilder {
             input: Self {
                 content,
@@ -1015,15 +1196,40 @@ impl LayoutInput {
     }
 }
 
-pub struct LayoutInputBuilder { input: LayoutInput }
+pub struct LayoutInputBuilder {
+    input: LayoutInput,
+}
 
 impl LayoutInputBuilder {
-    pub fn text_style(mut self, value: TextStyle) -> Self { self.input.text_style = value; self }
-    pub fn paragraph_style(mut self, value: ParagraphStyle) -> Self { self.input.paragraph_style = value; self }
-    pub fn profile_id(mut self, value: LayoutProfileId) -> Self { self.input.profile_id = value; self }
-    pub fn decorations(mut self, value: Vec<DecorationSpan>) -> Self { self.input.decorations = value; self }
-    pub fn ruby_spans(mut self, value: Vec<RubySpan>) -> Self { self.input.ruby_spans = value; self }
-    pub fn inline_boxes(mut self, value: Vec<InlineBoxSpan>) -> Self { self.input.inline_boxes = value; self }
-    pub fn inline_objects(mut self, value: Vec<InlineObjectSpan>) -> Self { self.input.inline_objects = value; self }
-    pub fn build(self) -> LayoutInput { self.input }
+    pub fn text_style(mut self, value: TextStyle) -> Self {
+        self.input.text_style = value;
+        self
+    }
+    pub fn paragraph_style(mut self, value: ParagraphStyle) -> Self {
+        self.input.paragraph_style = value;
+        self
+    }
+    pub fn profile_id(mut self, value: LayoutProfileId) -> Self {
+        self.input.profile_id = value;
+        self
+    }
+    pub fn decorations(mut self, value: Vec<DecorationSpan>) -> Self {
+        self.input.decorations = value;
+        self
+    }
+    pub fn ruby_spans(mut self, value: Vec<RubySpan>) -> Self {
+        self.input.ruby_spans = value;
+        self
+    }
+    pub fn inline_boxes(mut self, value: Vec<InlineBoxSpan>) -> Self {
+        self.input.inline_boxes = value;
+        self
+    }
+    pub fn inline_objects(mut self, value: Vec<InlineObjectSpan>) -> Self {
+        self.input.inline_objects = value;
+        self
+    }
+    pub fn build(self) -> LayoutInput {
+        self.input
+    }
 }

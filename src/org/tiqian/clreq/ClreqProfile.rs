@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use super::super::core::TextModel::{built_in_layout_profiles, LayoutProfileId};
+use super::super::core::TextModel::{LayoutProfileId, built_in_layout_profiles};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClreqStrictness {
@@ -36,8 +36,7 @@ impl ClreqProfile {
             id,
             strictness,
             region,
-            punctuation_glyph_policy:
-                CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints,
+            punctuation_glyph_policy: CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints,
             coalesce_repeatable_punctuation: default_coalesce_repeatable_punctuation(),
             auto_space: AutoSpacePolicy::default_policy(),
             glue_placement: PunctuationGluePlacement::for_region(region),
@@ -176,9 +175,7 @@ impl PunctuationGluePlacement {
         match self {
             Self::MainlandSimplified => match punctuation_class {
                 PunctuationClass::Opening => GlueSide::LeadingOnly,
-                PunctuationClass::Closing | PunctuationClass::PauseOrStop => {
-                    GlueSide::TrailingOnly
-                }
+                PunctuationClass::Closing | PunctuationClass::PauseOrStop => GlueSide::TrailingOnly,
                 _ => GlueSide::BothSides,
             },
             // 根据 CLREQ 3.1.3，繁体样式将 。、，等居中，因此 Opening 与
@@ -508,10 +505,7 @@ impl KinsokuMode {
         }
     }
 
-    pub fn fixed_with_hanging(
-        level: KinsokuLevel,
-        hanging: HangingPunctuationStyle,
-    ) -> Self {
+    pub fn fixed_with_hanging(level: KinsokuLevel, hanging: HangingPunctuationStyle) -> Self {
         Self::Fixed { level, hanging }
     }
 
@@ -712,13 +706,13 @@ pub mod clreq_punctuation_policies {
 
     pub fn classify(character: char) -> PunctuationClass {
         match character {
-            '“' | '‘' | '（' | '《' | '〈' | '「' | '『' | '【' | '〔' | '〖' | '〘'
-            | '〚' => PunctuationClass::Opening,
-            '”' | '’' | '）' | '》' | '〉' | '」' | '』' | '】' | '〕' | '〗' | '〙'
-            | '〛' => PunctuationClass::Closing,
-            '，' | '、' | '。' | '；' | '：' | '！' | '？' => {
-                PunctuationClass::PauseOrStop
+            '“' | '‘' | '（' | '《' | '〈' | '「' | '『' | '【' | '〔' | '〖' | '〘' | '〚' => {
+                PunctuationClass::Opening
             }
+            '”' | '’' | '）' | '》' | '〉' | '」' | '』' | '】' | '〕' | '〗' | '〙' | '〛' => {
+                PunctuationClass::Closing
+            }
+            '，' | '、' | '。' | '；' | '：' | '！' | '？' => PunctuationClass::PauseOrStop,
             '·' => PunctuationClass::MiddleDot,
             '・' | '‧' | '•' => PunctuationClass::Interpunct,
             '～' | '~' | '-' | '–' => PunctuationClass::Connector,
@@ -755,9 +749,7 @@ pub mod clreq_punctuation_policies {
             if matches!(class, PunctuationClass::Opening | PunctuationClass::Closing) {
                 return true;
             }
-            if class == PunctuationClass::PauseOrStop
-                && !SENTENCE_END_STOPS.contains(&character)
-            {
+            if class == PunctuationClass::PauseOrStop && !SENTENCE_END_STOPS.contains(&character) {
                 return true;
             }
         }
@@ -795,9 +787,7 @@ pub mod clreq_punctuation_policies {
             | PunctuationClass::MiddleDot
             | PunctuationClass::Interpunct
             | PunctuationClass::Solidus => true,
-            PunctuationClass::Dash | PunctuationClass::Ellipsis => {
-                level == KinsokuLevel::Strict
-            }
+            PunctuationClass::Dash | PunctuationClass::Ellipsis => level == KinsokuLevel::Strict,
             _ => false,
         }
     }
@@ -813,10 +803,7 @@ pub mod clreq_punctuation_policies {
         }
     }
 
-    fn default_punctuation_body_em(
-        character: char,
-        punctuation_class: PunctuationClass,
-    ) -> f32 {
+    fn default_punctuation_body_em(character: char, punctuation_class: PunctuationClass) -> f32 {
         if character == '⸺' {
             2.0
         } else if SHORT_HYPHEN_CONNECTORS.contains(&character)
@@ -833,10 +820,7 @@ pub mod clreq_punctuation_policies {
         }
     }
 
-    fn default_punctuation_advance_em(
-        character: char,
-        punctuation_class: PunctuationClass,
-    ) -> f32 {
+    fn default_punctuation_advance_em(character: char, punctuation_class: PunctuationClass) -> f32 {
         if character == '⸺' {
             2.0
         } else if SHORT_HYPHEN_CONNECTORS.contains(&character) {

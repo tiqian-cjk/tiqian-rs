@@ -5,10 +5,13 @@ use std::sync::Arc;
 use super::Geometry::{Rect, TextRange};
 use super::LayoutModel::{LayoutResult, LineBox, MetricDecisionInfo};
 use super::SourceInteractionBoundaries::{
-    coerce_to_interaction_boundary, code_point_at_compat, interaction_boundaries, SourceBoundaryBias,
+    SourceBoundaryBias, code_point_at_compat, coerce_to_interaction_boundary,
+    interaction_boundaries,
 };
 use super::TextIndex::utf16_offset_to_utf8_byte_index;
-use super::TextModel::{RichTextBackgroundMetricPolicy, RichTextPaint, RichTextRole, RichTextSpan, TextStyle};
+use super::TextModel::{
+    RichTextBackgroundMetricPolicy, RichTextPaint, RichTextRole, RichTextSpan, TextStyle,
+};
 
 const INTERLINEAR_UNDERLINE_OFFSET_EM: f32 = 0.18;
 
@@ -297,7 +300,9 @@ pub fn positioned_clusters(result: &LayoutResult) -> Vec<PositionedCluster> {
         .lines
         .iter()
         .enumerate()
-        .flat_map(|(line_index, line)| positioned_clusters_for_line(result, line_index as i32, line))
+        .flat_map(|(line_index, line)| {
+            positioned_clusters_for_line(result, line_index as i32, line)
+        })
         .collect()
 }
 
@@ -598,7 +603,10 @@ pub fn rich_text_background_segments(
             } else {
                 0.0
             };
-            let left = segment.left.max(first.draw_x - leading_padding).min(segment.right);
+            let left = segment
+                .left
+                .max(first.draw_x - leading_padding)
+                .min(segment.right);
             let natural_last_right = result
                 .glyph_runs
                 .iter()
@@ -616,18 +624,22 @@ pub fn rich_text_background_segments(
                 RichTextBackgroundMetricPolicy::MarkedFaces => {
                     marked_face_vertical_bounds(result, &covered, &result.debug.metric_decisions)
                 }
-                RichTextBackgroundMetricPolicy::UniformTextStyle => uniform_text_style_vertical_bounds(
-                    result,
-                    &segment,
-                    &result.debug.metric_decisions,
-                    &resolved_text_style_at(result, segment.range.start()),
-                ),
-                RichTextBackgroundMetricPolicy::UniformParagraphStyle => uniform_text_style_vertical_bounds(
-                    result,
-                    &segment,
-                    &result.debug.metric_decisions,
-                    &result.input.text_style,
-                ),
+                RichTextBackgroundMetricPolicy::UniformTextStyle => {
+                    uniform_text_style_vertical_bounds(
+                        result,
+                        &segment,
+                        &result.debug.metric_decisions,
+                        &resolved_text_style_at(result, segment.range.start()),
+                    )
+                }
+                RichTextBackgroundMetricPolicy::UniformParagraphStyle => {
+                    uniform_text_style_vertical_bounds(
+                        result,
+                        &segment,
+                        &result.debug.metric_decisions,
+                        &result.input.text_style,
+                    )
+                }
             };
             let vertical_padding = segment.span.paint.background.vertical_padding;
             RichTextLineSegment {
@@ -677,7 +689,8 @@ fn with_adjacent_same_style_clearance(
                     })
                     .unwrap_or(0.0)
             };
-            let left = (segment.left + shared_clearance(leading_neighbour) / 2.0).min(segment.right);
+            let left =
+                (segment.left + shared_clearance(leading_neighbour) / 2.0).min(segment.right);
             RichTextLineSegment {
                 left,
                 right: (segment.right - shared_clearance(trailing_neighbour) / 2.0).max(left),
@@ -719,7 +732,8 @@ fn marked_face_vertical_bounds(
         } else {
             let style = resolved_text_style_at(result, cluster.range.start());
             top = top.min(cluster.baseline - style.font_size * BACKGROUND_FALLBACK_ASCENT_EM);
-            bottom = bottom.max(cluster.baseline + style.font_size * BACKGROUND_FALLBACK_DESCENT_EM);
+            bottom =
+                bottom.max(cluster.baseline + style.font_size * BACKGROUND_FALLBACK_DESCENT_EM);
         }
     }
     (top, bottom)
@@ -736,7 +750,12 @@ fn uniform_text_style_vertical_bounds(
 ) -> (f32, f32) {
     let matching_style: Vec<_> = metrics
         .iter()
-        .filter(|decision| same_font_metric_style(&resolved_text_style_at(result, decision.range.start()), style))
+        .filter(|decision| {
+            same_font_metric_style(
+                &resolved_text_style_at(result, decision.range.start()),
+                style,
+            )
+        })
         .collect();
     let reference = matching_style
         .iter()
@@ -900,9 +919,7 @@ pub fn get_cursor_rect(result: &LayoutResult, offset: i32) -> Rect {
         x_for_offset(
             clusters
                 .iter()
-                .find(|cluster| {
-                    clamped >= cluster.range.start() && clamped <= cluster.range.end()
-                })
+                .find(|cluster| clamped >= cluster.range.start() && clamped <= cluster.range.end())
                 .expect("source offset must belong to a positioned cluster"),
             clamped,
         )
@@ -923,7 +940,8 @@ pub fn get_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> i32 {
         return 0;
     }
     let line_index = nearest_line_for_position(result, y);
-    let clusters = positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
+    let clusters =
+        positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
     if clusters.is_empty() {
         return result.lines[line_index].range.start();
     }
@@ -958,7 +976,8 @@ pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) 
         return 0;
     }
     let line_index = nearest_line_for_position(result, y);
-    let positioned = positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
+    let positioned =
+        positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
     if positioned.is_empty() {
         return coerce_selection_offset(
             result,
@@ -1033,12 +1052,7 @@ pub fn coerce_selection_offset(
             }
         };
     }
-    coerce_to_interaction_boundary(
-        text,
-        clamped,
-        TextRange::new(0, text_length),
-        bias,
-    )
+    coerce_to_interaction_boundary(text, clamped, TextRange::new(0, text_length), bias)
 }
 
 /// Expands a safe source offset to the word selected by a static-text double click.
@@ -1073,9 +1087,7 @@ pub fn get_selection_word_boundary(result: &LayoutResult, offset: i32) -> TextRa
     }
     let mut first = unit_index;
     let mut last = unit_index;
-    while first > 0
-        && selection_word_kind(text, boundaries[first - 1], boundaries[first]) == kind
-    {
+    while first > 0 && selection_word_kind(text, boundaries[first - 1], boundaries[first]) == kind {
         first -= 1;
     }
     while last + 2 < boundaries.len()
@@ -1098,7 +1110,8 @@ pub fn get_selection_word_boundary_for_position(
         return None;
     }
     let line_index = nearest_line_for_position(result, y);
-    let positioned = positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
+    let positioned =
+        positioned_clusters_for_line(result, line_index as i32, &result.lines[line_index]);
     if positioned.is_empty() {
         return None;
     }
@@ -1119,8 +1132,8 @@ pub fn get_selection_word_boundary_for_position(
     if cluster.range.is_empty() {
         return None;
     }
-    let source_unit_offset = offset_for_x(cluster, x)
-        .clamp(cluster.range.start(), cluster.range.end() - 1);
+    let source_unit_offset =
+        offset_for_x(cluster, x).clamp(cluster.range.start(), cluster.range.end() - 1);
     Some(get_selection_word_boundary(result, source_unit_offset))
 }
 
@@ -1178,7 +1191,9 @@ fn positioned_clusters_for_line(
             .debug
             .geometry_decisions
             .iter()
-            .find(|decision| decision.range == cluster.range && decision.leading_glue_consumed > 0.0)
+            .find(|decision| {
+                decision.range == cluster.range && decision.leading_glue_consumed > 0.0
+            })
             .map(|decision| decision.leading_glue_consumed)
             .unwrap_or(0.0);
         // The applied autospace width is recorded on the decision (an Insert gap is a
@@ -1191,7 +1206,9 @@ fn positioned_clusters_for_line(
                 .debug
                 .auto_space_decisions
                 .iter()
-                .find(|decision| decision.side == "leading" && decision.cluster_range == cluster.range)
+                .find(|decision| {
+                    decision.side == "leading" && decision.cluster_range == cluster.range
+                })
                 .map(|decision| -decision.total_reduction)
                 .unwrap_or(0.0)
         };
@@ -1209,19 +1226,18 @@ fn positioned_clusters_for_line(
             .flat_map(|run| run.glyphs.iter())
             .filter(|glyph| glyph.cluster_range == cluster.range)
             .collect();
-        let source_stops = if cluster.range.length() > 1
-            && glyphs.len() == cluster.range.length() as usize
-        {
-            let mut stops = Vec::with_capacity(cluster.range.length() as usize + 1);
-            stops.push(x);
-            for glyph in glyphs.iter().skip(1) {
-                stops.push((draw_x + glyph.x).clamp(x, right));
-            }
-            stops.push(right);
-            Some(stops)
-        } else {
-            None
-        };
+        let source_stops =
+            if cluster.range.length() > 1 && glyphs.len() == cluster.range.length() as usize {
+                let mut stops = Vec::with_capacity(cluster.range.length() as usize + 1);
+                stops.push(x);
+                for glyph in glyphs.iter().skip(1) {
+                    stops.push((draw_x + glyph.x).clamp(x, right));
+                }
+                stops.push(right);
+                Some(stops)
+            } else {
+                None
+            };
         positioned.push(
             PositionedCluster::builder(
                 line_index,
@@ -1328,7 +1344,10 @@ fn slice_rect(cluster: &PositionedCluster, start: i32, end: i32) -> Rect {
 fn natural_advance_by_range(result: &LayoutResult) -> Vec<(TextRange, f32)> {
     let mut out: Vec<(TextRange, f32)> = Vec::new();
     for glyph in result.glyph_runs.iter().flat_map(|run| run.glyphs.iter()) {
-        if let Some((_, advance)) = out.iter_mut().find(|(range, _)| *range == glyph.cluster_range) {
+        if let Some((_, advance)) = out
+            .iter_mut()
+            .find(|(range, _)| *range == glyph.cluster_range)
+        {
             *advance += glyph.advance;
         } else {
             out.push((glyph.cluster_range, glyph.advance));

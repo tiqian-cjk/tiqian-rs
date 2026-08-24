@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/EastAsianSpacing.kt
 
-use unicode_general_category::{get_general_category, GeneralCategory};
+use unicode_general_category::{GeneralCategory, get_general_category};
 
 use super::EastAsianSpacingData::lookup;
 use super::Geometry::TextRange;
@@ -40,7 +40,8 @@ pub mod unicode_east_asian_spacing {
 
     pub const DATA_REVISION: &str = "draft-2024-12-16";
     pub const DATA_SOURCE: &str = "https://www.unicode.org/reports/tr59/east-asian-spacing.txt";
-    pub const DATA_SHA256: &str = "49fe340a964a6e8e0ebc30099709c665cc6138d444b5c36dc336604047f1010f";
+    pub const DATA_SHA256: &str =
+        "49fe340a964a6e8e0ebc30099709c665cc6138d444b5c36dc336604047f1010f";
     pub const LANGUAGE_REGISTRY_REVISION: &str = "2026-06-14";
     pub const LANGUAGE_REGISTRY_SOURCE: &str =
         "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry";
@@ -64,11 +65,11 @@ pub mod unicode_east_asian_spacing {
     }
 
     /**
-        * 为横排解析一个已经分段的字素簇。
+     * 为横排解析一个已经分段的字素簇。
      *
-        * 根据 UTR #59，属性由第一个码点提供；包含 enclosing mark 的簇解析为
-        * [EastAsianSpacingValue.Other]。Conditional 值仅在中文语言上下文中变为 Narrow。
-        * 空输入或无效输入返回 Other，而不是虚构一个边界。
+     * 根据 UTR #59，属性由第一个码点提供；包含 enclosing mark 的簇解析为
+     * [EastAsianSpacingValue.Other]。Conditional 值仅在中文语言上下文中变为 Narrow。
+     * 空输入或无效输入返回 Other，而不是虚构一个边界。
      */
     pub fn resolved_for_grapheme_cluster(
         grapheme_cluster: &str,
@@ -77,13 +78,10 @@ pub mod unicode_east_asian_spacing {
         if grapheme_cluster.is_empty() {
             return EastAsianSpacingValue::Other;
         }
-        if grapheme_cluster
-            .chars()
-            .any(|character| {
-                character as u32 <= 0xFFFF
-                    && get_general_category(character) == GeneralCategory::EnclosingMark
-            })
-        {
+        if grapheme_cluster.chars().any(|character| {
+            character as u32 <= 0xFFFF
+                && get_general_category(character) == GeneralCategory::EnclosingMark
+        }) {
             return EastAsianSpacingValue::Other;
         }
         let property = property_of(code_point_at_compat(grapheme_cluster, 0));
@@ -144,8 +142,8 @@ fn is_chinese_language_context(locale: &str) -> bool {
 
 /// 上述固定 IANA 语言子标签注册表版本中的 `Macrolanguage: zh` 记录。
 const CHINESE_MACROLANGUAGE_MEMBERS: [&str; 19] = [
-    "cdo", "cjy", "cmn", "cnp", "cpx", "csp", "czh", "czo", "gan", "hak", "hnm", "hsn",
-    "luh", "lzh", "mnp", "nan", "sjc", "wuu", "yue",
+    "cdo", "cjy", "cmn", "cnp", "cpx", "csp", "czh", "czo", "gan", "hak", "hnm", "hsn", "luh",
+    "lzh", "mnp", "nan", "sjc", "wuu", "yue",
 ];
 
 fn code_point_at_compat(text: &str, index: i32) -> i32 {

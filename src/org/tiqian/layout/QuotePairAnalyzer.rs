@@ -70,13 +70,19 @@ impl QuotePairAnalyzer {
             match utf16_code_unit_at(text, index) {
                 0x201C => stack.push((index, QuoteType::Double)),
                 0x2018 => stack.push((index, QuoteType::Single)),
-                0x201D if stack.last().is_some_and(|(_, quote_type)| *quote_type == QuoteType::Double) => {
+                0x201D
+                    if stack
+                        .last()
+                        .is_some_and(|(_, quote_type)| *quote_type == QuoteType::Double) =>
+                {
                     let (open_index, quote_type) = stack.pop().expect("stack was checked above");
                     pairs.push(QuotePair::new(open_index, index, quote_type));
                 }
                 0x2019
                     if !is_non_cjk_in_word_apostrophe(text, index)
-                        && stack.last().is_some_and(|(_, quote_type)| *quote_type == QuoteType::Single) =>
+                        && stack
+                            .last()
+                            .is_some_and(|(_, quote_type)| *quote_type == QuoteType::Single) =>
                 {
                     let (open_index, quote_type) = stack.pop().expect("stack was checked above");
                     pairs.push(QuotePair::new(open_index, index, quote_type));
@@ -141,8 +147,9 @@ pub fn is_non_cjk_in_word_apostrophe(text: &str, index: i32) -> bool {
 
 fn is_non_cjk_word_character(code_point: i32) -> bool {
     super::super::core::UnicodeWordCharacter::unicode_word_character::contains(code_point)
-        && super::super::core::UnicodeScriptEvidence::unicode_script_evidence_classifier::classify(code_point)
-            != super::super::core::UnicodeScriptEvidence::UnicodeScriptEvidence::EastAsian
+        && super::super::core::UnicodeScriptEvidence::unicode_script_evidence_classifier::classify(
+            code_point,
+        ) != super::super::core::UnicodeScriptEvidence::UnicodeScriptEvidence::EastAsian
 }
 
 fn code_point_before(text: &str, index: i32) -> Option<i32> {

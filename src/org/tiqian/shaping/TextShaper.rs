@@ -177,7 +177,10 @@ fn nominal_advance_em(source_text: &str, display_text: &str) -> f32 {
     } else if !source_text.is_empty() && source_text.chars().all(|character| character == ' ') {
         0.5 * source_text.encode_utf16().count() as f32
     } else {
-        source_text.chars().count().max(display_text.chars().count()) as f32
+        source_text
+            .chars()
+            .count()
+            .max(display_text.chars().count()) as f32
     }
 }
 

@@ -93,7 +93,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             .collect();
         let text_length = utf16_length(self.text);
         for index in 0..text_length {
-            if paired_indices.contains(&index) || !is_ambiguous_curly_quote(utf16_code_unit_at(self.text, index)) {
+            if paired_indices.contains(&index)
+                || !is_ambiguous_curly_quote(utf16_code_unit_at(self.text, index))
+            {
                 continue;
             }
             let decision = self.resolve_unmatched(index);
@@ -116,14 +118,21 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     ) -> Resolution {
         let parent = self.parent_by_pair[&pair];
         let enclosing_start = parent.map_or(0, |parent_pair| parent_pair.open_index + 1);
-        let enclosing_end = parent.map_or(utf16_length(self.text), |parent_pair| parent_pair.close_index);
+        let enclosing_end = parent.map_or(utf16_length(self.text), |parent_pair| {
+            parent_pair.close_index
+        });
         let mut outer_evidence = ScriptEvidence::default();
         self.add_script_evidence_range(&mut outer_evidence, enclosing_start, pair.open_index);
         self.add_script_evidence_range(&mut outer_evidence, pair.close_index + 1, enclosing_end);
         let mut content_evidence = ScriptEvidence::default();
-        self.add_script_evidence_range(&mut content_evidence, pair.open_index + 1, pair.close_index);
+        self.add_script_evidence_range(
+            &mut content_evidence,
+            pair.open_index + 1,
+            pair.close_index,
+        );
 
-        if utf16_code_unit_at_or_none(self.text, pair.open_index - 1).is_some_and(is_ascii_space_or_tab)
+        if utf16_code_unit_at_or_none(self.text, pair.open_index - 1)
+            .is_some_and(is_ascii_space_or_tab)
             && content_evidence.has_western
             && !content_evidence.has_cjk
         {
@@ -172,7 +181,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     }
 
     fn resolve_unmatched(&self, index: i32) -> Resolution {
-        if utf16_code_unit_at(self.text, index) == 0x2019 && is_non_cjk_in_word_apostrophe(self.text, index) {
+        if utf16_code_unit_at(self.text, index) == 0x2019
+            && is_non_cjk_in_word_apostrophe(self.text, index)
+        {
             return Resolution::new(
                 FontRole::LatinText,
                 "NonCjkInWordApostrophe",
@@ -254,7 +265,8 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     }
 
     fn paragraph_language_resolution(&self, reason: &str) -> Resolution {
-        let role = if unicode_east_asian_spacing::is_chinese_language_context(&self.context.locale) {
+        let role = if unicode_east_asian_spacing::is_chinese_language_context(&self.context.locale)
+        {
             FontRole::CjkPunctuation
         } else {
             FontRole::LatinText

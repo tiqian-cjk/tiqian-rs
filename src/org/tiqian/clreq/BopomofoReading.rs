@@ -77,7 +77,9 @@ pub mod bopomofo_parser {
     }
 
     fn symbols_of(body: &str) -> Vec<String> {
-        body.chars().map(|character| character.to_string()).collect()
+        body.chars()
+            .map(|character| character.to_string())
+            .collect()
     }
 
     const NEUTRAL: char = '˙';

@@ -54,8 +54,6 @@ impl IcLiteral for f32 {
 
 impl IcLiteral for i32 {
     fn ic(self) -> Ic {
-        Ic {
-            count: self as f32,
-        }
+        Ic { count: self as f32 }
     }
 }
