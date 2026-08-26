@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
 use unicode_general_category::{GeneralCategory, get_general_category};
+use unicode_properties::{EmojiStatus, UnicodeEmoji};
 
 use super::super::core::Geometry::TextRange;
 use super::FontMetrics::{BaselineClass, FontMetricSource, MetricBox};
@@ -214,8 +215,16 @@ fn is_typed_ascii_latin(code_point: i32) -> bool {
     (0x0020..=0x007E).contains(&code_point)
 }
 
-fn is_emoji_code_point(code_point: i32) -> bool {
-    (0x1F300..=0x1FAFF).contains(&code_point)
+pub(crate) fn is_emoji_code_point(code_point: i32) -> bool {
+    char::from_u32(code_point as u32).is_some_and(|character| {
+        matches!(
+            character.emoji_status(),
+            EmojiStatus::EmojiPresentation
+                | EmojiStatus::EmojiPresentationAndModifierBase
+                | EmojiStatus::EmojiPresentationAndEmojiComponent
+                | EmojiStatus::EmojiPresentationAndModifierAndEmojiComponent
+        )
+    })
 }
 
 fn is_symbol_code_point(code_point: i32) -> bool {
@@ -267,6 +276,36 @@ fn next_code_point_after(text: &str, index: i32) -> Option<i32> {
         None
     } else {
         Some(code_point_at_compat(text, index))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_bases() {
+        let classifier = CjkFontRoleClassifier;
+        let context = FontRoleContext::default();
+
+        for text in ["⌚", "🀄", "🫪"] {
+            assert_eq!(
+                classifier.classify_with_default_context(
+                    text,
+                    TextRange::new(0, text.encode_utf16().count() as i32),
+                ),
+                FontRole::Emoji,
+                "{text}",
+            );
+        }
+        assert_eq!(
+            classifier.classify_with_default_context("1", TextRange::new(0, 1)),
+            FontRole::LatinText,
+        );
+        assert_eq!(
+            classifier.classify("❤", TextRange::new(0, 1), &context),
+            FontRole::Symbol,
+        );
     }
 }
 

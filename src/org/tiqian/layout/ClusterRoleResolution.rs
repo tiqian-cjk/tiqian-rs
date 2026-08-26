@@ -9,7 +9,9 @@ use super::super::core::Geometry::TextRange;
 use super::super::core::LayoutModel::Cluster;
 use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
 use super::super::core::TextModel::InlineObjectSpan;
-use super::super::font::FontPolicy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
+use super::super::font::FontPolicy::{
+    FontDecision, FontRole, FontRoleClassifier, FontRoleContext, is_emoji_code_point,
+};
 use super::super::linebreak::LineBreak::{
     is_mandatory_break_code_point, is_zero_width_space_code_point,
 };
@@ -122,7 +124,7 @@ pub fn cluster_role_ranges_with_options(
             [source_grapheme_boundaries.partition_point(|boundary| *boundary <= start)];
         let classified_role = classifier.classify(text, first_range, context);
         let role = if classified_role == FontRole::Emoji
-            || has_emoji_sequence_code_point(text, start, grapheme_end)
+            || has_emoji(text, start, grapheme_end)
         {
             FontRole::Emoji
         } else {
@@ -312,16 +314,14 @@ fn is_variation_selector_code_point(code_point: i32) -> bool {
     (0xFE00..=0xFE0F).contains(&code_point) || (0xE0100..=0xE01EF).contains(&code_point)
 }
 
-/// Non-emoji-classified bases still form emoji when the grapheme carries an emoji
-/// presentation selector, keycap, regional indicator, or tag sequence.
-fn has_emoji_sequence_code_point(text: &str, start: i32, end: i32) -> bool {
+/// Promotes graphemes containing an emoji presentation signal.
+fn has_emoji(text: &str, start: i32, end: i32) -> bool {
     let mut index = start;
     while index < end {
         let code_point = code_point_at_compat(text, index);
         if code_point == EMOJI_VARIATION_SELECTOR
             || code_point == COMBINING_ENCLOSING_KEYCAP
-            || (REGIONAL_INDICATOR_START..=REGIONAL_INDICATOR_END).contains(&code_point)
-            || (EMOJI_TAG_START..=EMOJI_TAG_END).contains(&code_point)
+            || is_emoji_code_point(code_point)
         {
             return true;
         }
@@ -363,10 +363,6 @@ fn kotlin_text_range_string(range: TextRange) -> String {
 
 const EMOJI_VARIATION_SELECTOR: i32 = 0xFE0F;
 const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
-const EMOJI_TAG_START: i32 = 0xE0020;
-const EMOJI_TAG_END: i32 = 0xE007F;
-const REGIONAL_INDICATOR_START: i32 = 0x1F1E6;
-const REGIONAL_INDICATOR_END: i32 = 0x1F1FF;
 
 #[cfg(test)]
 mod tests {
@@ -402,6 +398,32 @@ mod tests {
                 (TextRange::new(13, 14), FontRole::CjkText),
                 (TextRange::new(14, 17), FontRole::Emoji),
                 (TextRange::new(17, 18), FontRole::CjkPunctuation),
+            ],
+        );
+    }
+
+    #[test]
+    fn unicode_emoji_properties_cover_text_default_and_composed_graphemes() {
+        let text = "⌚🀄❤️❤☝🏻❤‍🔥";
+        let ranges = cluster_role_ranges(
+            text,
+            &CjkFontRoleClassifier,
+            &FontRoleContext::default(),
+            &ClreqProfile::mainland_horizontal(),
+        );
+
+        assert_eq!(
+            ranges
+                .iter()
+                .map(|range| (range.range, range.role))
+                .collect::<Vec<_>>(),
+            vec![
+                (TextRange::new(0, 1), FontRole::Emoji),
+                (TextRange::new(1, 3), FontRole::Emoji),
+                (TextRange::new(3, 5), FontRole::Emoji),
+                (TextRange::new(5, 6), FontRole::Symbol),
+                (TextRange::new(6, 9), FontRole::Emoji),
+                (TextRange::new(9, 13), FontRole::Emoji),
             ],
         );
     }
