@@ -7,6 +7,7 @@ use unicode_general_category::{GeneralCategory, get_general_category};
 use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies};
 use super::super::core::Geometry::TextRange;
 use super::super::core::LayoutModel::Cluster;
+use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
 use super::super::core::TextModel::InlineObjectSpan;
 use super::super::font::FontPolicy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::linebreak::LineBreak::{
@@ -75,6 +76,7 @@ pub fn cluster_role_ranges_with_options(
     options: &ClusterRoleRangeOptions,
 ) -> Vec<ResolvedClusterRange> {
     let text_length = utf16_length(text);
+    let source_grapheme_boundaries = interaction_boundaries(text, TextRange::new(0, text_length));
     let coalesce_set = &profile.coalesce_repeatable_punctuation;
     let mut ranges = Vec::new();
     let mut index = 0_i32;
@@ -116,7 +118,16 @@ pub fn cluster_role_ranges_with_options(
         }
 
         let first_range = TextRange::new(start, start + code_point_length);
-        let role = classifier.classify(text, first_range, context);
+        let grapheme_end = source_grapheme_boundaries
+            [source_grapheme_boundaries.partition_point(|boundary| *boundary <= start)];
+        let classified_role = classifier.classify(text, first_range, context);
+        let role = if classified_role == FontRole::Emoji
+            || has_emoji_sequence_code_point(text, start, grapheme_end)
+        {
+            FontRole::Emoji
+        } else {
+            classified_role
+        };
         let previous_range = ranges.last();
         let attached_ascii_point_mark = role == FontRole::LatinText
             && is_ascii_point_mark_code_point(code_point)
@@ -127,7 +138,12 @@ pub fn cluster_role_ranges_with_options(
             });
 
         index += code_point_length;
-        if role == FontRole::LatinText {
+        if role == FontRole::Emoji {
+            // Keep every emoji grapheme intact for shaping. The shared source-grapheme
+            // boundary model includes modifiers, variation selectors, regional-indicator
+            // pairs, tag sequences, and ZWJ-connected emoji.
+            index = grapheme_end;
+        } else if role == FontRole::LatinText {
             if attached_ascii_point_mark {
                 // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
                 // 这样 kinsoku 无须移动整个 `,anyway` token。
@@ -296,6 +312,24 @@ fn is_variation_selector_code_point(code_point: i32) -> bool {
     (0xFE00..=0xFE0F).contains(&code_point) || (0xE0100..=0xE01EF).contains(&code_point)
 }
 
+/// Non-emoji-classified bases still form emoji when the grapheme carries an emoji
+/// presentation selector, keycap, regional indicator, or tag sequence.
+fn has_emoji_sequence_code_point(text: &str, start: i32, end: i32) -> bool {
+    let mut index = start;
+    while index < end {
+        let code_point = code_point_at_compat(text, index);
+        if code_point == EMOJI_VARIATION_SELECTOR
+            || code_point == COMBINING_ENCLOSING_KEYCAP
+            || (REGIONAL_INDICATOR_START..=REGIONAL_INDICATOR_END).contains(&code_point)
+            || (EMOJI_TAG_START..=EMOJI_TAG_END).contains(&code_point)
+        {
+            return true;
+        }
+        index += char_count(code_point);
+    }
+    false
+}
+
 fn is_combining_mark_code_point(code_point: i32) -> bool {
     code_point <= 0xFFFF
         && char::from_u32(code_point as u32).is_some_and(|character| {
@@ -325,4 +359,78 @@ fn is_inside(range: TextRange, other: TextRange) -> bool {
 /// Kotlin data class `TextRange` 的稳定 `toString()` 格式，供固定的 `requireCoveredBy` 错误使用。
 fn kotlin_text_range_string(range: TextRange) -> String {
     format!("TextRange(start={}, end={})", range.start(), range.end())
+}
+
+const EMOJI_VARIATION_SELECTOR: i32 = 0xFE0F;
+const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
+const EMOJI_TAG_START: i32 = 0xE0020;
+const EMOJI_TAG_END: i32 = 0xE007F;
+const REGIONAL_INDICATOR_START: i32 = 0x1F1E6;
+const REGIONAL_INDICATOR_END: i32 = 0x1F1FF;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::org::tiqian::core::Geometry::LayoutConstraints;
+    use crate::org::tiqian::core::TextModel::{LayoutInput, TiqianTextContent};
+    use crate::org::tiqian::clreq::ClreqProfile::ClreqProfile;
+    use crate::org::tiqian::font::FontPolicy::CjkFontRoleClassifier;
+    use crate::org::tiqian::layout::ParagraphLayoutEngine::{
+        ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
+    };
+
+    #[test]
+    fn complex_emoji_graphemes_are_single_emoji_shaping_ranges() {
+        let text = "前👩🏽‍💻后🇨🇳与1️⃣。";
+        let ranges = cluster_role_ranges(
+            text,
+            &CjkFontRoleClassifier,
+            &FontRoleContext::default(),
+            &ClreqProfile::mainland_horizontal(),
+        );
+
+        assert_eq!(
+            ranges
+                .iter()
+                .map(|range| (range.range, range.role))
+                .collect::<Vec<_>>(),
+            vec![
+                (TextRange::new(0, 1), FontRole::CjkText),
+                (TextRange::new(1, 8), FontRole::Emoji),
+                (TextRange::new(8, 9), FontRole::CjkText),
+                (TextRange::new(9, 13), FontRole::Emoji),
+                (TextRange::new(13, 14), FontRole::CjkText),
+                (TextRange::new(14, 17), FontRole::Emoji),
+                (TextRange::new(17, 18), FontRole::CjkPunctuation),
+            ],
+        );
+    }
+
+    #[test]
+    fn complex_emoji_graphemes_reach_the_text_shaper_as_complete_ranges() {
+        let text = "前👩🏽‍💻后🇨🇳与1️⃣。";
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let result = engine.layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(text.to_owned()),
+                LayoutConstraints::with_defaults(1_000.0),
+            )
+            .build(),
+        );
+
+        assert_eq!(
+            result
+                .debug
+                .shaping_decisions
+                .iter()
+                .filter(|decision| decision.font_key == "symbol-fallback")
+                .map(|decision| (decision.range, decision.source_text.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (TextRange::new(1, 8), "👩🏽‍💻"),
+                (TextRange::new(9, 13), "🇨🇳"),
+                (TextRange::new(14, 17), "1️⃣"),
+            ],
+        );
+    }
 }
