@@ -352,6 +352,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
             vec![],
+            vec![],
         ),
         demo_list_item(
             "二、",
@@ -361,29 +362,52 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
             vec![],
+            vec![],
         ),
         demo_list_item(
             "三、",
-            "中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。",
+            "中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。",
             physical_content_width,
             body.clone(),
             vec![],
             vec![
                 TextSpan {
-                    range: range_of("中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。", "serif"),
+                    range: range_of("中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。", "黑体"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["Source Han Sans SC".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+                TextSpan {
+                    range: range_of("中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。", "宋体"),
                     style: TextStyle::builder()
                         .font_families(vec!["serif".to_owned()])
                         .font_size(body.font_size)
                         .build(),
                 },
                 TextSpan {
-                    range: range_of("中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。", "monospace-note.txt"),
+                    range: range_of("中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。", "sans-serif"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["Inter".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+                TextSpan {
+                    range: range_occurrence("中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。", "serif", 1),
+                    style: TextStyle::builder()
+                        .font_families(vec!["serif".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+                TextSpan {
+                    range: range_of("中文可使用黑体或宋体；英文可能为 sans-serif 或 serif，亦可能为 monospace （等宽字体）。混排时，仍须保持稳定的基线和行距。", "monospace"),
                     style: TextStyle::builder()
                         .font_families(vec!["monospace".to_owned()])
                         .font_size(body.font_size)
                         .build(),
                 },
             ],
+            vec![],
             vec![],
         ),
     ]);
@@ -606,12 +630,14 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
             vec![],
+            vec![],
         ),
         demo_list_item(
             "•",
             "改变系统缩放比例，检查正文、注文、线条与留白是否同步变化；",
             physical_content_width,
             body.clone(),
+            vec![],
             vec![],
             vec![],
             vec![],
@@ -624,6 +650,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
             vec![],
+            vec![],
         ),
         DemoDocumentDemoBlock::Section {
             height: section_height,
@@ -632,7 +659,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             closing,
             physical_content_width,
             body.clone(),
-            signature.clone(),
+            indented.clone(),
             vec![
                 TextSpan {
                     range: range_of(closing, "连贯、安静而从容"),
@@ -684,6 +711,7 @@ fn demo_list_item(
     decorations: Vec<DecorationSpan>,
     spans: Vec<TextSpan>,
     ruby_spans: Vec<RubySpan>,
+    rich_text: Vec<RichTextSpan>,
 ) -> DemoDocumentDemoBlock {
     DemoDocumentDemoBlock::ListItem {
         marker: demo_document(
@@ -710,7 +738,7 @@ fn demo_list_item(
             decorations,
             ruby_spans,
             vec![],
-            vec![],
+            rich_text,
         ),
     }
 }

@@ -601,6 +601,64 @@ mod tests {
     }
 
     #[test]
+    fn formal_sample_uses_span_selected_font_faces() {
+        let catalog = DemoFontCatalog::load().unwrap();
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        engine.fallback_resolver = Box::new(catalog.clone());
+        engine.font_metrics_resolver = Box::new(catalog.clone());
+        engine.text_shaper = Box::new(catalog);
+        let document = build_document_demo(640.0, 1.0);
+        let mut expected_faces = vec![
+            ("黑体", 0, "demo-cjk@wght=400"),
+            ("宋体", 0, "demo-serif@wght=400"),
+            ("sans-serif", 0, "demo-latin@wght=400"),
+            ("serif", 1, "demo-serif@wght=400"),
+            ("monospace", 0, "demo-monospace@wght=400"),
+            ("editorial-notes.md", 0, "demo-monospace@wght=400"),
+        ];
+
+        for block in document.blocks {
+            let documents = match block {
+                DemoDocumentDemoBlock::Paragraph(document) => vec![document],
+                DemoDocumentDemoBlock::NarrowParagraph { document, .. } => vec![document],
+                DemoDocumentDemoBlock::ListItem { marker, body } => vec![marker, body],
+                DemoDocumentDemoBlock::Section { .. } => Vec::new(),
+            };
+            for document in documents {
+                let layout = engine.layout(document.input);
+                expected_faces.retain(|(text, occurrence, expected_face)| {
+                    let Some((byte_start, _)) = layout
+                        .input
+                        .content
+                        .text
+                        .match_indices(text)
+                        .nth(*occurrence)
+                    else {
+                        return true;
+                    };
+                    let range_start = layout.input.content.text[..byte_start].encode_utf16().count() as i32;
+                    let range_end = range_start + text.encode_utf16().count() as i32;
+                    let decisions: Vec<_> = layout
+                        .debug
+                        .shaping_decisions
+                        .iter()
+                        .filter(|decision| {
+                            decision.range.start() >= range_start && decision.range.end() <= range_end
+                        })
+                        .collect();
+                    let matches_expected_face = !decisions.is_empty()
+                        && decisions.iter().all(|decision| {
+                            decision.resolved_face.as_deref() == Some(*expected_face)
+                        });
+                    !matches_expected_face
+                });
+            }
+        }
+
+        assert!(expected_faces.is_empty(), "missing span-selected faces: {expected_faces:?}");
+    }
+
+    #[test]
     fn default_window_sample_exhibits_hanging_punctuation_and_hyphenation() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();

@@ -16,8 +16,12 @@ use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, Shap
 
 const CJK_FONT_KEY: &str = "demo-cjk";
 const LATIN_FONT_KEY: &str = "demo-latin";
+const SERIF_FONT_KEY: &str = "demo-serif";
+const MONOSPACE_FONT_KEY: &str = "demo-monospace";
 const CJK_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf");
 const LATIN_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/InterVariable.ttf");
+const SERIF_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSerifCN-VF.otf");
+const MONOSPACE_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
 
 #[derive(Clone)]
 pub struct DemoFontCatalog {
@@ -53,8 +57,19 @@ impl DemoFontCatalog {
     pub fn load() -> Result<Self, String> {
         let cjk = DemoFontFace::load(CJK_FONT_KEY, "Source Han Sans SC", CJK_FONT_BYTES)?;
         let latin = DemoFontFace::load(LATIN_FONT_KEY, "Inter", LATIN_FONT_BYTES)?;
+        let serif = DemoFontFace::load(SERIF_FONT_KEY, "Source Han Serif CN", SERIF_FONT_BYTES)?;
+        let monospace = DemoFontFace::load(
+            MONOSPACE_FONT_KEY,
+            "FiraCode Nerd Font",
+            MONOSPACE_FONT_BYTES,
+        )?;
         Ok(Self {
-            faces: HashMap::from([(CJK_FONT_KEY, cjk), (LATIN_FONT_KEY, latin)]),
+            faces: HashMap::from([
+                (CJK_FONT_KEY, cjk),
+                (LATIN_FONT_KEY, latin),
+                (SERIF_FONT_KEY, serif),
+                (MONOSPACE_FONT_KEY, monospace),
+            ]),
         })
     }
 
@@ -75,13 +90,26 @@ impl DemoFontCatalog {
             .unwrap_or_else(|| panic!("paragraph-demo received unknown font key: {key}"))
     }
 
-    fn face_for_role(&self, role: FontRole) -> &DemoFontFace {
-        let key = if role == FontRole::LatinText {
+    fn role_default_face(&self, role: FontRole) -> &DemoFontFace {
+        self.face_for_key(if role == FontRole::LatinText {
             LATIN_FONT_KEY
         } else {
             CJK_FONT_KEY
-        };
-        self.face_for_key(key)
+        })
+    }
+
+    fn face_for_style(&self, role: FontRole, font_families: &[String]) -> &DemoFontFace {
+        let key = font_families
+            .iter()
+            .find_map(|family| match family.as_str() {
+                "Source Han Sans SC" if role != FontRole::LatinText => Some(CJK_FONT_KEY),
+                "Inter" => Some(LATIN_FONT_KEY),
+                "serif" | "Source Han Serif CN" => Some(SERIF_FONT_KEY),
+                "monospace" | "FiraCode Nerd Font" => Some(MONOSPACE_FONT_KEY),
+                _ => None,
+            });
+        key.map(|key| self.face_for_key(key))
+            .unwrap_or_else(|| self.role_default_face(role))
     }
 
     fn resolved_font_key(face: &DemoFontFace, weight: f32) -> String {
@@ -324,7 +352,7 @@ impl DemoFontFace {
 
 impl FallbackResolver for DemoFontCatalog {
     fn resolve(&self, _text: &str, range: TextRange, request: &FontRequest) -> FontDecision {
-        let face = self.face_for_role(request.role);
+        let face = self.role_default_face(request.role);
         FontDecision {
             range,
             candidate: FontCandidate {
@@ -340,7 +368,7 @@ impl FallbackResolver for DemoFontCatalog {
 
 impl FontMetricsResolver for DemoFontCatalog {
     fn resolve(&self, request: &FontMetricsRequest) -> RawFontMetrics {
-        let face = self.face_for_key(&request.font_key);
+        let face = self.face_for_style(request.role, &request.font_families);
         let weight = face
             .weight_for(request.font_weight)
             .unwrap_or_else(|error| panic!("paragraph-demo metrics failed: {error}"));
@@ -359,7 +387,7 @@ impl FontMetricsResolver for DemoFontCatalog {
 
 impl TextShaper for DemoFontCatalog {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let face = self.face_for_key(&input.font_decision.candidate.key);
+        let face = self.face_for_style(input.font_decision.role, &input.style.font_families);
         let features = input.open_type_features.clone();
         let shaped = face.shape(input, &features);
         let halt = if input.font_decision.role == FontRole::CjkPunctuation
@@ -717,6 +745,47 @@ mod tests {
         ));
         assert!(metrics.ascent > 0.0 && metrics.descent > 0.0);
         assert!(metrics.typo_ascent.is_some() && metrics.typo_descent.is_some());
+    }
+
+    #[test]
+    fn explicit_sample_font_families_select_their_controlled_faces() {
+        let catalog = DemoFontCatalog::load().unwrap();
+        for (family, text, expected_key) in [
+            ("serif", "serif", SERIF_FONT_KEY),
+            ("monospace", "monospace-note.txt", MONOSPACE_FONT_KEY),
+        ] {
+            let range = TextRange::new(0, text.encode_utf16().count() as i32);
+            let decision = FallbackResolver::resolve(
+                &catalog,
+                text,
+                range,
+                &FontRequest {
+                    preferred_families: vec![family.to_owned()],
+                    locale: "zh-Hans".to_owned(),
+                    role: FontRole::LatinText,
+                },
+            );
+            assert_eq!(decision.candidate.key, LATIN_FONT_KEY);
+            let shaped = catalog.shape(&ShapingInput::new(
+                text.to_owned(),
+                range,
+                TextStyle::builder()
+                    .font_families(vec![family.to_owned()])
+                    .build(),
+                decision,
+            ));
+            assert!(shaped.glyph_runs[0]
+                .glyphs
+                .iter()
+                .all(|glyph| glyph.id != 0 && glyph.render_font_key.is_some()));
+            assert_eq!(shaped.glyph_runs[0].font_key, expected_key);
+            assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| {
+                glyph
+                    .render_font_key
+                    .as_deref()
+                    .is_some_and(|key| key.starts_with(expected_key))
+            }));
+        }
     }
 
     #[test]
