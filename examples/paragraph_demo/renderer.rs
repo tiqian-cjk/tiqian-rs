@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use vello_cpu::color::{AlphaColor, Srgb};
+use vello_cpu::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
+use vello_cpu::{RenderContext, Resources};
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::LayoutResult;
 use tiqian::org::tiqian::core::LayoutQueries::{
@@ -17,14 +20,14 @@ use crate::font_backend::DemoFontCatalog;
 const WAVE_HALF_LENGTH_EM: f32 = 0.2;
 const WAVE_AMPLITUDE_EM: f32 = 0.06;
 
-fn default_text_color() -> tiny_skia::Color {
-    tiny_skia::Color::from_rgba8(30, 30, 35, 255)
+fn default_text_color() -> AlphaColor<Srgb> {
+    AlphaColor::from_rgba8(30, 30, 35, 255)
 }
 
 #[derive(Clone, Copy)]
 pub struct DemoColorSpan {
     pub range: TextRange,
-    pub color: tiny_skia::Color,
+    pub color: AlphaColor<Srgb>,
 }
 
 pub struct DemoRenderer<'a> {
@@ -53,17 +56,19 @@ impl<'a> DemoRenderer<'a> {
         }
     }
 
-    fn transform(&self) -> tiny_skia::Transform {
-        tiny_skia::Transform::from_translate(self.offset_x, self.offset_y)
+    fn transform(&self) -> Affine {
+        Affine::translate((self.offset_x as f64, self.offset_y as f64))
     }
 
     /// Replays the final body glyphs using only LayoutResult placements and shaped glyph evidence.
     pub fn paint_body(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
+        resources: &mut Resources,
         result: &LayoutResult,
         colors: &[DemoColorSpan],
     ) -> Result<(), String> {
+        context.set_transform(self.transform());
         let positions: HashMap<_, _> = positioned_clusters(result)
             .into_iter()
             .map(|position| (position.range, position))
@@ -80,30 +85,37 @@ impl<'a> DemoRenderer<'a> {
                     .font_size;
                 let color = color_at(colors, glyph.cluster_range).unwrap_or_else(default_text_color);
                 self.catalog.paint_glyph(
-                    pixmap,
+                    context,
+                    resources,
                     glyph.render_font_key.as_deref().ok_or_else(|| {
                         format!("glyph {:?} has no render font identity", glyph.cluster_range)
                     })?,
                     glyph.id,
                     font_size,
-                    self.offset_x + position.draw_x + glyph.x,
-                    self.offset_y + position.baseline + glyph.y,
+                    position.draw_x + glyph.x,
+                    position.baseline + glyph.y,
                     color,
                 )?;
             }
         }
         for line in &result.lines {
             for glyph in &line.hyphen_glyphs {
+                let color = color_at(
+                    colors,
+                    result.clusters[line.cluster_range.last() as usize].range,
+                )
+                .unwrap_or_else(default_text_color);
                 self.catalog.paint_glyph(
-                    pixmap,
+                    context,
+                    resources,
                     glyph.render_font_key.as_deref().ok_or_else(|| {
                         format!("line-end hyphen {:?} has no render font identity", glyph.cluster_range)
                     })?,
                     glyph.id,
                     result.input.text_style.font_size,
-                    self.offset_x + line.indent + line.visual_width + glyph.x,
-                    self.offset_y + line.baseline + glyph.y,
-                    default_text_color(),
+                    line.indent + line.visual_width + glyph.x,
+                    line.baseline + glyph.y,
+                    color,
                 )?;
             }
         }
@@ -113,9 +125,11 @@ impl<'a> DemoRenderer<'a> {
     /// Replays annotation glyphs from the final coordinates recorded by the layout engine.
     pub fn paint_annotations(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
+        resources: &mut Resources,
         result: &LayoutResult,
     ) -> Result<(), String> {
+        context.set_transform(self.transform());
         for ruby in &result.debug.ruby_decisions {
             let origin_x = ruby.center_x - ruby.width / 2.0;
             let mut cluster_pen_x = 0.0;
@@ -127,11 +141,12 @@ impl<'a> DemoRenderer<'a> {
                     cluster_advance = 0.0;
                 }
                 self.paint_annotation_glyph(
-                    pixmap,
+                    context,
+                    resources,
                     glyph,
                     ruby.font_size,
-                    self.offset_x + origin_x + cluster_pen_x + glyph.x,
-                    self.offset_y + ruby.baseline_y + glyph.y,
+                    origin_x + cluster_pen_x + glyph.x,
+                    ruby.baseline_y + glyph.y,
                 )?;
                 cluster_advance += glyph.advance;
                 previous_range = Some(glyph.cluster_range);
@@ -141,11 +156,12 @@ impl<'a> DemoRenderer<'a> {
             for placement in &bopomofo.placements {
                 for glyph in &placement.glyphs {
                     self.paint_annotation_glyph(
-                        pixmap,
+                        context,
+                        resources,
                         glyph,
                         placement.font_size,
-                        self.offset_x + placement.draw_x + glyph.x,
-                        self.offset_y + placement.baseline_y + glyph.y,
+                        placement.draw_x + glyph.x,
+                        placement.baseline_y + glyph.y,
                     )?;
                 }
             }
@@ -155,14 +171,16 @@ impl<'a> DemoRenderer<'a> {
 
     fn paint_annotation_glyph(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
+        resources: &mut Resources,
         glyph: &tiqian::org::tiqian::core::LayoutModel::Glyph,
         font_size: f32,
         origin_x: f32,
         origin_y: f32,
     ) -> Result<(), String> {
         self.catalog.paint_glyph(
-            pixmap,
+            context,
+            resources,
             glyph.render_font_key.as_deref().ok_or_else(|| {
                 format!("annotation glyph {:?} has no render font identity", glyph.cluster_range)
             })?,
@@ -177,50 +195,39 @@ impl<'a> DemoRenderer<'a> {
     /// Paints only decoration geometry that the layout engine has already resolved.
     pub fn paint_decorations(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         colors: &[DemoColorSpan],
     ) -> Result<(), String> {
-        let mut paint = tiny_skia::Paint::default();
+        context.set_transform(self.transform());
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result.debug.decoration_decisions.iter().filter(|decision| decision.applied) {
             if decision.kind == "Emphasis" {
-                paint.set_color(
+                context.set_paint(
                     color_at(colors, decision.cluster_range).unwrap_or_else(default_text_color),
                 );
-                if let Some(path) = tiny_skia::PathBuilder::from_circle(
-                    decision.anchor_x,
-                    decision.anchor_y,
-                    decision.dot_diameter / 2.0,
-                ) {
-                    pixmap.fill_path(
-                        &path,
-                        &paint,
-                        tiny_skia::FillRule::Winding,
-                        self.transform(),
-                        None,
-                    );
-                }
+                context.fill_path(&Circle::new(
+                    (decision.anchor_x as f64, decision.anchor_y as f64),
+                    (decision.dot_diameter / 2.0) as f64,
+                ).to_path(0.1));
             }
         }
         for segment in &result.debug.decoration_segments {
-            paint.set_color(
-                color_at(colors, segment.source_range).unwrap_or_else(default_text_color),
-            );
+            let color = color_at(colors, segment.source_range).unwrap_or_else(default_text_color);
             match segment.kind.as_str() {
-                "Mourning" => self.stroke_mourning_segment(pixmap, segment, &paint, stroke_width)?,
+                "Mourning" => self.stroke_mourning_segment(context, segment, color, stroke_width)?,
                 "ProperNoun" => self.stroke_interlinear_segment(
-                    pixmap,
+                    context,
                     result,
                     segment,
-                    &paint,
+                    color,
                     stroke_width,
                 )?,
                 "BookTitle" => self.stroke_book_title_segment(
-                    pixmap,
+                    context,
                     result,
                     segment,
-                    &paint,
+                    color,
                     result.input.text_style.font_size,
                     stroke_width,
                 )?,
@@ -232,10 +239,11 @@ impl<'a> DemoRenderer<'a> {
 
     pub fn paint_rich_text_backgrounds(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         spans: &[RichTextSpan],
     ) -> Result<(), String> {
+        context.set_transform(self.transform());
         let occupied = positioned_rich_text_segments(result, spans);
         for segment in rich_text_background_segments(result, &occupied) {
             let color = segment
@@ -243,7 +251,7 @@ impl<'a> DemoRenderer<'a> {
                 .paint
                 .argb
                 .map(color_from_argb)
-                .unwrap_or_else(|| tiny_skia::Color::from_rgba8(235, 226, 255, 255));
+                .unwrap_or_else(|| AlphaColor::from_rgba8(235, 226, 255, 255));
             let border_inset = match segment.span.paint.background.draw_style {
                 RichTextBackgroundDrawStyle::Fill => 0.0,
                 RichTextBackgroundDrawStyle::Border { stroke_width } => stroke_width / 2.0,
@@ -256,26 +264,12 @@ impl<'a> DemoRenderer<'a> {
                 segment.bottom - border_inset,
                 [radii.top_left, radii.top_right, radii.bottom_right, radii.bottom_left],
             )?;
-            let mut paint = tiny_skia::Paint::default();
-            paint.set_color(color);
+            context.set_paint(color);
             match segment.span.paint.background.draw_style {
-                RichTextBackgroundDrawStyle::Fill => pixmap.fill_path(
-                    &path,
-                    &paint,
-                    tiny_skia::FillRule::Winding,
-                    self.transform(),
-                    None,
-                ),
+                RichTextBackgroundDrawStyle::Fill => context.fill_path(&path),
                 RichTextBackgroundDrawStyle::Border { stroke_width } => {
-                    let mut stroke = tiny_skia::Stroke::default();
-                    stroke.width = stroke_width;
-                    pixmap.stroke_path(
-                        &path,
-                        &paint,
-                        &stroke,
-                        self.transform(),
-                        None,
-                    );
+                    context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
+                    context.stroke_path(&path);
                 }
             }
         }
@@ -284,10 +278,11 @@ impl<'a> DemoRenderer<'a> {
 
     pub fn paint_rich_text_lines(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         spans: &[RichTextSpan],
     ) -> Result<(), String> {
+        context.set_transform(self.transform());
         let occupied = positioned_rich_text_segments(result, spans);
         for segment in trimmed_rich_text_decoration_segments(result, &occupied) {
             let color = segment
@@ -296,14 +291,12 @@ impl<'a> DemoRenderer<'a> {
                 .argb
                 .map(color_from_argb)
                 .unwrap_or_else(default_text_color);
-            let mut paint = tiny_skia::Paint::default();
-            paint.set_color(color);
             match &segment.span.paint.line_pattern {
                 RichTextLinePattern::Solid => self.stroke_rich_line(
-                    pixmap,
+                    context,
                     result,
                     &segment,
-                    &paint,
+                    color,
                     (result.input.text_style.font_size / 16.0).max(1.0),
                 )?,
                 RichTextLinePattern::Dashed {
@@ -311,7 +304,7 @@ impl<'a> DemoRenderer<'a> {
                     dash_length,
                     gap_length,
                 } => self.stroke_fitted_dashed_rich_line(
-                    pixmap, result, &segment, &paint, *stroke_width, *dash_length, *gap_length,
+                    context, result, &segment, color, *stroke_width, *dash_length, *gap_length,
                 )?,
                 RichTextLinePattern::Dotted {
                     dot_diameter,
@@ -331,15 +324,11 @@ impl<'a> DemoRenderer<'a> {
                         *dot_diameter,
                     ) {
                         for x in centers.iter().copied().filter(|x| *x >= left && *x <= right) {
-                            if let Some(path) = tiny_skia::PathBuilder::from_circle(x, y, dot_diameter / 2.0) {
-                                pixmap.fill_path(
-                                    &path,
-                                    &paint,
-                                    tiny_skia::FillRule::Winding,
-                                    self.transform(),
-                                    None,
-                                );
-                            }
+                            context.set_paint(color);
+                            context.fill_path(&Circle::new(
+                                (x as f64, y as f64),
+                                (dot_diameter / 2.0) as f64,
+                            ).to_path(0.1));
                         }
                     }
                 }
@@ -350,10 +339,10 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_rich_line(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutQueries::RichTextLineSegment,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
         if !matches!(segment.span.role, RichTextRole::Underline | RichTextRole::LineThrough) {
@@ -361,25 +350,23 @@ impl<'a> DemoRenderer<'a> {
         }
         let y = rich_text_decoration_line_y(result, segment, stroke_width);
         for (left, right) in self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width) {
-            self.stroke_horizontal_line(pixmap, left, right, y, paint, stroke_width)?;
+            self.stroke_horizontal_line(context, left, right, y, color, stroke_width)?;
         }
         Ok(())
     }
 
     fn stroke_fitted_dashed_rich_line(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutQueries::RichTextLineSegment,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         stroke_width: f32,
         dash_length: f32,
         gap_length: f32,
     ) -> Result<(), String> {
         let y = rich_text_decoration_line_y(result, segment, stroke_width);
-        let mut stroke = tiny_skia::Stroke::default();
-        stroke.width = stroke_width;
-        stroke.line_cap = tiny_skia::LineCap::Round;
+        let stroke = Stroke::new(stroke_width as f64).with_caps(Cap::Round);
         let dashes = fitted_dashed_line_segments(
             segment.left,
             segment.right,
@@ -393,13 +380,12 @@ impl<'a> DemoRenderer<'a> {
                 .filter(|(left, right)| right > left)
             {
                 let cap_inset = (stroke_width / 2.0).min((right - left) / 2.0);
-                let mut path = tiny_skia::PathBuilder::new();
-                path.move_to(left + cap_inset, y);
-                path.line_to(right - cap_inset, y);
-                let path = path
-                    .finish()
-                    .ok_or_else(|| "dashed rich-text line path is empty".to_owned())?;
-                pixmap.stroke_path(&path, paint, &stroke, self.transform(), None);
+                let mut path = BezPath::new();
+                path.move_to(((left + cap_inset) as f64, y as f64));
+                path.line_to(((right - cap_inset) as f64, y as f64));
+                context.set_paint(color);
+                context.set_stroke(stroke.clone());
+                context.stroke_path(&path);
             }
         }
         Ok(())
@@ -407,10 +393,10 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_book_title_segment(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         font_size: f32,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -425,18 +411,18 @@ impl<'a> DemoRenderer<'a> {
             ),
             browser_like_skip_ink_clearance(font_size, stroke_width),
         ) {
-            self.stroke_book_title_path(pixmap, left, right, segment.top, paint, font_size, stroke_width)?;
+            self.stroke_book_title_path(context, left, right, segment.top, color, font_size, stroke_width)?;
         }
         Ok(())
     }
 
     fn stroke_book_title_path(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         left: f32,
         right: f32,
         y: f32,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         font_size: f32,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -444,8 +430,8 @@ impl<'a> DemoRenderer<'a> {
         if width <= 0.0 {
             return Ok(());
         }
-        let mut path = tiny_skia::PathBuilder::new();
-        path.move_to(left, y);
+        let mut path = BezPath::new();
+        path.move_to((left as f64, y as f64));
         let mut x = left;
         let mut rising = true;
         while x < right {
@@ -457,31 +443,25 @@ impl<'a> DemoRenderer<'a> {
                 } else {
                     font_size * WAVE_AMPLITUDE_EM * 2.0
                 };
-            path.quad_to(control_x, control_y, next, y);
+            path.quad_to(
+                (control_x as f64, control_y as f64),
+                (next as f64, y as f64),
+            );
             x = next;
             rising = !rising;
         }
-        let path = path
-            .finish()
-            .ok_or_else(|| "book title decoration path is empty".to_owned())?;
-        let mut stroke = tiny_skia::Stroke::default();
-        stroke.width = stroke_width;
-        pixmap.stroke_path(
-            &path,
-            paint,
-            &stroke,
-            self.transform(),
-            None,
-        );
+        context.set_paint(color);
+        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
+        context.stroke_path(&path);
         Ok(())
     }
 
     fn stroke_interlinear_segment(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
         let font_size = text_style_at(
@@ -501,7 +481,7 @@ impl<'a> DemoRenderer<'a> {
             ),
             browser_like_skip_ink_clearance(font_size, stroke_width),
         ) {
-            self.stroke_horizontal_line(pixmap, left, right, segment.top, paint, stroke_width)?;
+            self.stroke_horizontal_line(context, left, right, segment.top, color, stroke_width)?;
         }
         Ok(())
     }
@@ -537,67 +517,55 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_horizontal_line(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         left: f32,
         right: f32,
         y: f32,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
         if right <= left {
             return Ok(());
         }
-        let mut path = tiny_skia::PathBuilder::new();
-        path.move_to(left, y);
-        path.line_to(right, y);
-        let path = path
-            .finish()
-            .ok_or_else(|| "interlinear line path is empty".to_owned())?;
-        let mut stroke = tiny_skia::Stroke::default();
-        stroke.width = stroke_width;
-        pixmap.stroke_path(&path, paint, &stroke, self.transform(), None);
+        let mut path = BezPath::new();
+        path.move_to((left as f64, y as f64));
+        path.line_to((right as f64, y as f64));
+        context.set_paint(color);
+        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
+        context.stroke_path(&path);
         Ok(())
     }
 
     fn stroke_mourning_segment(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
-        paint: &tiny_skia::Paint,
+        color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
-        let mut path = tiny_skia::PathBuilder::new();
-        path.move_to(segment.left, segment.top);
-        path.line_to(segment.right, segment.top);
+        let mut path = BezPath::new();
+        path.move_to((segment.left as f64, segment.top as f64));
+        path.line_to((segment.right as f64, segment.top as f64));
         if !segment.open_start {
-            path.move_to(segment.left, segment.top);
-            path.line_to(segment.left, segment.bottom);
+            path.move_to((segment.left as f64, segment.top as f64));
+            path.line_to((segment.left as f64, segment.bottom as f64));
         }
         if !segment.open_end {
-            path.move_to(segment.right, segment.top);
-            path.line_to(segment.right, segment.bottom);
+            path.move_to((segment.right as f64, segment.top as f64));
+            path.line_to((segment.right as f64, segment.bottom as f64));
         }
-        path.move_to(segment.left, segment.bottom);
-        path.line_to(segment.right, segment.bottom);
-        let path = path
-            .finish()
-            .ok_or_else(|| "mourning decoration path is empty".to_owned())?;
-        let mut stroke = tiny_skia::Stroke::default();
-        stroke.width = stroke_width;
-        pixmap.stroke_path(
-            &path,
-            paint,
-            &stroke,
-            self.transform(),
-            None,
-        );
+        path.move_to((segment.left as f64, segment.bottom as f64));
+        path.line_to((segment.right as f64, segment.bottom as f64));
+        context.set_paint(color);
+        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
+        context.stroke_path(&path);
         Ok(())
     }
 }
 
-fn color_from_argb(argb: i32) -> tiny_skia::Color {
+fn color_from_argb(argb: i32) -> AlphaColor<Srgb> {
     let bits = argb as u32;
-    tiny_skia::Color::from_rgba8(
+    AlphaColor::from_rgba8(
         (bits >> 16) as u8,
         (bits >> 8) as u8,
         bits as u8,
@@ -725,17 +693,17 @@ fn rounded_rect_path(
     right: f32,
     bottom: f32,
     radii: [f32; 4],
-) -> Result<tiny_skia::Path, String> {
+) -> Result<BezPath, String> {
     if right <= left || bottom <= top {
         return Err("rich-text background has an empty geometry segment".to_owned());
     }
     let [top_left, top_right, bottom_right, bottom_left] = radii;
     const KAPPA: f32 = 0.552_284_8;
-    let mut path = tiny_skia::PathBuilder::new();
-    path.move_to(left + top_left, top);
-    path.line_to(right - top_right, top);
+    let mut path = BezPath::new();
+    path.move_to(((left + top_left) as f64, top as f64));
+    path.line_to(((right - top_right) as f64, top as f64));
     curve_corner(&mut path, right - top_right, top, right, top + top_right, top_right, KAPPA);
-    path.line_to(right, bottom - bottom_right);
+    path.line_to((right as f64, (bottom - bottom_right) as f64));
     curve_corner(
         &mut path,
         right,
@@ -745,7 +713,7 @@ fn rounded_rect_path(
         bottom_right,
         KAPPA,
     );
-    path.line_to(left + bottom_left, bottom);
+    path.line_to(((left + bottom_left) as f64, bottom as f64));
     curve_corner(
         &mut path,
         left + bottom_left,
@@ -755,15 +723,14 @@ fn rounded_rect_path(
         bottom_left,
         KAPPA,
     );
-    path.line_to(left, top + top_left);
+    path.line_to((left as f64, (top + top_left) as f64));
     curve_corner(&mut path, left, top + top_left, left + top_left, top, top_left, KAPPA);
-    path.close();
-    path.finish()
-        .ok_or_else(|| "rich-text background path is empty".to_owned())
+    path.close_path();
+    Ok(path)
 }
 
 fn curve_corner(
-    path: &mut tiny_skia::PathBuilder,
+    path: &mut BezPath,
     start_x: f32,
     start_y: f32,
     end_x: f32,
@@ -772,15 +739,31 @@ fn curve_corner(
     kappa: f32,
 ) {
     if radius == 0.0 {
-        path.line_to(end_x, end_y);
+        path.line_to((end_x as f64, end_y as f64));
         return;
     }
     let control = radius * kappa;
     match (end_x > start_x, end_y > start_y) {
-        (true, true) => path.cubic_to(start_x + control, start_y, end_x, end_y - control, end_x, end_y),
-        (false, true) => path.cubic_to(start_x, start_y + control, end_x + control, end_y, end_x, end_y),
-        (false, false) => path.cubic_to(start_x - control, start_y, end_x, end_y + control, end_x, end_y),
-        (true, false) => path.cubic_to(start_x, start_y - control, end_x - control, end_y, end_x, end_y),
+        (true, true) => path.curve_to(
+            ((start_x + control) as f64, start_y as f64),
+            (end_x as f64, (end_y - control) as f64),
+            (end_x as f64, end_y as f64),
+        ),
+        (false, true) => path.curve_to(
+            (start_x as f64, (start_y + control) as f64),
+            ((end_x + control) as f64, end_y as f64),
+            (end_x as f64, end_y as f64),
+        ),
+        (false, false) => path.curve_to(
+            ((start_x - control) as f64, start_y as f64),
+            (end_x as f64, (end_y + control) as f64),
+            (end_x as f64, end_y as f64),
+        ),
+        (true, false) => path.curve_to(
+            (start_x as f64, (start_y - control) as f64),
+            ((end_x - control) as f64, end_y as f64),
+            (end_x as f64, end_y as f64),
+        ),
     }
 }
 
@@ -793,7 +776,7 @@ fn text_style_at(spans: &[TextSpan], base: &TextStyle, offset: i32) -> TextStyle
         .unwrap_or_else(|| base.clone())
 }
 
-fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<tiny_skia::Color> {
+fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srgb>> {
     colors
         .iter()
         .rev()
@@ -829,11 +812,15 @@ mod tests {
             )
             .build(),
         );
-        let mut pixmap = tiny_skia::Pixmap::new(200, 100).unwrap();
+        let mut context = RenderContext::new(200, 100);
+        let mut resources = Resources::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut pixmap, &result, &[])
+            .paint_body(&mut context, &mut resources, &result, &[])
             .unwrap();
-        assert!(pixmap.data().chunks_exact(4).any(|pixel| pixel[3] != 0));
+        context.flush();
+        let mut pixmap = vello_cpu::Pixmap::new(200, 100);
+        context.render(&mut pixmap, &mut resources);
+        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
     }
 
     #[test]
@@ -892,12 +879,16 @@ mod tests {
         }).fold(f32::INFINITY, f32::min);
         let ruby_top_bleed = (-ruby_ink_top).max(0.0).ceil();
         assert!(ruby_top_bleed >= -ruby_ink_top);
-        let mut pixmap = tiny_skia::Pixmap::new(200, 120).unwrap();
+        let mut context = RenderContext::new(200, 120);
+        let mut resources = Resources::new();
         DemoRenderer::new(&catalog, 1.0)
             .translated(0.0, ruby_top_bleed)
-            .paint_annotations(&mut pixmap, &result)
+            .paint_annotations(&mut context, &mut resources, &result)
             .unwrap();
-        assert!(pixmap.data().chunks_exact(4).any(|pixel| pixel[3] != 0));
+        context.flush();
+        let mut pixmap = vello_cpu::Pixmap::new(200, 120);
+        context.render(&mut pixmap, &mut resources);
+        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
     }
 
     #[test]
@@ -932,11 +923,15 @@ mod tests {
             .find(|result| result.lines.iter().any(|line| !line.hyphen_glyphs.is_empty()))
             .expect("English hyphenation should provide a usable shape-once line-end hyphen");
         result.glyph_runs.clear();
-        let mut pixmap = tiny_skia::Pixmap::new(100, 160).unwrap();
+        let mut context = RenderContext::new(100, 160);
+        let mut resources = Resources::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut pixmap, &result, &[])
+            .paint_body(&mut context, &mut resources, &result, &[])
             .unwrap();
-        assert!(pixmap.data().chunks_exact(4).any(|pixel| pixel[3] != 0));
+        context.flush();
+        let mut pixmap = vello_cpu::Pixmap::new(100, 160);
+        context.render(&mut pixmap, &mut resources);
+        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
     }
 
     #[test]
@@ -1031,17 +1026,21 @@ mod tests {
             .decoration_segments
             .iter()
             .any(|segment| segment.kind == "BookTitle"));
-        let mut pixmap = tiny_skia::Pixmap::new(200, 100).unwrap();
+        let mut context = RenderContext::new(200, 100);
+        let mut resources = Resources::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut pixmap, &result, &rich_text)
+            .paint_rich_text_backgrounds(&mut context, &result, &rich_text)
             .unwrap();
-        renderer.paint_body(&mut pixmap, &result, &[]).unwrap();
+        renderer.paint_body(&mut context, &mut resources, &result, &[]).unwrap();
         renderer
-            .paint_rich_text_lines(&mut pixmap, &result, &rich_text)
+            .paint_rich_text_lines(&mut context, &result, &rich_text)
             .unwrap();
-        renderer.paint_decorations(&mut pixmap, &result, &[]).unwrap();
-        assert!(pixmap.data().chunks_exact(4).any(|pixel| pixel[3] != 0));
+        renderer.paint_decorations(&mut context, &result, &[]).unwrap();
+        context.flush();
+        let mut pixmap = vello_cpu::Pixmap::new(200, 100);
+        context.render(&mut pixmap, &mut resources);
+        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
 
         let mourning = result
             .debug
@@ -1049,14 +1048,19 @@ mod tests {
             .iter()
             .find(|segment| segment.kind == "Mourning")
             .unwrap();
-        let mut decorations = tiny_skia::Pixmap::new(200, 100).unwrap();
-        renderer.paint_decorations(&mut decorations, &result, &[]).unwrap();
+        let mut decoration_context = RenderContext::new(200, 100);
+        renderer
+            .paint_decorations(&mut decoration_context, &result, &[])
+            .unwrap();
+        decoration_context.flush();
+        let mut decorations = vello_cpu::Pixmap::new(200, 100);
+        decoration_context.render(&mut decorations, &mut resources);
         let top = mourning.top.round() as usize;
         let left = mourning.left.ceil() as usize + 1;
         let right = mourning.right.floor() as usize - 1;
-        assert!(decorations.data()[top * decorations.width() as usize * 4 + left * 4..top * decorations.width() as usize * 4 + right * 4]
-            .chunks_exact(4)
-            .any(|pixel| pixel[3] != 0));
+        assert!(decorations.data()[top * decorations.width() as usize + left..top * decorations.width() as usize + right]
+            .iter()
+            .any(|pixel| pixel.a != 0));
     }
 
     #[test]

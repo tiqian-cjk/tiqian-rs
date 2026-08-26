@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, UnicodeBuffer};
-use read_fonts::model::pen::{ControlBoundsPen, OutlinePen};
+use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
+use std::sync::Arc;
 use tiqian::org::tiqian::core::Geometry::{Rect, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::org::tiqian::font::FontMetrics::{
@@ -13,15 +14,20 @@ use tiqian::org::tiqian::font::FontPolicy::{
     FallbackResolver, FontCandidate, FontDecision, FontRequest, FontRole, RawFontMetrics,
 };
 use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
+use vello_cpu::color::{AlphaColor, Srgb};
+use vello_cpu::peniko::{Blob, FontData};
+use vello_cpu::{RenderContext, Resources};
 
 const CJK_FONT_KEY: &str = "demo-cjk";
 const LATIN_FONT_KEY: &str = "demo-latin";
 const SERIF_FONT_KEY: &str = "demo-serif";
 const MONOSPACE_FONT_KEY: &str = "demo-monospace";
+const EMOJI_FONT_KEY: &str = "demo-emoji";
 const CJK_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf");
 const LATIN_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/InterVariable.ttf");
 const SERIF_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSerifCN-VF.otf");
 const MONOSPACE_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
+const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/NotoColorEmoji-Regular.ttf");
 
 #[derive(Clone)]
 pub struct DemoFontCatalog {
@@ -63,12 +69,14 @@ impl DemoFontCatalog {
             "FiraCode Nerd Font",
             MONOSPACE_FONT_BYTES,
         )?;
+        let emoji = DemoFontFace::load(EMOJI_FONT_KEY, "Noto Color Emoji", EMOJI_FONT_BYTES)?;
         Ok(Self {
             faces: HashMap::from([
                 (CJK_FONT_KEY, cjk),
                 (LATIN_FONT_KEY, latin),
                 (SERIF_FONT_KEY, serif),
                 (MONOSPACE_FONT_KEY, monospace),
+                (EMOJI_FONT_KEY, emoji),
             ]),
         })
     }
@@ -91,14 +99,19 @@ impl DemoFontCatalog {
     }
 
     fn role_default_face(&self, role: FontRole) -> &DemoFontFace {
-        self.face_for_key(if role == FontRole::LatinText {
-            LATIN_FONT_KEY
-        } else {
-            CJK_FONT_KEY
+        self.face_for_key(match role {
+            FontRole::LatinText => LATIN_FONT_KEY,
+            FontRole::Emoji => EMOJI_FONT_KEY,
+            FontRole::CjkText | FontRole::CjkPunctuation | FontRole::Symbol | FontRole::Unknown => {
+                CJK_FONT_KEY
+            }
         })
     }
 
     fn face_for_style(&self, role: FontRole, font_families: &[String]) -> &DemoFontFace {
+        if role == FontRole::Emoji {
+            return self.face_for_key(EMOJI_FONT_KEY);
+        }
         let key = font_families
             .iter()
             .find_map(|family| match family.as_str() {
@@ -106,6 +119,7 @@ impl DemoFontCatalog {
                 "Inter" => Some(LATIN_FONT_KEY),
                 "serif" | "Source Han Serif CN" => Some(SERIF_FONT_KEY),
                 "monospace" | "FiraCode Nerd Font" => Some(MONOSPACE_FONT_KEY),
+                "emoji" | "Noto Color Emoji" => Some(EMOJI_FONT_KEY),
                 _ => None,
             });
         key.map(|key| self.face_for_key(key))
@@ -118,13 +132,14 @@ impl DemoFontCatalog {
 
     pub fn paint_glyph(
         &self,
-        pixmap: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
+        resources: &mut Resources,
         render_font_key: &str,
         glyph_id: u32,
         font_size: f32,
         origin_x: f32,
         origin_y: f32,
-        color: tiny_skia::Color,
+        color: AlphaColor<Srgb>,
     ) -> Result<(), String> {
         let (key, weight) = render_font_key
             .split_once("@wght=")
@@ -153,86 +168,27 @@ impl DemoFontCatalog {
                 ));
             }
         };
-        let Some(glyph) = font.outline_glyphs().get(GlyphId::new(glyph_id)) else {
-            return Err(format!("font {} has no glyph id {glyph_id}", face.family));
-        };
-        let mut pen = TinySkiaOutlinePen::new(
-            font_size / face.units_per_em as f32,
-            origin_x,
-            origin_y,
-        );
-        glyph
-            .draw(
-                skrifa::outline::DrawSettings::unhinted(
-                    Size::unscaled(),
-                    LocationRef::new(location.coords()),
-                ),
-                &mut pen,
-            )
-            .map_err(|error| format!("glyph outline replay failed for {glyph_id}: {error:?}"))?;
-        if let Some(path) = pen.path.finish() {
-            let mut paint = tiny_skia::Paint::default();
-            paint.set_color(color);
-            pixmap.fill_path(
-                &path,
-                &paint,
-                tiny_skia::FillRule::Winding,
-                tiny_skia::Transform::identity(),
-                None,
+        let normalized_coords: Vec<glifo::NormalizedCoord> = location
+            .coords()
+            .iter()
+            .map(|coord| (coord.to_f32() * 16384.0) as i16)
+            .collect();
+        let font_data = FontData::new(Blob::new(Arc::new(face.bytes.to_vec())), 0);
+        context.set_paint(color);
+        context
+            .glyph_run(resources, &font_data)
+            .font_size(font_size)
+            .normalized_coords(&normalized_coords)
+            .hint(false)
+            .fill_glyphs(
+                [glifo::Glyph {
+                    id: glyph_id,
+                    x: origin_x,
+                    y: origin_y,
+                }]
+                .into_iter(),
             );
-        }
         Ok(())
-    }
-}
-
-struct TinySkiaOutlinePen {
-    path: tiny_skia::PathBuilder,
-    scale: f32,
-    origin_x: f32,
-    origin_y: f32,
-}
-
-impl TinySkiaOutlinePen {
-    fn new(scale: f32, origin_x: f32, origin_y: f32) -> Self {
-        Self {
-            path: tiny_skia::PathBuilder::new(),
-            scale,
-            origin_x,
-            origin_y,
-        }
-    }
-
-    fn point(&self, x: f32, y: f32) -> (f32, f32) {
-        (self.origin_x + x * self.scale, self.origin_y - y * self.scale)
-    }
-}
-
-impl OutlinePen for TinySkiaOutlinePen {
-    fn move_to(&mut self, x: f32, y: f32) {
-        let (x, y) = self.point(x, y);
-        self.path.move_to(x, y);
-    }
-
-    fn line_to(&mut self, x: f32, y: f32) {
-        let (x, y) = self.point(x, y);
-        self.path.line_to(x, y);
-    }
-
-    fn quad_to(&mut self, cx0: f32, cy0: f32, x: f32, y: f32) {
-        let (cx0, cy0) = self.point(cx0, cy0);
-        let (x, y) = self.point(x, y);
-        self.path.quad_to(cx0, cy0, x, y);
-    }
-
-    fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
-        let (cx0, cy0) = self.point(cx0, cy0);
-        let (cx1, cy1) = self.point(cx1, cy1);
-        let (x, y) = self.point(x, y);
-        self.path.cubic_to(cx0, cy0, cx1, cy1, x, y);
-    }
-
-    fn close(&mut self) {
-        self.path.close();
     }
 }
 
@@ -329,6 +285,19 @@ impl DemoFontFace {
             Some(_) => font.axes().location([("wght", weight)]),
             None => font.axes().location(Vec::<(&str, f32)>::new()),
         };
+        if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id)) {
+            if let Some(bounds) = color_glyph.bounding_box(
+                LocationRef::new(location.coords()),
+                Size::unscaled(),
+            ) {
+                return Some(Rect {
+                    left: bounds.x_min * scale,
+                    top: -bounds.y_max * scale,
+                    right: bounds.x_max * scale,
+                    bottom: -bounds.y_min * scale,
+                });
+            }
+        }
         let glyph = font.outline_glyphs().get(GlyphId::new(glyph_id))?;
         let mut pen = ControlBoundsPen::new();
         glyph
@@ -923,18 +892,122 @@ mod tests {
             decision,
         ));
         let glyph = &shaped.glyph_runs[0].glyphs[0];
-        let mut pixmap = tiny_skia::Pixmap::new(48, 48).unwrap();
+        let mut context = RenderContext::new(48, 48);
+        let mut resources = Resources::new();
         catalog
             .paint_glyph(
-                &mut pixmap,
+                &mut context,
+                &mut resources,
                 glyph.render_font_key.as_deref().unwrap(),
                 glyph.id,
                 16.0,
                 12.0 + glyph.x,
                 28.0 + glyph.y,
-                tiny_skia::Color::BLACK,
+                AlphaColor::from_rgba8(0, 0, 0, 255),
             )
             .unwrap();
-        assert!(pixmap.data().chunks_exact(4).any(|pixel| pixel[3] != 0));
+        context.flush();
+        let mut pixmap = vello_cpu::Pixmap::new(48, 48);
+        context.render(&mut pixmap, &mut resources);
+        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+    }
+
+    #[test]
+    fn noto_color_emoji_shapes_and_replays_complex_sequences_in_color() {
+        let catalog = DemoFontCatalog::load().unwrap();
+        for emoji in ["👩🏽‍💻", "🇨🇳"] {
+            let range = TextRange::new(0, emoji.encode_utf16().count() as i32);
+            let decision = FallbackResolver::resolve(
+                &catalog,
+                emoji,
+                range,
+                &FontRequest {
+                    preferred_families: Vec::new(),
+                    locale: "zh-Hans".to_owned(),
+                    role: FontRole::Emoji,
+                },
+            );
+            assert_eq!(decision.candidate.key, EMOJI_FONT_KEY);
+            let shaped = catalog.shape(&ShapingInput::new(
+                emoji.to_owned(),
+                range,
+                TextStyle::default(),
+                decision,
+            ));
+            assert_eq!(shaped.glyph_runs[0].font_key, EMOJI_FONT_KEY);
+            assert_eq!(shaped.clusters.len(), 1);
+            assert_eq!(shaped.clusters[0].range, range);
+            assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| glyph.id != 0));
+
+            let mut context = RenderContext::new(128, 128);
+            let mut resources = Resources::new();
+            for glyph in &shaped.glyph_runs[0].glyphs {
+                catalog
+                    .paint_glyph(
+                        &mut context,
+                        &mut resources,
+                        glyph.render_font_key.as_deref().unwrap(),
+                        glyph.id,
+                        64.0,
+                        20.0 + glyph.x,
+                        84.0 + glyph.y,
+                        AlphaColor::from_rgba8(0, 0, 0, 255),
+                    )
+                    .unwrap_or_else(|error| panic!("{emoji} color replay failed: {error}"));
+            }
+            context.flush();
+            let mut pixmap = vello_cpu::Pixmap::new(128, 128);
+            context.render(&mut pixmap, &mut resources);
+            let visible_colors: std::collections::HashSet<_> = pixmap
+                .data()
+                .iter()
+                .filter(|pixel| pixel.a != 0)
+                .map(|pixel| [pixel.r, pixel.g, pixel.b])
+                .collect();
+            assert!(visible_colors.len() > 1, "{emoji} must replay as a color glyph");
+        }
+    }
+
+    #[test]
+    fn complex_emoji_layout_keeps_the_noto_face_and_source_range() {
+        use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+        use tiqian::org::tiqian::core::TextModel::{LayoutInput, TiqianTextContent};
+        use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+            ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
+        };
+
+        let catalog = DemoFontCatalog::load().unwrap();
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        engine.fallback_resolver = Box::new(catalog.clone());
+        engine.font_metrics_resolver = Box::new(catalog.clone());
+        engine.text_shaper = Box::new(catalog);
+        let result = engine.layout(
+            LayoutInput::builder(
+                TiqianTextContent::new("甲👩🏽‍💻乙".to_owned()),
+                LayoutConstraints::with_defaults(24.0),
+            )
+            .text_style(TextStyle::builder().font_families(vec!["Source Han Sans SC".to_owned()]).build())
+            .build(),
+        );
+
+        let emoji_range = TextRange::new(1, 8);
+        assert!(result.clusters.iter().any(|cluster| cluster.range == emoji_range));
+        assert!(result.clusters.iter().all(|cluster| {
+            cluster.range.end() <= emoji_range.start()
+                || cluster.range.start() >= emoji_range.end()
+                || cluster.range == emoji_range
+        }));
+        assert!(result.debug.shaping_decisions.iter().any(|decision| {
+            decision.range == emoji_range
+                && decision.source_text == "👩🏽‍💻"
+                && decision.font_key == EMOJI_FONT_KEY
+                && decision.resolved_face.as_deref() == Some("demo-emoji@wght=400")
+        }));
+        assert!(result
+            .glyph_runs
+            .iter()
+            .filter(|run| run.range == emoji_range)
+            .flat_map(|run| &run.glyphs)
+            .all(|glyph| glyph.render_font_key.as_deref() == Some("demo-emoji@wght=400")));
     }
 }

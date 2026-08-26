@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use vello_cpu::color::AlphaColor;
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LayoutInput, RichTextBackgroundPaint,
@@ -105,7 +106,7 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
     .build();
     let colors = vec![DemoColorSpan {
         range: latin,
-        color: tiny_skia::Color::from_rgba8(37, 99, 235, 255),
+        color: AlphaColor::from_rgba8(37, 99, 235, 255),
     }];
     let rich_text = vec![
         RichTextSpan::with_paint(
@@ -199,6 +200,8 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let bullet_intro = "本页适合在以下情形中检查：";
     let closing = "好的中文排版不会抢在文字之前引人注意，却能让阅读更加连贯、安静而从容。字形、标点、注文和段落彼此协调，长篇正文才能在不同版面中保持稳定的节奏。";
     let signature_text = "——《提椠中文正文排版样张》";
+    let appendix_title = "附录：Emoji 组合字形";
+    let emoji_appendix = "本附录列出可用于核对的组合字形：👩🏽‍💻、👨‍👩‍👧‍👦、🇨🇳、1️⃣ 与 ✈️。每一项都应作为完整字形参与排版，在换行、选择与绘制时保持一致。";
 
     let title_style = TextStyle::builder()
         .font_families(body.font_families.clone())
@@ -501,15 +504,15 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![
                 DemoColorSpan {
                     range: range_of(rich_text, "已核"),
-                    color: tiny_skia::Color::from_rgba8(26, 110, 60, 255),
+                    color: AlphaColor::from_rgba8(26, 110, 60, 255),
                 },
                 DemoColorSpan {
                     range: range_of(rich_text, "待校"),
-                    color: tiny_skia::Color::from_rgba8(37, 99, 235, 255),
+                    color: AlphaColor::from_rgba8(37, 99, 235, 255),
                 },
                 DemoColorSpan {
                     range: range_of(rich_text, "旁注"),
-                    color: tiny_skia::Color::from_rgba8(176, 0, 32, 255),
+                    color: AlphaColor::from_rgba8(176, 0, 32, 255),
                 },
             ],
             vec![
@@ -576,7 +579,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![DemoColorSpan {
                 range: range_of(file_note, "Review 3"),
-                color: tiny_skia::Color::from_rgba8(126, 34, 206, 255),
+                color: AlphaColor::from_rgba8(126, 34, 206, 255),
             }],
             vec![
                 RichTextSpan::with_paint(
@@ -683,7 +686,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![
                 DemoColorSpan {
                     range: range_of(closing, "连贯、安静而从容"),
-                    color: tiny_skia::Color::from_rgba8(26, 110, 60, 255),
+                    color: AlphaColor::from_rgba8(26, 110, 60, 255),
                 },
             ],
             vec![],
@@ -693,6 +696,38 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             physical_content_width,
             body.clone(),
             signature,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            appendix_title,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![TextSpan {
+                range: range_of(appendix_title, appendix_title),
+                style: TextStyle::builder()
+                    .font_families(body.font_families.clone())
+                    .font_size(19.5 * physical_scale)
+                    .font_weight(700)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            emoji_appendix,
+            physical_content_width,
+            body.clone(),
+            indented,
             vec![],
             vec![],
             vec![],

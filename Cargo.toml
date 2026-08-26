@@ -14,9 +14,10 @@ unicode-general-category = "1.1.0"
 unicode-properties = {version = "0.1.4", features = ["emoji"]}
 
 [dev-dependencies]
+glifo = "0.3"
 harfrust = "0.13"
 read-fonts = "0.43"
 skrifa = "0.46"
 softbuffer = "0.4.6"
-tiny-skia = "0.11.4"
+vello_cpu = "0.2.0"
 winit = "0.30"

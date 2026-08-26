@@ -2,6 +2,9 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 
 use softbuffer::{Context, Surface};
+use vello_cpu::color::palette::css::WHITE;
+use vello_cpu::kurbo::Rect;
+use vello_cpu::{Pixmap, RenderContext, Resources};
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
 use tiqian::org::tiqian::core::LayoutModel::LayoutResult;
 use tiqian::org::tiqian::core::LayoutQueries::positioned_clusters;
@@ -303,28 +306,28 @@ impl DesktopParagraphDemo {
             .as_ref()
             .ok_or_else(|| "demo page layout was not produced".to_owned())?;
         let padding = (LOGICAL_PADDING * scale_factor).round() as i32;
-        let content_width = self
-            .layout_key
-            .ok_or_else(|| "paragraph layout key was not produced".to_owned())?
-            .physical_content_width;
-        let page_width = (page.left_overhang + content_width as f32 + page.right_overhang)
-            .ceil()
-            .max(1.0) as u32;
-        let content_height = (page.top_overhang + page.height + page.bottom_overhang)
-            .ceil()
-            .max(1.0) as u32;
-        let mut page_pixmap = tiny_skia::Pixmap::new(page_width, content_height)
-            .ok_or_else(|| "cannot allocate demo page pixmap".to_owned())?;
+        let mut context = RenderContext::new(physical_size.width as u16, physical_size.height as u16);
+        let mut resources = Resources::new();
+        context.set_paint(WHITE);
+        context.fill_rect(&Rect::new(
+            0.0,
+            0.0,
+            physical_size.width as f64,
+            physical_size.height as f64,
+        ));
         let renderer = DemoRenderer::new(&self.catalog, scale_factor);
+        let page_origin_x = padding - page.left_overhang.round() as i32;
+        let page_origin_y = padding - self.scroll_y - page.top_overhang.round() as i32;
         for block in &page.blocks {
             match block {
                 DemoPageBlock::Text { document, layout, y } => {
                     self.paint_document(
-                        &mut page_pixmap,
+                        &mut context,
+                        &mut resources,
                         document,
                         layout,
-                        page.left_overhang.round() as i32,
-                        (page.top_overhang + y).round() as i32,
+                        page_origin_x + page.left_overhang.round() as i32,
+                        page_origin_y + (page.top_overhang + y).round() as i32,
                         &renderer,
                     )?;
                 }
@@ -338,36 +341,30 @@ impl DesktopParagraphDemo {
                     y,
                 } => {
                     self.paint_document(
-                        &mut page_pixmap,
+                        &mut context,
+                        &mut resources,
                         marker,
                         marker_layout,
-                        page.left_overhang.round() as i32,
-                        (page.top_overhang + y + marker_y).round() as i32,
+                        page_origin_x + page.left_overhang.round() as i32,
+                        page_origin_y + (page.top_overhang + y + marker_y).round() as i32,
                         &renderer,
                     )?;
                     self.paint_document(
-                        &mut page_pixmap,
+                        &mut context,
+                        &mut resources,
                         body,
                         body_layout,
-                        (page.left_overhang + gutter).round() as i32,
-                        (page.top_overhang + y).round() as i32,
+                        page_origin_x + (page.left_overhang + gutter).round() as i32,
+                        page_origin_y + (page.top_overhang + y).round() as i32,
                         &renderer,
                     )?;
                 }
             }
         }
 
-        let mut frame = tiny_skia::Pixmap::new(physical_size.width, physical_size.height)
-            .ok_or_else(|| "cannot allocate window pixmap".to_owned())?;
-        frame.fill(tiny_skia::Color::from_rgba8(255, 255, 255, 255));
-        frame.draw_pixmap(
-            padding - page.left_overhang.round() as i32,
-            padding - self.scroll_y - page.top_overhang.round() as i32,
-            page_pixmap.as_ref(),
-            &tiny_skia::PixmapPaint::default(),
-            tiny_skia::Transform::identity(),
-            None,
-        );
+        context.flush();
+        let mut frame = Pixmap::new(physical_size.width as u16, physical_size.height as u16);
+        context.render(&mut frame, &mut resources);
         window.pre_present_notify();
         let surface = self
             .surface
@@ -382,8 +379,8 @@ impl DesktopParagraphDemo {
         let mut buffer = surface
             .buffer_mut()
             .map_err(|error| format!("softbuffer buffer acquisition failed: {error}"))?;
-        for (pixel, rgba) in buffer.iter_mut().zip(frame.data().chunks_exact(4)) {
-            *pixel = u32::from(rgba[2]) | (u32::from(rgba[1]) << 8) | (u32::from(rgba[0]) << 16);
+        for (pixel, rgba) in buffer.iter_mut().zip(frame.data()) {
+            *pixel = u32::from(rgba.b) | (u32::from(rgba.g) << 8) | (u32::from(rgba.r) << 16);
         }
         buffer
             .present()
@@ -392,7 +389,8 @@ impl DesktopParagraphDemo {
 
     fn paint_document(
         &self,
-        page: &mut tiny_skia::Pixmap,
+        context: &mut RenderContext,
+        resources: &mut Resources,
         document: &DemoDocument,
         layout: &LayoutResult,
         x: i32,
@@ -400,11 +398,11 @@ impl DesktopParagraphDemo {
         renderer: &DemoRenderer<'_>,
     ) -> Result<(), String> {
         let renderer = renderer.translated(x as f32, y as f32);
-        renderer.paint_rich_text_backgrounds(page, layout, &document.rich_text)?;
-        renderer.paint_body(page, layout, &document.colors)?;
-        renderer.paint_rich_text_lines(page, layout, &document.rich_text)?;
-        renderer.paint_decorations(page, layout, &document.colors)?;
-        renderer.paint_annotations(page, layout)?;
+        renderer.paint_rich_text_backgrounds(context, layout, &document.rich_text)?;
+        renderer.paint_body(context, resources, layout, &document.colors)?;
+        renderer.paint_rich_text_lines(context, layout, &document.rich_text)?;
+        renderer.paint_decorations(context, layout, &document.colors)?;
+        renderer.paint_annotations(context, resources, layout)?;
         Ok(())
     }
 
@@ -532,17 +530,25 @@ mod tests {
             .all(|glyph| glyph.render_font_key.is_some()));
         let width = result.input.constraints.max_width().ceil().max(1.0) as u32;
         let height = result.size.height.ceil().max(1.0) as u32;
-        let mut pixmap = tiny_skia::Pixmap::new(width, height).unwrap();
+        let mut context = RenderContext::new(width as u16, height as u16);
+        let mut resources = Resources::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut pixmap, result, &document.rich_text)
+            .paint_rich_text_backgrounds(&mut context, result, &document.rich_text)
             .unwrap();
-        renderer.paint_body(&mut pixmap, result, &document.colors).unwrap();
         renderer
-            .paint_rich_text_lines(&mut pixmap, result, &document.rich_text)
+            .paint_body(&mut context, &mut resources, result, &document.colors)
             .unwrap();
-        renderer.paint_decorations(&mut pixmap, result, &document.colors).unwrap();
-        renderer.paint_annotations(&mut pixmap, result).unwrap();
+        renderer
+            .paint_rich_text_lines(&mut context, result, &document.rich_text)
+            .unwrap();
+        renderer.paint_decorations(&mut context, result, &document.colors).unwrap();
+        renderer
+            .paint_annotations(&mut context, &mut resources, result)
+            .unwrap();
+        context.flush();
+        let mut pixmap = Pixmap::new(width as u16, height as u16);
+        context.render(&mut pixmap, &mut resources);
     }
 
     #[test]
@@ -615,6 +621,11 @@ mod tests {
             ("serif", 1, "demo-serif@wght=400"),
             ("monospace", 0, "demo-monospace@wght=400"),
             ("editorial-notes.md", 0, "demo-monospace@wght=400"),
+            ("👩🏽‍💻", 0, "demo-emoji@wght=400"),
+            ("👨‍👩‍👧‍👦", 0, "demo-emoji@wght=400"),
+            ("🇨🇳", 0, "demo-emoji@wght=400"),
+            ("1️⃣", 0, "demo-emoji@wght=400"),
+            ("✈️", 0, "demo-emoji@wght=400"),
         ];
 
         for block in document.blocks {
