@@ -200,6 +200,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let bullet_intro = "本页适合在以下情形中检查：";
     let closing = "好的中文排版不会抢在文字之前引人注意，却能让阅读更加连贯、安静而从容。字形、标点、注文和段落彼此协调，长篇正文才能在不同版面中保持稳定的节奏。";
     let signature_text = "——《提椠中文正文排版样张》";
+    let boundary_appendix_title = "附录：窄栏断词与行尾标点";
     let appendix_title = "附录：Emoji 组合字形";
     let emoji_appendix = "本附录列出可用于核对的组合字形：👩🏽‍💻、👨‍👩‍👧‍👦、🇨🇳、1️⃣ 与 ✈️。每一项都应作为完整字形参与排版，在换行、选择与绘制时保持一致。";
 
@@ -264,23 +265,6 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
         )),
-        DemoDocumentDemoBlock::NarrowParagraph {
-            document: demo_document(
-                narrow_proof,
-                4.0 * body.font_size,
-                body.clone(),
-                flush.clone(),
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-            ),
-            max_width: 4.0 * body.font_size,
-        },
-        DemoDocumentDemoBlock::Section {
-            height: section_height,
-        },
         DemoDocumentDemoBlock::Paragraph(demo_document(
             mixed_text,
             physical_content_width,
@@ -314,26 +298,6 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
         )),
-        DemoDocumentDemoBlock::NarrowParagraph {
-            document: demo_document(
-                narrow_hyphenation,
-                8.0 * body.font_size,
-                body.clone(),
-                flush.clone(),
-                vec![TextSpan {
-                    range: range_of(narrow_hyphenation, "internationalization"),
-                    style: TextStyle::builder()
-                        .font_families(vec!["Inter".to_owned()])
-                        .font_size(body.font_size)
-                        .build(),
-                }],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-            ),
-            max_width: 8.0 * body.font_size,
-        },
         DemoDocumentDemoBlock::Paragraph(demo_document(
             list_intro,
             physical_content_width,
@@ -702,6 +666,61 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
         )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            boundary_appendix_title,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![TextSpan {
+                range: range_of(boundary_appendix_title, boundary_appendix_title),
+                style: TextStyle::builder()
+                    .font_families(body.font_families.clone())
+                    .font_size(19.5 * physical_scale)
+                    .font_weight(700)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::NarrowParagraph {
+            document: demo_document(
+                narrow_proof,
+                4.0 * body.font_size,
+                body.clone(),
+                flush.clone(),
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ),
+            max_width: 4.0 * body.font_size,
+        },
+        DemoDocumentDemoBlock::NarrowParagraph {
+            document: demo_document(
+                narrow_hyphenation,
+                8.0 * body.font_size,
+                body.clone(),
+                flush.clone(),
+                vec![TextSpan {
+                    range: range_of(narrow_hyphenation, "internationalization"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["Inter".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                }],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ),
+            max_width: 8.0 * body.font_size,
+        },
         DemoDocumentDemoBlock::Section {
             height: section_height,
         },
