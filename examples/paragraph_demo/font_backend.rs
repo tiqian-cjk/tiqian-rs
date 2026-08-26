@@ -22,11 +22,13 @@ const CJK_FONT_KEY: &str = "demo-cjk";
 const LATIN_FONT_KEY: &str = "demo-latin";
 const SERIF_FONT_KEY: &str = "demo-serif";
 const MONOSPACE_FONT_KEY: &str = "demo-monospace";
+const GARAMOND_FONT_KEY: &str = "demo-garamond";
 const EMOJI_FONT_KEY: &str = "demo-emoji";
 const CJK_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf");
 const LATIN_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/InterVariable.ttf");
 const SERIF_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSerifCN-VF.otf");
 const MONOSPACE_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
+const GARAMOND_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/EBGaramond-VariableFont_wght.ttf");
 const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/NotoColorEmoji-Regular.ttf");
 
 #[derive(Clone)]
@@ -69,6 +71,11 @@ impl DemoFontCatalog {
             "FiraCode Nerd Font",
             MONOSPACE_FONT_BYTES,
         )?;
+        let garamond = DemoFontFace::load(
+            GARAMOND_FONT_KEY,
+            "EB Garamond",
+            GARAMOND_FONT_BYTES,
+        )?;
         let emoji = DemoFontFace::load(EMOJI_FONT_KEY, "Noto Color Emoji", EMOJI_FONT_BYTES)?;
         Ok(Self {
             faces: HashMap::from([
@@ -76,6 +83,7 @@ impl DemoFontCatalog {
                 (LATIN_FONT_KEY, latin),
                 (SERIF_FONT_KEY, serif),
                 (MONOSPACE_FONT_KEY, monospace),
+                (GARAMOND_FONT_KEY, garamond),
                 (EMOJI_FONT_KEY, emoji),
             ]),
         })
@@ -119,6 +127,7 @@ impl DemoFontCatalog {
                 "Inter" => Some(LATIN_FONT_KEY),
                 "serif" | "Source Han Serif CN" => Some(SERIF_FONT_KEY),
                 "monospace" | "FiraCode Nerd Font" => Some(MONOSPACE_FONT_KEY),
+                "EB Garamond" => Some(GARAMOND_FONT_KEY),
                 "emoji" | "Noto Color Emoji" => Some(EMOJI_FONT_KEY),
                 _ => None,
             });

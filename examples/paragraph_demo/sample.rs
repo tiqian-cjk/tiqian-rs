@@ -203,6 +203,17 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let boundary_appendix_title = "附录：窄栏断词与行尾标点";
     let appendix_title = "附录：Emoji 组合字形";
     let emoji_appendix = "本附录列出可用于核对的组合字形：👩🏽‍💻、👨‍👩‍👧‍👦、🇨🇳、1️⃣ 与 ✈️。每一项都应作为完整字形参与排版，在换行、选择与绘制时保持一致。";
+    let ligature_appendix_title = "附录：连字字形";
+    let ligature_symbols = "FiraCode: -> <= := != === //";
+    let ligature_words = "EB Garamond: office affinity waffle";
+    let fira_code = TextStyle::builder()
+        .font_families(vec!["FiraCode Nerd Font".to_owned()])
+        .font_size(15.0 * physical_scale)
+        .build();
+    let eb_garamond = TextStyle::builder()
+        .font_families(vec!["EB Garamond".to_owned()])
+        .font_size(17.0 * physical_scale)
+        .build();
 
     let title_style = TextStyle::builder()
         .font_families(body.font_families.clone())
@@ -747,6 +758,49 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             physical_content_width,
             body.clone(),
             indented,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            ligature_appendix_title,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![TextSpan {
+                range: range_of(ligature_appendix_title, ligature_appendix_title),
+                style: TextStyle::builder()
+                    .font_families(body.font_families.clone())
+                    .font_size(19.5 * physical_scale)
+                    .font_weight(700)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            ligature_words,
+            physical_content_width,
+            eb_garamond,
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            ligature_symbols,
+            physical_content_width,
+            fira_code,
+            flush,
             vec![],
             vec![],
             vec![],

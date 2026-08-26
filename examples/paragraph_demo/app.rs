@@ -626,6 +626,8 @@ mod tests {
             ("🇨🇳", 0, "demo-emoji@wght=400"),
             ("1️⃣", 0, "demo-emoji@wght=400"),
             ("✈️", 0, "demo-emoji@wght=400"),
+            ("office affinity waffle", 0, "demo-garamond@wght=400"),
+            ("-> <= := != === //", 0, "demo-monospace@wght=400"),
         ];
 
         for block in document.blocks {
