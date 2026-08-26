@@ -185,8 +185,7 @@ impl DesktopParagraphDemo {
         let mut bottom_overhang = 0.0_f32;
         for (index, block) in document.blocks.into_iter().enumerate() {
             match block {
-                DemoDocumentDemoBlock::TextField(document)
-                | DemoDocumentDemoBlock::Paragraph(document) => {
+                DemoDocumentDemoBlock::Paragraph(document) => {
                     let (document, layout) = self.layout_document(document, physical_content_width as f32);
                     let (left, top, right, bottom) = layout_paint_overhang(&layout);
                     left_overhang = left_overhang.max(left);
@@ -203,6 +202,21 @@ impl DesktopParagraphDemo {
                     if index < 3 {
                         y += TOP_LEVEL_GAP_LOGICAL * scale_factor;
                     }
+                }
+                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                    let (document, layout) = self.layout_document(document, max_width);
+                    let (left, top, right, bottom) = layout_paint_overhang(&layout);
+                    left_overhang = left_overhang.max(left);
+                    top_overhang = top_overhang.max(top - y);
+                    right_overhang = right_overhang.max(right);
+                    bottom_overhang = bottom_overhang.max(y + layout.size.height + bottom);
+                    let block_y = y;
+                    y += layout.size.height;
+                    blocks.push(DemoPageBlock::Text {
+                        document,
+                        layout,
+                        y: block_y,
+                    });
                 }
                 DemoDocumentDemoBlock::ListItem { marker, body } => {
                     let font_size = body.input.text_style.font_size;
@@ -556,32 +570,87 @@ mod tests {
     }
 
     #[test]
-    fn compose_demo_blocks_are_all_layout_and_replayable() {
+    fn demo_blocks_are_all_layout_and_replayable() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
         engine.fallback_resolver = Box::new(catalog.clone());
         engine.font_metrics_resolver = Box::new(catalog.clone());
         engine.text_shaper = Box::new(catalog.clone());
         let document = build_document_demo(640.0, 1.0);
-        let mut rendered_text_blocks = 0;
         for block in document.blocks {
             match block {
-                DemoDocumentDemoBlock::TextField(document)
-                | DemoDocumentDemoBlock::Paragraph(document) => {
+                DemoDocumentDemoBlock::Paragraph(document) => {
                     let result = engine.layout(document.input.clone());
                     assert_replayable(&catalog, &result, &document);
-                    rendered_text_blocks += 1;
+                }
+                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                    let mut input = document.input.clone();
+                    input.constraints = LayoutConstraints::with_defaults(max_width);
+                    let result = engine.layout(input);
+                    assert_replayable(&catalog, &result, &document);
                 }
                 DemoDocumentDemoBlock::ListItem { marker, body } => {
                     let marker_result = engine.layout(marker.input.clone());
                     let body_result = engine.layout(body.input.clone());
                     assert_replayable(&catalog, &marker_result, &marker);
                     assert_replayable(&catalog, &body_result, &body);
-                    rendered_text_blocks += 2;
                 }
                 DemoDocumentDemoBlock::Section { .. } => {}
             }
         }
-        assert_eq!(rendered_text_blocks, 23);
+    }
+
+    #[test]
+    fn default_window_sample_exhibits_hanging_punctuation_and_hyphenation() {
+        let catalog = DemoFontCatalog::load().unwrap();
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        engine.fallback_resolver = Box::new(catalog.clone());
+        engine.font_metrics_resolver = Box::new(catalog.clone());
+        engine.text_shaper = Box::new(catalog);
+        let document = build_document_demo(672.0, 1.0);
+        let mut hanging_was_seen = false;
+        let mut hyphenation_was_seen = false;
+
+        for block in document.blocks {
+            match block {
+                DemoDocumentDemoBlock::Paragraph(document) => {
+                    let is_mixed_sample = document.input.content.text.starts_with("中文书刊经常夹用");
+                    let layout = engine.layout(document.input);
+                    if is_mixed_sample {
+                        hyphenation_was_seen = layout
+                            .lines
+                            .iter()
+                            .any(|line| !line.hyphen_glyphs.is_empty());
+                    }
+                }
+                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                    let is_hanging_sample = document.input.content.text == "校样排印，宜留呼吸。";
+                    let is_hyphenation_sample = document
+                        .input
+                        .content
+                        .text
+                        .starts_with("术语 internationalization");
+                    let mut input = document.input;
+                    input.constraints = LayoutConstraints::with_defaults(max_width);
+                    let layout = engine.layout(input);
+                    if is_hanging_sample {
+                        hanging_was_seen = layout
+                            .lines
+                            .iter()
+                            .any(|line| line.hanging_punctuation_advance > 0.0);
+                    }
+                    if is_hyphenation_sample {
+                        hyphenation_was_seen = layout
+                            .lines
+                            .iter()
+                            .any(|line| !line.hyphen_glyphs.is_empty());
+                    }
+                }
+                DemoDocumentDemoBlock::ListItem { .. } | DemoDocumentDemoBlock::Section { .. } => {}
+            }
+        }
+
+        assert!(hanging_was_seen, "default-width punctuation sample must exhibit hanging punctuation");
+        assert!(hyphenation_was_seen, "default-width mixed sample must exhibit English hyphenation");
     }
 }

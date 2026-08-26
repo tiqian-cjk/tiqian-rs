@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LayoutInput, RichTextBackgroundPaint,
-    ParagraphStyle, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan, RubyKind,
-    RubySpan, TextSpan, TextStyle, TiqianTextContent,
+    LastLineAlignment, ParagraphStyle, RichTextLinePattern, RichTextPaint, RichTextRole,
+    RichTextSpan, RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle,
+    TiqianTextContent,
 };
 use tiqian::org::tiqian::core::Units::Ic;
 
@@ -17,14 +18,14 @@ pub struct DemoDocument {
     pub rich_text: Vec<RichTextSpan>,
 }
 
-/// Private document model matching the block order rendered by Kotlin's TiqianDemoScreen.
+/// Private block model for the desktop demo sample.
 pub struct DemoDocumentDemo {
     pub blocks: Vec<DemoDocumentDemoBlock>,
 }
 
 pub enum DemoDocumentDemoBlock {
-    TextField(DemoDocument),
     Paragraph(DemoDocument),
+    NarrowParagraph { document: DemoDocument, max_width: f32 },
     ListItem { marker: DemoDocument, body: DemoDocument },
     Section { height: f32 },
 }
@@ -152,7 +153,7 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
     }
 }
 
-/// Builds the complete block sequence and source text displayed by Kotlin's runComposeDemo.
+/// Builds the formal feature-inspection sample displayed by the desktop demo.
 pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> DemoDocumentDemo {
     let body = TextStyle::builder()
         .font_families(vec!["Source Han Sans SC".to_owned()])
@@ -161,252 +162,175 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let flush = ParagraphStyle::builder()
         .first_line_indent(Some(Ic::ZERO))
         .build();
-    let block = ParagraphStyle::builder()
+    let indented = ParagraphStyle::builder()
+        .line_height(Some(22.5 * physical_scale))
+        .build();
+    let block_quote = ParagraphStyle::builder()
         .block_indent(Ic { count: 2.0 })
         .first_line_indent(Some(Ic::ZERO))
         .build();
+    let uniform_ruby = ParagraphStyle::builder()
+        .ruby_line_height_mode(RubyLineHeightMode::UniformParagraph)
+        .build();
+    let title_paragraph = ParagraphStyle::builder()
+        .first_line_indent(Some(Ic::ZERO))
+        .last_line_alignment(LastLineAlignment::Center)
+        .build();
+    let signature = ParagraphStyle::builder()
+        .first_line_indent(Some(Ic::ZERO))
+        .last_line_alignment(LastLineAlignment::End)
+        .build();
     let section_height = 22.5 * physical_scale;
-    let draft = "在这里打字，看我实时重排；也可以拖选、双击并复制。";
-    let underline = "“开标点与句末标点。” 下划线只画字身，不吃首尾标点 glue。";
-    let opening = "诸位好。我叫提椠，一台对中文正文斤斤计较的排版引擎。别家把 espresso 和汉字一锅乱炖，我偏要在中西之间留出四分之一个字的体面距离——你瞧，连这句里的 OpenType，我都没让它贴脸。";
-    let rules = "我的家规不多，列在下面：";
-    let mourning = "上周我还痛失一员旧部：双面印刷。它本为纸张正反透印而生，奈何屏幕没有背面，只好请它先走一步。纸终究比屏幕厚道，这话我只敢斜着说。";
-    let bopomofo = "台湾来的朋友也照顾周到——您好，请坐：ㄅㄆㄇ 竖在字旁，平上去入标得分毫不差。";
-    let reference = "我奉CLREQ——也就是《中文排版需求》——为圭臬，闲来也翻翻Unicode的家底。";
-    let list_intro = "顺带一提，这些我也顺手包办：";
-    let closing = "有人嫌我龟毛，我只当是褒奖。毕竟，好看的中文，是一个字一个字抠出来的。";
+
+    let proof = "「第三次校样」据编辑批注修订，日期为二〇二六年八月二十六日。";
+    let title = "提椠中文正文排版样张";
+    let overview = "汉字排版讲究的不只是字形端正，也包括行列疏密、标点位置与段落节奏。本页选取书刊校样中常见的文字形式，集中呈现简体中文横排、中西文混排、行间注文和传统标注。窗口宽度改变时，文字会依照新的版心重新成行；标题、列表与注文也随正文一同调整。";
+    let punctuation = "编辑在批注中写道：“排版并非把文字摆下去，而是让每一行都获得清楚、安稳而从容的秩序。”括号（包括圆括号、方括号和书名号）应与正文相接，逗号、句号、问号和感叹号都在恰当的位置。遇到“真的如此吗？！”一类连续标点时，字面仍须紧凑，不宜留下突兀的空白。";
+    let narrow_proof = "校样排印，宜留呼吸。";
+    let mixed_text = "中文书刊经常夹用 Latin letters、OpenType 字体名称、Unicode 字符编号和 HTTP/2 协议名称。汉字与西文字母或数字相邻时，应留有细微而稳定的间隔；行首与行尾则不额外添空。较长的英文词如 internationalization 和 interoperability，可以在合适的音节处使用连字符转行，但不应任意拆开。";
+    let narrow_hyphenation = "术语 internationalization 可按音节转行。";
+    let list_intro = "校阅正文时，可依次观察以下项目：";
+    let pinyin = "地名、术语或生僻字可以附加拼音。例如，“提椠”二字读作 tíqiàn；注文居于基字上方，既帮助读者辨音，也不打乱正文原有的行列。相邻注文较长时，字间距离可以适度调整，使注音清楚而不显拥挤。";
+    let bopomofo = "为照顾使用注音符号的读者，本页另以“您好”为例：您字右侧标注 ㄋㄧㄣˊ，好字右侧标注 ㄏㄠˇ。声母、韵母与调号依字身排列，注文与正文之间保持清楚而稳定的对应关系。";
+    let decorations = "讨论现代中文排版时，北京大学的研究者常会参阅《中文排版需求》以及相关字体排印著作。书名可用波浪线标示，专有名称则用直线区别。已故语言学家朱德熙先生对现代汉语研究贡献深远；在特定出版物中，其姓名可以示亡号标明。需要读者格外留意的词句，还可以加着重号。";
+    let quote = "编校札记：版面宽阔时，正文宜从容舒展；\n栏宽收窄时，段首缩进与行间距离也应保持协调。";
+    let rich_text = "校样状态分为：已核、待校、旁注与撤销。已核内容可以绿色标示；待校内容使用蓝色；旁注使用红色。新增词句加实线下划线，存疑内容加虚线下划线，补充说明加点线下划线，已经撤销的文字则保留删除线，以便追溯修改过程。";
+    let file_note = "本次校样依据 editorial-notes.md 整理，参考版本为 Review 3。文件名采用等宽字体，版本名称加浅色背景；两者夹在中文正文中时，前后仍应保留舒适的阅读间隔。";
+    let bullet_intro = "本页适合在以下情形中检查：";
+    let closing = "好的中文排版不会抢在文字之前引人注意，却能让阅读更加连贯、安静而从容。字形、标点、注文和段落彼此协调，长篇正文才能在不同版面中保持稳定的节奏。";
+    let signature_text = "——《提椠中文正文排版样张》";
 
     let title_style = TextStyle::builder()
         .font_families(body.font_families.clone())
         .font_size(28.5 * physical_scale)
         .font_weight(700)
         .build();
+    let emphasis = |text: &str, needle: &str| DecorationSpan {
+        range: range_of(text, needle),
+        kind: DecorationKind::Emphasis,
+    };
     let mut blocks = vec![
-        DemoDocumentDemoBlock::TextField(demo_document(
-            draft,
-            physical_content_width,
-            body.clone(),
-            flush.clone(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )),
         DemoDocumentDemoBlock::Paragraph(demo_document(
-            draft,
+            proof,
             physical_content_width,
             body.clone(),
-            ParagraphStyle::default(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )),
-        DemoDocumentDemoBlock::Paragraph(demo_document(
-            underline,
-            physical_content_width,
-            body.clone(),
-            ParagraphStyle::default(),
+            indented.clone(),
             vec![],
             vec![],
             vec![],
             vec![],
             vec![RichTextSpan::with_paint(
-                range_of(underline, "“开标点与句末标点。”"),
+                range_of(proof, "「第三次校样」"),
                 RichTextRole::Underline,
                 RichTextPaint::default(),
             )],
         )),
         DemoDocumentDemoBlock::Paragraph(demo_document(
-            "一台排版引擎的自述",
+            title,
             physical_content_width,
             body.clone(),
-            flush.clone(),
+            title_paragraph,
             vec![TextSpan {
-                range: TextRange::new(0, 9),
+                range: range_of(title, title),
                 style: title_style,
             }],
             vec![],
+            vec![RubySpan::new(range_of(title, "提椠"), "tíqiàn".to_owned())],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            overview,
+            physical_content_width,
+            body.clone(),
+            indented.clone(),
+            vec![],
+            vec![emphasis(overview, "行列疏密"), emphasis(overview, "段落节奏")],
             vec![],
             vec![],
             vec![],
         )),
         DemoDocumentDemoBlock::Paragraph(demo_document(
-            opening,
+            punctuation,
             physical_content_width,
             body.clone(),
-            ParagraphStyle::default(),
+            indented.clone(),
             vec![],
-            vec![
-                DecorationSpan {
-                    range: range_of(opening, "斤斤计较"),
-                    kind: DecorationKind::Emphasis,
-                },
-                DecorationSpan {
-                    range: range_of(opening, "四分之一个字"),
-                    kind: DecorationKind::Emphasis,
-                },
-            ],
-            vec![RubySpan::new(range_of(opening, "提椠"), "tíqiàn".to_owned())],
+            vec![],
+            vec![],
             vec![],
             vec![],
         )),
+        DemoDocumentDemoBlock::NarrowParagraph {
+            document: demo_document(
+                narrow_proof,
+                4.0 * body.font_size,
+                body.clone(),
+                flush.clone(),
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ),
+            max_width: 4.0 * body.font_size,
+        },
         DemoDocumentDemoBlock::Section {
             height: section_height,
         },
         DemoDocumentDemoBlock::Paragraph(demo_document(
-            rules,
+            mixed_text,
             physical_content_width,
             body.clone(),
-            flush.clone(),
-            vec![TextSpan {
-                range: range_of(rules, "家规"),
-                style: TextStyle::builder()
-                    .font_families(body.font_families.clone())
-                    .font_size(body.font_size)
-                    .font_weight(700)
-                    .build(),
-            }],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )),
-    ];
-    blocks.extend([
-        demo_list_item(
-            "一、",
-            "标点不许在行首撒野：逗号句号一律避头尾，该挤就挤，该悬就悬。",
-            physical_content_width,
-            body.clone(),
-            vec![DecorationSpan {
-                range: TextRange::new(16, 19),
-                kind: DecorationKind::Emphasis,
-            }],
-            vec![],
-            vec![],
-        ),
-        demo_list_item(
-            "二、",
-            "字体随你挑——宋体的雅、等宽的拙，按角色各取所需。",
-            physical_content_width,
-            body.clone(),
-            vec![],
+            indented.clone(),
             vec![
                 TextSpan {
-                    range: range_of("字体随你挑——宋体的雅、等宽的拙，按角色各取所需。", "宋体的雅"),
+                    range: range_of(mixed_text, "OpenType"),
                     style: TextStyle::builder()
-                        .font_families(vec!["serif".to_owned()])
+                        .font_families(vec!["Inter".to_owned()])
                         .font_size(body.font_size)
                         .build(),
                 },
                 TextSpan {
-                    range: range_of("字体随你挑——宋体的雅、等宽的拙，按角色各取所需。", "等宽的拙"),
+                    range: range_of(mixed_text, "Unicode"),
                     style: TextStyle::builder()
-                        .font_families(vec!["monospace".to_owned()])
+                        .font_families(vec!["Inter".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+                TextSpan {
+                    range: range_of(mixed_text, "HTTP/2"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["Inter".to_owned()])
                         .font_size(body.font_size)
                         .build(),
                 },
             ],
             vec![],
-        ),
-        demo_list_item(
-            "三、",
-            "注音拼音都伺候，连生僻字也给你标得明明白白。",
-            physical_content_width,
-            body.clone(),
             vec![],
             vec![],
-            vec![RubySpan::new(
-                range_of("注音拼音都伺候，连生僻字也给你标得明明白白。", "生僻字"),
-                "shēngpì zì".to_owned(),
-            )],
-        ),
-    ]);
-    blocks.extend([
-        DemoDocumentDemoBlock::Section {
-            height: section_height,
+            vec![],
+        )),
+        DemoDocumentDemoBlock::NarrowParagraph {
+            document: demo_document(
+                narrow_hyphenation,
+                8.0 * body.font_size,
+                body.clone(),
+                flush.clone(),
+                vec![TextSpan {
+                    range: range_of(narrow_hyphenation, "internationalization"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["Inter".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                }],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ),
+            max_width: 8.0 * body.font_size,
         },
-        DemoDocumentDemoBlock::Paragraph(demo_document(
-            mourning,
-            physical_content_width,
-            body.clone(),
-            ParagraphStyle::default(),
-            vec![TextSpan {
-                range: range_of(mourning, "纸终究比屏幕厚道，这话我只敢斜着说。"),
-                style: TextStyle::builder()
-                    .font_families(body.font_families.clone())
-                    .font_size(body.font_size)
-                    .italic(true)
-                    .build(),
-            }],
-            vec![
-                DecorationSpan {
-                    range: range_of(mourning, "双面印刷"),
-                    kind: DecorationKind::Mourning,
-                },
-                DecorationSpan {
-                    range: range_of(mourning, "先走一步"),
-                    kind: DecorationKind::Emphasis,
-                },
-            ],
-            vec![],
-            vec![],
-            vec![],
-        )),
-        DemoDocumentDemoBlock::Paragraph(demo_document(
-            bopomofo,
-            physical_content_width,
-            body.clone(),
-            ParagraphStyle::default(),
-            vec![],
-            vec![DecorationSpan {
-                range: range_of(bopomofo, "分毫不差"),
-                kind: DecorationKind::Emphasis,
-            }],
-            vec![
-                RubySpan::builder(range_occurrence(bopomofo, "您", 0), "ㄋㄧㄣˊ".to_owned())
-                    .kind(RubyKind::Bopomofo)
-                    .build(),
-                RubySpan::builder(range_occurrence(bopomofo, "好", 0), "ㄏㄠˇ".to_owned())
-                    .kind(RubyKind::Bopomofo)
-                    .build(),
-                RubySpan::builder(range_occurrence(bopomofo, "请", 0), "ㄑㄧㄥˇ".to_owned())
-                    .kind(RubyKind::Bopomofo)
-                    .build(),
-            ],
-            vec![],
-            vec![],
-        )),
-        DemoDocumentDemoBlock::Section {
-            height: section_height,
-        },
-        DemoDocumentDemoBlock::Paragraph(demo_document(
-            reference,
-            physical_content_width,
-            body.clone(),
-            block,
-            vec![],
-            vec![
-                DecorationSpan {
-                    range: range_of(reference, "CLREQ"),
-                    kind: DecorationKind::ProperNoun,
-                },
-                DecorationSpan {
-                    range: range_of(reference, "《中文排版需求》"),
-                    kind: DecorationKind::BookTitle,
-                },
-                DecorationSpan {
-                    range: range_of(reference, "Unicode"),
-                    kind: DecorationKind::ProperNoun,
-                },
-            ],
-            vec![],
-            vec![],
-            vec![],
-        )),
         DemoDocumentDemoBlock::Paragraph(demo_document(
             list_intro,
             physical_content_width,
@@ -418,11 +342,265 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![],
         )),
+    ];
+    blocks.extend([
+        demo_list_item(
+            "一、",
+            "每个非末行在版心内保持齐整，末行则依段落用途自然收束。",
+            physical_content_width,
+            body.clone(),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        demo_list_item(
+            "二、",
+            "标点临近行首或行尾时，系统优先调整可用空隙，避免出现突兀的断行。",
+            physical_content_width,
+            body.clone(),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        demo_list_item(
+            "三、",
+            "中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。",
+            physical_content_width,
+            body.clone(),
+            vec![],
+            vec![
+                TextSpan {
+                    range: range_of("中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。", "serif"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["serif".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+                TextSpan {
+                    range: range_of("中文、serif 引文与 monospace-note.txt 各用适合的字体呈现，混排时仍保持稳定的基线和行距。", "monospace-note.txt"),
+                    style: TextStyle::builder()
+                        .font_families(vec!["monospace".to_owned()])
+                        .font_size(body.font_size)
+                        .build(),
+                },
+            ],
+            vec![],
+        ),
+    ]);
+    blocks.extend([
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            pinyin,
+            physical_content_width,
+            body.clone(),
+            uniform_ruby,
+            vec![],
+            vec![emphasis(pinyin, "注文")],
+            vec![RubySpan::new(range_of(pinyin, "提椠"), "tíqiàn".to_owned())],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            bopomofo,
+            physical_content_width,
+            body.clone(),
+            indented.clone(),
+            vec![],
+            vec![emphasis(bopomofo, "清楚而稳定")],
+            vec![
+                RubySpan::builder(range_of(bopomofo, "您"), "ㄋㄧㄣˊ".to_owned())
+                    .kind(RubyKind::Bopomofo)
+                    .build(),
+                RubySpan::builder(range_of(bopomofo, "好"), "ㄏㄠˇ".to_owned())
+                    .kind(RubyKind::Bopomofo)
+                    .build(),
+            ],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            decorations,
+            physical_content_width,
+            body.clone(),
+            indented.clone(),
+            vec![],
+            vec![
+                DecorationSpan {
+                    range: range_of(decorations, "北京大学"),
+                    kind: DecorationKind::ProperNoun,
+                },
+                DecorationSpan {
+                    range: range_of(decorations, "《中文排版需求》"),
+                    kind: DecorationKind::BookTitle,
+                },
+                DecorationSpan {
+                    range: range_of(decorations, "朱德熙"),
+                    kind: DecorationKind::Mourning,
+                },
+                emphasis(decorations, "格外留意"),
+            ],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            quote,
+            physical_content_width,
+            body.clone(),
+            block_quote,
+            vec![TextSpan {
+                range: range_of(quote, "从容舒展"),
+                style: TextStyle::builder()
+                    .font_families(body.font_families.clone())
+                    .font_size(body.font_size)
+                    .italic(true)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            rich_text,
+            physical_content_width,
+            body.clone(),
+            indented.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![
+                DemoColorSpan {
+                    range: range_of(rich_text, "已核"),
+                    color: tiny_skia::Color::from_rgba8(26, 110, 60, 255),
+                },
+                DemoColorSpan {
+                    range: range_of(rich_text, "待校"),
+                    color: tiny_skia::Color::from_rgba8(37, 99, 235, 255),
+                },
+                DemoColorSpan {
+                    range: range_of(rich_text, "旁注"),
+                    color: tiny_skia::Color::from_rgba8(176, 0, 32, 255),
+                },
+            ],
+            vec![
+                RichTextSpan::with_paint(
+                    range_of(rich_text, "新增词句"),
+                    RichTextRole::Underline,
+                    RichTextPaint::default(),
+                ),
+                RichTextSpan::with_paint(
+                    range_of(rich_text, "存疑内容"),
+                    RichTextRole::Underline,
+                    RichTextPaint::builder()
+                        .line_pattern(RichTextLinePattern::dashed(
+                            physical_scale,
+                            3.0 * physical_scale,
+                            2.0 * physical_scale,
+                        ))
+                        .build(),
+                ),
+                RichTextSpan::with_paint(
+                    range_of(rich_text, "补充说明"),
+                    RichTextRole::Underline,
+                    RichTextPaint::builder()
+                        .line_pattern(RichTextLinePattern::dotted(
+                            1.5 * physical_scale,
+                            1.5 * physical_scale,
+                        ))
+                        .build(),
+                ),
+                RichTextSpan::with_paint(
+                    range_of(rich_text, "已经撤销的文字"),
+                    RichTextRole::LineThrough,
+                    RichTextPaint::default(),
+                ),
+                RichTextSpan::with_paint(
+                    range_of(rich_text, "校样状态"),
+                    RichTextRole::Background,
+                    RichTextPaint::builder()
+                        .argb(0xFFFDE68A_u32 as i32)
+                        .background(
+                            RichTextBackgroundPaint::builder()
+                                .horizontal_padding(2.0 * physical_scale)
+                                .vertical_padding(1.0 * physical_scale)
+                                .corner_radius(3.0 * physical_scale)
+                                .build(),
+                        )
+                        .build(),
+                ),
+            ],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            file_note,
+            physical_content_width,
+            body.clone(),
+            indented.clone(),
+            vec![TextSpan {
+                range: range_of(file_note, "editorial-notes.md"),
+                style: TextStyle::builder()
+                    .font_families(vec!["monospace".to_owned()])
+                    .font_size(body.font_size)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![DemoColorSpan {
+                range: range_of(file_note, "Review 3"),
+                color: tiny_skia::Color::from_rgba8(126, 34, 206, 255),
+            }],
+            vec![
+                RichTextSpan::with_paint(
+                    range_of(file_note, "Review 3"),
+                    RichTextRole::Background,
+                    RichTextPaint::builder()
+                        .argb(0xFFFDE68A_u32 as i32)
+                        .background(
+                            RichTextBackgroundPaint::builder()
+                                .horizontal_padding(2.0 * physical_scale)
+                                .vertical_padding(1.0 * physical_scale)
+                                .corner_radius(3.0 * physical_scale)
+                                .build(),
+                        )
+                        .build(),
+                ),
+                RichTextSpan::with_paint(
+                    range_of(file_note, "editorial-notes.md"),
+                    RichTextRole::InlineCode,
+                    RichTextPaint::builder()
+                        .argb(0xFFE5E7EB_u32 as i32)
+                        .background(
+                            RichTextBackgroundPaint::builder()
+                                .horizontal_padding(2.0 * physical_scale)
+                                .vertical_padding(1.0 * physical_scale)
+                                .corner_radius(2.0 * physical_scale)
+                                .build(),
+                        )
+                        .build(),
+                ),
+            ],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            bullet_intro,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
     ]);
     blocks.extend([
         demo_list_item(
             "•",
-            "整数字格行长，正文严丝合缝落在格子上；",
+            "调整窗口宽度，比较宽栏与窄栏中的断行、缩进和标点位置；",
             physical_content_width,
             body.clone(),
             vec![],
@@ -431,7 +609,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
         ),
         demo_list_item(
             "•",
-            "行尾标点悬挂、中西自动间距，统统全自动；",
+            "改变系统缩放比例，检查正文、注文、线条与留白是否同步变化；",
             physical_content_width,
             body.clone(),
             vec![],
@@ -440,7 +618,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
         ),
         demo_list_item(
             "•",
-            "挤一挤放得下的，绝不硬把一整行拉稀。",
+            "对照标题、列表、引文和校样标记，确认不同层级仍保持清楚的视觉秩序。",
             physical_content_width,
             body.clone(),
             vec![],
@@ -454,10 +632,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             closing,
             physical_content_width,
             body.clone(),
-            ParagraphStyle::default(),
+            signature.clone(),
             vec![
                 TextSpan {
-                    range: range_of(closing, "龟毛"),
+                    range: range_of(closing, "连贯、安静而从容"),
                     style: TextStyle::builder()
                         .font_families(body.font_families.clone())
                         .font_size(body.font_size)
@@ -465,7 +643,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
                         .build(),
                 },
                 TextSpan {
-                    range: range_of(closing, "一个字一个字"),
+                    range: range_of(closing, "连贯、安静而从容"),
                     style: TextStyle::builder()
                         .font_families(body.font_families.clone())
                         .font_size(19.5 * physical_scale)
@@ -477,14 +655,21 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![
                 DemoColorSpan {
-                    range: range_of(closing, "褒奖"),
-                    color: tiny_skia::Color::from_rgba8(176, 0, 32, 255),
-                },
-                DemoColorSpan {
-                    range: range_of(closing, "一个字一个字"),
+                    range: range_of(closing, "连贯、安静而从容"),
                     color: tiny_skia::Color::from_rgba8(26, 110, 60, 255),
                 },
             ],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            signature_text,
+            physical_content_width,
+            body.clone(),
+            signature,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
             vec![],
         )),
     ]);
@@ -586,53 +771,3 @@ fn range_occurrence(text: &str, needle: &str, occurrence: usize) -> TextRange {
     TextRange::new(start, start + needle.encode_utf16().count() as i32)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn build_document_demo_preserves_run_compose_demo_text_per_block() {
-        let document = build_document_demo(640.0, 1.0);
-        let actual: Vec<_> = document
-            .blocks
-            .iter()
-            .map(|block| match block {
-                DemoDocumentDemoBlock::TextField(document) => {
-                    format!("TextField:{}", document.input.content.text)
-                }
-                DemoDocumentDemoBlock::Paragraph(document) => {
-                    format!("Paragraph:{}", document.input.content.text)
-                }
-                DemoDocumentDemoBlock::ListItem { marker, body } => format!(
-                    "List:{}|{}",
-                    marker.input.content.text, body.input.content.text
-                ),
-                DemoDocumentDemoBlock::Section { height } => format!("Section:{height}"),
-            })
-            .collect();
-        let expected = vec![
-            "TextField:在这里打字，看我实时重排；也可以拖选、双击并复制。",
-            "Paragraph:在这里打字，看我实时重排；也可以拖选、双击并复制。",
-            "Paragraph:“开标点与句末标点。” 下划线只画字身，不吃首尾标点 glue。",
-            "Paragraph:一台排版引擎的自述",
-            "Paragraph:诸位好。我叫提椠，一台对中文正文斤斤计较的排版引擎。别家把 espresso 和汉字一锅乱炖，我偏要在中西之间留出四分之一个字的体面距离——你瞧，连这句里的 OpenType，我都没让它贴脸。",
-            "Section:22.5",
-            "Paragraph:我的家规不多，列在下面：",
-            "List:一、|标点不许在行首撒野：逗号句号一律避头尾，该挤就挤，该悬就悬。",
-            "List:二、|字体随你挑——宋体的雅、等宽的拙，按角色各取所需。",
-            "List:三、|注音拼音都伺候，连生僻字也给你标得明明白白。",
-            "Section:22.5",
-            "Paragraph:上周我还痛失一员旧部：双面印刷。它本为纸张正反透印而生，奈何屏幕没有背面，只好请它先走一步。纸终究比屏幕厚道，这话我只敢斜着说。",
-            "Paragraph:台湾来的朋友也照顾周到——您好，请坐：ㄅㄆㄇ 竖在字旁，平上去入标得分毫不差。",
-            "Section:22.5",
-            "Paragraph:我奉CLREQ——也就是《中文排版需求》——为圭臬，闲来也翻翻Unicode的家底。",
-            "Paragraph:顺带一提，这些我也顺手包办：",
-            "List:•|整数字格行长，正文严丝合缝落在格子上；",
-            "List:•|行尾标点悬挂、中西自动间距，统统全自动；",
-            "List:•|挤一挤放得下的，绝不硬把一整行拉稀。",
-            "Section:22.5",
-            "Paragraph:有人嫌我龟毛，我只当是褒奖。毕竟，好看的中文，是一个字一个字抠出来的。",
-        ];
-        assert_eq!(actual, expected);
-    }
-}
