@@ -1,10 +1,5 @@
-use std::num::NonZeroU32;
-use std::rc::Rc;
+use std::sync::Arc;
 
-use softbuffer::{Context, Surface};
-use vello_cpu::color::palette::css::WHITE;
-use vello_cpu::kurbo::Rect;
-use vello_cpu::{Pixmap, RenderContext, Resources};
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
 use tiqian::org::tiqian::core::LayoutModel::LayoutResult;
 use tiqian::org::tiqian::core::LayoutQueries::positioned_clusters;
@@ -12,10 +7,14 @@ use tiqian::org::tiqian::core::TextModel::LineLengthGrid;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
+use vello::peniko::color::palette::css::WHITE;
+use vello::util::{RenderContext, RenderSurface};
+use vello::wgpu;
+use vello::{AaConfig, Renderer, RendererOptions, Scene};
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{MouseScrollDelta, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, OwnedDisplayHandle};
+use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
 use crate::font_backend::DemoFontCatalog;
@@ -32,12 +31,23 @@ const WHEEL_LINE_LOGICAL: f32 = 40.0;
 pub struct DesktopParagraphDemo {
     catalog: DemoFontCatalog,
     engine: ExplainableStubParagraphLayoutEngine,
-    context: Context<OwnedDisplayHandle>,
-    window: Option<Rc<Window>>,
-    surface: Option<Surface<OwnedDisplayHandle, Rc<Window>>>,
+    context: RenderContext,
+    renderers: Vec<Option<Renderer>>,
+    state: RenderState,
+    scene: Scene,
     page: Option<DemoPage>,
     layout_key: Option<LayoutKey>,
     scroll_y: i32,
+}
+
+#[derive(Debug)]
+enum RenderState {
+    Active {
+        surface: Box<RenderSurface<'static>>,
+        valid_surface: bool,
+        window: Arc<Window>,
+    },
+    Suspended(Option<Arc<Window>>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,6 +70,8 @@ enum DemoPageBlock {
         document: DemoDocument,
         layout: LayoutResult,
         y: f32,
+        paint_top: f32,
+        paint_bottom: f32,
     },
     ListItem {
         marker: DemoDocument,
@@ -69,6 +81,8 @@ enum DemoPageBlock {
         body_layout: LayoutResult,
         gutter: f32,
         y: f32,
+        paint_top: f32,
+        paint_bottom: f32,
     },
 }
 
@@ -151,7 +165,7 @@ fn layout_paint_overhang(layout: &LayoutResult) -> (f32, f32, f32, f32) {
 }
 
 impl DesktopParagraphDemo {
-    pub fn new(catalog: DemoFontCatalog, context: Context<OwnedDisplayHandle>) -> Self {
+    pub fn new(catalog: DemoFontCatalog) -> Self {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
         engine.fallback_resolver = Box::new(catalog.clone());
         engine.font_metrics_resolver = Box::new(catalog.clone());
@@ -159,9 +173,10 @@ impl DesktopParagraphDemo {
         Self {
             catalog,
             engine,
-            context,
-            window: None,
-            surface: None,
+            context: RenderContext::new(),
+            renderers: Vec::new(),
+            state: RenderState::Suspended(None),
+            scene: Scene::new(),
             page: None,
             layout_key: None,
             scroll_y: 0,
@@ -196,11 +211,15 @@ impl DesktopParagraphDemo {
                     right_overhang = right_overhang.max(right);
                     bottom_overhang = bottom_overhang.max(y + layout.size.height + bottom);
                     let block_y = y;
+                    let paint_top = block_y - top;
+                    let paint_bottom = block_y + layout.size.height + bottom;
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
                         document,
                         layout,
                         y: block_y,
+                        paint_top,
+                        paint_bottom,
                     });
                     if index < 3 {
                         y += TOP_LEVEL_GAP_LOGICAL * scale_factor;
@@ -214,11 +233,15 @@ impl DesktopParagraphDemo {
                     right_overhang = right_overhang.max(right);
                     bottom_overhang = bottom_overhang.max(y + layout.size.height + bottom);
                     let block_y = y;
+                    let paint_top = block_y - top;
+                    let paint_bottom = block_y + layout.size.height + bottom;
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
                         document,
                         layout,
                         y: block_y,
+                        paint_top,
+                        paint_bottom,
                     });
                 }
                 DemoDocumentDemoBlock::ListItem { marker, body } => {
@@ -254,6 +277,9 @@ impl DesktopParagraphDemo {
                         .size
                         .height
                         .max(marker_y + marker_layout.size.height);
+                    let paint_top = (y + marker_y - marker_top).min(y - body_top);
+                    let paint_bottom = (y + marker_y + marker_layout.size.height + marker_bottom)
+                        .max(y + body_layout.size.height + body_bottom);
                     blocks.push(DemoPageBlock::ListItem {
                         marker,
                         marker_layout,
@@ -262,6 +288,8 @@ impl DesktopParagraphDemo {
                         body_layout,
                         gutter,
                         y,
+                        paint_top,
+                        paint_bottom,
                     });
                     y += height;
                 }
@@ -294,11 +322,17 @@ impl DesktopParagraphDemo {
         if physical_size.width == 0 || physical_size.height == 0 {
             return Ok(());
         }
-        let window = self
-            .window
-            .as_ref()
-            .ok_or_else(|| "redraw requested before the demo window was created".to_owned())?
-            .clone();
+        let window = match &self.state {
+            RenderState::Active {
+                valid_surface: true,
+                window,
+                ..
+            } => window.clone(),
+            RenderState::Active { .. } => return Ok(()),
+            RenderState::Suspended(_) => {
+                return Err("redraw requested before the demo window was created".to_owned());
+            }
+        };
         let scale_factor = window.scale_factor() as f32;
         self.update_layout(physical_size, window.scale_factor());
         let page = self
@@ -306,24 +340,35 @@ impl DesktopParagraphDemo {
             .as_ref()
             .ok_or_else(|| "demo page layout was not produced".to_owned())?;
         let padding = (LOGICAL_PADDING * scale_factor).round() as i32;
-        let mut context = RenderContext::new(physical_size.width as u16, physical_size.height as u16);
-        let mut resources = Resources::new();
-        context.set_paint(WHITE);
-        context.fill_rect(&Rect::new(
-            0.0,
-            0.0,
-            physical_size.width as f64,
-            physical_size.height as f64,
-        ));
         let renderer = DemoRenderer::new(&self.catalog, scale_factor);
         let page_origin_x = padding - page.left_overhang.round() as i32;
         let page_origin_y = padding - self.scroll_y - page.top_overhang.round() as i32;
+        let viewport_top = self.scroll_y as f32;
+        let viewport_bottom = viewport_top
+            + physical_size
+                .height
+                .saturating_sub((padding.max(0) as u32).saturating_mul(2)) as f32;
+        self.scene.reset();
         for block in &page.blocks {
+            let (paint_top, paint_bottom) = match block {
+                DemoPageBlock::Text {
+                    paint_top,
+                    paint_bottom,
+                    ..
+                }
+                | DemoPageBlock::ListItem {
+                    paint_top,
+                    paint_bottom,
+                    ..
+                } => (*paint_top, *paint_bottom),
+            };
+            if paint_bottom <= viewport_top || paint_top >= viewport_bottom {
+                continue;
+            }
             match block {
-                DemoPageBlock::Text { document, layout, y } => {
-                    self.paint_document(
-                        &mut context,
-                        &mut resources,
+                DemoPageBlock::Text { document, layout, y, .. } => {
+                    Self::paint_document(
+                        &mut self.scene,
                         document,
                         layout,
                         page_origin_x + page.left_overhang.round() as i32,
@@ -339,19 +384,18 @@ impl DesktopParagraphDemo {
                     body_layout,
                     gutter,
                     y,
+                    ..
                 } => {
-                    self.paint_document(
-                        &mut context,
-                        &mut resources,
+                    Self::paint_document(
+                        &mut self.scene,
                         marker,
                         marker_layout,
                         page_origin_x + page.left_overhang.round() as i32,
                         page_origin_y + (page.top_overhang + y + marker_y).round() as i32,
                         &renderer,
                     )?;
-                    self.paint_document(
-                        &mut context,
-                        &mut resources,
+                    Self::paint_document(
+                        &mut self.scene,
                         body,
                         body_layout,
                         page_origin_x + (page.left_overhang + gutter).round() as i32,
@@ -362,35 +406,67 @@ impl DesktopParagraphDemo {
             }
         }
 
-        context.flush();
-        let mut frame = Pixmap::new(physical_size.width as u16, physical_size.height as u16);
-        context.render(&mut frame, &mut resources);
         window.pre_present_notify();
-        let surface = self
-            .surface
+        let RenderState::Active { surface, .. } = &mut self.state else {
+            return Err("redraw requested before the demo surface was created".to_owned());
+        };
+        let device_handle = &self.context.devices[surface.dev_id];
+        self.renderers[surface.dev_id]
             .as_mut()
-            .ok_or_else(|| "redraw requested before the demo surface was created".to_owned())?;
-        surface
-            .resize(
-                NonZeroU32::new(physical_size.width).unwrap(),
-                NonZeroU32::new(physical_size.height).unwrap(),
+            .ok_or_else(|| "demo renderer was not created for the active GPU device".to_owned())?
+            .render_to_texture(
+                &device_handle.device,
+                &device_handle.queue,
+                &self.scene,
+                &surface.target_view,
+                &vello::RenderParams {
+                    base_color: WHITE,
+                    width: surface.config.width,
+                    height: surface.config.height,
+                    antialiasing_method: AaConfig::Area,
+                },
             )
-            .map_err(|error| format!("softbuffer resize failed: {error}"))?;
-        let mut buffer = surface
-            .buffer_mut()
-            .map_err(|error| format!("softbuffer buffer acquisition failed: {error}"))?;
-        for (pixel, rgba) in buffer.iter_mut().zip(frame.data()) {
-            *pixel = u32::from(rgba.b) | (u32::from(rgba.g) << 8) | (u32::from(rgba.r) << 16);
-        }
-        buffer
-            .present()
-            .map_err(|error| format!("softbuffer present failed: {error}"))
+            .map_err(|error| format!("Vello scene render failed: {error}"))?;
+        let surface_texture = match surface.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(texture)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(texture) => texture,
+            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                return Ok(());
+            }
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                return Err("GPU surface configuration became outdated".to_owned());
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                return Err("GPU surface was lost".to_owned());
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                return Err("GPU surface acquisition failed validation".to_owned());
+            }
+        };
+        let mut encoder = device_handle
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Tiqian paragraph demo surface blit"),
+            });
+        surface.blitter.copy(
+            &device_handle.device,
+            &mut encoder,
+            &surface.target_view,
+            &surface_texture
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default()),
+        );
+        device_handle.queue.submit([encoder.finish()]);
+        surface_texture.present();
+        device_handle
+            .device
+            .poll(wgpu::PollType::Poll)
+            .map_err(|error| format!("GPU device poll failed after presenting paragraph demo: {error}"))?;
+        Ok(())
     }
 
     fn paint_document(
-        &self,
-        context: &mut RenderContext,
-        resources: &mut Resources,
+        scene: &mut Scene,
         document: &DemoDocument,
         layout: &LayoutResult,
         x: i32,
@@ -398,18 +474,19 @@ impl DesktopParagraphDemo {
         renderer: &DemoRenderer<'_>,
     ) -> Result<(), String> {
         let renderer = renderer.translated(x as f32, y as f32);
-        renderer.paint_rich_text_backgrounds(context, layout, &document.rich_text)?;
-        renderer.paint_body(context, resources, layout, &document.colors)?;
-        renderer.paint_rich_text_lines(context, layout, &document.rich_text)?;
-        renderer.paint_decorations(context, layout, &document.colors)?;
-        renderer.paint_annotations(context, resources, layout)?;
+        renderer.paint_rich_text_backgrounds(scene, layout, &document.rich_text)?;
+        renderer.paint_body(scene, layout, &document.colors)?;
+        renderer.paint_rich_text_lines(scene, layout, &document.rich_text)?;
+        renderer.paint_decorations(scene, layout, &document.colors)?;
+        renderer.paint_annotations(scene, layout)?;
         Ok(())
     }
 
     fn request_layout_and_redraw(&mut self) {
-        let Some(window) = self.window.as_ref() else {
+        let RenderState::Active { window, .. } = &self.state else {
             return;
         };
+        let window = window.clone();
         let size = window.inner_size();
         let scale_factor = window.scale_factor();
         if size.width == 0 || size.height == 0 {
@@ -418,9 +495,7 @@ impl DesktopParagraphDemo {
         self.update_layout(size, scale_factor);
         let padding = (LOGICAL_PADDING * scale_factor as f32).round().max(0.0) as u32;
         self.clamp_scroll(size.height, padding);
-        if let Some(window) = self.window.as_ref() {
-            window.request_redraw();
-        }
+        window.request_redraw();
     }
 
     fn scroll_by(&mut self, delta: f32, physical_size: PhysicalSize<u32>, scale_factor: f64) {
@@ -442,23 +517,51 @@ impl DesktopParagraphDemo {
 
 impl ApplicationHandler for DesktopParagraphDemo {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_some() {
+        let RenderState::Suspended(cached_window) = &mut self.state else {
             return;
-        }
-        let window = Rc::new(
-            event_loop
-                .create_window(
-                    Window::default_attributes()
-                        .with_title(WINDOW_TITLE)
-                        .with_inner_size(LogicalSize::new(INITIAL_LOGICAL_WIDTH, INITIAL_LOGICAL_HEIGHT)),
-                )
-                .expect("paragraph-demo window creation failed"),
-        );
-        let surface = Surface::new(&self.context, window.clone())
-            .expect("paragraph-demo softbuffer surface creation failed");
-        self.window = Some(window);
-        self.surface = Some(surface);
+        };
+        let window = cached_window.take().unwrap_or_else(|| {
+            Arc::new(
+                event_loop
+                    .create_window(
+                        Window::default_attributes()
+                            .with_title(WINDOW_TITLE)
+                            .with_inner_size(LogicalSize::new(INITIAL_LOGICAL_WIDTH, INITIAL_LOGICAL_HEIGHT)),
+                    )
+                    .expect("paragraph-demo window creation failed"),
+            )
+        });
+        let size = window.inner_size();
+        let surface = pollster::block_on(self.context.create_surface(
+            window.clone(),
+            size.width,
+            size.height,
+            wgpu::PresentMode::AutoVsync,
+        ))
+        .expect("paragraph-demo GPU surface creation failed");
+        self.renderers.resize_with(self.context.devices.len(), || None);
+        self.renderers[surface.dev_id].get_or_insert_with(|| {
+            Renderer::new(
+                &self.context.devices[surface.dev_id].device,
+                RendererOptions {
+                    use_cpu: false,
+                    ..Default::default()
+                },
+            )
+            .expect("paragraph-demo GPU renderer creation failed")
+        });
+        self.state = RenderState::Active {
+            surface: Box::new(surface),
+            valid_surface: size.width != 0 && size.height != 0,
+            window,
+        };
         self.request_layout_and_redraw();
+    }
+
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        if let RenderState::Active { window, .. } = &self.state {
+            self.state = RenderState::Suspended(Some(window.clone()));
+        }
     }
 
     fn window_event(
@@ -467,15 +570,29 @@ impl ApplicationHandler for DesktopParagraphDemo {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(window) = self.window.as_ref() else {
-            return;
+        let (window, surface, valid_surface) = match &mut self.state {
+            RenderState::Active {
+                surface,
+                valid_surface,
+                window,
+            } if window.id() == window_id => (window.clone(), surface, valid_surface),
+            _ => return,
         };
         if window.id() != window_id {
             return;
         }
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+            WindowEvent::Resized(size) => {
+                if size.width != 0 && size.height != 0 {
+                    self.context.resize_surface(surface, size.width, size.height);
+                    *valid_surface = true;
+                    self.request_layout_and_redraw();
+                } else {
+                    *valid_surface = false;
+                }
+            }
+            WindowEvent::ScaleFactorChanged { .. } => {
                 self.request_layout_and_redraw();
             }
             WindowEvent::MouseWheel { delta, .. } => {
@@ -486,9 +603,7 @@ impl ApplicationHandler for DesktopParagraphDemo {
                     MouseScrollDelta::PixelDelta(position) => -position.y as f32,
                 };
                 self.scroll_by(delta, size, scale_factor);
-                if let Some(window) = self.window.as_ref() {
-                    window.request_redraw();
-                }
+                window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
                 let size = window.inner_size();
@@ -528,27 +643,22 @@ mod tests {
             .flat_map(|run| &run.glyphs)
             .chain(result.lines.iter().flat_map(|line| &line.hyphen_glyphs))
             .all(|glyph| glyph.render_font_key.is_some()));
-        let width = result.input.constraints.max_width().ceil().max(1.0) as u32;
-        let height = result.size.height.ceil().max(1.0) as u32;
-        let mut context = RenderContext::new(width as u16, height as u16);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut context, result, &document.rich_text)
+            .paint_rich_text_backgrounds(&mut scene, result, &document.rich_text)
             .unwrap();
         renderer
-            .paint_body(&mut context, &mut resources, result, &document.colors)
+            .paint_body(&mut scene, result, &document.colors)
             .unwrap();
         renderer
-            .paint_rich_text_lines(&mut context, result, &document.rich_text)
+            .paint_rich_text_lines(&mut scene, result, &document.rich_text)
             .unwrap();
-        renderer.paint_decorations(&mut context, result, &document.colors).unwrap();
+        renderer.paint_decorations(&mut scene, result, &document.colors).unwrap();
         renderer
-            .paint_annotations(&mut context, &mut resources, result)
+            .paint_annotations(&mut scene, result)
             .unwrap();
-        context.flush();
-        let mut pixmap = Pixmap::new(width as u16, height as u16);
-        context.render(&mut pixmap, &mut resources);
+        assert!(!scene.encoding().draw_tags.is_empty());
     }
 
     #[test]

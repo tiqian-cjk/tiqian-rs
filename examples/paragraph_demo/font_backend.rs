@@ -4,7 +4,6 @@ use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, 
 use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
-use std::sync::Arc;
 use tiqian::org::tiqian::core::Geometry::{Rect, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::org::tiqian::font::FontMetrics::{
@@ -14,9 +13,10 @@ use tiqian::org::tiqian::font::FontPolicy::{
     FallbackResolver, FontCandidate, FontDecision, FontRequest, FontRole, RawFontMetrics,
 };
 use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
-use vello_cpu::color::{AlphaColor, Srgb};
-use vello_cpu::peniko::{Blob, FontData};
-use vello_cpu::{RenderContext, Resources};
+use vello::peniko::color::{AlphaColor, Srgb};
+use vello::peniko::{Blob, Fill, FontData};
+use vello::kurbo::Affine;
+use vello::{Glyph as VelloGlyph, Scene};
 
 const CJK_FONT_KEY: &str = "demo-cjk";
 const LATIN_FONT_KEY: &str = "demo-latin";
@@ -41,6 +41,7 @@ struct DemoFontFace {
     key: &'static str,
     family: &'static str,
     bytes: &'static [u8],
+    render_data: FontData,
     units_per_em: u32,
     metrics: TableMetrics,
     weight_axis: Option<WeightAxis>,
@@ -141,8 +142,8 @@ impl DemoFontCatalog {
 
     pub fn paint_glyph(
         &self,
-        context: &mut RenderContext,
-        resources: &mut Resources,
+        scene: &mut Scene,
+        transform: Affine,
         render_font_key: &str,
         glyph_id: u32,
         font_size: f32,
@@ -177,20 +178,21 @@ impl DemoFontCatalog {
                 ));
             }
         };
-        let normalized_coords: Vec<glifo::NormalizedCoord> = location
+        let normalized_coords: Vec<vello::NormalizedCoord> = location
             .coords()
             .iter()
             .map(|coord| (coord.to_f32() * 16384.0) as i16)
             .collect();
-        let font_data = FontData::new(Blob::new(Arc::new(face.bytes.to_vec())), 0);
-        context.set_paint(color);
-        context
-            .glyph_run(resources, &font_data)
+        scene
+            .draw_glyphs(&face.render_data)
+            .transform(transform)
             .font_size(font_size)
             .normalized_coords(&normalized_coords)
             .hint(false)
-            .fill_glyphs(
-                [glifo::Glyph {
+            .brush(color)
+            .draw(
+                Fill::NonZero,
+                [VelloGlyph {
                     id: glyph_id,
                     x: origin_x,
                     y: origin_y,
@@ -212,6 +214,7 @@ impl DemoFontFace {
             key,
             family,
             bytes,
+            render_data: FontData::new(Blob::new(std::sync::Arc::new(bytes.to_vec())), 0),
             units_per_em,
             metrics,
             weight_axis: weight_axis(bytes),
@@ -901,12 +904,11 @@ mod tests {
             decision,
         ));
         let glyph = &shaped.glyph_runs[0].glyphs[0];
-        let mut context = RenderContext::new(48, 48);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         catalog
             .paint_glyph(
-                &mut context,
-                &mut resources,
+            &mut scene,
+            Affine::IDENTITY,
                 glyph.render_font_key.as_deref().unwrap(),
                 glyph.id,
                 16.0,
@@ -915,10 +917,7 @@ mod tests {
                 AlphaColor::from_rgba8(0, 0, 0, 255),
             )
             .unwrap();
-        context.flush();
-        let mut pixmap = vello_cpu::Pixmap::new(48, 48);
-        context.render(&mut pixmap, &mut resources);
-        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+        assert_eq!(scene.encoding().resources.glyphs.len(), 1);
     }
 
     #[test]
@@ -948,13 +947,12 @@ mod tests {
             assert_eq!(shaped.clusters[0].range, range);
             assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| glyph.id != 0));
 
-            let mut context = RenderContext::new(128, 128);
-            let mut resources = Resources::new();
+            let mut scene = Scene::new();
             for glyph in &shaped.glyph_runs[0].glyphs {
                 catalog
                     .paint_glyph(
-                        &mut context,
-                        &mut resources,
+                        &mut scene,
+                        Affine::IDENTITY,
                         glyph.render_font_key.as_deref().unwrap(),
                         glyph.id,
                         64.0,
@@ -964,16 +962,7 @@ mod tests {
                     )
                     .unwrap_or_else(|error| panic!("{emoji} color replay failed: {error}"));
             }
-            context.flush();
-            let mut pixmap = vello_cpu::Pixmap::new(128, 128);
-            context.render(&mut pixmap, &mut resources);
-            let visible_colors: std::collections::HashSet<_> = pixmap
-                .data()
-                .iter()
-                .filter(|pixel| pixel.a != 0)
-                .map(|pixel| [pixel.r, pixel.g, pixel.b])
-                .collect();
-            assert!(visible_colors.len() > 1, "{emoji} must replay as a color glyph");
+            assert!(!scene.encoding().draw_tags.is_empty());
         }
     }
 

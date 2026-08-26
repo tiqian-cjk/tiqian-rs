@@ -12,9 +12,7 @@ fn main() -> Result<(), String> {
     catalog.validate_demo_faces()?;
     let event_loop = winit::event_loop::EventLoop::new()
         .map_err(|error| format!("paragraph-demo event loop creation failed: {error}"))?;
-    let context = softbuffer::Context::new(event_loop.owned_display_handle())
-        .map_err(|error| format!("paragraph-demo softbuffer context creation failed: {error}"))?;
-    let mut app = app::DesktopParagraphDemo::new(catalog, context);
+    let mut app = app::DesktopParagraphDemo::new(catalog);
     event_loop
         .run_app(&mut app)
         .map_err(|error| format!("paragraph-demo event loop failed: {error}"))

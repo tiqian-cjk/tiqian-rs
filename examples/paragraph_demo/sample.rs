@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use vello_cpu::color::AlphaColor;
+use vello::peniko::color::AlphaColor;
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LayoutInput, RichTextBackgroundPaint,

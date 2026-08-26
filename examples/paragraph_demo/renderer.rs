@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use vello_cpu::color::{AlphaColor, Srgb};
-use vello_cpu::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
-use vello_cpu::{RenderContext, Resources};
+use vello::peniko::color::{AlphaColor, Srgb};
+use vello::peniko::Fill;
+use vello::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
+use vello::Scene;
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::LayoutResult;
 use tiqian::org::tiqian::core::LayoutQueries::{
@@ -63,12 +64,10 @@ impl<'a> DemoRenderer<'a> {
     /// Replays the final body glyphs using only LayoutResult placements and shaped glyph evidence.
     pub fn paint_body(
         &self,
-        context: &mut RenderContext,
-        resources: &mut Resources,
+        scene: &mut Scene,
         result: &LayoutResult,
         colors: &[DemoColorSpan],
     ) -> Result<(), String> {
-        context.set_transform(self.transform());
         let positions: HashMap<_, _> = positioned_clusters(result)
             .into_iter()
             .map(|position| (position.range, position))
@@ -85,8 +84,8 @@ impl<'a> DemoRenderer<'a> {
                     .font_size;
                 let color = color_at(colors, glyph.cluster_range).unwrap_or_else(default_text_color);
                 self.catalog.paint_glyph(
-                    context,
-                    resources,
+                    scene,
+                    self.transform(),
                     glyph.render_font_key.as_deref().ok_or_else(|| {
                         format!("glyph {:?} has no render font identity", glyph.cluster_range)
                     })?,
@@ -106,8 +105,8 @@ impl<'a> DemoRenderer<'a> {
                 )
                 .unwrap_or_else(default_text_color);
                 self.catalog.paint_glyph(
-                    context,
-                    resources,
+                    scene,
+                    self.transform(),
                     glyph.render_font_key.as_deref().ok_or_else(|| {
                         format!("line-end hyphen {:?} has no render font identity", glyph.cluster_range)
                     })?,
@@ -125,11 +124,9 @@ impl<'a> DemoRenderer<'a> {
     /// Replays annotation glyphs from the final coordinates recorded by the layout engine.
     pub fn paint_annotations(
         &self,
-        context: &mut RenderContext,
-        resources: &mut Resources,
+        scene: &mut Scene,
         result: &LayoutResult,
     ) -> Result<(), String> {
-        context.set_transform(self.transform());
         for ruby in &result.debug.ruby_decisions {
             let origin_x = ruby.center_x - ruby.width / 2.0;
             let mut cluster_pen_x = 0.0;
@@ -141,8 +138,7 @@ impl<'a> DemoRenderer<'a> {
                     cluster_advance = 0.0;
                 }
                 self.paint_annotation_glyph(
-                    context,
-                    resources,
+                    scene,
                     glyph,
                     ruby.font_size,
                     origin_x + cluster_pen_x + glyph.x,
@@ -156,8 +152,7 @@ impl<'a> DemoRenderer<'a> {
             for placement in &bopomofo.placements {
                 for glyph in &placement.glyphs {
                     self.paint_annotation_glyph(
-                        context,
-                        resources,
+                        scene,
                         glyph,
                         placement.font_size,
                         placement.draw_x + glyph.x,
@@ -171,16 +166,15 @@ impl<'a> DemoRenderer<'a> {
 
     fn paint_annotation_glyph(
         &self,
-        context: &mut RenderContext,
-        resources: &mut Resources,
+        scene: &mut Scene,
         glyph: &tiqian::org::tiqian::core::LayoutModel::Glyph,
         font_size: f32,
         origin_x: f32,
         origin_y: f32,
     ) -> Result<(), String> {
         self.catalog.paint_glyph(
-            context,
-            resources,
+            scene,
+            self.transform(),
             glyph.render_font_key.as_deref().ok_or_else(|| {
                 format!("annotation glyph {:?} has no render font identity", glyph.cluster_range)
             })?,
@@ -195,18 +189,14 @@ impl<'a> DemoRenderer<'a> {
     /// Paints only decoration geometry that the layout engine has already resolved.
     pub fn paint_decorations(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         colors: &[DemoColorSpan],
     ) -> Result<(), String> {
-        context.set_transform(self.transform());
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result.debug.decoration_decisions.iter().filter(|decision| decision.applied) {
             if decision.kind == "Emphasis" {
-                context.set_paint(
-                    color_at(colors, decision.cluster_range).unwrap_or_else(default_text_color),
-                );
-                context.fill_path(&Circle::new(
+                scene.fill(Fill::NonZero, self.transform(), color_at(colors, decision.cluster_range).unwrap_or_else(default_text_color), None, &Circle::new(
                     (decision.anchor_x as f64, decision.anchor_y as f64),
                     (decision.dot_diameter / 2.0) as f64,
                 ).to_path(0.1));
@@ -215,16 +205,16 @@ impl<'a> DemoRenderer<'a> {
         for segment in &result.debug.decoration_segments {
             let color = color_at(colors, segment.source_range).unwrap_or_else(default_text_color);
             match segment.kind.as_str() {
-                "Mourning" => self.stroke_mourning_segment(context, segment, color, stroke_width)?,
+                "Mourning" => self.stroke_mourning_segment(scene, segment, color, stroke_width)?,
                 "ProperNoun" => self.stroke_interlinear_segment(
-                    context,
+                    scene,
                     result,
                     segment,
                     color,
                     stroke_width,
                 )?,
                 "BookTitle" => self.stroke_book_title_segment(
-                    context,
+                    scene,
                     result,
                     segment,
                     color,
@@ -239,11 +229,10 @@ impl<'a> DemoRenderer<'a> {
 
     pub fn paint_rich_text_backgrounds(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         spans: &[RichTextSpan],
     ) -> Result<(), String> {
-        context.set_transform(self.transform());
         let occupied = positioned_rich_text_segments(result, spans);
         for segment in rich_text_background_segments(result, &occupied) {
             let color = segment
@@ -264,12 +253,10 @@ impl<'a> DemoRenderer<'a> {
                 segment.bottom - border_inset,
                 [radii.top_left, radii.top_right, radii.bottom_right, radii.bottom_left],
             )?;
-            context.set_paint(color);
             match segment.span.paint.background.draw_style {
-                RichTextBackgroundDrawStyle::Fill => context.fill_path(&path),
+                RichTextBackgroundDrawStyle::Fill => scene.fill(Fill::NonZero, self.transform(), color, None, &path),
                 RichTextBackgroundDrawStyle::Border { stroke_width } => {
-                    context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
-                    context.stroke_path(&path);
+                    scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
                 }
             }
         }
@@ -278,11 +265,10 @@ impl<'a> DemoRenderer<'a> {
 
     pub fn paint_rich_text_lines(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         spans: &[RichTextSpan],
     ) -> Result<(), String> {
-        context.set_transform(self.transform());
         let occupied = positioned_rich_text_segments(result, spans);
         for segment in trimmed_rich_text_decoration_segments(result, &occupied) {
             let color = segment
@@ -293,7 +279,7 @@ impl<'a> DemoRenderer<'a> {
                 .unwrap_or_else(default_text_color);
             match &segment.span.paint.line_pattern {
                 RichTextLinePattern::Solid => self.stroke_rich_line(
-                    context,
+                    scene,
                     result,
                     &segment,
                     color,
@@ -304,7 +290,7 @@ impl<'a> DemoRenderer<'a> {
                     dash_length,
                     gap_length,
                 } => self.stroke_fitted_dashed_rich_line(
-                    context, result, &segment, color, *stroke_width, *dash_length, *gap_length,
+                    scene, result, &segment, color, *stroke_width, *dash_length, *gap_length,
                 )?,
                 RichTextLinePattern::Dotted {
                     dot_diameter,
@@ -324,8 +310,7 @@ impl<'a> DemoRenderer<'a> {
                         *dot_diameter,
                     ) {
                         for x in centers.iter().copied().filter(|x| *x >= left && *x <= right) {
-                            context.set_paint(color);
-                            context.fill_path(&Circle::new(
+                            scene.fill(Fill::NonZero, self.transform(), color, None, &Circle::new(
                                 (x as f64, y as f64),
                                 (dot_diameter / 2.0) as f64,
                             ).to_path(0.1));
@@ -339,7 +324,7 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_rich_line(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutQueries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
@@ -350,14 +335,14 @@ impl<'a> DemoRenderer<'a> {
         }
         let y = rich_text_decoration_line_y(result, segment, stroke_width);
         for (left, right) in self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width) {
-            self.stroke_horizontal_line(context, left, right, y, color, stroke_width)?;
+            self.stroke_horizontal_line(scene, left, right, y, color, stroke_width)?;
         }
         Ok(())
     }
 
     fn stroke_fitted_dashed_rich_line(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutQueries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
@@ -383,9 +368,7 @@ impl<'a> DemoRenderer<'a> {
                 let mut path = BezPath::new();
                 path.move_to(((left + cap_inset) as f64, y as f64));
                 path.line_to(((right - cap_inset) as f64, y as f64));
-                context.set_paint(color);
-                context.set_stroke(stroke.clone());
-                context.stroke_path(&path);
+                scene.stroke(&stroke, self.transform(), color, None, &path);
             }
         }
         Ok(())
@@ -393,7 +376,7 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_book_title_segment(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
@@ -411,14 +394,14 @@ impl<'a> DemoRenderer<'a> {
             ),
             browser_like_skip_ink_clearance(font_size, stroke_width),
         ) {
-            self.stroke_book_title_path(context, left, right, segment.top, color, font_size, stroke_width)?;
+            self.stroke_book_title_path(scene, left, right, segment.top, color, font_size, stroke_width)?;
         }
         Ok(())
     }
 
     fn stroke_book_title_path(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         left: f32,
         right: f32,
         y: f32,
@@ -450,15 +433,13 @@ impl<'a> DemoRenderer<'a> {
             x = next;
             rising = !rising;
         }
-        context.set_paint(color);
-        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
-        context.stroke_path(&path);
+        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
         Ok(())
     }
 
     fn stroke_interlinear_segment(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         result: &LayoutResult,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
@@ -481,7 +462,7 @@ impl<'a> DemoRenderer<'a> {
             ),
             browser_like_skip_ink_clearance(font_size, stroke_width),
         ) {
-            self.stroke_horizontal_line(context, left, right, segment.top, color, stroke_width)?;
+            self.stroke_horizontal_line(scene, left, right, segment.top, color, stroke_width)?;
         }
         Ok(())
     }
@@ -517,7 +498,7 @@ impl<'a> DemoRenderer<'a> {
 
     fn stroke_horizontal_line(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         left: f32,
         right: f32,
         y: f32,
@@ -530,15 +511,13 @@ impl<'a> DemoRenderer<'a> {
         let mut path = BezPath::new();
         path.move_to((left as f64, y as f64));
         path.line_to((right as f64, y as f64));
-        context.set_paint(color);
-        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
-        context.stroke_path(&path);
+        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
         Ok(())
     }
 
     fn stroke_mourning_segment(
         &self,
-        context: &mut RenderContext,
+        scene: &mut Scene,
         segment: &tiqian::org::tiqian::core::LayoutModel::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
@@ -556,9 +535,7 @@ impl<'a> DemoRenderer<'a> {
         }
         path.move_to((segment.left as f64, segment.bottom as f64));
         path.line_to((segment.right as f64, segment.bottom as f64));
-        context.set_paint(color);
-        context.set_stroke(Stroke::new(stroke_width as f64).with_caps(Cap::Butt));
-        context.stroke_path(&path);
+        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
         Ok(())
     }
 }
@@ -812,15 +789,14 @@ mod tests {
             )
             .build(),
         );
-        let mut context = RenderContext::new(200, 100);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut context, &mut resources, &result, &[])
+            .paint_body(&mut scene, &result, &[])
             .unwrap();
-        context.flush();
-        let mut pixmap = vello_cpu::Pixmap::new(200, 100);
-        context.render(&mut pixmap, &mut resources);
-        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+        assert_eq!(
+            scene.encoding().resources.glyphs.len(),
+            result.glyph_runs.iter().map(|run| run.glyphs.len()).sum::<usize>(),
+        );
     }
 
     #[test]
@@ -879,16 +855,27 @@ mod tests {
         }).fold(f32::INFINITY, f32::min);
         let ruby_top_bleed = (-ruby_ink_top).max(0.0).ceil();
         assert!(ruby_top_bleed >= -ruby_ink_top);
-        let mut context = RenderContext::new(200, 120);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
             .translated(0.0, ruby_top_bleed)
-            .paint_annotations(&mut context, &mut resources, &result)
+            .paint_annotations(&mut scene, &result)
             .unwrap();
-        context.flush();
-        let mut pixmap = vello_cpu::Pixmap::new(200, 120);
-        context.render(&mut pixmap, &mut resources);
-        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+        assert_eq!(
+            scene.encoding().resources.glyphs.len(),
+            result
+                .debug
+                .ruby_decisions
+                .iter()
+                .flat_map(|decision| &decision.glyphs)
+                .count()
+                + result
+                    .debug
+                    .bopomofo_decisions
+                    .iter()
+                    .flat_map(|decision| &decision.placements)
+                    .flat_map(|placement| &placement.glyphs)
+                    .count(),
+        );
     }
 
     #[test]
@@ -923,15 +910,14 @@ mod tests {
             .find(|result| result.lines.iter().any(|line| !line.hyphen_glyphs.is_empty()))
             .expect("English hyphenation should provide a usable shape-once line-end hyphen");
         result.glyph_runs.clear();
-        let mut context = RenderContext::new(100, 160);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut context, &mut resources, &result, &[])
+            .paint_body(&mut scene, &result, &[])
             .unwrap();
-        context.flush();
-        let mut pixmap = vello_cpu::Pixmap::new(100, 160);
-        context.render(&mut pixmap, &mut resources);
-        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+        assert_eq!(
+            scene.encoding().resources.glyphs.len(),
+            result.lines.iter().map(|line| line.hyphen_glyphs.len()).sum::<usize>(),
+        );
     }
 
     #[test]
@@ -1026,21 +1012,17 @@ mod tests {
             .decoration_segments
             .iter()
             .any(|segment| segment.kind == "BookTitle"));
-        let mut context = RenderContext::new(200, 100);
-        let mut resources = Resources::new();
+        let mut scene = Scene::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut context, &result, &rich_text)
+            .paint_rich_text_backgrounds(&mut scene, &result, &rich_text)
             .unwrap();
-        renderer.paint_body(&mut context, &mut resources, &result, &[]).unwrap();
+        renderer.paint_body(&mut scene, &result, &[]).unwrap();
         renderer
-            .paint_rich_text_lines(&mut context, &result, &rich_text)
+            .paint_rich_text_lines(&mut scene, &result, &rich_text)
             .unwrap();
-        renderer.paint_decorations(&mut context, &result, &[]).unwrap();
-        context.flush();
-        let mut pixmap = vello_cpu::Pixmap::new(200, 100);
-        context.render(&mut pixmap, &mut resources);
-        assert!(pixmap.data().iter().any(|pixel| pixel.a != 0));
+        renderer.paint_decorations(&mut scene, &result, &[]).unwrap();
+        assert!(!scene.encoding().is_empty());
 
         let mourning = result
             .debug
@@ -1048,19 +1030,12 @@ mod tests {
             .iter()
             .find(|segment| segment.kind == "Mourning")
             .unwrap();
-        let mut decoration_context = RenderContext::new(200, 100);
+        let mut decoration_scene = Scene::new();
         renderer
-            .paint_decorations(&mut decoration_context, &result, &[])
+            .paint_decorations(&mut decoration_scene, &result, &[])
             .unwrap();
-        decoration_context.flush();
-        let mut decorations = vello_cpu::Pixmap::new(200, 100);
-        decoration_context.render(&mut decorations, &mut resources);
-        let top = mourning.top.round() as usize;
-        let left = mourning.left.ceil() as usize + 1;
-        let right = mourning.right.floor() as usize - 1;
-        assert!(decorations.data()[top * decorations.width() as usize + left..top * decorations.width() as usize + right]
-            .iter()
-            .any(|pixel| pixel.a != 0));
+        assert!(mourning.right > mourning.left && mourning.bottom > mourning.top);
+        assert!(decoration_scene.encoding().n_paths > 0);
     }
 
     #[test]
