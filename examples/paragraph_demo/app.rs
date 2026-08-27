@@ -834,4 +834,43 @@ mod tests {
         assert!(hanging_was_seen, "default-width punctuation sample must exhibit hanging punctuation");
         assert!(hyphenation_was_seen, "default-width mixed sample must exhibit English hyphenation");
     }
+
+    #[test]
+    fn narrow_demo_word_uses_hyphens_at_multiple_line_ends() {
+        let catalog = DemoFontCatalog::load().unwrap();
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        engine.fallback_resolver = Box::new(catalog.clone());
+        engine.font_metrics_resolver = Box::new(catalog.clone());
+        engine.text_shaper = Box::new(catalog);
+        let document = build_document_demo(672.0, 1.0);
+        let mut input = document
+            .blocks
+            .into_iter()
+            .find_map(|block| match block {
+                DemoDocumentDemoBlock::NarrowParagraph { document, .. }
+                    if document.input.content.text.starts_with("术语 internationalization") =>
+                {
+                    Some(document.input)
+                }
+                _ => None,
+            })
+            .expect("demo must contain the narrow hyphenation sample");
+        input.constraints = LayoutConstraints::with_defaults(4.0 * input.text_style.font_size);
+        let result = engine.layout(input);
+        let hyphenated_lines = result
+            .lines
+            .iter()
+            .filter(|line| !line.hyphen_glyphs.is_empty())
+            .count();
+
+        assert!(
+            hyphenated_lines >= 2,
+            "expected multiple hyphenated line ends: {:?}",
+            result
+                .lines
+                .iter()
+                .map(|line| (line.range, line.hyphen_advance))
+                .collect::<Vec<_>>()
+        );
+    }
 }

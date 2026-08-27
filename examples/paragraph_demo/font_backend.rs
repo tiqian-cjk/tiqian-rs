@@ -388,7 +388,20 @@ impl TextShaper for DemoFontCatalog {
         let halt_matches = halt
             .as_ref()
             .filter(|candidate| candidate.glyphs.len() == shaped.glyphs.len());
-        let clusters = clustered_glyphs(input, &shaped, halt_matches, &exact_key);
+        // `ShapingInputDefinesLayoutCluster`: HarfRust clusters describe glyph-to-source
+        // association inside this shaping input. Layout break opportunities are already expressed
+        // by the input ranges emitted by the core shaping stage, so exposing these internal
+        // clusters would create accidental breaks.
+        let display_length = input.display_text.encode_utf16().count() as i32;
+        let clusters = vec![clustered_glyph_group(
+            input.range,
+            0,
+            display_length,
+            &shaped.glyphs,
+            halt_matches.map(|candidate| candidate.glyphs.as_slice()),
+            0.0,
+            &exact_key,
+        )];
         let glyphs: Vec<_> = clusters
             .iter()
             .flat_map(|cluster| cluster.glyphs.iter().cloned())
@@ -463,63 +476,6 @@ struct ClusteredGlyphs {
     display_end: i32,
     advance: f32,
     glyphs: Vec<Glyph>,
-}
-
-fn clustered_glyphs(
-    input: &ShapingInput,
-    shaped: &RawShaping,
-    halt: Option<&RawShaping>,
-    render_font_key: &str,
-) -> Vec<ClusteredGlyphs> {
-    let display_length = input.display_text.encode_utf16().count() as i32;
-    if input.range.length() != display_length {
-        return vec![clustered_glyph_group(
-            input.range,
-            0,
-            display_length,
-            &shaped.glyphs,
-            halt.map(|candidate| candidate.glyphs.as_slice()),
-            0.0,
-            render_font_key,
-        )];
-    }
-    let mut starts: Vec<_> = shaped.glyphs.iter().map(|glyph| glyph.cluster).collect();
-    starts.sort_unstable();
-    starts.dedup();
-    if starts.is_empty() {
-        return vec![ClusteredGlyphs {
-            range: input.range,
-            display_start: 0,
-            display_end: display_length,
-            advance: shaped.advance,
-            glyphs: Vec::new(),
-        }];
-    }
-    starts.push(display_length);
-    starts
-        .windows(2)
-        .scan(0.0, |pen_x, pair| {
-            let start = pair[0];
-            let end = pair[1];
-            let glyphs: Vec<_> = shaped
-                .glyphs
-                .iter()
-                .filter(|glyph| glyph.cluster == start)
-                .cloned()
-                .collect();
-            let cluster = clustered_glyph_group(
-                TextRange::new(input.range.start() + start, input.range.start() + end),
-                start,
-                end,
-                &glyphs,
-                halt.map(|candidate| candidate.glyphs.as_slice()),
-                *pen_x,
-                render_font_key,
-            );
-            *pen_x += cluster.advance;
-            Some(cluster)
-        })
-        .collect()
 }
 
 fn clustered_glyph_group(
@@ -825,7 +781,7 @@ mod tests {
     }
 
     #[test]
-    fn harfrust_clusters_are_remapped_to_utf16_source_ranges() {
+    fn harfrust_glyph_clusters_stay_inside_the_layout_cluster() {
         let catalog = DemoFontCatalog::load().unwrap();
         let decision = FallbackResolver::resolve(
             &catalog,
@@ -843,14 +799,13 @@ mod tests {
             TextStyle::default(),
             decision,
         ));
-        assert_eq!(shaped.clusters[0].range, TextRange::new(0, 1));
-        assert_eq!(shaped.clusters[1].range, TextRange::new(1, 3));
-        assert_eq!(shaped.clusters[2].range, TextRange::new(3, 4));
+        assert_eq!(shaped.clusters.len(), 1);
+        assert_eq!(shaped.clusters[0].range, TextRange::new(0, 4));
         assert!(shaped
             .glyph_runs
             .iter()
             .flat_map(|run| &run.glyphs)
-            .all(|glyph| shaped.clusters.iter().any(|cluster| cluster.range == glyph.cluster_range)));
+            .all(|glyph| glyph.cluster_range == shaped.clusters[0].range));
     }
 
     #[test]
