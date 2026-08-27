@@ -326,6 +326,32 @@ pub fn prepare_width_independent_annotation(
             boundaries.insert(*offset);
         }
     }
+    let mut emoji_shaping_boundaries = HashSet::new();
+    let mut add_emoji_shaping_range = |range: TextRange| {
+        for offset in [range.start(), range.end()] {
+            if offset > 0 && offset < length {
+                emoji_shaping_boundaries.insert(offset);
+            }
+        }
+    };
+    // `EmojiGraphemeShapingAtomicity`: TextSpan carries one ShapingInput style
+    // and must split. An inline box is hard only when it changes occupied
+    // geometry; decorations, ruby, technical-break annotations, and source
+    // interaction boundaries leave complex emoji shaping intact.
+    for span in &spans {
+        add_emoji_shaping_range(span.range)
+    }
+    for inline_box in &input.inline_boxes {
+        if inline_box.inline_start != 0.
+            || inline_box.inline_end != 0.
+            || inline_box.outer_spacing == InlineBoxOuterSpacing::Narrow
+        {
+            add_emoji_shaping_range(inline_box.range)
+        }
+    }
+    for inline_object in &input.inline_objects {
+        add_emoji_shaping_range(inline_object.range)
+    }
     let profile = clreq_profile_resolver.resolve(&input.profile_id);
     let context = FontRoleContext::new(
         input.text_style.locale.clone(),
@@ -363,6 +389,7 @@ pub fn prepare_width_independent_annotation(
         .collect();
     let options = ClusterRoleRangeOptions::builder()
         .span_boundaries(boundaries)
+        .emoji_shaping_boundaries(emoji_shaping_boundaries)
         .inline_objects_by_start(inline_by_start)
         .build();
     let cluster_ranges = if overrides.is_empty() {

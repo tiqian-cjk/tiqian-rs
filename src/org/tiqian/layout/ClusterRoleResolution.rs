@@ -24,6 +24,11 @@ use super::super::linebreak::LineBreak::{
 #[derive(Clone, Debug, Default)]
 pub struct ClusterRoleRangeOptions {
     pub span_boundaries: HashSet<i32>,
+    /// Boundaries that must interrupt emoji grapheme shaping because they
+    /// carry a distinct layout style or occupied inline geometry. Ordinary
+    /// source boundaries remain in `span_boundaries` for exact geometry, but
+    /// do not belong here.
+    pub emoji_shaping_boundaries: HashSet<i32>,
     pub inline_objects_by_start: HashMap<i32, InlineObjectSpan>,
 }
 
@@ -41,7 +46,13 @@ pub struct ClusterRoleRangeOptionsBuilder {
 
 impl ClusterRoleRangeOptionsBuilder {
     pub fn span_boundaries(mut self, value: HashSet<i32>) -> Self {
+        self.options.emoji_shaping_boundaries = value.clone();
         self.options.span_boundaries = value;
+        self
+    }
+
+    pub fn emoji_shaping_boundaries(mut self, value: HashSet<i32>) -> Self {
+        self.options.emoji_shaping_boundaries = value;
         self
     }
 
@@ -141,10 +152,17 @@ pub fn cluster_role_ranges_with_options(
 
         index += code_point_length;
         if role == FontRole::Emoji {
-            // Keep every emoji grapheme intact for shaping. The shared source-grapheme
-            // boundary model includes modifiers, variation selectors, regional-indicator
-            // pairs, tag sequences, and ZWJ-connected emoji.
-            index = grapheme_end;
+            // `EmojiGraphemeShapingAtomicity`: source graphemes preserve modifier,
+            // variation-selector, keycap, RI-pair, tag, and ZWJ shaping context. A real
+            // layout style/object edge still wins because ShapingInput holds one TextStyle;
+            // geometry-only source boundaries deliberately do not participate here.
+            index = options
+                .emoji_shaping_boundaries
+                .iter()
+                .copied()
+                .filter(|boundary| *boundary > start && *boundary < grapheme_end)
+                .min()
+                .unwrap_or(grapheme_end);
         } else if role == FontRole::LatinText {
             if attached_ascii_point_mark {
                 // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
@@ -368,7 +386,7 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 mod tests {
     use super::*;
     use crate::org::tiqian::core::Geometry::LayoutConstraints;
-    use crate::org::tiqian::core::TextModel::{LayoutInput, TiqianTextContent};
+    use crate::org::tiqian::core::TextModel::{LayoutInput, TextSpan, TextStyle, TiqianTextContent};
     use crate::org::tiqian::clreq::ClreqProfile::ClreqProfile;
     use crate::org::tiqian::font::FontPolicy::CjkFontRoleClassifier;
     use crate::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -453,6 +471,105 @@ mod tests {
                 (TextRange::new(9, 13), "🇨🇳"),
                 (TextRange::new(14, 17), "1️⃣"),
             ],
+        );
+    }
+
+    #[test]
+    fn complex_emoji_graphemes_ignore_geometry_only_source_boundaries() {
+        let options = ClusterRoleRangeOptions::builder()
+            .span_boundaries([2].into_iter().collect())
+            .emoji_shaping_boundaries(HashSet::new())
+            .build();
+        let ranges = cluster_role_ranges_with_options(
+            "👩🏽‍💻",
+            &CjkFontRoleClassifier,
+            &FontRoleContext::default(),
+            &ClreqProfile::mainland_horizontal(),
+            &options,
+        );
+
+        assert_eq!(
+            ranges
+                .iter()
+                .map(|range| (range.range, range.role))
+                .collect::<Vec<_>>(),
+            vec![(TextRange::new(0, 7), FontRole::Emoji)],
+        );
+
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let result = engine.layout(
+            LayoutInput::builder(
+                TiqianTextContent::builder("👩🏽‍💻".to_owned())
+                    .source_boundaries([2].into_iter().collect())
+                    .build(),
+                LayoutConstraints::with_defaults(1_000.0),
+            )
+            .build(),
+        );
+        assert_eq!(
+            result
+                .debug
+                .font_decisions
+                .iter()
+                .filter(|decision| decision.role == "Emoji")
+                .map(|decision| decision.range)
+                .collect::<Vec<_>>(),
+            vec![TextRange::new(0, 7)],
+        );
+    }
+
+    #[test]
+    fn complex_emoji_graphemes_honor_layout_style_boundaries() {
+        let hard_boundary: HashSet<i32> = [2].into_iter().collect();
+        let options = ClusterRoleRangeOptions::builder()
+            .span_boundaries(hard_boundary.clone())
+            .emoji_shaping_boundaries(hard_boundary)
+            .build();
+        let ranges = cluster_role_ranges_with_options(
+            "👩🏽‍💻",
+            &CjkFontRoleClassifier,
+            &FontRoleContext::default(),
+            &ClreqProfile::mainland_horizontal(),
+            &options,
+        );
+
+        assert_eq!(
+            ranges
+                .iter()
+                .map(|range| (range.range, range.role))
+                .collect::<Vec<_>>(),
+            vec![
+                (TextRange::new(0, 2), FontRole::Emoji),
+                (TextRange::new(2, 7), FontRole::Emoji),
+            ],
+        );
+
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let result = engine.layout(
+            LayoutInput::builder(
+                TiqianTextContent::builder("👩🏽‍💻".to_owned())
+                    .spans(vec![TextSpan {
+                        range: TextRange::new(2, 7),
+                        style: TextStyle {
+                            font_weight: 700,
+                            ..TextStyle::default()
+                        },
+                    }])
+                    .source_boundaries([2].into_iter().collect())
+                    .build(),
+                LayoutConstraints::with_defaults(1_000.0),
+            )
+            .build(),
+        );
+        assert_eq!(
+            result
+                .debug
+                .font_decisions
+                .iter()
+                .filter(|decision| decision.role == "Emoji")
+                .map(|decision| decision.range)
+                .collect::<Vec<_>>(),
+            vec![TextRange::new(0, 2), TextRange::new(2, 7)],
         );
     }
 }
