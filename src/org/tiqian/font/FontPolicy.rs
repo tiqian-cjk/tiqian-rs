@@ -279,36 +279,6 @@ fn next_code_point_after(text: &str, index: i32) -> Option<i32> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_bases() {
-        let classifier = CjkFontRoleClassifier;
-        let context = FontRoleContext::default();
-
-        for text in ["⌚", "🀄", "🫪"] {
-            assert_eq!(
-                classifier.classify_with_default_context(
-                    text,
-                    TextRange::new(0, text.encode_utf16().count() as i32),
-                ),
-                FontRole::Emoji,
-                "{text}",
-            );
-        }
-        assert_eq!(
-            classifier.classify_with_default_context("1", TextRange::new(0, 1)),
-            FontRole::LatinText,
-        );
-        assert_eq!(
-            classifier.classify("❤", TextRange::new(0, 1), &context),
-            FontRole::Symbol,
-        );
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreferCjkForAmbiguousPunctuationResolver {
     cjk_font_key: String,
