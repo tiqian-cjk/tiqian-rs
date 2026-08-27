@@ -204,6 +204,12 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let appendix_title = "附录：Emoji 组合字形";
     let emoji_appendix = "本附录列出可用于核对的组合字形：👩🏽‍💻、👨‍👩‍👧‍👦、🇨🇳、1️⃣ 与 ✈️。每一项都应作为完整字形参与排版，在换行、选择与绘制时保持一致。";
     let ligature_appendix_title = "附录：连字字形";
+    let other_languages_appendix_title = "附录：其他语言示例文本";
+    let japanese = "このマークアップ構文は JSX と呼ばれます。React が普及させた JavaScript の構文拡張です。JSX マークアップは関連するレンダリングロジックのすぐそばに配置できるので、React コンポーネントは簡単に作成、保守、削除ができます。";
+    let korean = "이 마크업 구문을 JSX라 부릅니다. 이것은 React에 의해서 대중화된 자바스크립트 구문의 확장입니다. JSX 마크업을 관련된 렌더링 로직과 가까이 두면, React 컴포넌트를 쉽게 만들고 관리하고 삭제할 수 있습니다.";
+    let english = "Cras maximus rutrum magna in gravida. Suspendisse et varius lectus. Ut ac metus id est vehicula euismod ac a sapien. Curabitur pulvinar ornare neque. Proin mattis magna vel massa eleifend cursus. Donec elementum sollicitudin venenatis. Aenean imperdiet consectetur diam, nec mollis leo. ";
+    let spanish = "Esta sintaxis de marcado se llama JSX. Es una extensión de la sintaxis de JavaScript popularizada por React. Al poner marcado JSX cerca de la lógica de renderizado relacionada hace que los componentes de React sean fáciles de crear, mantener y eliminar.";
+    let russian = "Этот синтаксис разметки называется JSX. Это расширение синтаксиса JavaScript, которое стало популярным благодаря React. Размещение разметки JSX рядом с соответствующей логикой рендеринга упрощает создание, сопровождение и удаление компонентов React.";
     let ligature_symbols = "FiraCode: -> <= := != === //";
     let ligature_words = "EB Garamond: office affinity waffle";
     let fira_code = TextStyle::builder()
@@ -800,6 +806,97 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             ligature_symbols,
             physical_content_width,
             fira_code,
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            other_languages_appendix_title,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![TextSpan {
+                range: range_of(other_languages_appendix_title, other_languages_appendix_title),
+                style: TextStyle::builder()
+                    .font_families(body.font_families.clone())
+                    .font_size(19.5 * physical_scale)
+                    .font_weight(700)
+                    .build(),
+            }],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            japanese,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            korean,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            english,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            spanish,
+            physical_content_width,
+            body.clone(),
+            flush.clone(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
+        DemoDocumentDemoBlock::Paragraph(demo_document(
+            russian,
+            physical_content_width,
+            body,
             flush,
             vec![],
             vec![],
