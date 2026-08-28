@@ -12,10 +12,12 @@ use tiqian::org::tiqian::font::FontMetrics::{
 use tiqian::org::tiqian::font::FontPolicy::{
     FallbackResolver, FontCandidate, FontDecision, FontRequest, FontRole, RawFontMetrics,
 };
-use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
+use tiqian::org::tiqian::shaping::TextShaper::{
+    ShapingInput, ShapingResult, ShapingSource, TextShaper,
+};
+use vello::kurbo::Affine;
 use vello::peniko::color::{AlphaColor, Srgb};
 use vello::peniko::{Blob, Fill, FontData};
-use vello::kurbo::Affine;
 use vello::{Glyph as VelloGlyph, Scene};
 
 const CJK_FONT_KEY: &str = "demo-cjk";
@@ -27,8 +29,10 @@ const EMOJI_FONT_KEY: &str = "demo-emoji";
 const CJK_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf");
 const LATIN_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/InterVariable.ttf");
 const SERIF_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSerifCN-VF.otf");
-const MONOSPACE_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
-const GARAMOND_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/EBGaramond-VariableFont_wght.ttf");
+const MONOSPACE_FONT_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
+const GARAMOND_FONT_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/EBGaramond-VariableFont_wght.ttf");
 const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/NotoColorEmoji-Regular.ttf");
 
 #[derive(Clone)]
@@ -72,11 +76,7 @@ impl DemoFontCatalog {
             "FiraCode Nerd Font",
             MONOSPACE_FONT_BYTES,
         )?;
-        let garamond = DemoFontFace::load(
-            GARAMOND_FONT_KEY,
-            "EB Garamond",
-            GARAMOND_FONT_BYTES,
-        )?;
+        let garamond = DemoFontFace::load(GARAMOND_FONT_KEY, "EB Garamond", GARAMOND_FONT_BYTES)?;
         let emoji = DemoFontFace::load(EMOJI_FONT_KEY, "Noto Color Emoji", EMOJI_FONT_BYTES)?;
         Ok(Self {
             faces: HashMap::from([
@@ -241,8 +241,12 @@ impl DemoFontFace {
         let weight = self
             .weight_for(input.style.font_weight)
             .unwrap_or_else(|error| panic!("paragraph-demo shaping failed: {error}"));
-        let font = HarfBuzzFontRef::new(self.bytes)
-            .unwrap_or_else(|_| panic!("paragraph-demo shaping failed: {} cannot decode", self.family));
+        let font = HarfBuzzFontRef::new(self.bytes).unwrap_or_else(|_| {
+            panic!(
+                "paragraph-demo shaping failed: {} cannot decode",
+                self.family
+            )
+        });
         let data = ShaperData::new(&font);
         let instance = self.weight_axis.map(|_| {
             harfrust::ShaperInstance::from_variations(
@@ -258,7 +262,13 @@ impl DemoFontFace {
         buffer.push_str(&input.display_text);
         buffer.guess_segment_properties();
         buffer.set_direction(Direction::LeftToRight);
-        buffer.set_language(input.style.locale.parse().unwrap_or_else(|_| "c".parse().unwrap()));
+        buffer.set_language(
+            input
+                .style
+                .locale
+                .parse()
+                .unwrap_or_else(|_| "c".parse().unwrap()),
+        );
         let feature_values: Vec<_> = features
             .iter()
             .map(|feature| Feature::new(Tag::new(&tag_bytes(feature)), feature_value(feature), ..))
@@ -276,8 +286,14 @@ impl DemoFontFace {
             let advance = position.x_advance as f32 * scale;
             glyphs.push(RawGlyph {
                 id: info.glyph_id,
-                cluster: utf8_offset_to_utf16(&input.display_text, info.cluster)
-                    .unwrap_or_else(|| panic!("paragraph-demo received invalid HarfRust cluster {}", info.cluster)),
+                cluster: utf8_offset_to_utf16(&input.display_text, info.cluster).unwrap_or_else(
+                    || {
+                        panic!(
+                            "paragraph-demo received invalid HarfRust cluster {}",
+                            info.cluster
+                        )
+                    },
+                ),
                 advance,
                 x,
                 y,
@@ -298,10 +314,9 @@ impl DemoFontFace {
             None => font.axes().location(Vec::<(&str, f32)>::new()),
         };
         if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id)) {
-            if let Some(bounds) = color_glyph.bounding_box(
-                LocationRef::new(location.coords()),
-                Size::unscaled(),
-            ) {
+            if let Some(bounds) =
+                color_glyph.bounding_box(LocationRef::new(location.coords()), Size::unscaled())
+            {
                 return Some(Rect {
                     left: bounds.x_min * scale,
                     top: -bounds.y_max * scale,
@@ -361,7 +376,10 @@ impl FontMetricsResolver for DemoFontCatalog {
             leading: face.metrics.leading as f32 * scale,
             source: FontMetricSource::RawTables,
             typo_ascent: face.metrics.typo_ascent.map(|value| value as f32 * scale),
-            typo_descent: face.metrics.typo_descent.map(|value| -(value as f32) * scale),
+            typo_descent: face
+                .metrics
+                .typo_descent
+                .map(|value| -(value as f32) * scale),
         }
     }
 }
@@ -407,10 +425,8 @@ impl TextShaper for DemoFontCatalog {
             .flat_map(|cluster| cluster.glyphs.iter().cloned())
             .collect();
         let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as i32;
-        let glyphs_without_ink_bounds = glyphs
-            .iter()
-            .filter(|glyph| glyph.bounds.is_none())
-            .count() as i32;
+        let glyphs_without_ink_bounds =
+            glyphs.iter().filter(|glyph| glyph.bounds.is_none()).count() as i32;
         let source_text = source_slice(&input.text, input.range).to_owned();
         let glyph_count = glyphs.len() as i32;
         let decision = ShapingDecisionInfo::builder(
@@ -436,8 +452,12 @@ impl TextShaper for DemoFontCatalog {
                     Cluster::with_display_text(
                         cluster.range,
                         source_slice(&input.text, cluster.range).to_owned(),
-                        utf16_slice(&input.display_text, cluster.display_start, cluster.display_end)
-                            .to_owned(),
+                        utf16_slice(
+                            &input.display_text,
+                            cluster.display_start,
+                            cluster.display_end,
+                        )
+                        .to_owned(),
                         face.key.to_owned(),
                         cluster.advance,
                     )
@@ -516,10 +536,12 @@ fn clustered_glyph_group(
 }
 
 fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("paragraph-demo shape range start must be a scalar boundary");
-    let end = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("paragraph-demo shape range end must be a scalar boundary");
+    let start =
+        tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.start())
+            .expect("paragraph-demo shape range start must be a scalar boundary");
+    let end =
+        tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.end())
+            .expect("paragraph-demo shape range end must be a scalar boundary");
     &text[start..end]
 }
 
@@ -573,19 +595,27 @@ fn table<'a>(bytes: &'a [u8], tag: &[u8; 4]) -> Option<&'a [u8]> {
 }
 
 fn u16_at(bytes: &[u8], offset: usize) -> Option<u16> {
-    Some(u16::from_be_bytes(bytes.get(offset..offset + 2)?.try_into().ok()?))
+    Some(u16::from_be_bytes(
+        bytes.get(offset..offset + 2)?.try_into().ok()?,
+    ))
 }
 
 fn i16_at(bytes: &[u8], offset: usize) -> Option<i16> {
-    Some(i16::from_be_bytes(bytes.get(offset..offset + 2)?.try_into().ok()?))
+    Some(i16::from_be_bytes(
+        bytes.get(offset..offset + 2)?.try_into().ok()?,
+    ))
 }
 
 fn u32_at(bytes: &[u8], offset: usize) -> Option<u32> {
-    Some(u32::from_be_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
+    Some(u32::from_be_bytes(
+        bytes.get(offset..offset + 4)?.try_into().ok()?,
+    ))
 }
 
 fn i32_at(bytes: &[u8], offset: usize) -> Option<i32> {
-    Some(i32::from_be_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?))
+    Some(i32::from_be_bytes(
+        bytes.get(offset..offset + 4)?.try_into().ok()?,
+    ))
 }
 
 fn units_per_em(bytes: &[u8]) -> Option<u32> {
@@ -669,17 +699,27 @@ mod tests {
             TextStyle::default(),
             cjk,
         ));
-        assert!(result.glyph_runs[0].glyphs.iter().all(|glyph| glyph.id != 0));
-        assert!(result.glyph_runs[0]
-            .glyphs
-            .iter()
-            .all(|glyph| glyph.render_font_key.is_some() && glyph.bounds.is_some()));
-        let metrics = FontMetricsResolver::resolve(&catalog, &FontMetricsRequest::new(
-            CJK_FONT_KEY.to_owned(),
-            16.0,
-            FontRole::CjkText,
-            "zh-Hans".to_owned(),
-        ));
+        assert!(
+            result.glyph_runs[0]
+                .glyphs
+                .iter()
+                .all(|glyph| glyph.id != 0)
+        );
+        assert!(
+            result.glyph_runs[0]
+                .glyphs
+                .iter()
+                .all(|glyph| glyph.render_font_key.is_some() && glyph.bounds.is_some())
+        );
+        let metrics = FontMetricsResolver::resolve(
+            &catalog,
+            &FontMetricsRequest::new(
+                CJK_FONT_KEY.to_owned(),
+                16.0,
+                FontRole::CjkText,
+                "zh-Hans".to_owned(),
+            ),
+        );
         assert!(metrics.ascent > 0.0 && metrics.descent > 0.0);
         assert!(metrics.typo_ascent.is_some() && metrics.typo_descent.is_some());
     }
@@ -711,10 +751,12 @@ mod tests {
                     .build(),
                 decision,
             ));
-            assert!(shaped.glyph_runs[0]
-                .glyphs
-                .iter()
-                .all(|glyph| glyph.id != 0 && glyph.render_font_key.is_some()));
+            assert!(
+                shaped.glyph_runs[0]
+                    .glyphs
+                    .iter()
+                    .all(|glyph| glyph.id != 0 && glyph.render_font_key.is_some())
+            );
             assert_eq!(shaped.glyph_runs[0].font_key, expected_key);
             assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| {
                 glyph
@@ -749,11 +791,16 @@ mod tests {
             .build(),
         );
         assert_eq!(halt.glyph_runs[0].open_type_features, vec!["fwid=1"]);
-        assert_eq!(halt.decisions[0].feature_evidence.as_deref(), Some("fwid=1"));
-        assert!(halt.glyph_runs[0]
-            .glyphs
-            .iter()
-            .all(|glyph| glyph.halt_advance.is_some()));
+        assert_eq!(
+            halt.decisions[0].feature_evidence.as_deref(),
+            Some("fwid=1")
+        );
+        assert!(
+            halt.glyph_runs[0]
+                .glyphs
+                .iter()
+                .all(|glyph| glyph.halt_advance.is_some())
+        );
 
         let bopomofo = FallbackResolver::resolve(
             &catalog,
@@ -776,8 +823,16 @@ mod tests {
             .build(),
         );
         assert_eq!(vertical.glyph_runs[0].open_type_features, vec!["vert=1"]);
-        assert_eq!(vertical.decisions[0].feature_evidence.as_deref(), Some("vert=1"));
-        assert!(vertical.glyph_runs[0].glyphs.iter().all(|glyph| glyph.id != 0));
+        assert_eq!(
+            vertical.decisions[0].feature_evidence.as_deref(),
+            Some("vert=1")
+        );
+        assert!(
+            vertical.glyph_runs[0]
+                .glyphs
+                .iter()
+                .all(|glyph| glyph.id != 0)
+        );
     }
 
     #[test]
@@ -801,11 +856,13 @@ mod tests {
         ));
         assert_eq!(shaped.clusters.len(), 1);
         assert_eq!(shaped.clusters[0].range, TextRange::new(0, 4));
-        assert!(shaped
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| glyph.cluster_range == shaped.clusters[0].range));
+        assert!(
+            shaped
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| glyph.cluster_range == shaped.clusters[0].range)
+        );
     }
 
     #[test]
@@ -829,14 +886,20 @@ mod tests {
             .build(),
         );
 
-        assert!(result
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| glyph.render_font_key.is_some() && glyph.id != 0));
-        assert!(result.debug.metric_decisions.iter().all(|decision| {
-            decision.raw_source == "RawTables"
-        }));
+        assert!(
+            result
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| glyph.render_font_key.is_some() && glyph.id != 0)
+        );
+        assert!(
+            result
+                .debug
+                .metric_decisions
+                .iter()
+                .all(|decision| { decision.raw_source == "RawTables" })
+        );
     }
 
     #[test]
@@ -862,8 +925,8 @@ mod tests {
         let mut scene = Scene::new();
         catalog
             .paint_glyph(
-            &mut scene,
-            Affine::IDENTITY,
+                &mut scene,
+                Affine::IDENTITY,
                 glyph.render_font_key.as_deref().unwrap(),
                 glyph.id,
                 16.0,
@@ -900,7 +963,12 @@ mod tests {
             assert_eq!(shaped.glyph_runs[0].font_key, EMOJI_FONT_KEY);
             assert_eq!(shaped.clusters.len(), 1);
             assert_eq!(shaped.clusters[0].range, range);
-            assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| glyph.id != 0));
+            assert!(
+                shaped.glyph_runs[0]
+                    .glyphs
+                    .iter()
+                    .all(|glyph| glyph.id != 0)
+            );
 
             let mut scene = Scene::new();
             for glyph in &shaped.glyph_runs[0].glyphs {
@@ -939,12 +1007,21 @@ mod tests {
                 TiqianTextContent::new("甲👩🏽‍💻乙".to_owned()),
                 LayoutConstraints::with_defaults(24.0),
             )
-            .text_style(TextStyle::builder().font_families(vec!["Source Han Sans SC".to_owned()]).build())
+            .text_style(
+                TextStyle::builder()
+                    .font_families(vec!["Source Han Sans SC".to_owned()])
+                    .build(),
+            )
             .build(),
         );
 
         let emoji_range = TextRange::new(1, 8);
-        assert!(result.clusters.iter().any(|cluster| cluster.range == emoji_range));
+        assert!(
+            result
+                .clusters
+                .iter()
+                .any(|cluster| cluster.range == emoji_range)
+        );
         assert!(result.clusters.iter().all(|cluster| {
             cluster.range.end() <= emoji_range.start()
                 || cluster.range.start() >= emoji_range.end()
@@ -956,11 +1033,13 @@ mod tests {
                 && decision.font_key == EMOJI_FONT_KEY
                 && decision.resolved_face.as_deref() == Some("demo-emoji@wght=400")
         }));
-        assert!(result
-            .glyph_runs
-            .iter()
-            .filter(|run| run.range == emoji_range)
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| glyph.render_font_key.as_deref() == Some("demo-emoji@wght=400")));
+        assert!(
+            result
+                .glyph_runs
+                .iter()
+                .filter(|run| run.range == emoji_range)
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| glyph.render_font_key.as_deref() == Some("demo-emoji@wght=400"))
+        );
     }
 }

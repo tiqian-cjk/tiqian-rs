@@ -10,7 +10,10 @@ fn only_latin_text_uses_latin_face() {
         FontRole::Emoji,
         FontRole::Unknown,
     ] {
-        assert!(!role.uses_latin_face(), "{role:?} must fall back to the CJK face");
+        assert!(
+            !role.uses_latin_face(),
+            "{role:?} must fall back to the CJK face"
+        );
     }
 }
 
@@ -24,7 +27,10 @@ fn name_overload_agrees_with_enum() {
         (FontRole::Emoji, "Emoji"),
         (FontRole::Unknown, "Unknown"),
     ] {
-        assert_eq!(role.uses_latin_face(), font_role_name_uses_latin_face(Some(name)));
+        assert_eq!(
+            role.uses_latin_face(),
+            font_role_name_uses_latin_face(Some(name))
+        );
     }
     assert!(!font_role_name_uses_latin_face(None));
     assert!(!font_role_name_uses_latin_face(Some("NotARole")));

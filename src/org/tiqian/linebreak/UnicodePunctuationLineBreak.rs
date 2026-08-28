@@ -51,15 +51,11 @@ pub mod unicode_punctuation_line_break {
             LineBreak::UnambiguousHyphen => UnicodePunctuationLineBreakClass::HyphenHH,
             LineBreak::Hyphen => UnicodePunctuationLineBreakClass::Hyphen,
             LineBreak::Inseparable => UnicodePunctuationLineBreakClass::Inseparable,
-            LineBreak::InfixNumeric => {
-                UnicodePunctuationLineBreakClass::InfixNumericSeparator
-            }
+            LineBreak::InfixNumeric => UnicodePunctuationLineBreakClass::InfixNumericSeparator,
             LineBreak::Nonstarter => UnicodePunctuationLineBreakClass::Nonstarter,
             LineBreak::OpenPunctuation => UnicodePunctuationLineBreakClass::OpenPunctuation,
             LineBreak::Quotation => UnicodePunctuationLineBreakClass::Quotation,
-            LineBreak::BreakSymbols => {
-                UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter
-            }
+            LineBreak::BreakSymbols => UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter,
             _ => UnicodePunctuationLineBreakClass::Other,
         }
     }

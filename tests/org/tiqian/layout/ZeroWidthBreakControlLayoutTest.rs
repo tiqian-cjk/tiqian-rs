@@ -1,5 +1,7 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::org::tiqian::core::TextModel::{
+    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
+};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -7,14 +9,20 @@ use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
 };
 use tiqian::org::tiqian::linebreak::Hyphenation::NoHyphenator;
 
-fn layout_with_greedy(text: &str, max_width: f32) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_greedy(
+    text: &str,
+    max_width: f32,
+) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(GreedyLineBreaker::default());
     engine.hyphenator = &NoHyphenator;
     engine.layout(input(text, max_width))
 }
 
-fn layout_with_lookahead(text: &str, max_width: f32) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_lookahead(
+    text: &str,
+    max_width: f32,
+) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(LookaheadLineBreaker::default());
     engine.hyphenator = &NoHyphenator;
@@ -41,14 +49,21 @@ fn zero_width_space_is_unshaped_soft_break_for_both_breakers() {
         ("greedy", layout_with_greedy("foo\u{200b}bar", 48.0)),
         ("lookahead", layout_with_lookahead("foo\u{200b}bar", 48.0)),
     ] {
-        let control = result.clusters.iter().find(|cluster| cluster.text == "\u{200b}").unwrap();
+        let control = result
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "\u{200b}")
+            .unwrap();
         assert_eq!("", control.display_text, "{name}");
         assert_eq!(0.0, control.advance, "{name}");
-        assert!(result
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| glyph.cluster_range != control.range), "{name}");
+        assert!(
+            result
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| glyph.cluster_range != control.range),
+            "{name}"
+        );
         assert_eq!(0, result.lines[0].range.start(), "{name}");
         assert_eq!(4, result.lines[0].range.end(), "{name}");
         assert_eq!(4, result.lines[1].range.start(), "{name}");
@@ -64,7 +79,10 @@ fn zero_width_space_is_unshaped_soft_break_for_both_breakers() {
                 .reason,
             "{name}",
         );
-        assert_eq!(control.range, result.debug.zero_width_break_decisions[0].range, "{name}");
+        assert_eq!(
+            control.range, result.debug.zero_width_break_decisions[0].range,
+            "{name}"
+        );
     }
 }
 

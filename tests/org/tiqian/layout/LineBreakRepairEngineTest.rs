@@ -20,7 +20,9 @@ fn layout(
     }
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::builder(text.to_owned()).line_break_spans(spans).build(),
+            TiqianTextContent::builder(text.to_owned())
+                .line_break_spans(spans)
+                .build(),
             LayoutConstraints::with_defaults(max_width),
         )
         .paragraph_style(
@@ -33,7 +35,10 @@ fn layout(
     )
 }
 
-fn line_text(result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult, index: usize) -> String {
+fn line_text(
+    result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult,
+    index: usize,
+) -> String {
     let line = &result.lines[index];
     result.clusters[line.cluster_range.first() as usize..=line.cluster_range.last() as usize]
         .iter()
@@ -47,8 +52,18 @@ fn camel_case_token_breaks_at_hump_without_synthetic_hyphen() {
 
     assert_eq!(2, result.lines.len());
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "Power"));
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "Point"));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "Power")
+    );
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "Point")
+    );
 }
 
 #[test]
@@ -67,7 +82,12 @@ fn url_separator_break_keeps_solidus_with_preceding_piece() {
     let result = layout("TeX/LaTeX", 80.0, Vec::new(), false);
 
     assert!(result.clusters.iter().any(|cluster| cluster.text == "TeX/"));
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "LaTeX"));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "LaTeX")
+    );
     assert_eq!("TeX/", line_text(&result, 0));
     assert_eq!("LaTeX", line_text(&result, 1));
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
@@ -96,13 +116,27 @@ fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() 
 
     assert_eq!(6, result.lines[0].range.end());
     assert_eq!(0.0, result.lines[0].hyphen_advance);
-    assert!(result.debug.line_decisions[0].notes.iter().any(|note| note == "technical-break:Emergency"));
-    let adjustment = result.debug.justification_decisions.iter()
+    assert!(
+        result.debug.line_decisions[0]
+            .notes
+            .iter()
+            .any(|note| note == "technical-break:Emergency")
+    );
+    let adjustment = result
+        .debug
+        .justification_decisions
+        .iter()
         .find(|decision| decision.line_range == result.lines[0].range)
         .expect("expected justification decision for technical line");
-    assert!(adjustment.allocations.iter().all(|allocation| allocation.kind != "CjkInterChar"));
+    assert!(
+        adjustment
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind != "CjkInterChar")
+    );
     assert!(adjustment.allocations.iter().any(|allocation| {
-        allocation.kind == "EmergencyGraphemeTracking" && allocation.cluster_range.start() >= technical_range.start()
+        allocation.kind == "EmergencyGraphemeTracking"
+            && allocation.cluster_range.start() >= technical_range.start()
     }));
     assert!(adjustment.deficit_after.abs() < 0.001);
 }

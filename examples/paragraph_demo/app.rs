@@ -19,7 +19,7 @@ use winit::window::{Window, WindowId};
 
 use crate::font_backend::DemoFontCatalog;
 use crate::renderer::DemoRenderer;
-use crate::sample::{build_document_demo, DemoDocument, DemoDocumentDemoBlock};
+use crate::sample::{DemoDocument, DemoDocumentDemoBlock, build_document_demo};
 
 const WINDOW_TITLE: &str = "Tiqian paragraph demo";
 const INITIAL_LOGICAL_WIDTH: f64 = 720.0;
@@ -97,7 +97,10 @@ fn layout_paint_overhang(layout: &LayoutResult) -> (f32, f32, f32, f32) {
         let Some(bounds) = glyph.bounds else {
             continue;
         };
-        let Some(cluster) = positions.iter().find(|cluster| cluster.range == glyph.cluster_range) else {
+        let Some(cluster) = positions
+            .iter()
+            .find(|cluster| cluster.range == glyph.cluster_range)
+        else {
             continue;
         };
         left = left.max(-(cluster.draw_x + glyph.x + bounds.left));
@@ -138,7 +141,8 @@ fn layout_paint_overhang(layout: &LayoutResult) -> (f32, f32, f32, f32) {
                 left = left.max(-(placement.draw_x + glyph.x + bounds.left));
                 top = top.max(-(placement.baseline_y + glyph.y + bounds.top));
                 right = right.max(placement.draw_x + glyph.x + bounds.right - width);
-                bottom = bottom.max(placement.baseline_y + glyph.y + bounds.bottom - layout.size.height);
+                bottom =
+                    bottom.max(placement.baseline_y + glyph.y + bounds.bottom - layout.size.height);
             }
             left = left.max(-placement.left);
             top = top.max(-placement.top);
@@ -186,7 +190,10 @@ impl DesktopParagraphDemo {
     fn update_layout(&mut self, physical_size: PhysicalSize<u32>, scale_factor: f64) {
         let scale_factor = scale_factor as f32;
         let padding = (LOGICAL_PADDING * scale_factor).round().max(0.0) as u32;
-        let physical_content_width = physical_size.width.saturating_sub(padding.saturating_mul(2)).max(1);
+        let physical_content_width = physical_size
+            .width
+            .saturating_sub(padding.saturating_mul(2))
+            .max(1);
         let key = LayoutKey {
             physical_content_width,
             scale_factor,
@@ -204,7 +211,8 @@ impl DesktopParagraphDemo {
         for (index, block) in document.blocks.into_iter().enumerate() {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
-                    let (document, layout) = self.layout_document(document, physical_content_width as f32);
+                    let (document, layout) =
+                        self.layout_document(document, physical_content_width as f32);
                     let (left, top, right, bottom) = layout_paint_overhang(&layout);
                     left_overhang = left_overhang.max(left);
                     top_overhang = top_overhang.max(top - y);
@@ -225,7 +233,10 @@ impl DesktopParagraphDemo {
                         y += TOP_LEVEL_GAP_LOGICAL * scale_factor;
                     }
                 }
-                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                DemoDocumentDemoBlock::NarrowParagraph {
+                    document,
+                    max_width,
+                } => {
                     let (document, layout) = self.layout_document(document, max_width);
                     let (left, top, right, bottom) = layout_paint_overhang(&layout);
                     left_overhang = left_overhang.max(left);
@@ -247,15 +258,17 @@ impl DesktopParagraphDemo {
                 DemoDocumentDemoBlock::ListItem { marker, body } => {
                     let font_size = body.input.text_style.font_size;
                     let mut marker_measurement = marker.clone();
-                    marker_measurement.input.paragraph_style.line_length_grid = LineLengthGrid::with_enabled(false);
+                    marker_measurement.input.paragraph_style.line_length_grid =
+                        LineLengthGrid::with_enabled(false);
                     let (_, marker_measurement_layout) =
                         self.layout_document(marker_measurement, 100_000.0);
-                    let gutter = (marker_measurement_layout.size.width / font_size).ceil().max(1.0) * font_size;
+                    let gutter = (marker_measurement_layout.size.width / font_size)
+                        .ceil()
+                        .max(1.0)
+                        * font_size;
                     let (marker, marker_layout) = self.layout_document(marker, gutter);
-                    let (body, body_layout) = self.layout_document(
-                        body,
-                        (physical_content_width as f32 - gutter).max(1.0),
-                    );
+                    let (body, body_layout) = self
+                        .layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
                     let marker_y = body_layout
                         .lines
                         .first()
@@ -271,8 +284,10 @@ impl DesktopParagraphDemo {
                     top_overhang = top_overhang.max(body_top - y);
                     right_overhang = right_overhang.max(marker_right);
                     right_overhang = right_overhang.max(body_right);
-                    bottom_overhang = bottom_overhang.max(y + marker_y + marker_layout.size.height + marker_bottom);
-                    bottom_overhang = bottom_overhang.max(y + body_layout.size.height + body_bottom);
+                    bottom_overhang = bottom_overhang
+                        .max(y + marker_y + marker_layout.size.height + marker_bottom);
+                    bottom_overhang =
+                        bottom_overhang.max(y + body_layout.size.height + body_bottom);
                     let height = body_layout
                         .size
                         .height
@@ -313,7 +328,8 @@ impl DesktopParagraphDemo {
         mut document: DemoDocument,
         physical_content_width: f32,
     ) -> (DemoDocument, LayoutResult) {
-        document.input.constraints = LayoutConstraints::with_defaults(physical_content_width.max(1.0));
+        document.input.constraints =
+            LayoutConstraints::with_defaults(physical_content_width.max(1.0));
         let layout = self.engine.layout(document.input.clone());
         (document, layout)
     }
@@ -366,7 +382,12 @@ impl DesktopParagraphDemo {
                 continue;
             }
             match block {
-                DemoPageBlock::Text { document, layout, y, .. } => {
+                DemoPageBlock::Text {
+                    document,
+                    layout,
+                    y,
+                    ..
+                } => {
                     Self::paint_document(
                         &mut self.scene,
                         document,
@@ -443,11 +464,12 @@ impl DesktopParagraphDemo {
                 return Err("GPU surface acquisition failed validation".to_owned());
             }
         };
-        let mut encoder = device_handle
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Tiqian paragraph demo surface blit"),
-            });
+        let mut encoder =
+            device_handle
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Tiqian paragraph demo surface blit"),
+                });
         surface.blitter.copy(
             &device_handle.device,
             &mut encoder,
@@ -461,7 +483,9 @@ impl DesktopParagraphDemo {
         device_handle
             .device
             .poll(wgpu::PollType::Poll)
-            .map_err(|error| format!("GPU device poll failed after presenting paragraph demo: {error}"))?;
+            .map_err(|error| {
+                format!("GPU device poll failed after presenting paragraph demo: {error}")
+            })?;
         Ok(())
     }
 
@@ -526,7 +550,10 @@ impl ApplicationHandler for DesktopParagraphDemo {
                     .create_window(
                         Window::default_attributes()
                             .with_title(WINDOW_TITLE)
-                            .with_inner_size(LogicalSize::new(INITIAL_LOGICAL_WIDTH, INITIAL_LOGICAL_HEIGHT)),
+                            .with_inner_size(LogicalSize::new(
+                                INITIAL_LOGICAL_WIDTH,
+                                INITIAL_LOGICAL_HEIGHT,
+                            )),
                     )
                     .expect("paragraph-demo window creation failed"),
             )
@@ -539,7 +566,8 @@ impl ApplicationHandler for DesktopParagraphDemo {
             wgpu::PresentMode::AutoVsync,
         ))
         .expect("paragraph-demo GPU surface creation failed");
-        self.renderers.resize_with(self.context.devices.len(), || None);
+        self.renderers
+            .resize_with(self.context.devices.len(), || None);
         self.renderers[surface.dev_id].get_or_insert_with(|| {
             Renderer::new(
                 &self.context.devices[surface.dev_id].device,
@@ -585,7 +613,8 @@ impl ApplicationHandler for DesktopParagraphDemo {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
                 if size.width != 0 && size.height != 0 {
-                    self.context.resize_surface(surface, size.width, size.height);
+                    self.context
+                        .resize_surface(surface, size.width, size.height);
                     *valid_surface = true;
                     self.request_layout_and_redraw();
                 } else {
@@ -599,7 +628,9 @@ impl ApplicationHandler for DesktopParagraphDemo {
                 let size = window.inner_size();
                 let scale_factor = window.scale_factor();
                 let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * WHEEL_LINE_LOGICAL * scale_factor as f32,
+                    MouseScrollDelta::LineDelta(_, y) => {
+                        -y * WHEEL_LINE_LOGICAL * scale_factor as f32
+                    }
                     MouseScrollDelta::PixelDelta(position) => -position.y as f32,
                 };
                 self.scroll_by(delta, size, scale_factor);
@@ -636,13 +667,19 @@ mod tests {
             .collect()
     }
 
-    fn assert_replayable(catalog: &DemoFontCatalog, result: &LayoutResult, document: &DemoDocument) {
-        assert!(result
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .chain(result.lines.iter().flat_map(|line| &line.hyphen_glyphs))
-            .all(|glyph| glyph.render_font_key.is_some()));
+    fn assert_replayable(
+        catalog: &DemoFontCatalog,
+        result: &LayoutResult,
+        document: &DemoDocument,
+    ) {
+        assert!(
+            result
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .chain(result.lines.iter().flat_map(|line| &line.hyphen_glyphs))
+                .all(|glyph| glyph.render_font_key.is_some())
+        );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
         renderer
@@ -654,10 +691,10 @@ mod tests {
         renderer
             .paint_rich_text_lines(&mut scene, result, &document.rich_text)
             .unwrap();
-        renderer.paint_decorations(&mut scene, result, &document.colors).unwrap();
         renderer
-            .paint_annotations(&mut scene, result)
+            .paint_decorations(&mut scene, result, &document.colors)
             .unwrap();
+        renderer.paint_annotations(&mut scene, result).unwrap();
         assert!(!scene.encoding().draw_tags.is_empty());
     }
 
@@ -674,12 +711,21 @@ mod tests {
         let wide = engine.layout(wide_document.input.clone());
         let narrow = engine.layout(narrow_document.input.clone());
         let restored = engine.layout(restored_document.input.clone());
-        assert!(wide.lines.len() != narrow.lines.len() || layout_signature(&wide) != layout_signature(&narrow));
+        assert!(
+            wide.lines.len() != narrow.lines.len()
+                || layout_signature(&wide) != layout_signature(&narrow)
+        );
         assert_eq!(layout_signature(&wide), layout_signature(&restored));
         assert_eq!(wide.input.content.text, narrow.input.content.text);
         assert_eq!(wide.input.content.text, restored.input.content.text);
-        assert_eq!(wide.input.content.source_boundaries, narrow.input.content.source_boundaries);
-        assert_eq!(wide.input.content.source_boundaries, restored.input.content.source_boundaries);
+        assert_eq!(
+            wide.input.content.source_boundaries,
+            narrow.input.content.source_boundaries
+        );
+        assert_eq!(
+            wide.input.content.source_boundaries,
+            restored.input.content.source_boundaries
+        );
         assert_replayable(&catalog, &wide, &wide_document);
         assert_replayable(&catalog, &narrow, &narrow_document);
         assert_replayable(&catalog, &restored, &restored_document);
@@ -699,7 +745,10 @@ mod tests {
                     let result = engine.layout(document.input.clone());
                     assert_replayable(&catalog, &result, &document);
                 }
-                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                DemoDocumentDemoBlock::NarrowParagraph {
+                    document,
+                    max_width,
+                } => {
                     let mut input = document.input.clone();
                     input.constraints = LayoutConstraints::with_defaults(max_width);
                     let result = engine.layout(input);
@@ -759,14 +808,17 @@ mod tests {
                     else {
                         return true;
                     };
-                    let range_start = layout.input.content.text[..byte_start].encode_utf16().count() as i32;
+                    let range_start = layout.input.content.text[..byte_start]
+                        .encode_utf16()
+                        .count() as i32;
                     let range_end = range_start + text.encode_utf16().count() as i32;
                     let decisions: Vec<_> = layout
                         .debug
                         .shaping_decisions
                         .iter()
                         .filter(|decision| {
-                            decision.range.start() >= range_start && decision.range.end() <= range_end
+                            decision.range.start() >= range_start
+                                && decision.range.end() <= range_end
                         })
                         .collect();
                     let matches_expected_face = !decisions.is_empty()
@@ -778,7 +830,10 @@ mod tests {
             }
         }
 
-        assert!(expected_faces.is_empty(), "missing span-selected faces: {expected_faces:?}");
+        assert!(
+            expected_faces.is_empty(),
+            "missing span-selected faces: {expected_faces:?}"
+        );
     }
 
     #[test]
@@ -795,7 +850,8 @@ mod tests {
         for block in document.blocks {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
-                    let is_mixed_sample = document.input.content.text.starts_with("中文书刊经常夹用");
+                    let is_mixed_sample =
+                        document.input.content.text.starts_with("中文书刊经常夹用");
                     let layout = engine.layout(document.input);
                     if is_mixed_sample {
                         hyphenation_was_seen = layout
@@ -804,7 +860,10 @@ mod tests {
                             .any(|line| !line.hyphen_glyphs.is_empty());
                     }
                 }
-                DemoDocumentDemoBlock::NarrowParagraph { document, max_width } => {
+                DemoDocumentDemoBlock::NarrowParagraph {
+                    document,
+                    max_width,
+                } => {
                     let is_hanging_sample = document.input.content.text == "校样排印，宜留呼吸。";
                     let is_hyphenation_sample = document
                         .input
@@ -831,8 +890,14 @@ mod tests {
             }
         }
 
-        assert!(hanging_was_seen, "default-width punctuation sample must exhibit hanging punctuation");
-        assert!(hyphenation_was_seen, "default-width mixed sample must exhibit English hyphenation");
+        assert!(
+            hanging_was_seen,
+            "default-width punctuation sample must exhibit hanging punctuation"
+        );
+        assert!(
+            hyphenation_was_seen,
+            "default-width mixed sample must exhibit English hyphenation"
+        );
     }
 
     #[test]
@@ -848,7 +913,11 @@ mod tests {
             .into_iter()
             .find_map(|block| match block {
                 DemoDocumentDemoBlock::NarrowParagraph { document, .. }
-                    if document.input.content.text.starts_with("术语 internationalization") =>
+                    if document
+                        .input
+                        .content
+                        .text
+                        .starts_with("术语 internationalization") =>
                 {
                     Some(document.input)
                 }

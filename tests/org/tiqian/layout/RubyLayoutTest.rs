@@ -26,7 +26,9 @@ fn layout(
 
 #[test]
 fn ruby_uses_existing_interline_space_without_changing_line_box() {
-    let style = ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build();
+    let style = ParagraphStyle::builder()
+        .first_line_indent(Some(Ic::ZERO))
+        .build();
     let plain = layout("中文排版", 400.0, style.clone(), Vec::new());
     let ruby = layout(
         "中文排版",
@@ -91,7 +93,12 @@ fn uniform_paragraph_mode_expands_every_line_by_same_ruby_deficit() {
     );
 
     assert_eq!(3, result.lines.len());
-    assert!(result.lines.iter().all(|line| (line.bottom - line.top - 24.0).abs() < 0.001));
+    assert!(
+        result
+            .lines
+            .iter()
+            .all(|line| (line.bottom - line.top - 24.0).abs() < 0.001)
+    );
     assert_eq!(72.0, result.size.height);
     let decision = result.debug.ruby_line_height_decision.as_ref().unwrap();
     assert_eq!("UniformParagraph", decision.mode);

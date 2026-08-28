@@ -6,7 +6,11 @@ fn hyphenated(word: &str) -> String {
         .enumerate()
         .flat_map(|(index, character)| {
             let offset = index as i32;
-            offsets.contains(&offset).then_some('-').into_iter().chain(std::iter::once(character))
+            offsets
+                .contains(&offset)
+                .then_some('-')
+                .into_iter()
+                .chain(std::iter::once(character))
         })
         .collect()
 }
@@ -24,7 +28,12 @@ fn respects_margins_and_short_words() {
     assert!(english_hyphenation::en_us().hyphenate("a").is_empty());
     let word = "supercalifragilistic";
     let offsets = english_hyphenation::en_us().hyphenate(word);
-    assert!(offsets.iter().all(|offset| (2..=word.chars().count() as i32 - 3).contains(offset)), "offsets={offsets:?}");
+    assert!(
+        offsets
+            .iter()
+            .all(|offset| (2..=word.chars().count() as i32 - 3).contains(offset)),
+        "offsets={offsets:?}"
+    );
 }
 
 #[test]

@@ -17,7 +17,11 @@ fn input(text: &str) -> LayoutInput {
         TiqianTextContent::new(text.to_owned()),
         LayoutConstraints::with_defaults(240.0),
     )
-    .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+    .paragraph_style(
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
+    )
     .build()
 }
 
@@ -44,11 +48,21 @@ fn mandatory_break_controls_are_unshaped_and_preserve_crlf_and_trailing_blank_li
     assert_eq!(LineEndReason::MandatoryBreak, result.lines[0].end_reason);
     assert_eq!(LineEndReason::MandatoryBreak, result.lines[1].end_reason);
     assert_eq!(LineEndReason::ParagraphEnd, result.lines[2].end_reason);
-    let crlf = result.clusters.iter().find(|cluster| cluster.text == "\r\n").unwrap();
+    let crlf = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.text == "\r\n")
+        .unwrap();
     assert_eq!(TextRange::new(1, 3), crlf.range);
     assert_eq!("", crlf.display_text);
     assert_eq!(0.0, crlf.advance);
-    assert!(result.glyph_runs.iter().flat_map(|run| &run.glyphs).all(|glyph| glyph.cluster_range != crlf.range));
+    assert!(
+        result
+            .glyph_runs
+            .iter()
+            .flat_map(|run| &run.glyphs)
+            .all(|glyph| glyph.cluster_range != crlf.range)
+    );
     assert_eq!(TextRange::new(5, 5), result.lines[2].range);
 }
 
@@ -56,7 +70,12 @@ struct BoundsTextShaper;
 
 impl TextShaper for BoundsTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let bounds = Rect { left: 1.0, top: -10.0, right: 12.0, bottom: 2.0 };
+        let bounds = Rect {
+            left: 1.0,
+            top: -10.0,
+            right: 12.0,
+            bottom: 2.0,
+        };
         ShapingResult::new(
             vec![Cluster::with_display_text(
                 input.range,
@@ -68,7 +87,11 @@ impl TextShaper for BoundsTextShaper {
             vec![GlyphRun::new(
                 input.range,
                 input.font_decision.candidate.key.clone(),
-                vec![Glyph::builder(42, input.range, 20.0).bounds(Some(bounds)).build()],
+                vec![
+                    Glyph::builder(42, input.range, 20.0)
+                        .bounds(Some(bounds))
+                        .build(),
+                ],
                 20.0,
             )],
         )
@@ -84,7 +107,15 @@ fn paragraph_entry_preserves_shaper_glyph_bounds() {
     let glyph = &result.glyph_runs[0].glyphs[0];
     assert_eq!(42, glyph.id);
     assert_eq!(20.0, glyph.advance);
-    assert_eq!(Some(Rect { left: 1.0, top: -10.0, right: 12.0, bottom: 2.0 }), glyph.bounds);
+    assert_eq!(
+        Some(Rect {
+            left: 1.0,
+            top: -10.0,
+            right: 12.0,
+            bottom: 2.0
+        }),
+        glyph.bounds
+    );
 }
 
 #[test]
@@ -116,9 +147,27 @@ fn combining_marks_remain_in_their_base_shaping_runs() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let result = engine.layout(input("༎ຶ Ỏ̷"));
 
-    assert!(result.debug.shaping_decisions.iter().any(|decision| decision.source_text == "༎ຶ"));
-    assert!(result.debug.shaping_decisions.iter().any(|decision| decision.source_text == "Ỏ̷"));
-    assert!(result.debug.shaping_decisions.iter().all(|decision| decision.source_text != "ຶ" && decision.source_text != "̷"));
+    assert!(
+        result
+            .debug
+            .shaping_decisions
+            .iter()
+            .any(|decision| decision.source_text == "༎ຶ")
+    );
+    assert!(
+        result
+            .debug
+            .shaping_decisions
+            .iter()
+            .any(|decision| decision.source_text == "Ỏ̷")
+    );
+    assert!(
+        result
+            .debug
+            .shaping_decisions
+            .iter()
+            .all(|decision| decision.source_text != "ຶ" && decision.source_text != "̷")
+    );
 }
 
 #[test]
@@ -131,10 +180,22 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let atomic = engine.layout(
         LayoutInput::builder(atomic_content, LayoutConstraints::with_defaults(320.0))
-            .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
             .build(),
     );
-    assert_eq!(vec![TextRange::new(0, length)], atomic.debug.shaping_decisions.iter().map(|decision| decision.range).collect::<Vec<_>>());
+    assert_eq!(
+        vec![TextRange::new(0, length)],
+        atomic
+            .debug
+            .shaping_decisions
+            .iter()
+            .map(|decision| decision.range)
+            .collect::<Vec<_>>()
+    );
 
     let styled_content = TiqianTextContent::builder(text.to_owned())
         .spans(vec![TextSpan {
@@ -145,10 +206,22 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
         .build();
     let styled = engine.layout(
         LayoutInput::builder(styled_content, LayoutConstraints::with_defaults(320.0))
-            .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
             .build(),
     );
-    assert_eq!(vec![TextRange::new(0, 2), TextRange::new(2, length)], styled.debug.shaping_decisions.iter().map(|decision| decision.range).collect::<Vec<_>>());
+    assert_eq!(
+        vec![TextRange::new(0, 2), TextRange::new(2, length)],
+        styled
+            .debug
+            .shaping_decisions
+            .iter()
+            .map(|decision| decision.range)
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -158,7 +231,12 @@ fn emoji_sequence_role_promotions_are_explainable() {
 
     assert_eq!(
         vec![
-            (TextRange::new(0, 2), "Symbol", "Emoji", "EmojiStyleVariationSequence"),
+            (
+                TextRange::new(0, 2),
+                "Symbol",
+                "Emoji",
+                "EmojiStyleVariationSequence"
+            ),
             (TextRange::new(3, 6), "LatinText", "Emoji", "KeycapSequence"),
         ],
         result
@@ -182,15 +260,42 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
     let cases = vec![
         ("a1️⃣", vec![("a", "LatinText"), ("1️⃣", "Emoji")]),
         ("1️⃣a", vec![("1️⃣", "Emoji"), ("a", "LatinText")]),
-        ("a😀中", vec![("a", "LatinText"), ("😀", "Emoji"), ("中", "CjkText")]),
-        ("a❤️中", vec![("a", "LatinText"), ("❤️", "Emoji"), ("中", "CjkText")]),
-        ("a©️中", vec![("a", "LatinText"), ("©️", "Emoji"), ("中", "CjkText")]),
-        ("a⌚︎中", vec![("a", "LatinText"), ("⌚︎", "Emoji"), ("中", "CjkText")]),
-        ("a1⃣中", vec![("a", "LatinText"), ("1⃣", "Emoji"), ("中", "CjkText")]),
-        ("a👍🏽中", vec![("a", "LatinText"), ("👍🏽", "Emoji"), ("中", "CjkText")]),
-        ("a👩🏽‍💻中", vec![("a", "LatinText"), ("👩🏽‍💻", "Emoji"), ("中", "CjkText")]),
-        ("a🏳️‍⚧️中", vec![("a", "LatinText"), ("🏳️‍⚧️", "Emoji"), ("中", "CjkText")]),
-        ("a🇨🇳中", vec![("a", "LatinText"), ("🇨🇳", "Emoji"), ("中", "CjkText")]),
+        (
+            "a😀中",
+            vec![("a", "LatinText"), ("😀", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a❤️中",
+            vec![("a", "LatinText"), ("❤️", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a©️中",
+            vec![("a", "LatinText"), ("©️", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a⌚︎中",
+            vec![("a", "LatinText"), ("⌚︎", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a1⃣中",
+            vec![("a", "LatinText"), ("1⃣", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a👍🏽中",
+            vec![("a", "LatinText"), ("👍🏽", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a👩🏽‍💻中",
+            vec![("a", "LatinText"), ("👩🏽‍💻", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a🏳️‍⚧️中",
+            vec![("a", "LatinText"), ("🏳️‍⚧️", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "a🇨🇳中",
+            vec![("a", "LatinText"), ("🇨🇳", "Emoji"), ("中", "CjkText")],
+        ),
         (
             tag_flag_case.as_str(),
             vec![("a", "LatinText"), (tag_flag, "Emoji"), ("中", "CjkText")],
@@ -198,10 +303,24 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
         ("中\u{FE0F}", vec![("中\u{FE0F}", "CjkText")]),
         ("a\u{FE0F}", vec![("a\u{FE0F}", "LatinText")]),
         ("a⃣中", vec![("a⃣", "LatinText"), ("中", "CjkText")]),
-        ("a1\u{FE0F}中", vec![("a1\u{FE0F}", "LatinText"), ("中", "CjkText")]),
+        (
+            "a1\u{FE0F}中",
+            vec![("a1\u{FE0F}", "LatinText"), ("中", "CjkText")],
+        ),
         ("中🏽", vec![("中", "CjkText"), ("🏽", "Emoji")]),
-        ("a👩‍中", vec![("a", "LatinText"), ("👩‍", "Emoji"), ("中", "CjkText")]),
-        ("中‍👩a", vec![("中", "CjkText"), ("‍", "Unknown"), ("👩", "Emoji"), ("a", "LatinText")]),
+        (
+            "a👩‍中",
+            vec![("a", "LatinText"), ("👩‍", "Emoji"), ("中", "CjkText")],
+        ),
+        (
+            "中‍👩a",
+            vec![
+                ("中", "CjkText"),
+                ("‍", "Unknown"),
+                ("👩", "Emoji"),
+                ("a", "LatinText"),
+            ],
+        ),
     ];
 
     for (text, expected) in cases {

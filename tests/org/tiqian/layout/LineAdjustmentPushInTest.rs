@@ -11,11 +11,28 @@ use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
 };
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
-    Cluster::new(TextRange::new(index, index + 1), text.to_owned(), "test".to_owned(), advance)
+    Cluster::new(
+        TextRange::new(index, index + 1),
+        text.to_owned(),
+        "test".to_owned(),
+        advance,
+    )
 }
 
 fn lines(clusters: &[Cluster], ranges: &[(i32, i32)]) -> Vec<LineCandidate> {
-    ranges.iter().map(|(first, last)| rebuild_line(IntRange::new(*first, *last), clusters, clusters, tiqian::org::tiqian::core::LayoutModel::LineEndReason::AutoWrap, None, Vec::new())).collect()
+    ranges
+        .iter()
+        .map(|(first, last)| {
+            rebuild_line(
+                IntRange::new(*first, *last),
+                clusters,
+                clusters,
+                tiqian::org::tiqian::core::LayoutModel::LineEndReason::AutoWrap,
+                None,
+                Vec::new(),
+            )
+        })
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -52,31 +69,63 @@ fn push_in(line: &LineCandidate) -> &RepairOption {
 #[test]
 fn no_shrink_push_in_continues_until_line_is_no_longer_loose() {
     let clusters = vec![
-        cluster(0, "甲", 30.0), cluster(1, "乙", 30.0), cluster(2, "丙", 20.0),
-        cluster(3, "丁", 20.0), cluster(4, "戊", 20.0), cluster(5, "己", 20.0),
+        cluster(0, "甲", 30.0),
+        cluster(1, "乙", 30.0),
+        cluster(2, "丙", 20.0),
+        cluster(3, "丁", 20.0),
+        cluster(4, "戊", 20.0),
+        cluster(5, "己", 20.0),
     ];
-    let output = fill(&lines(&clusters, &[(0, 1), (2, 5)]), &clusters, 100.0, &[], None, &HashSet::new(), &HashMap::new());
+    let output = fill(
+        &lines(&clusters, &[(0, 1), (2, 5)]),
+        &clusters,
+        100.0,
+        &[],
+        None,
+        &HashSet::new(),
+        &HashMap::new(),
+    );
 
     assert_eq!(IntRange::new(0, 3), output[0].cluster_range);
     assert_eq!(100.0, output[0].adjusted_width);
     assert_eq!(IntRange::new(4, 5), output[1].cluster_range);
-    let RepairOption::PushIn { total_shrink, .. } = push_in(&output[0]) else { unreachable!() };
+    let RepairOption::PushIn { total_shrink, .. } = push_in(&output[0]) else {
+        unreachable!()
+    };
     assert_eq!(0.0, *total_shrink);
 }
 
 #[test]
 fn push_in_pulls_minimal_group_to_avoid_forbidden_next_head() {
     let clusters = vec![
-        cluster(0, "甲", 30.0), cluster(1, "乙", 30.0), cluster(2, "势", 20.0),
-        cluster(3, "。", 10.0), cluster(4, "后", 50.0),
+        cluster(0, "甲", 30.0),
+        cluster(1, "乙", 30.0),
+        cluster(2, "势", 20.0),
+        cluster(3, "。", 10.0),
+        cluster(4, "后", 50.0),
     ];
     let forbidden = HashSet::from([3]);
-    let output = fill(&lines(&clusters, &[(0, 1), (2, 4)]), &clusters, 100.0, &[], Some(&forbidden), &HashSet::new(), &HashMap::new());
+    let output = fill(
+        &lines(&clusters, &[(0, 1), (2, 4)]),
+        &clusters,
+        100.0,
+        &[],
+        Some(&forbidden),
+        &HashSet::new(),
+        &HashMap::new(),
+    );
 
     assert_eq!(IntRange::new(0, 3), output[0].cluster_range);
     assert_eq!(90.0, output[0].adjusted_width);
     assert_eq!(IntRange::new(4, 4), output[1].cluster_range);
-    let RepairOption::PushIn { offender_cluster_index, total_shrink, .. } = push_in(&output[0]) else { unreachable!() };
+    let RepairOption::PushIn {
+        offender_cluster_index,
+        total_shrink,
+        ..
+    } = push_in(&output[0])
+    else {
+        unreachable!()
+    };
     assert_eq!(3, *offender_cluster_index);
     assert_eq!(0.0, *total_shrink);
 }
@@ -84,15 +133,33 @@ fn push_in_pulls_minimal_group_to_avoid_forbidden_next_head() {
 #[test]
 fn push_in_extends_past_forbidden_line_end_head() {
     let clusters = vec![
-        cluster(0, "甲", 30.0), cluster(1, "乙", 30.0), cluster(2, "「", 10.0),
-        cluster(3, "安", 20.0), cluster(4, "装", 20.0),
+        cluster(0, "甲", 30.0),
+        cluster(1, "乙", 30.0),
+        cluster(2, "「", 10.0),
+        cluster(3, "安", 20.0),
+        cluster(4, "装", 20.0),
     ];
-    let output = fill(&lines(&clusters, &[(0, 1), (2, 4)]), &clusters, 100.0, &[], None, &HashSet::from([2]), &HashMap::new());
+    let output = fill(
+        &lines(&clusters, &[(0, 1), (2, 4)]),
+        &clusters,
+        100.0,
+        &[],
+        None,
+        &HashSet::from([2]),
+        &HashMap::new(),
+    );
 
     assert_eq!(IntRange::new(0, 3), output[0].cluster_range);
     assert_eq!(90.0, output[0].adjusted_width);
     assert_eq!(IntRange::new(4, 4), output[1].cluster_range);
-    let RepairOption::PushIn { offender_cluster_index, total_shrink, .. } = push_in(&output[0]) else { unreachable!() };
+    let RepairOption::PushIn {
+        offender_cluster_index,
+        total_shrink,
+        ..
+    } = push_in(&output[0])
+    else {
+        unreachable!()
+    };
     assert_eq!(3, *offender_cluster_index);
     assert_eq!(0.0, *total_shrink);
 }
@@ -100,24 +167,53 @@ fn push_in_extends_past_forbidden_line_end_head() {
 #[test]
 fn source_space_compression_promotes_emergency_break_to_syllable() {
     let clusters = vec![
-        cluster(0, "a", 20.0), cluster(1, " ", 20.0), cluster(2, "R", 30.0),
-        cluster(3, "e", 15.0), cluster(4, "l", 15.0),
+        cluster(0, "a", 20.0),
+        cluster(1, " ", 20.0),
+        cluster(2, "R", 30.0),
+        cluster(3, "e", 15.0),
+        cluster(4, "l", 15.0),
     ];
     let span = TextRange::new(0, 5);
     let progressive = HashMap::from([
-        (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, span)),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span)),
+        (
+            1,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            4,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span),
+        ),
     ]);
     let output = fill(
-        &lines(&clusters, &[(0, 2), (3, 4)]), &clusters, 80.0,
-        &[ShrinkOpportunity::new(1, 2, 10.0, ShrinkChannel::RawAdvance)],
-        None, &HashSet::new(), &progressive,
+        &lines(&clusters, &[(0, 2), (3, 4)]),
+        &clusters,
+        80.0,
+        &[ShrinkOpportunity::new(
+            1,
+            2,
+            10.0,
+            ShrinkChannel::RawAdvance,
+        )],
+        None,
+        &HashSet::new(),
+        &progressive,
     );
 
     assert_eq!(IntRange::new(0, 3), output[0].cluster_range);
     assert_eq!(80.0, output[0].adjusted_width);
-    let RepairOption::PushIn { reason, total_shrink, allocations, .. } = push_in(&output[0]) else { unreachable!() };
+    let RepairOption::PushIn {
+        reason,
+        total_shrink,
+        allocations,
+        ..
+    } = push_in(&output[0])
+    else {
+        unreachable!()
+    };
     assert!(reason.starts_with("ProgressiveTechnicalTierPromotion"));
     assert_eq!(5.0, *total_shrink);
     assert_eq!(1, allocations.len());
@@ -128,15 +224,32 @@ fn source_space_compression_promotes_emergency_break_to_syllable() {
 #[test]
 fn cleaner_boundary_that_still_leaves_deficit_does_not_promote() {
     let clusters = vec![
-        cluster(0, "a", 20.0), cluster(1, " ", 20.0), cluster(2, "R", 30.0),
-        cluster(3, "e", 15.0), cluster(4, "l", 15.0),
+        cluster(0, "a", 20.0),
+        cluster(1, " ", 20.0),
+        cluster(2, "R", 30.0),
+        cluster(3, "e", 15.0),
+        cluster(4, "l", 15.0),
     ];
     let span = TextRange::new(0, 5);
     let progressive = HashMap::from([
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span)),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            4,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span),
+        ),
     ]);
-    let output = fill(&lines(&clusters, &[(0, 2), (3, 4)]), &clusters, 100.0, &[], None, &HashSet::new(), &progressive);
+    let output = fill(
+        &lines(&clusters, &[(0, 2), (3, 4)]),
+        &clusters,
+        100.0,
+        &[],
+        None,
+        &HashSet::new(),
+        &progressive,
+    );
 
     assert_eq!(IntRange::new(0, 2), output[0].cluster_range);
     assert_eq!(IntRange::new(3, 4), output[1].cluster_range);
@@ -146,20 +259,42 @@ fn cleaner_boundary_that_still_leaves_deficit_does_not_promote() {
 #[test]
 fn selected_tier_refills_across_intermediate_cleaner_boundary() {
     let clusters = vec![
-        cluster(0, "a", 20.0), cluster(1, " ", 20.0), cluster(2, "R", 30.0),
-        cluster(3, "e", 15.0), cluster(4, "l", 15.0),
+        cluster(0, "a", 20.0),
+        cluster(1, " ", 20.0),
+        cluster(2, "R", 30.0),
+        cluster(3, "e", 15.0),
+        cluster(4, "l", 15.0),
     ];
     let span = TextRange::new(0, 5);
     let progressive = HashMap::from([
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span)),
-        (5, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            4,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, span),
+        ),
+        (
+            5,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
     ]);
-    let output = fill(&lines(&clusters, &[(0, 2), (3, 4)]), &clusters, 100.0, &[], None, &HashSet::new(), &progressive);
+    let output = fill(
+        &lines(&clusters, &[(0, 2), (3, 4)]),
+        &clusters,
+        100.0,
+        &[],
+        None,
+        &HashSet::new(),
+        &progressive,
+    );
 
     assert_eq!(1, output.len());
     assert_eq!(IntRange::new(0, 4), output[0].cluster_range);
     assert_eq!(100.0, output[0].adjusted_width);
-    let RepairOption::PushIn { reason, .. } = push_in(&output[0]) else { unreachable!() };
+    let RepairOption::PushIn { reason, .. } = push_in(&output[0]) else {
+        unreachable!()
+    };
     assert!(reason.starts_with("LineAdjustmentPushIn"));
 }

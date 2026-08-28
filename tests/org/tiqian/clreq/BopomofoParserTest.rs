@@ -9,10 +9,34 @@ fn yinping_has_no_mark() {
 
 #[test]
 fn suffix_marks_are_tone_and_stripped() {
-    assert_eq!(BopomofoReading { symbols: vec!["ㄔ".into(), "ㄤ".into()], tone: BopomofoTone::Yangping }, bopomofo_parser::parse("ㄔㄤˊ"));
-    assert_eq!(BopomofoReading { symbols: vec!["ㄋ".into(), "ㄧ".into()], tone: BopomofoTone::Shang }, bopomofo_parser::parse("ㄋㄧˇ"));
-    assert_eq!(BopomofoReading { symbols: vec!["ㄑ".into(), "ㄩ".into()], tone: BopomofoTone::Qu }, bopomofo_parser::parse("ㄑㄩˋ"));
-    assert_eq!(BopomofoReading { symbols: vec!["ㄇ".into(), "ㄚ".into()], tone: BopomofoTone::Yinping }, bopomofo_parser::parse("ㄇㄚˉ"));
+    assert_eq!(
+        BopomofoReading {
+            symbols: vec!["ㄔ".into(), "ㄤ".into()],
+            tone: BopomofoTone::Yangping
+        },
+        bopomofo_parser::parse("ㄔㄤˊ")
+    );
+    assert_eq!(
+        BopomofoReading {
+            symbols: vec!["ㄋ".into(), "ㄧ".into()],
+            tone: BopomofoTone::Shang
+        },
+        bopomofo_parser::parse("ㄋㄧˇ")
+    );
+    assert_eq!(
+        BopomofoReading {
+            symbols: vec!["ㄑ".into(), "ㄩ".into()],
+            tone: BopomofoTone::Qu
+        },
+        bopomofo_parser::parse("ㄑㄩˋ")
+    );
+    assert_eq!(
+        BopomofoReading {
+            symbols: vec!["ㄇ".into(), "ㄚ".into()],
+            tone: BopomofoTone::Yinping
+        },
+        bopomofo_parser::parse("ㄇㄚˉ")
+    );
 }
 
 #[test]
@@ -24,5 +48,11 @@ fn neutral_tone_is_prefixed() {
 
 #[test]
 fn single_symbol() {
-    assert_eq!(BopomofoReading { symbols: vec!["ㄦ".into()], tone: BopomofoTone::Yangping }, bopomofo_parser::parse("ㄦˊ"));
+    assert_eq!(
+        BopomofoReading {
+            symbols: vec!["ㄦ".into()],
+            tone: BopomofoTone::Yangping
+        },
+        bopomofo_parser::parse("ㄦˊ")
+    );
 }

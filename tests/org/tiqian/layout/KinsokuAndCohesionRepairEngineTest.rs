@@ -2,7 +2,9 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
     ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
 };
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::org::tiqian::core::TextModel::{
+    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
+};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
@@ -26,7 +28,11 @@ fn engine() -> ExplainableStubParagraphLayoutEngine {
     engine
 }
 
-fn layout(text: &str, max_width: f32, grid: bool) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(
+    text: &str,
+    max_width: f32,
+    grid: bool,
+) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     engine().layout(
         LayoutInput::builder(
             TiqianTextContent::new(text.to_owned()),
@@ -54,8 +60,14 @@ fn kinsoku_carries_previous_cluster_when_forbidden_punctuation_would_start_line(
     assert_eq!(48.0, result.lines[0].adjusted_width);
     assert_eq!(24.0, result.lines[1].adjusted_width);
     assert_eq!(None, result.debug.line_decisions[0].repair);
-    assert_eq!(Some("CarryPrevious".to_owned()), result.debug.line_decisions[1].repair.clone());
-    let repair = result.debug.line_decisions[1].repair_decision.as_ref().unwrap();
+    assert_eq!(
+        Some("CarryPrevious".to_owned()),
+        result.debug.line_decisions[1].repair.clone()
+    );
+    let repair = result.debug.line_decisions[1]
+        .repair_decision
+        .as_ref()
+        .unwrap();
     assert_eq!("CarryPrevious", repair.kind);
     assert_eq!("ForbiddenAtLineStart", repair.reason_code);
     assert_eq!(Some(3), repair.carried_cluster_index);
@@ -71,8 +83,14 @@ fn kinsoku_pushes_line_start_punctuation_in_when_glue_can_shrink() {
     assert_eq!(4, line.range.end());
     assert_eq!(64.0, line.natural_width);
     assert_eq!(56.0, line.adjusted_width);
-    assert_eq!(Some("PushIn".to_owned()), result.debug.line_decisions[0].repair.clone());
-    let repair = result.debug.line_decisions[0].repair_decision.as_ref().unwrap();
+    assert_eq!(
+        Some("PushIn".to_owned()),
+        result.debug.line_decisions[0].repair.clone()
+    );
+    let repair = result.debug.line_decisions[0]
+        .repair_decision
+        .as_ref()
+        .unwrap();
     assert_eq!("PushIn", repair.kind);
     assert_eq!("ForbiddenAtLineStart", repair.reason_code);
     assert_eq!(4.0, repair.shrink);
@@ -83,12 +101,25 @@ fn kinsoku_pushes_line_start_punctuation_in_when_glue_can_shrink() {
 fn numeric_suffix_symbol_remains_on_one_line() {
     let text = "销量增长了50%呢";
     let result = layout(text, 120.0, false);
-    let line_texts: Vec<_> = result.lines.iter().map(|line| {
-        text.chars().skip(line.range.start() as usize).take((line.range.end() - line.range.start()) as usize).collect::<String>()
-    }).collect();
+    let line_texts: Vec<_> = result
+        .lines
+        .iter()
+        .map(|line| {
+            text.chars()
+                .skip(line.range.start() as usize)
+                .take((line.range.end() - line.range.start()) as usize)
+                .collect::<String>()
+        })
+        .collect();
 
-    assert!(line_texts.iter().any(|line| line.contains("50%")), "50% must stay together: {line_texts:?}");
-    assert!(line_texts.iter().all(|line| !line.ends_with("50")), "no line may end mid-number: {line_texts:?}");
+    assert!(
+        line_texts.iter().any(|line| line.contains("50%")),
+        "50% must stay together: {line_texts:?}"
+    );
+    assert!(
+        line_texts.iter().all(|line| !line.ends_with("50")),
+        "no line may end mid-number: {line_texts:?}"
+    );
 }
 
 #[test]
@@ -96,8 +127,19 @@ fn line_end_kinsoku_moves_dangling_opener_to_next_line() {
     let result = layout("中中中（中中）中", 64.0, true);
 
     for line in &result.lines {
-        let last = result.clusters.iter().rev().find(|cluster| cluster.range.end() <= line.range.end()).unwrap();
+        let last = result
+            .clusters
+            .iter()
+            .rev()
+            .find(|cluster| cluster.range.end() <= line.range.end())
+            .unwrap();
         assert_ne!("（", last.text, "line must not end on an opening bracket");
     }
-    assert!(result.debug.line_decisions.iter().any(|decision| decision.repair.as_deref() == Some("CarryNext")));
+    assert!(
+        result
+            .debug
+            .line_decisions
+            .iter()
+            .any(|decision| decision.repair.as_deref() == Some("CarryNext"))
+    );
 }

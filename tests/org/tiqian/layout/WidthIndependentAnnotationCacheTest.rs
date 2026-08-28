@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::TextModel::{
@@ -36,11 +36,18 @@ struct SharedLruCache {
 }
 
 impl WidthIndependentAnnotationCache for SharedLruCache {
-    fn get(&mut self, key: &WidthIndependentAnnotationKey) -> Option<Arc<WidthIndependentParagraphAnnotation>> {
+    fn get(
+        &mut self,
+        key: &WidthIndependentAnnotationKey,
+    ) -> Option<Arc<WidthIndependentParagraphAnnotation>> {
         self.entries.lock().unwrap().get(key)
     }
 
-    fn put(&mut self, key: WidthIndependentAnnotationKey, annotation: Arc<WidthIndependentParagraphAnnotation>) {
+    fn put(
+        &mut self,
+        key: WidthIndependentAnnotationKey,
+        annotation: Arc<WidthIndependentParagraphAnnotation>,
+    ) {
         self.entries.lock().unwrap().put(key, annotation);
     }
 
@@ -56,11 +63,19 @@ impl WidthIndependentAnnotationCache for SharedLruCache {
 struct DisabledCache;
 
 impl WidthIndependentAnnotationCache for DisabledCache {
-    fn get(&mut self, _: &WidthIndependentAnnotationKey) -> Option<Arc<WidthIndependentParagraphAnnotation>> {
+    fn get(
+        &mut self,
+        _: &WidthIndependentAnnotationKey,
+    ) -> Option<Arc<WidthIndependentParagraphAnnotation>> {
         None
     }
 
-    fn put(&mut self, _: WidthIndependentAnnotationKey, _: Arc<WidthIndependentParagraphAnnotation>) {}
+    fn put(
+        &mut self,
+        _: WidthIndependentAnnotationKey,
+        _: Arc<WidthIndependentParagraphAnnotation>,
+    ) {
+    }
 
     fn clear(&mut self) {}
 
@@ -74,7 +89,11 @@ fn input(text: &str, width: f32) -> LayoutInput {
         TiqianTextContent::new(text.to_owned()),
         LayoutConstraints::with_defaults(width),
     )
-    .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+    .paragraph_style(
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
+    )
     .build()
 }
 
@@ -83,8 +102,12 @@ fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
     let calls = Arc::new(AtomicUsize::new(0));
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(64)));
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(CountingTextShaper { count: calls.clone() });
-    engine.annotation_cache = Box::new(SharedLruCache { entries: entries.clone() });
+    engine.text_shaper = Box::new(CountingTextShaper {
+        count: calls.clone(),
+    });
+    engine.annotation_cache = Box::new(SharedLruCache {
+        entries: entries.clone(),
+    });
     let normal = input("提椠是一个面向中文正文的 CJK 段落布局引擎。", 300.0);
 
     let normal_result = engine.layout(normal.clone());
@@ -103,7 +126,9 @@ fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
 fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(64)));
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.annotation_cache = Box::new(SharedLruCache { entries: entries.clone() });
+    engine.annotation_cache = Box::new(SharedLruCache {
+        entries: entries.clone(),
+    });
     let base = input("中西混合排版与测试文本。", 300.0);
 
     engine.layout(base.clone());
@@ -121,7 +146,8 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     ruby_changed.ruby_spans = vec![RubySpan::new(TextRange::new(0, 2), "zhōngxī".to_owned())];
     engine.layout(ruby_changed);
     let mut inline_box_changed = base;
-    inline_box_changed.inline_boxes = vec![InlineBoxSpan::with_edges(TextRange::new(2, 4), 4.0, 4.0)];
+    inline_box_changed.inline_boxes =
+        vec![InlineBoxSpan::with_edges(TextRange::new(2, 4), 4.0, 4.0)];
     engine.layout(inline_box_changed);
 
     assert_eq!(6, entries.lock().unwrap().size());
@@ -131,7 +157,9 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
 fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(2)));
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.annotation_cache = Box::new(SharedLruCache { entries: entries.clone() });
+    engine.annotation_cache = Box::new(SharedLruCache {
+        entries: entries.clone(),
+    });
     let first = input("段落一文本内容", 300.0);
     let second = input("段落二文本内容", 300.0);
     let third = input("段落三文本内容", 300.0);
@@ -155,7 +183,8 @@ fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
 
 #[test]
 fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
-    let text = "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。";
+    let text =
+        "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。";
     let mut cached = ExplainableStubParagraphLayoutEngine::default();
     let mut uncached = ExplainableStubParagraphLayoutEngine::default();
     uncached.annotation_cache = Box::new(DisabledCache);
@@ -166,8 +195,14 @@ fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
         assert_eq!(expected.lines.len(), actual.lines.len(), "width {width}");
         for (expected_line, actual_line) in expected.lines.iter().zip(&actual.lines) {
             assert_eq!(expected_line.range, actual_line.range, "width {width}");
-            assert!((expected_line.visual_width - actual_line.visual_width).abs() < 0.001, "width {width}");
-            assert!((expected_line.adjusted_width - actual_line.adjusted_width).abs() < 0.001, "width {width}");
+            assert!(
+                (expected_line.visual_width - actual_line.visual_width).abs() < 0.001,
+                "width {width}"
+            );
+            assert!(
+                (expected_line.adjusted_width - actual_line.adjusted_width).abs() < 0.001,
+                "width {width}"
+            );
         }
     }
 }

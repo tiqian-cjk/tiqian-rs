@@ -23,7 +23,11 @@ fn punctuation_resolved_advance_never_falls_below_body_width() {
                     TiqianTextContent::new(text.to_owned()),
                     LayoutConstraints::with_defaults(max_width),
                 )
-                .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
                 .build(),
             );
             for geometry in &result.debug.geometry_decisions {

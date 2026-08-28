@@ -1,9 +1,5 @@
 use std::collections::HashMap;
 
-use vello::peniko::color::{AlphaColor, Srgb};
-use vello::peniko::Fill;
-use vello::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
-use vello::Scene;
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::LayoutResult;
 use tiqian::org::tiqian::core::LayoutQueries::{
@@ -15,6 +11,10 @@ use tiqian::org::tiqian::core::TextModel::{
     RichTextBackgroundDrawStyle, RichTextLinePattern, RichTextRole, RichTextSpan, TextSpan,
     TextStyle,
 };
+use vello::Scene;
+use vello::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
+use vello::peniko::Fill;
+use vello::peniko::color::{AlphaColor, Srgb};
 
 use crate::font_backend::DemoFontCatalog;
 
@@ -80,14 +80,22 @@ impl<'a> DemoRenderer<'a> {
                         glyph.cluster_range
                     )
                 })?;
-                let font_size = text_style_at(&result.input.content.spans, &result.input.text_style, glyph.cluster_range.start())
-                    .font_size;
-                let color = color_at(colors, glyph.cluster_range).unwrap_or_else(default_text_color);
+                let font_size = text_style_at(
+                    &result.input.content.spans,
+                    &result.input.text_style,
+                    glyph.cluster_range.start(),
+                )
+                .font_size;
+                let color =
+                    color_at(colors, glyph.cluster_range).unwrap_or_else(default_text_color);
                 self.catalog.paint_glyph(
                     scene,
                     self.transform(),
                     glyph.render_font_key.as_deref().ok_or_else(|| {
-                        format!("glyph {:?} has no render font identity", glyph.cluster_range)
+                        format!(
+                            "glyph {:?} has no render font identity",
+                            glyph.cluster_range
+                        )
                     })?,
                     glyph.id,
                     font_size,
@@ -108,7 +116,10 @@ impl<'a> DemoRenderer<'a> {
                     scene,
                     self.transform(),
                     glyph.render_font_key.as_deref().ok_or_else(|| {
-                        format!("line-end hyphen {:?} has no render font identity", glyph.cluster_range)
+                        format!(
+                            "line-end hyphen {:?} has no render font identity",
+                            glyph.cluster_range
+                        )
                     })?,
                     glyph.id,
                     result.input.text_style.font_size,
@@ -176,7 +187,10 @@ impl<'a> DemoRenderer<'a> {
             scene,
             self.transform(),
             glyph.render_font_key.as_deref().ok_or_else(|| {
-                format!("annotation glyph {:?} has no render font identity", glyph.cluster_range)
+                format!(
+                    "annotation glyph {:?} has no render font identity",
+                    glyph.cluster_range
+                )
             })?,
             glyph.id,
             font_size,
@@ -194,25 +208,33 @@ impl<'a> DemoRenderer<'a> {
         colors: &[DemoColorSpan],
     ) -> Result<(), String> {
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
-        for decision in result.debug.decoration_decisions.iter().filter(|decision| decision.applied) {
+        for decision in result
+            .debug
+            .decoration_decisions
+            .iter()
+            .filter(|decision| decision.applied)
+        {
             if decision.kind == "Emphasis" {
-                scene.fill(Fill::NonZero, self.transform(), color_at(colors, decision.cluster_range).unwrap_or_else(default_text_color), None, &Circle::new(
-                    (decision.anchor_x as f64, decision.anchor_y as f64),
-                    (decision.dot_diameter / 2.0) as f64,
-                ).to_path(0.1));
+                scene.fill(
+                    Fill::NonZero,
+                    self.transform(),
+                    color_at(colors, decision.cluster_range).unwrap_or_else(default_text_color),
+                    None,
+                    &Circle::new(
+                        (decision.anchor_x as f64, decision.anchor_y as f64),
+                        (decision.dot_diameter / 2.0) as f64,
+                    )
+                    .to_path(0.1),
+                );
             }
         }
         for segment in &result.debug.decoration_segments {
             let color = color_at(colors, segment.source_range).unwrap_or_else(default_text_color);
             match segment.kind.as_str() {
                 "Mourning" => self.stroke_mourning_segment(scene, segment, color, stroke_width)?,
-                "ProperNoun" => self.stroke_interlinear_segment(
-                    scene,
-                    result,
-                    segment,
-                    color,
-                    stroke_width,
-                )?,
+                "ProperNoun" => {
+                    self.stroke_interlinear_segment(scene, result, segment, color, stroke_width)?
+                }
                 "BookTitle" => self.stroke_book_title_segment(
                     scene,
                     result,
@@ -251,12 +273,25 @@ impl<'a> DemoRenderer<'a> {
                 segment.top + border_inset,
                 segment.right - border_inset,
                 segment.bottom - border_inset,
-                [radii.top_left, radii.top_right, radii.bottom_right, radii.bottom_left],
+                [
+                    radii.top_left,
+                    radii.top_right,
+                    radii.bottom_right,
+                    radii.bottom_left,
+                ],
             )?;
             match segment.span.paint.background.draw_style {
-                RichTextBackgroundDrawStyle::Fill => scene.fill(Fill::NonZero, self.transform(), color, None, &path),
+                RichTextBackgroundDrawStyle::Fill => {
+                    scene.fill(Fill::NonZero, self.transform(), color, None, &path)
+                }
                 RichTextBackgroundDrawStyle::Border { stroke_width } => {
-                    scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
+                    scene.stroke(
+                        &Stroke::new(stroke_width as f64).with_caps(Cap::Butt),
+                        self.transform(),
+                        color,
+                        None,
+                        &path,
+                    );
                 }
             }
         }
@@ -290,7 +325,13 @@ impl<'a> DemoRenderer<'a> {
                     dash_length,
                     gap_length,
                 } => self.stroke_fitted_dashed_rich_line(
-                    scene, result, &segment, color, *stroke_width, *dash_length, *gap_length,
+                    scene,
+                    result,
+                    &segment,
+                    color,
+                    *stroke_width,
+                    *dash_length,
+                    *gap_length,
                 )?,
                 RichTextLinePattern::Dotted {
                     dot_diameter,
@@ -303,17 +344,22 @@ impl<'a> DemoRenderer<'a> {
                         *dot_diameter,
                         *gap_length,
                     );
-                    for (left, right) in self.kept_intervals_for_rich_text_line(
-                        result,
-                        &segment,
-                        y,
-                        *dot_diameter,
-                    ) {
-                        for x in centers.iter().copied().filter(|x| *x >= left && *x <= right) {
-                            scene.fill(Fill::NonZero, self.transform(), color, None, &Circle::new(
-                                (x as f64, y as f64),
-                                (dot_diameter / 2.0) as f64,
-                            ).to_path(0.1));
+                    for (left, right) in
+                        self.kept_intervals_for_rich_text_line(result, &segment, y, *dot_diameter)
+                    {
+                        for x in centers
+                            .iter()
+                            .copied()
+                            .filter(|x| *x >= left && *x <= right)
+                        {
+                            scene.fill(
+                                Fill::NonZero,
+                                self.transform(),
+                                color,
+                                None,
+                                &Circle::new((x as f64, y as f64), (dot_diameter / 2.0) as f64)
+                                    .to_path(0.1),
+                            );
                         }
                     }
                 }
@@ -330,11 +376,16 @@ impl<'a> DemoRenderer<'a> {
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
-        if !matches!(segment.span.role, RichTextRole::Underline | RichTextRole::LineThrough) {
+        if !matches!(
+            segment.span.role,
+            RichTextRole::Underline | RichTextRole::LineThrough
+        ) {
             return Err("rich-text line segment has a non-line role".to_owned());
         }
         let y = rich_text_decoration_line_y(result, segment, stroke_width);
-        for (left, right) in self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width) {
+        for (left, right) in
+            self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width)
+        {
             self.stroke_horizontal_line(scene, left, right, y, color, stroke_width)?;
         }
         Ok(())
@@ -352,13 +403,11 @@ impl<'a> DemoRenderer<'a> {
     ) -> Result<(), String> {
         let y = rich_text_decoration_line_y(result, segment, stroke_width);
         let stroke = Stroke::new(stroke_width as f64).with_caps(Cap::Round);
-        let dashes = fitted_dashed_line_segments(
-            segment.left,
-            segment.right,
-            dash_length,
-            gap_length,
-        );
-        for (kept_left, kept_right) in self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width) {
+        let dashes =
+            fitted_dashed_line_segments(segment.left, segment.right, dash_length, gap_length);
+        for (kept_left, kept_right) in
+            self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width)
+        {
             for (left, right) in dashes
                 .iter()
                 .map(|&(left, right)| (left.max(kept_left), right.min(kept_right)))
@@ -394,7 +443,15 @@ impl<'a> DemoRenderer<'a> {
             ),
             browser_like_skip_ink_clearance(font_size, stroke_width),
         ) {
-            self.stroke_book_title_path(scene, left, right, segment.top, color, font_size, stroke_width)?;
+            self.stroke_book_title_path(
+                scene,
+                left,
+                right,
+                segment.top,
+                color,
+                font_size,
+                stroke_width,
+            )?;
         }
         Ok(())
     }
@@ -420,12 +477,11 @@ impl<'a> DemoRenderer<'a> {
         while x < right {
             let next = (x + (font_size * WAVE_HALF_LENGTH_EM).max(1.0)).min(right);
             let control_x = (x + next) / 2.0;
-            let control_y = y
-                + if rising {
-                    -font_size * WAVE_AMPLITUDE_EM * 2.0
-                } else {
-                    font_size * WAVE_AMPLITUDE_EM * 2.0
-                };
+            let control_y = y + if rising {
+                -font_size * WAVE_AMPLITUDE_EM * 2.0
+            } else {
+                font_size * WAVE_AMPLITUDE_EM * 2.0
+            };
             path.quad_to(
                 (control_x as f64, control_y as f64),
                 (next as f64, y as f64),
@@ -433,7 +489,13 @@ impl<'a> DemoRenderer<'a> {
             x = next;
             rising = !rising;
         }
-        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
+        scene.stroke(
+            &Stroke::new(stroke_width as f64).with_caps(Cap::Butt),
+            self.transform(),
+            color,
+            None,
+            &path,
+        );
         Ok(())
     }
 
@@ -511,7 +573,13 @@ impl<'a> DemoRenderer<'a> {
         let mut path = BezPath::new();
         path.move_to((left as f64, y as f64));
         path.line_to((right as f64, y as f64));
-        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
+        scene.stroke(
+            &Stroke::new(stroke_width as f64).with_caps(Cap::Butt),
+            self.transform(),
+            color,
+            None,
+            &path,
+        );
         Ok(())
     }
 
@@ -535,7 +603,13 @@ impl<'a> DemoRenderer<'a> {
         }
         path.move_to((segment.left as f64, segment.bottom as f64));
         path.line_to((segment.right as f64, segment.bottom as f64));
-        scene.stroke(&Stroke::new(stroke_width as f64).with_caps(Cap::Butt), self.transform(), color, None, &path);
+        scene.stroke(
+            &Stroke::new(stroke_width as f64).with_caps(Cap::Butt),
+            self.transform(),
+            color,
+            None,
+            &path,
+        );
         Ok(())
     }
 }
@@ -594,7 +668,9 @@ fn fitted_dotted_line_centers(
     }
     let first = left + dot_diameter / 2.0;
     let pitch = (width - dot_diameter) / (count - 1) as f32;
-    (0..count).map(|index| first + index as f32 * pitch).collect()
+    (0..count)
+        .map(|index| first + index as f32 * pitch)
+        .collect()
 }
 
 fn line_ink_skip_intervals(
@@ -679,7 +755,15 @@ fn rounded_rect_path(
     let mut path = BezPath::new();
     path.move_to(((left + top_left) as f64, top as f64));
     path.line_to(((right - top_right) as f64, top as f64));
-    curve_corner(&mut path, right - top_right, top, right, top + top_right, top_right, KAPPA);
+    curve_corner(
+        &mut path,
+        right - top_right,
+        top,
+        right,
+        top + top_right,
+        top_right,
+        KAPPA,
+    );
     path.line_to((right as f64, (bottom - bottom_right) as f64));
     curve_corner(
         &mut path,
@@ -701,7 +785,15 @@ fn rounded_rect_path(
         KAPPA,
     );
     path.line_to((left as f64, (top + top_left) as f64));
-    curve_corner(&mut path, left, top + top_left, left + top_left, top, top_left, KAPPA);
+    curve_corner(
+        &mut path,
+        left,
+        top + top_left,
+        left + top_left,
+        top,
+        top_left,
+        KAPPA,
+    );
     path.close_path();
     Ok(path)
 }
@@ -757,7 +849,7 @@ fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srg
     colors
         .iter()
         .rev()
-    .find(|span| span.range.start() <= range.start() && span.range.end() > range.start())
+        .find(|span| span.range.start() <= range.start() && span.range.end() > range.start())
         .map(|span| span.color)
 }
 
@@ -766,9 +858,9 @@ mod tests {
     use super::*;
     use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
     use tiqian::org::tiqian::core::TextModel::{
-        DecorationKind, DecorationSpan, LayoutInput, RichTextBackgroundPaint,
-        LineLengthGrid, ParagraphStyle, RichTextLinePattern, RichTextPaint, RichTextRole,
-        RichTextSpan, RubyKind, RubySpan, TextStyle, TiqianTextContent,
+        DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
+        RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
+        RubyKind, RubySpan, TextStyle, TiqianTextContent,
     };
     use tiqian::org::tiqian::core::Units::Ic;
     use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -795,7 +887,11 @@ mod tests {
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
-            result.glyph_runs.iter().map(|run| run.glyphs.len()).sum::<usize>(),
+            result
+                .glyph_runs
+                .iter()
+                .map(|run| run.glyphs.len())
+                .sum::<usize>(),
         );
     }
 
@@ -821,38 +917,54 @@ mod tests {
         );
         assert!(!result.debug.ruby_decisions.is_empty());
         assert!(!result.debug.bopomofo_decisions.is_empty());
-        assert!(result
-            .debug
-            .ruby_decisions
-            .iter()
-            .flat_map(|decision| &decision.glyphs)
-            .all(|glyph| glyph.render_font_key.is_some()));
-        assert!(result
-            .debug
-            .bopomofo_decisions
-            .iter()
-            .flat_map(|decision| &decision.placements)
-            .flat_map(|placement| &placement.glyphs)
-            .all(|glyph| glyph.render_font_key.is_some()));
+        assert!(
+            result
+                .debug
+                .ruby_decisions
+                .iter()
+                .flat_map(|decision| &decision.glyphs)
+                .all(|glyph| glyph.render_font_key.is_some())
+        );
+        assert!(
+            result
+                .debug
+                .bopomofo_decisions
+                .iter()
+                .flat_map(|decision| &decision.placements)
+                .flat_map(|placement| &placement.glyphs)
+                .all(|glyph| glyph.render_font_key.is_some())
+        );
         let ruby = result.debug.ruby_decisions.first().unwrap();
         let mut cluster_pen_x = 0.0;
         let mut cluster_advance = 0.0;
         let mut previous_range = None;
-        let advancing_ruby_origins: Vec<_> = ruby.glyphs.iter().filter_map(|glyph| {
-            if previous_range.is_some_and(|range| range != glyph.cluster_range) {
-                cluster_pen_x += cluster_advance;
-                cluster_advance = 0.0;
-            }
-            cluster_advance += glyph.advance;
-            previous_range = Some(glyph.cluster_range);
-            (glyph.advance > 0.0).then_some(cluster_pen_x + glyph.x)
-        }).collect();
-        assert!(advancing_ruby_origins
-            .windows(2)
-            .any(|origins| origins[1] > origins[0] + 0.1));
-        let ruby_ink_top = ruby.glyphs.iter().filter_map(|glyph| {
-            glyph.bounds.map(|bounds| ruby.baseline_y + glyph.y + bounds.top)
-        }).fold(f32::INFINITY, f32::min);
+        let advancing_ruby_origins: Vec<_> = ruby
+            .glyphs
+            .iter()
+            .filter_map(|glyph| {
+                if previous_range.is_some_and(|range| range != glyph.cluster_range) {
+                    cluster_pen_x += cluster_advance;
+                    cluster_advance = 0.0;
+                }
+                cluster_advance += glyph.advance;
+                previous_range = Some(glyph.cluster_range);
+                (glyph.advance > 0.0).then_some(cluster_pen_x + glyph.x)
+            })
+            .collect();
+        assert!(
+            advancing_ruby_origins
+                .windows(2)
+                .any(|origins| origins[1] > origins[0] + 0.1)
+        );
+        let ruby_ink_top = ruby
+            .glyphs
+            .iter()
+            .filter_map(|glyph| {
+                glyph
+                    .bounds
+                    .map(|bounds| ruby.baseline_y + glyph.y + bounds.top)
+            })
+            .fold(f32::INFINITY, f32::min);
         let ruby_top_bleed = (-ruby_ink_top).max(0.0).ceil();
         assert!(ruby_top_bleed >= -ruby_ink_top);
         let mut scene = Scene::new();
@@ -907,7 +1019,12 @@ mod tests {
                     .build(),
                 )
             })
-            .find(|result| result.lines.iter().any(|line| !line.hyphen_glyphs.is_empty()))
+            .find(|result| {
+                result
+                    .lines
+                    .iter()
+                    .any(|line| !line.hyphen_glyphs.is_empty())
+            })
             .expect("English hyphenation should provide a usable shape-once line-end hyphen");
         result.glyph_runs.clear();
         let mut scene = Scene::new();
@@ -916,7 +1033,11 @@ mod tests {
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
-            result.lines.iter().map(|line| line.hyphen_glyphs.len()).sum::<usize>(),
+            result
+                .lines
+                .iter()
+                .map(|line| line.hyphen_glyphs.len())
+                .sum::<usize>(),
         );
     }
 
@@ -992,26 +1113,34 @@ mod tests {
                     .build(),
             ),
         ];
-        assert!(result
-            .debug
-            .decoration_decisions
-            .iter()
-            .any(|decision| decision.kind == "Emphasis" && decision.applied));
-        assert!(result
-            .debug
-            .decoration_segments
-            .iter()
-            .any(|segment| segment.kind == "Mourning"));
-        assert!(result
-            .debug
-            .decoration_segments
-            .iter()
-            .any(|segment| segment.kind == "ProperNoun"));
-        assert!(result
-            .debug
-            .decoration_segments
-            .iter()
-            .any(|segment| segment.kind == "BookTitle"));
+        assert!(
+            result
+                .debug
+                .decoration_decisions
+                .iter()
+                .any(|decision| decision.kind == "Emphasis" && decision.applied)
+        );
+        assert!(
+            result
+                .debug
+                .decoration_segments
+                .iter()
+                .any(|segment| segment.kind == "Mourning")
+        );
+        assert!(
+            result
+                .debug
+                .decoration_segments
+                .iter()
+                .any(|segment| segment.kind == "ProperNoun")
+        );
+        assert!(
+            result
+                .debug
+                .decoration_segments
+                .iter()
+                .any(|segment| segment.kind == "BookTitle")
+        );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
         renderer
@@ -1021,7 +1150,9 @@ mod tests {
         renderer
             .paint_rich_text_lines(&mut scene, &result, &rich_text)
             .unwrap();
-        renderer.paint_decorations(&mut scene, &result, &[]).unwrap();
+        renderer
+            .paint_decorations(&mut scene, &result, &[])
+            .unwrap();
         assert!(!scene.encoding().is_empty());
 
         let mourning = result

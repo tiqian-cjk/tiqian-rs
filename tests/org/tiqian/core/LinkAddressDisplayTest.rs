@@ -2,7 +2,10 @@ use tiqian::org::tiqian::core::TextModel::link_address_display::displays_address
 
 #[test]
 fn identical_display_and_target_is_an_address() {
-    assert!(displays_address("https://example.com/a", "https://example.com/a"));
+    assert!(displays_address(
+        "https://example.com/a",
+        "https://example.com/a"
+    ));
     assert!(displays_address("footnote-1", "footnote-1"));
 }
 

@@ -9,7 +9,10 @@ use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
-fn layout(text: &str, boxes: Vec<InlineBoxSpan>) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(
+    text: &str,
+    boxes: Vec<InlineBoxSpan>,
+) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::new(text.to_owned()),
@@ -38,14 +41,28 @@ fn inline_edges_reserve_advance_and_move_glyph_origin() {
             InlineBoxOuterSpacing::Source,
         )],
     );
-    let plain_stop = plain.clusters.iter().find(|cluster| cluster.range == TextRange::new(1, 2)).unwrap();
-    let boxed_stop = boxed.clusters.iter().find(|cluster| cluster.range == TextRange::new(1, 2)).unwrap();
-    let positioned = positioned_clusters(&boxed).into_iter().find(|cluster| cluster.range == TextRange::new(1, 2)).unwrap();
+    let plain_stop = plain
+        .clusters
+        .iter()
+        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .unwrap();
+    let boxed_stop = boxed
+        .clusters
+        .iter()
+        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .unwrap();
+    let positioned = positioned_clusters(&boxed)
+        .into_iter()
+        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .unwrap();
 
     assert!((boxed_stop.advance - plain_stop.advance - 8.0).abs() < 0.001);
     assert_eq!(3.0, boxed_stop.leading_layout_advance);
     assert!((positioned.draw_x - positioned.left - 3.0).abs() < 0.001);
-    assert_eq!("InlineBoxBoundaryAdvance", boxed.debug.inline_box_decisions[0].reason);
+    assert_eq!(
+        "InlineBoxBoundaryAdvance",
+        boxed.debug.inline_box_decisions[0].reason
+    );
 }
 
 #[test]
@@ -59,7 +76,12 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
             InlineBoxOuterSpacing::Narrow,
         )],
     );
-    let reasons = narrow.debug.auto_space_decisions.iter().map(|decision| decision.reason.as_str()).collect::<std::collections::HashSet<_>>();
+    let reasons = narrow
+        .debug
+        .auto_space_decisions
+        .iter()
+        .map(|decision| decision.reason.as_str())
+        .collect::<std::collections::HashSet<_>>();
     assert_eq!(
         std::collections::HashSet::from([
             "InlineBoxOuterAutoSpace:leading-W-N",
@@ -67,7 +89,13 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
         ]),
         reasons,
     );
-    assert!(narrow.debug.auto_space_decisions.iter().all(|decision| decision.boundary_role == "InlineBox.Narrow"));
+    assert!(
+        narrow
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.boundary_role == "InlineBox.Narrow")
+    );
     assert_eq!("Narrow", narrow.debug.inline_box_decisions[0].outer_spacing);
 
     let source = layout(

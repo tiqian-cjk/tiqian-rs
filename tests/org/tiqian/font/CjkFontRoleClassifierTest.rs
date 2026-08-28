@@ -1,7 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::font::FontPolicy::{
-    CjkFontRoleClassifier, FontRole,
-};
+use tiqian::org::tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole};
 
 fn classify(text: &str, start: i32, end: i32) -> FontRole {
     CjkFontRoleClassifier.classify_with_default_context(text, TextRange::new(start, end))
@@ -27,7 +25,11 @@ fn classifies_latin_text() {
 #[test]
 fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_bases() {
     for text in ["⌚", "🀄", "🫪"] {
-        assert_eq!(FontRole::Emoji, classify(text, 0, text.encode_utf16().count() as i32), "{text}");
+        assert_eq!(
+            FontRole::Emoji,
+            classify(text, 0, text.encode_utf16().count() as i32),
+            "{text}"
+        );
     }
     assert_eq!(FontRole::LatinText, classify("1", 0, 1));
     assert_eq!(FontRole::Symbol, classify("❤", 0, 1));
@@ -35,8 +37,15 @@ fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_base
 
 #[test]
 fn classifies_ascii_symbols_and_punctuation_as_latin() {
-    for character in ['%', '.', ',', ':', ';', '!', '?', '#', '@', '&', '*', '+', '=', '<', '>', '|', '^', '_', '$', '\'', '"'] {
-        assert_eq!(FontRole::LatinText, classify(&character.to_string(), 0, 1), "char={character}");
+    for character in [
+        '%', '.', ',', ':', ';', '!', '?', '#', '@', '&', '*', '+', '=', '<', '>', '|', '^', '_',
+        '$', '\'', '"',
+    ] {
+        assert_eq!(
+            FontRole::LatinText,
+            classify(&character.to_string(), 0, 1),
+            "char={character}"
+        );
     }
     assert_eq!(FontRole::LatinText, classify("中%文", 1, 2));
 }

@@ -1,6 +1,12 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/SourceInteractionBoundaries.kt
 
-use icu_properties::{CodePointMapData, CodePointSetData, props::{EmojiModifier, EmojiModifierBase, ExtendedPictographic, GeneralCategory, HangulSyllableType, RegionalIndicator, VariationSelector}};
+use icu_properties::{
+    CodePointMapData, CodePointSetData,
+    props::{
+        EmojiModifier, EmojiModifierBase, ExtendedPictographic, GeneralCategory,
+        HangulSyllableType, RegionalIndicator, VariationSelector,
+    },
+};
 
 use super::Geometry::TextRange;
 
@@ -124,9 +130,7 @@ fn interaction_boundaries_in_range(text: &str, start: i32, end: i32) -> Vec<i32>
                 break;
             }
             let joined = code_point_at_compat(text, next, end);
-            if !preceding_extended_pictographic
-                || !is_extended_pictographic(joined)
-            {
+            if !preceding_extended_pictographic || !is_extended_pictographic(joined) {
                 break;
             }
             next += char_count_compat(joined);
@@ -258,10 +262,7 @@ mod tests {
     use super::*;
 
     fn boundaries(text: &str) -> Vec<i32> {
-        source_grapheme_boundaries(
-            text,
-            TextRange::new(0, text.encode_utf16().count() as i32),
-        )
+        source_grapheme_boundaries(text, TextRange::new(0, text.encode_utf16().count() as i32))
     }
 
     #[test]

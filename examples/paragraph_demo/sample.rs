@@ -1,14 +1,13 @@
 use std::collections::HashSet;
 
-use vello::peniko::color::AlphaColor;
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::TextModel::{
-    DecorationKind, DecorationSpan, LayoutInput, RichTextBackgroundPaint,
-    LastLineAlignment, ParagraphStyle, RichTextLinePattern, RichTextPaint, RichTextRole,
-    RichTextSpan, RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle,
-    TiqianTextContent,
+    DecorationKind, DecorationSpan, LastLineAlignment, LayoutInput, ParagraphStyle,
+    RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
+    RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::org::tiqian::core::Units::Ic;
+use vello::peniko::color::AlphaColor;
 
 use crate::renderer::DemoColorSpan;
 
@@ -26,9 +25,17 @@ pub struct DemoDocumentDemo {
 
 pub enum DemoDocumentDemoBlock {
     Paragraph(DemoDocument),
-    NarrowParagraph { document: DemoDocument, max_width: f32 },
-    ListItem { marker: DemoDocument, body: DemoDocument },
-    Section { height: f32 },
+    NarrowParagraph {
+        document: DemoDocument,
+        max_width: f32,
+    },
+    ListItem {
+        marker: DemoDocument,
+        body: DemoDocument,
+    },
+    Section {
+        height: f32,
+    },
 }
 
 #[allow(dead_code)]
@@ -194,7 +201,8 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
     let pinyin = "地名、术语或生僻字可以附加拼音。例如，“提椠”二字读作 tíqiàn；注文居于基字上方，既帮助读者辨音，也不打乱正文原有的行列。相邻注文较长时，字间距离可以适度调整，使注音清楚而不显拥挤。";
     let bopomofo = "为照顾使用注音符号的读者，本页另以“您好”为例：您字右侧标注 ㄋㄧㄣˊ，好字右侧标注 ㄏㄠˇ。声母、韵母与调号依字身排列，注文与正文之间保持清楚而稳定的对应关系。";
     let decorations = "讨论现代中文排版时，北京大学的研究者常会参阅《中文排版需求》以及相关字体排印著作。书名可用波浪线标示，专有名称则用直线区别。已故语言学家朱德熙先生对现代汉语研究贡献深远；在特定出版物中，其姓名可以示亡号标明。需要读者格外留意的词句，还可以加着重号。";
-    let quote = "编校札记：版面宽阔时，正文宜从容舒展；\n栏宽收窄时，段首缩进与行间距离也应保持协调。";
+    let quote =
+        "编校札记：版面宽阔时，正文宜从容舒展；\n栏宽收窄时，段首缩进与行间距离也应保持协调。";
     let rich_text = "校样状态分为：已核、待校、旁注与撤销。已核内容可以绿色标示；待校内容使用蓝色；旁注使用红色。新增词句加实线下划线，存疑内容加虚线下划线，补充说明加点线下划线，已经撤销的文字则保留删除线，以便追溯修改过程。";
     let file_note = "本次校样依据 editorial-notes.md 整理，参考版本为 Review 3。文件名采用等宽字体，版本名称加浅色背景；两者夹在中文正文中时，前后仍应保留舒适的阅读间隔。";
     let bullet_intro = "本页适合在以下情形中检查：";
@@ -266,7 +274,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             body.clone(),
             indented.clone(),
             vec![],
-            vec![emphasis(overview, "行列疏密"), emphasis(overview, "段落节奏")],
+            vec![
+                emphasis(overview, "行列疏密"),
+                emphasis(overview, "段落节奏"),
+            ],
             vec![],
             vec![],
             vec![],
@@ -664,12 +675,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             ],
             vec![],
             vec![],
-            vec![
-                DemoColorSpan {
-                    range: range_of(closing, "连贯、安静而从容"),
-                    color: AlphaColor::from_rgba8(26, 110, 60, 255),
-                },
-            ],
+            vec![DemoColorSpan {
+                range: range_of(closing, "连贯、安静而从容"),
+                color: AlphaColor::from_rgba8(26, 110, 60, 255),
+            }],
             vec![],
         )),
         DemoDocumentDemoBlock::Paragraph(demo_document(
@@ -822,7 +831,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             body.clone(),
             flush.clone(),
             vec![TextSpan {
-                range: range_of(other_languages_appendix_title, other_languages_appendix_title),
+                range: range_of(
+                    other_languages_appendix_title,
+                    other_languages_appendix_title,
+                ),
                 style: TextStyle::builder()
                     .font_families(body.font_families.clone())
                     .font_size(19.5 * physical_scale)
@@ -999,8 +1011,9 @@ fn range_occurrence(text: &str, needle: &str, occurrence: usize) -> TextRange {
         .match_indices(needle)
         .nth(occurrence)
         .map(|(start, _)| start)
-        .unwrap_or_else(|| panic!("paragraph-demo sample is missing occurrence {occurrence} of {needle}"));
+        .unwrap_or_else(|| {
+            panic!("paragraph-demo sample is missing occurrence {occurrence} of {needle}")
+        });
     let start = text[..start].encode_utf16().count() as i32;
     TextRange::new(start, start + needle.encode_utf16().count() as i32)
 }
-

@@ -11,11 +11,8 @@ fn no_hyphenator_yields_no_opportunities() {
 
 #[test]
 fn odd_level_gap_becomes_a_break_outside_the_margins() {
-    let hyphenator = LiangHyphenator::with_margins(
-        HashMap::from([("c".to_owned(), vec![1, 0])]),
-        1,
-        1,
-    );
+    let hyphenator =
+        LiangHyphenator::with_margins(HashMap::from([("c".to_owned(), vec![1, 0])]), 1, 1);
     assert_eq!(vec![2], hyphenator.hyphenate("abc"));
     assert!(hyphenator.hyphenate("cab").is_empty());
 }
@@ -36,11 +33,8 @@ fn max_level_wins_and_even_forbids_the_break() {
 
 #[test]
 fn margins_and_short_words_are_respected() {
-    let hyphenator = LiangHyphenator::with_margins(
-        HashMap::from([("a".to_owned(), vec![1, 0])]),
-        2,
-        3,
-    );
+    let hyphenator =
+        LiangHyphenator::with_margins(HashMap::from([("a".to_owned(), vec![1, 0])]), 2, 3);
     assert!(hyphenator.hyphenate("the").is_empty());
 }
 

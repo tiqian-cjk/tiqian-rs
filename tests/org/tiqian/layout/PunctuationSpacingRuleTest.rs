@@ -1,6 +1,4 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    PunctuationGluePlacement, PunctuationWidthPolicy,
-};
+use tiqian::org::tiqian::clreq::ClreqProfile::{PunctuationGluePlacement, PunctuationWidthPolicy};
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::layout::PunctuationModel::{
     PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,
@@ -78,7 +76,10 @@ fn cjk_closing_before_ascii_point_mark_consumes_only_closing_glue() {
     assert_eq!(0.0, adjustment.adjusted_inner_glue);
     assert_eq!(8.0, adjustment.reduction);
     assert_eq!(TextRange::new(0, 1), adjustment.reduction_target_range);
-    assert_eq!("collapse-cjk-closing-before-ascii-point-mark", adjustment.reason);
+    assert_eq!(
+        "collapse-cjk-closing-before-ascii-point-mark",
+        adjustment.reason
+    );
 }
 
 #[test]

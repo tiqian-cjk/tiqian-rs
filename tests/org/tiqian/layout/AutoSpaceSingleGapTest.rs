@@ -28,7 +28,11 @@ fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
             TiqianTextContent::new(text.to_owned()),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     )
 }
@@ -39,22 +43,72 @@ fn authored_space_runs_collapse_to_one_autospace_gap() {
     let two = layout("中文  CJK 段落");
     let three = layout("中文   CJK段落");
 
-    assert!(one.clusters.iter().filter(|cluster| cluster.text == " ").all(|cluster| cluster.advance == 2.0));
-    assert_eq!(2.0, two.clusters.iter().find(|cluster| cluster.text == "  ").unwrap().advance);
-    assert_eq!(2.0, three.clusters.iter().find(|cluster| cluster.text == "   ").unwrap().advance);
-    assert_eq!(50.0, three.clusters.iter().find(|cluster| cluster.text == "CJK").unwrap().advance);
+    assert!(
+        one.clusters
+            .iter()
+            .filter(|cluster| cluster.text == " ")
+            .all(|cluster| cluster.advance == 2.0)
+    );
+    assert_eq!(
+        2.0,
+        two.clusters
+            .iter()
+            .find(|cluster| cluster.text == "  ")
+            .unwrap()
+            .advance
+    );
+    assert_eq!(
+        2.0,
+        three
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "   ")
+            .unwrap()
+            .advance
+    );
+    assert_eq!(
+        50.0,
+        three
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "CJK")
+            .unwrap()
+            .advance
+    );
 }
 
 #[test]
 fn absent_authored_space_inserts_one_gap_at_each_cjk_latin_edge() {
     let result = layout("中文CJK段落");
-    let latin = result.clusters.iter().find(|cluster| cluster.text == "CJK").unwrap();
+    let latin = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.text == "CJK")
+        .unwrap();
 
     assert_eq!(52.0, latin.advance);
     assert_eq!(2, result.debug.auto_space_decisions.len());
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.mode == "Insert"));
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.characters_affected == 0));
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.total_reduction == -2.0));
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.mode == "Insert")
+    );
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.characters_affected == 0)
+    );
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.total_reduction == -2.0)
+    );
 }
 
 #[test]
@@ -66,13 +120,39 @@ fn letter_and_digit_boundaries_follow_separate_profile_modes() {
             TiqianTextContent::new("甲A乙9丙".to_owned()),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     );
-    let a_range = result.clusters.iter().find(|cluster| cluster.text == "A").unwrap().range;
-    let nine_range = result.clusters.iter().find(|cluster| cluster.text == "9").unwrap().range;
+    let a_range = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.text == "A")
+        .unwrap()
+        .range;
+    let nine_range = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.text == "9")
+        .unwrap()
+        .range;
 
     assert!(!result.debug.auto_space_decisions.is_empty());
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range == a_range));
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range != nine_range));
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.cluster_range == a_range)
+    );
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.cluster_range != nine_range)
+    );
 }

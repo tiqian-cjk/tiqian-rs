@@ -441,23 +441,23 @@ pub fn apply_fill_push_in(
                 before.span_range == after.span_range
                     && after.tier.priority() < before.tier.priority()
             });
-        if promotes && added < deficit - PROGRESSIVE_TIER_PROMOTION_FILL_EPSILON
+        if promotes
+            && added < deficit - PROGRESSIVE_TIER_PROMOTION_FILL_EPSILON
             && let Some(before) = current_break
-                && let Some(boundary) =
-                    ((end + 2)..=current.cluster_range.last() + 1).find(|boundary| {
-                        progressive.get(boundary).is_some_and(|candidate| {
-                            candidate.span_range == before.span_range
-                                && candidate.tier == before.tier
-                        })
+            && let Some(boundary) =
+                ((end + 2)..=current.cluster_range.last() + 1).find(|boundary| {
+                    progressive.get(boundary).is_some_and(|candidate| {
+                        candidate.span_range == before.span_range && candidate.tier == before.tier
                     })
-                {
-                    end = boundary - 1;
-                    next_break = progressive.get(&boundary);
-                    added = (current.cluster_range.first()..=end)
-                        .map(|index| adjusted[index as usize].advance)
-                        .sum();
-                    promotes = false
-                }
+                })
+        {
+            end = boundary - 1;
+            next_break = progressive.get(&boundary);
+            added = (current.cluster_range.first()..=end)
+                .map(|index| adjusted[index as usize].advance)
+                .sum();
+            promotes = false
+        }
         if current_break
             .zip(next_break)
             .is_some_and(|(before, after)| {

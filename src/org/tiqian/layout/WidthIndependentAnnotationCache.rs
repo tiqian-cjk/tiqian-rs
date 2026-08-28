@@ -1101,19 +1101,19 @@ pub fn build_paragraph_layout_prep(
             .iter()
             .filter_map(|ruby| {
                 cluster_index_range_for(&natural, ruby.base_range).map(|(first, last)| {
-                        let geometry = annotation
-                            .ruby_font_geometry_by_span
-                            .get(ruby)
-                            .expect("pinyin ruby span must have measured geometry");
-                        (
-                            first,
-                            (left[first as usize]
-                                + left[last as usize]
-                                + natural[last as usize].advance)
-                                / 2.,
-                            geometry.width,
-                        )
-                    })
+                    let geometry = annotation
+                        .ruby_font_geometry_by_span
+                        .get(ruby)
+                        .expect("pinyin ruby span must have measured geometry");
+                    (
+                        first,
+                        (left[first as usize]
+                            + left[last as usize]
+                            + natural[last as usize].advance)
+                            / 2.,
+                        geometry.width,
+                    )
+                })
             })
             .collect();
         measures.sort_by_key(|entry| entry.0);
@@ -1184,10 +1184,10 @@ pub fn build_paragraph_layout_prep(
                         .display_text
                         .chars()
                         .next()
-                        .is_some_and(|character| INLINE_STOPS.contains(&character))
-                    => {
-                        7
-                    }
+                        .is_some_and(|character| INLINE_STOPS.contains(&character)) =>
+                {
+                    7
+                }
                 _ => 5,
             };
             let end_only = tier == 7 && !adjustment.allow_inline_stop_compression;

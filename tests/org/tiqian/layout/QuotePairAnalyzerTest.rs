@@ -24,13 +24,32 @@ fn matches_simple_and_nested_quote_pairs() {
 fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
     let analyzer = QuotePairAnalyzer;
     let text = "‘that’s’";
-    assert_eq!(vec![QuotePair::new(0, 7, QuoteType::Single)], analyzer.analyze(text));
+    assert_eq!(
+        vec![QuotePair::new(0, 7, QuoteType::Single)],
+        analyzer.analyze(text)
+    );
 
-    for word in ["that’s", "l’été", "rock’n’roll", "version2’s", "α’β", "а’б", "e\u{0301}’s"] {
+    for word in [
+        "that’s",
+        "l’été",
+        "rock’n’roll",
+        "version2’s",
+        "α’β",
+        "а’б",
+        "e\u{0301}’s",
+    ] {
         assert!(analyzer.analyze(word).is_empty(), "{word}");
         let roles = analyzer.classify_quote_roles(word, &[], &FontRoleContext::default());
-        assert!(roles.iter().all(|decision| decision.role == FontRole::LatinText));
-        assert!(roles.iter().all(|decision| decision.source == "NonCjkInWordApostrophe"));
+        assert!(
+            roles
+                .iter()
+                .all(|decision| decision.role == FontRole::LatinText)
+        );
+        assert!(
+            roles
+                .iter()
+                .all(|decision| decision.source == "NonCjkInWordApostrophe")
+        );
     }
 }
 
@@ -39,26 +58,64 @@ fn cjk_outer_context_classifies_paired_quotes_as_cjk() {
     let text = "他说“hello”";
     let result = decisions(text);
 
-    assert_eq!(vec![2, 8], result.iter().map(|decision| decision.index).collect::<Vec<_>>());
-    assert!(result.iter().all(|decision| decision.role == FontRole::CjkPunctuation));
-    assert!(result.iter().all(|decision| decision.source == "PairedPunctuationOuterScriptContext"));
+    assert_eq!(
+        vec![2, 8],
+        result
+            .iter()
+            .map(|decision| decision.index)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        result
+            .iter()
+            .all(|decision| decision.role == FontRole::CjkPunctuation)
+    );
+    assert!(
+        result
+            .iter()
+            .all(|decision| decision.source == "PairedPunctuationOuterScriptContext")
+    );
 }
 
 #[test]
 fn latin_content_at_text_start_classifies_quotes_as_latin() {
     let result = decisions("“Hello” world");
 
-    assert_eq!(vec![0, 6], result.iter().map(|decision| decision.index).collect::<Vec<_>>());
-    assert!(result.iter().all(|decision| decision.role == FontRole::LatinText));
+    assert_eq!(
+        vec![0, 6],
+        result
+            .iter()
+            .map(|decision| decision.index)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        result
+            .iter()
+            .all(|decision| decision.role == FontRole::LatinText)
+    );
 }
 
 #[test]
 fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
     let result = decisions("（如 ‘O’, ‘Q’）");
 
-    assert_eq!(vec![3, 5, 8, 10], result.iter().map(|decision| decision.index).collect::<Vec<_>>());
-    assert!(result.iter().all(|decision| decision.role == FontRole::LatinText));
-    assert!(result.iter().all(|decision| decision.source == "DelimitedWesternQuotationRun"));
+    assert_eq!(
+        vec![3, 5, 8, 10],
+        result
+            .iter()
+            .map(|decision| decision.index)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        result
+            .iter()
+            .all(|decision| decision.role == FontRole::LatinText)
+    );
+    assert!(
+        result
+            .iter()
+            .all(|decision| decision.source == "DelimitedWesternQuotationRun")
+    );
 }
 
 #[test]
@@ -67,20 +124,52 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
     for text in ["“Json是谁？”", "“2024”"] {
         let pairs = analyzer.analyze(text);
         let chinese = analyzer.classify_quote_roles(text, &pairs, &FontRoleContext::default());
-        assert!(chinese.iter().all(|decision| decision.role == FontRole::CjkPunctuation));
-        assert!(chinese.iter().all(|decision| decision.source == "ParagraphLanguageQuoteContext"));
-        let english = analyzer.classify_quote_roles(text, &pairs, &FontRoleContext::with_locale("en".to_owned()));
-        assert!(english.iter().all(|decision| decision.role == FontRole::LatinText));
-        assert!(english.iter().all(|decision| decision.source == "ParagraphLanguageQuoteContext"));
+        assert!(
+            chinese
+                .iter()
+                .all(|decision| decision.role == FontRole::CjkPunctuation)
+        );
+        assert!(
+            chinese
+                .iter()
+                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
+        );
+        let english = analyzer.classify_quote_roles(
+            text,
+            &pairs,
+            &FontRoleContext::with_locale("en".to_owned()),
+        );
+        assert!(
+            english
+                .iter()
+                .all(|decision| decision.role == FontRole::LatinText)
+        );
+        assert!(
+            english
+                .iter()
+                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
+        );
     }
 }
 
 #[test]
 fn unmatched_quotes_use_directional_script_context() {
     let cases = [
-        ("’90s", FontRole::LatinText, "UnmatchedQuoteSurroundingScriptContext"),
-        ("中文“Hello", FontRole::CjkPunctuation, "ParagraphLanguageQuoteContext"),
-        ("”", FontRole::CjkPunctuation, "ParagraphLanguageQuoteContext"),
+        (
+            "’90s",
+            FontRole::LatinText,
+            "UnmatchedQuoteSurroundingScriptContext",
+        ),
+        (
+            "中文“Hello",
+            FontRole::CjkPunctuation,
+            "ParagraphLanguageQuoteContext",
+        ),
+        (
+            "”",
+            FontRole::CjkPunctuation,
+            "ParagraphLanguageQuoteContext",
+        ),
     ];
     for (text, role, source) in cases {
         let result = decisions(text);

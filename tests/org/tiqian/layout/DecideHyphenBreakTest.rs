@@ -5,7 +5,12 @@ use tiqian::org::tiqian::core::LayoutModel::Cluster;
 use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::decide_hyphen_break;
 
 fn cluster(start: i32, advance: f32) -> Cluster {
-    Cluster::new(TextRange::new(start, start + 1), "x".to_owned(), "k".to_owned(), advance)
+    Cluster::new(
+        TextRange::new(start, start + 1),
+        "x".to_owned(),
+        "k".to_owned(),
+        advance,
+    )
 }
 
 fn clusters() -> Vec<Cluster> {

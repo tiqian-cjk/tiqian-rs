@@ -18,8 +18,8 @@ use super::super::shaping::TextShaper::{
 };
 use super::ClusterRoleResolution::ResolvedClusterRange;
 use super::ProgressiveBreakDecisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
-use std::collections::{HashMap, HashSet};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {
@@ -735,7 +735,8 @@ fn camel_case_cuts(text: &str, range: TextRange) -> Vec<i32> {
         .filter(|hump| {
             hump - bounds
                 .iter()
-                .copied().rfind(|bound| *bound < *hump)
+                .copied()
+                .rfind(|bound| *bound < *hump)
                 .unwrap()
                 >= 2
                 && bounds.iter().copied().find(|bound| *bound > *hump).unwrap() - hump >= 2

@@ -5,7 +5,9 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
 
 #[test]
 fn prefer_policy_uses_clreq_recommended_display_codepoints() {
-    let substitutor = ClreqPunctuationGlyphSubstitutor::new(CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints);
+    let substitutor = ClreqPunctuationGlyphSubstitutor::new(
+        CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints,
+    );
     assert_eq!("⋯⋯", substitutor.substitute("……").display_text);
     assert_eq!("⸺", substitutor.substitute("——").display_text);
     assert_eq!("·", substitutor.substitute("・").display_text);
@@ -15,7 +17,8 @@ fn prefer_policy_uses_clreq_recommended_display_codepoints() {
 
 #[test]
 fn preserve_policy_keeps_input_display_codepoints() {
-    let substitutor = ClreqPunctuationGlyphSubstitutor::new(CjkPunctuationGlyphPolicy::PreserveInput);
+    let substitutor =
+        ClreqPunctuationGlyphSubstitutor::new(CjkPunctuationGlyphPolicy::PreserveInput);
     assert_eq!("……", substitutor.substitute("……").display_text);
     assert_eq!("——", substitutor.substitute("——").display_text);
     assert_eq!("・", substitutor.substitute("・").display_text);
@@ -23,7 +26,9 @@ fn preserve_policy_keeps_input_display_codepoints() {
 
 #[test]
 fn prefer_policy_does_not_rewrite_ambiguous_connector_or_solidus_forms() {
-    let substitutor = ClreqPunctuationGlyphSubstitutor::new(CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints);
+    let substitutor = ClreqPunctuationGlyphSubstitutor::new(
+        CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints,
+    );
     for text in ["～", "-", "/", "／", "．"] {
         assert_eq!(text, substitutor.substitute(text).display_text);
     }

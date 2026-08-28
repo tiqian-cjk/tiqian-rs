@@ -206,7 +206,7 @@ fn canonical_tie_break(digits: &str, value: f32) -> String {
     if mantissa == 0 && biased_exponent == 0 {
         return digits.to_owned();
     }
-    
+
     let exponent: i32 = if biased_exponent == 0 {
         -149
     } else {

@@ -23,7 +23,9 @@ impl FontMetricsResolver for RecordingMetricsResolver {
     }
 }
 
-fn engine_with_requests(requests: Arc<Mutex<Vec<FontMetricsRequest>>>) -> ExplainableStubParagraphLayoutEngine {
+fn engine_with_requests(
+    requests: Arc<Mutex<Vec<FontMetricsRequest>>>,
+) -> ExplainableStubParagraphLayoutEngine {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.font_metrics_resolver = Box::new(RecordingMetricsResolver { requests });
     engine
@@ -59,8 +61,22 @@ fn per_span_weight_and_italic_reach_metrics_resolver() {
     );
 
     let requests = requests.lock().unwrap();
-    assert!(requests.iter().any(|request| request.role == FontRole::CjkText && request.font_weight == 400 && !request.italic && request.face_selection_text == "中"));
-    assert!(requests.iter().any(|request| request.role == FontRole::LatinText && request.font_weight == 700 && request.italic && request.face_selection_text == "A"));
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.role == FontRole::CjkText
+                && request.font_weight == 400
+                && !request.italic
+                && request.face_selection_text == "中")
+    );
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.role == FontRole::LatinText
+                && request.font_weight == 700
+                && request.italic
+                && request.face_selection_text == "A")
+    );
 }
 
 #[test]
@@ -79,11 +95,24 @@ fn display_substitution_and_ruby_use_the_actual_metric_face_instance() {
                 .italic(true)
                 .build(),
         )
-        .ruby_spans(vec![RubySpan::new(TextRange::new(2, 3), "zhōng".to_owned())])
+        .ruby_spans(vec![RubySpan::new(
+            TextRange::new(2, 3),
+            "zhōng".to_owned(),
+        )])
         .build(),
     );
 
     let requests = requests.lock().unwrap();
-    assert!(requests.iter().any(|request| request.face_selection_text == "⸺"));
-    assert!(requests.iter().any(|request| request.role == FontRole::LatinText && request.face_selection_text == "zhōng" && request.italic));
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.face_selection_text == "⸺")
+    );
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.role == FontRole::LatinText
+                && request.face_selection_text == "zhōng"
+                && request.italic)
+    );
 }

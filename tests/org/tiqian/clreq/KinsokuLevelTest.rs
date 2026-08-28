@@ -14,15 +14,23 @@ fn end(character: char, level: KinsokuLevel) -> bool {
 #[test]
 fn none_forbids_nothing() {
     for character in ['。', '，', '、', '”', '）', '·', '／', '—', '…', '“', '（'] {
-        assert!(!start(character, KinsokuLevel::None), "{character} start@None");
+        assert!(
+            !start(character, KinsokuLevel::None),
+            "{character} start@None"
+        );
         assert!(!end(character, KinsokuLevel::None), "{character} end@None");
     }
 }
 
 #[test]
 fn basic_forbids_pause_stops_closing_connectors_at_start_and_opening_at_end() {
-    for character in ['。', '，', '、', '：', '；', '！', '？', '”', '）', '】', '·', '～', '／'] {
-        assert!(start(character, KinsokuLevel::Basic), "{character} start@Basic");
+    for character in [
+        '。', '，', '、', '：', '；', '！', '？', '”', '）', '】', '·', '～', '／',
+    ] {
+        assert!(
+            start(character, KinsokuLevel::Basic),
+            "{character} start@Basic"
+        );
     }
     for character in ['“', '（', '《', '「', '【'] {
         assert!(end(character, KinsokuLevel::Basic), "{character} end@Basic");
@@ -51,26 +59,43 @@ fn strict_adds_dash_and_ellipsis_at_line_start() {
 
 #[test]
 fn profile_defaults_to_measure_adaptive() {
-    assert!(matches!(ClreqProfile::mainland_horizontal().kinsoku_mode, KinsokuMode::MeasureAdaptive { .. }));
+    assert!(matches!(
+        ClreqProfile::mainland_horizontal().kinsoku_mode,
+        KinsokuMode::MeasureAdaptive { .. }
+    ));
 }
 
 #[test]
 fn cjk_bracket_variants_classify_as_opening_and_closing() {
     for character in ['【', '〔', '〖', '〘', '〚'] {
-        assert_eq!(PunctuationClass::Opening, clreq_punctuation_policies::classify(character), "{character}");
+        assert_eq!(
+            PunctuationClass::Opening,
+            clreq_punctuation_policies::classify(character),
+            "{character}"
+        );
     }
     for character in ['】', '〕', '〗', '〙', '〛'] {
-        assert_eq!(PunctuationClass::Closing, clreq_punctuation_policies::classify(character), "{character}");
+        assert_eq!(
+            PunctuationClass::Closing,
+            clreq_punctuation_policies::classify(character),
+            "{character}"
+        );
     }
 }
 
 #[test]
 fn exposes_unambiguous_ascii_point_marks_without_guessing_quotes_or_connectors() {
     for character in [',', '.', ':', ';', '!', '?'] {
-        assert!(clreq_punctuation_policies::is_ascii_point_mark(character), "{character} point mark");
+        assert!(
+            clreq_punctuation_policies::is_ascii_point_mark(character),
+            "{character} point mark"
+        );
     }
     for character in ['"', '\'', '-', '/', '~', '%'] {
-        assert!(!clreq_punctuation_policies::is_ascii_point_mark(character), "{character} excluded");
+        assert!(
+            !clreq_punctuation_policies::is_ascii_point_mark(character),
+            "{character} excluded"
+        );
     }
 }
 

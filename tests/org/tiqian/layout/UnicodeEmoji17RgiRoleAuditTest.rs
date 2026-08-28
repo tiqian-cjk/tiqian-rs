@@ -28,8 +28,12 @@ fn fully_qualified_emoji_sequences_resolve_to_one_emoji_range() {
             .into_iter()
             .map(|range| (range.range, range.role))
             .collect::<Vec<_>>();
-            let expected = vec![(TextRange::new(0, text.encode_utf16().count() as i32), FontRole::Emoji)];
-            (actual != expected).then(|| format!("{code_points}: expected={expected:?} actual={actual:?}"))
+            let expected = vec![(
+                TextRange::new(0, text.encode_utf16().count() as i32),
+                FontRole::Emoji,
+            )];
+            (actual != expected)
+                .then(|| format!("{code_points}: expected={expected:?} actual={actual:?}"))
         })
         .collect();
 
@@ -45,7 +49,10 @@ fn fully_qualified_emoji_sequences_resolve_to_one_emoji_range() {
 fn code_points_to_string(code_points: &str) -> String {
     code_points
         .split_whitespace()
-        .map(|hex| char::from_u32(u32::from_str_radix(hex, 16).expect("generated code point must be hex")).expect("generated code point must be valid"))
+        .map(|hex| {
+            char::from_u32(u32::from_str_radix(hex, 16).expect("generated code point must be hex"))
+                .expect("generated code point must be valid")
+        })
         .collect()
 }
 

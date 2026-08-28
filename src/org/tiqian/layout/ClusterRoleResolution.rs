@@ -2,17 +2,18 @@
 
 use std::collections::{HashMap, HashSet};
 
-use icu_properties::{CodePointMapData, CodePointSetData, props::{Emoji, EmojiModifier, EmojiModifierBase, GeneralCategory, VariationSelector}};
+use icu_properties::{
+    CodePointMapData, CodePointSetData,
+    props::{Emoji, EmojiModifier, EmojiModifierBase, GeneralCategory, VariationSelector},
+};
 
 use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies};
 use super::super::core::Geometry::TextRange;
 use super::super::core::LayoutModel::{Cluster, RoleOverrideInfo};
 use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
-use super::super::core::TextModel::InlineObjectSpan;
 use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
-use super::super::font::FontPolicy::{
-    FontDecision, FontRole, FontRoleClassifier, FontRoleContext,
-};
+use super::super::core::TextModel::InlineObjectSpan;
+use super::super::font::FontPolicy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::font::UnicodeEmojiStyleVariationData;
 use super::super::linebreak::LineBreak::{
     is_mandatory_break_code_point, is_zero_width_space_code_point,
@@ -389,8 +390,7 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
         return Some("EmojiStyleVariationSequence");
     }
 
-    if CodePointSetData::new::<EmojiModifierBase>().contains32(base as u32)
-    {
+    if CodePointSetData::new::<EmojiModifierBase>().contains32(base as u32) {
         while next < end {
             let code_point = code_point_at_compat(text, next);
             if !is_combining_mark_code_point(code_point)
@@ -457,9 +457,11 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::org::tiqian::core::Geometry::LayoutConstraints;
-    use crate::org::tiqian::core::TextModel::{LayoutInput, TextSpan, TextStyle, TiqianTextContent};
     use crate::org::tiqian::clreq::ClreqProfile::ClreqProfile;
+    use crate::org::tiqian::core::Geometry::LayoutConstraints;
+    use crate::org::tiqian::core::TextModel::{
+        LayoutInput, TextSpan, TextStyle, TiqianTextContent,
+    };
     use crate::org::tiqian::font::FontPolicy::CjkFontRoleClassifier;
     use crate::org::tiqian::layout::ParagraphLayoutEngine::{
         ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
@@ -658,18 +660,9 @@ mod tests {
             .collect::<Vec<_>>()
         };
 
-        assert_eq!(
-            vec![(TextRange::new(0, 3), FontRole::Emoji)],
-            resolve("1️⃣"),
-        );
-        assert_eq!(
-            vec![(TextRange::new(0, 2), FontRole::Emoji)],
-            resolve("❤️"),
-        );
-        assert_eq!(
-            vec![(TextRange::new(0, 4), FontRole::Emoji)],
-            resolve("👍🏽"),
-        );
+        assert_eq!(vec![(TextRange::new(0, 3), FontRole::Emoji)], resolve("1️⃣"),);
+        assert_eq!(vec![(TextRange::new(0, 2), FontRole::Emoji)], resolve("❤️"),);
+        assert_eq!(vec![(TextRange::new(0, 4), FontRole::Emoji)], resolve("👍🏽"),);
         assert_eq!(
             vec![(TextRange::new(0, 2), FontRole::LatinText)],
             resolve("a\u{FE0F}"),

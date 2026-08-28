@@ -12,7 +12,11 @@ fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
         TiqianTextContent::new(text.to_owned()),
         LayoutConstraints::with_defaults(672.0),
     )
-    .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+    .paragraph_style(
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
+    )
     .build();
     let result = ExplainableStubParagraphLayoutEngine::default().layout(input);
 
@@ -22,7 +26,10 @@ fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
         assert_eq!("（", first.text);
         assert!((first.advance - 8.0).abs() < 0.01);
     }
-    let start_trims: Vec<_> = result.debug.line_edge_trim_decisions.iter()
+    let start_trims: Vec<_> = result
+        .debug
+        .line_edge_trim_decisions
+        .iter()
         .filter(|decision| decision.reason == "LineStartHalfWidthPunctuation")
         .collect();
     assert_eq!(2, start_trims.len());

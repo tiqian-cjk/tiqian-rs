@@ -1,6 +1,8 @@
 use tiqian::org::tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver};
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::org::tiqian::core::TextModel::{
+    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
+};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
@@ -20,7 +22,11 @@ fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
             TiqianTextContent::new(text.to_owned()),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     )
 }
@@ -28,17 +34,35 @@ fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
 #[test]
 fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
     let result = layout("你好。");
-    let punctuation = result.debug.punctuation_decisions.iter().find(|decision| decision.ch == '。').unwrap();
+    let punctuation = result
+        .debug
+        .punctuation_decisions
+        .iter()
+        .find(|decision| decision.ch == '。')
+        .unwrap();
     assert_eq!(8.0, punctuation.body_width);
     assert_eq!(0.0, punctuation.leading_glue_natural);
     assert_eq!(8.0, punctuation.trailing_glue_natural);
-    assert_eq!("ProfileGlueFallbackWithoutFontGeometry", punctuation.geometry_source);
+    assert_eq!(
+        "ProfileGlueFallbackWithoutFontGeometry",
+        punctuation.geometry_source
+    );
 
-    let geometry = result.debug.geometry_decisions.iter().find(|decision| decision.source_text == "。").unwrap();
+    let geometry = result
+        .debug
+        .geometry_decisions
+        .iter()
+        .find(|decision| decision.source_text == "。")
+        .unwrap();
     assert_eq!("PunctuationGeometryLedger", geometry.source);
     assert_eq!(8.0, geometry.trailing_glue_consumed);
     assert_eq!(8.0, geometry.resolved_advance);
-    let trim = result.debug.line_edge_trim_decisions.iter().find(|decision| decision.cluster_range == geometry.range).unwrap();
+    let trim = result
+        .debug
+        .line_edge_trim_decisions
+        .iter()
+        .find(|decision| decision.cluster_range == geometry.range)
+        .unwrap();
     assert_eq!("trailing", trim.side);
     assert_eq!(8.0, trim.trim_amount);
     assert_eq!("LineEndHalfWidthPunctuation", trim.reason);
@@ -53,15 +77,29 @@ fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
             TiqianTextContent::new("你好。".to_owned()),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     );
 
-    let punctuation = result.debug.punctuation_decisions.iter().find(|decision| decision.ch == '。').unwrap();
+    let punctuation = result
+        .debug
+        .punctuation_decisions
+        .iter()
+        .find(|decision| decision.ch == '。')
+        .unwrap();
     assert_eq!(4.0, punctuation.leading_glue_natural);
     assert_eq!(4.0, punctuation.trailing_glue_natural);
     assert_eq!("Center", punctuation.anchor);
-    let geometry = result.debug.geometry_decisions.iter().find(|decision| decision.source_text == "。").unwrap();
+    let geometry = result
+        .debug
+        .geometry_decisions
+        .iter()
+        .find(|decision| decision.source_text == "。")
+        .unwrap();
     assert_eq!(4.0, geometry.leading_glue_consumed);
     assert_eq!(4.0, geometry.trailing_glue_consumed);
     assert_eq!(8.0, geometry.resolved_advance);
@@ -76,7 +114,15 @@ fn adjacent_closing_and_pause_stop_compression_is_reflected_in_drawable_ledger()
 
     assert_eq!(48.0, result.lines[0].visual_width);
     assert_eq!(48.0, result.size.width);
-    assert_eq!(8.0, result.clusters.iter().find(|cluster| cluster.text == "。").unwrap().advance);
+    assert_eq!(
+        8.0,
+        result
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "。")
+            .unwrap()
+            .advance
+    );
     let spacing = result.debug.spacing_decisions.first().unwrap();
     assert_eq!('」', spacing.left_char);
     assert_eq!('。', spacing.right_char);
@@ -101,8 +147,16 @@ fn push_in_consumes_punctuation_glue_before_carrying_line_start_stop() {
     );
 
     assert_eq!(1, result.lines.len());
-    assert_eq!(Some("PushIn"), result.debug.line_decisions[0].repair.as_deref());
-    let geometry = result.debug.geometry_decisions.iter().find(|decision| decision.source_text == "。").unwrap();
+    assert_eq!(
+        Some("PushIn"),
+        result.debug.line_decisions[0].repair.as_deref()
+    );
+    let geometry = result
+        .debug
+        .geometry_decisions
+        .iter()
+        .find(|decision| decision.source_text == "。")
+        .unwrap();
     assert_eq!(8.0, geometry.trailing_glue_consumed);
     assert_eq!(8.0, geometry.resolved_advance);
 }
