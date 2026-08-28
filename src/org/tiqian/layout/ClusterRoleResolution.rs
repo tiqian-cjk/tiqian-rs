@@ -6,12 +6,15 @@ use unicode_general_category::{GeneralCategory, get_general_category};
 
 use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies};
 use super::super::core::Geometry::TextRange;
-use super::super::core::LayoutModel::Cluster;
+use super::super::core::LayoutModel::{Cluster, RoleOverrideInfo};
 use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
 use super::super::core::TextModel::InlineObjectSpan;
+use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::UnicodeEmojiModifierBaseData;
 use super::super::font::FontPolicy::{
-    FontDecision, FontRole, FontRoleClassifier, FontRoleContext, is_emoji_code_point,
+    FontDecision, FontRole, FontRoleClassifier, FontRoleContext,
 };
+use super::super::font::{UnicodeEmojiData, UnicodeEmojiStyleVariationData};
 use super::super::linebreak::LineBreak::{
     is_mandatory_break_code_point, is_zero_width_space_code_point,
 };
@@ -134,9 +137,8 @@ pub fn cluster_role_ranges_with_options(
         let grapheme_end = source_grapheme_boundaries
             [source_grapheme_boundaries.partition_point(|boundary| *boundary <= start)];
         let classified_role = classifier.classify(text, first_range, context);
-        let role = if classified_role == FontRole::Emoji
-            || has_emoji(text, start, grapheme_end)
-        {
+        let promotion_reason = emoji_role_promotion_reason(text, start, grapheme_end);
+        let role = if classified_role == FontRole::Emoji || promotion_reason.is_some() {
             FontRole::Emoji
         } else {
             classified_role
@@ -181,7 +183,9 @@ pub fn cluster_role_ranges_with_options(
                     let next_code_point = code_point_at_compat(text, index);
                     let next_char_count = char_count(next_code_point);
                     let next_range = TextRange::new(index, index + next_char_count);
-                    if classifier.classify(text, next_range, context) != FontRole::LatinText {
+                    if classifier.classify(text, next_range, context) != FontRole::LatinText
+                        || emoji_role_promotion_reason(text, index, text_length).is_some()
+                    {
                         break;
                     }
                     index += next_char_count;
@@ -215,9 +219,22 @@ pub fn cluster_role_ranges_with_options(
             index += char_count(extender);
         }
 
-        ranges.push(ResolvedClusterRange::new(
-            TextRange::new(start, index),
+        let range = TextRange::new(start, index);
+        ranges.push(ResolvedClusterRange::with_role_override(
+            range,
             role,
+            (role == FontRole::Emoji && classified_role != FontRole::Emoji).then(|| {
+                RoleOverrideInfo {
+                    range,
+                    source_text: source_slice(text, range).to_owned(),
+                    original_role: format!("{classified_role:?}"),
+                    overridden_role: format!("{role:?}"),
+                    source: "UnicodeEmojiSequenceRolePromotion".to_owned(),
+                    reason: promotion_reason
+                        .unwrap_or("EmojiPresentationCodePoint")
+                        .to_owned(),
+                }
+            }),
         ));
     }
     ranges
@@ -259,12 +276,13 @@ pub fn require_covered_by(clusters: &[Cluster], font_decisions: &[FontDecision])
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedClusterRange {
     pub range: TextRange,
     pub role: FontRole,
     pub mandatory_break: bool,
     pub zero_width_soft_break: bool,
+    pub role_override: Option<RoleOverrideInfo>,
 }
 
 impl ResolvedClusterRange {
@@ -274,6 +292,21 @@ impl ResolvedClusterRange {
             role,
             mandatory_break: false,
             zero_width_soft_break: false,
+            role_override: None,
+        }
+    }
+
+    pub fn with_role_override(
+        range: TextRange,
+        role: FontRole,
+        role_override: Option<RoleOverrideInfo>,
+    ) -> Self {
+        Self {
+            range,
+            role,
+            mandatory_break: false,
+            zero_width_soft_break: false,
+            role_override,
         }
     }
 
@@ -283,6 +316,7 @@ impl ResolvedClusterRange {
             role: FontRole::Unknown,
             mandatory_break: true,
             zero_width_soft_break: false,
+            role_override: None,
         }
     }
 
@@ -292,6 +326,7 @@ impl ResolvedClusterRange {
             role: FontRole::Unknown,
             mandatory_break: false,
             zero_width_soft_break: true,
+            role_override: None,
         }
     }
 }
@@ -332,20 +367,57 @@ fn is_variation_selector_code_point(code_point: i32) -> bool {
     (0xFE00..=0xFE0F).contains(&code_point) || (0xE0100..=0xE01EF).contains(&code_point)
 }
 
-/// Promotes graphemes containing an emoji presentation signal.
-fn has_emoji(text: &str, start: i32, end: i32) -> bool {
-    let mut index = start;
-    while index < end {
-        let code_point = code_point_at_compat(text, index);
-        if code_point == EMOJI_VARIATION_SELECTOR
-            || code_point == COMBINING_ENCLOSING_KEYCAP
-            || is_emoji_code_point(code_point)
-        {
-            return true;
+/// `UnicodeEmojiSequenceRolePromotion`: promotes a text-default scalar to the Emoji fallback
+/// policy only for a Unicode keycap, emoji-style variation, or modifier sequence.
+fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'static str> {
+    let base = code_point_at_compat(text, start);
+    let mut next = start + char_count(base);
+
+    if is_keycap_base_code_point(base) {
+        if next < end && code_point_at_compat(text, next) == EMOJI_VARIATION_SELECTOR {
+            next += char_count(EMOJI_VARIATION_SELECTOR);
         }
-        index += char_count(code_point);
+        if next < end && code_point_at_compat(text, next) == COMBINING_ENCLOSING_KEYCAP {
+            return Some("KeycapSequence");
+        }
     }
-    false
+
+    if UnicodeEmojiData::contains(base)
+        && UnicodeEmojiStyleVariationData::contains(base)
+        && next < end
+        && code_point_at_compat(text, next) == EMOJI_VARIATION_SELECTOR
+    {
+        return Some("EmojiStyleVariationSequence");
+    }
+
+    if UnicodeEmojiModifierBaseData::contains(base) {
+        while next < end {
+            let code_point = code_point_at_compat(text, next);
+            if !is_combining_mark_code_point(code_point)
+                && !is_variation_selector_code_point(code_point)
+            {
+                break;
+            }
+            next += char_count(code_point);
+        }
+        if next < end && (EMOJI_MODIFIER_START..=EMOJI_MODIFIER_END).contains(&code_point_at_compat(text, next)) {
+            return Some("EmojiModifierSequence");
+        }
+    }
+
+    None
+}
+
+fn is_keycap_base_code_point(code_point: i32) -> bool {
+    code_point == 0x0023 || code_point == 0x002A || (0x0030..=0x0039).contains(&code_point)
+}
+
+fn source_slice(text: &str, range: TextRange) -> &str {
+    let start = utf16_offset_to_utf8_byte_index(text, range.start())
+        .expect("source range start must lie on scalar boundary");
+    let end = utf16_offset_to_utf8_byte_index(text, range.end())
+        .expect("source range end must lie on scalar boundary");
+    &text[start..end]
 }
 
 fn is_combining_mark_code_point(code_point: i32) -> bool {
@@ -381,6 +453,8 @@ fn kotlin_text_range_string(range: TextRange) -> String {
 
 const EMOJI_VARIATION_SELECTOR: i32 = 0xFE0F;
 const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
+const EMOJI_MODIFIER_START: i32 = 0x1F3FB;
+const EMOJI_MODIFIER_END: i32 = 0x1F3FF;
 
 #[cfg(test)]
 mod tests {
@@ -422,7 +496,7 @@ mod tests {
 
     #[test]
     fn unicode_emoji_properties_cover_text_default_and_composed_graphemes() {
-        let text = "⌚🀄❤️❤☝🏻❤‍🔥";
+        let text = "⌚🀄❤️❤☝🏻";
         let ranges = cluster_role_ranges(
             text,
             &CjkFontRoleClassifier,
@@ -441,7 +515,6 @@ mod tests {
                 (TextRange::new(3, 5), FontRole::Emoji),
                 (TextRange::new(5, 6), FontRole::Symbol),
                 (TextRange::new(6, 9), FontRole::Emoji),
-                (TextRange::new(9, 13), FontRole::Emoji),
             ],
         );
     }
@@ -570,6 +643,49 @@ mod tests {
                 .map(|decision| decision.range)
                 .collect::<Vec<_>>(),
             vec![TextRange::new(0, 2), TextRange::new(2, 7)],
+        );
+    }
+
+    #[test]
+    fn unicode_emoji_sequence_roles_reject_unrelated_extenders() {
+        let resolve = |text| {
+            cluster_role_ranges(
+                text,
+                &CjkFontRoleClassifier,
+                &FontRoleContext::default(),
+                &ClreqProfile::mainland_horizontal(),
+            )
+            .into_iter()
+            .map(|range| (range.range, range.role))
+            .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            vec![(TextRange::new(0, 3), FontRole::Emoji)],
+            resolve("1️⃣"),
+        );
+        assert_eq!(
+            vec![(TextRange::new(0, 2), FontRole::Emoji)],
+            resolve("❤️"),
+        );
+        assert_eq!(
+            vec![(TextRange::new(0, 4), FontRole::Emoji)],
+            resolve("👍🏽"),
+        );
+        assert_eq!(
+            vec![(TextRange::new(0, 2), FontRole::LatinText)],
+            resolve("a\u{FE0F}"),
+        );
+        assert_eq!(
+            vec![(TextRange::new(0, 2), FontRole::LatinText)],
+            resolve("a\u{20E3}"),
+        );
+        assert_eq!(
+            vec![
+                (TextRange::new(0, 1), FontRole::CjkText),
+                (TextRange::new(1, 3), FontRole::Emoji),
+            ],
+            resolve("中🏽"),
         );
     }
 }

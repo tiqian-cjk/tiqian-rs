@@ -1,10 +1,10 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
 use unicode_general_category::{GeneralCategory, get_general_category};
-use unicode_properties::{EmojiStatus, UnicodeEmoji};
 
 use super::super::core::Geometry::TextRange;
 use super::FontMetrics::{BaselineClass, FontMetricSource, MetricBox};
+use super::UnicodeEmojiPresentationData;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FontRequest {
@@ -216,15 +216,7 @@ fn is_typed_ascii_latin(code_point: i32) -> bool {
 }
 
 pub(crate) fn is_emoji_code_point(code_point: i32) -> bool {
-    char::from_u32(code_point as u32).is_some_and(|character| {
-        matches!(
-            character.emoji_status(),
-            EmojiStatus::EmojiPresentation
-                | EmojiStatus::EmojiPresentationAndModifierBase
-                | EmojiStatus::EmojiPresentationAndEmojiComponent
-                | EmojiStatus::EmojiPresentationAndModifierAndEmojiComponent
-        )
-    })
+    UnicodeEmojiPresentationData::contains(code_point)
 }
 
 fn is_symbol_code_point(code_point: i32) -> bool {

@@ -364,7 +364,7 @@ pub fn prepare_width_independent_annotation(
         .iter()
         .map(|decision| (decision.index, decision.role))
         .collect();
-    let role_override_infos = quote_decisions
+    let quote_role_override_infos: Vec<_> = quote_decisions
         .iter()
         .map(|decision| {
             let range = TextRange::new(decision.index, decision.index + 1);
@@ -398,6 +398,13 @@ pub fn prepare_width_independent_annotation(
         let aware = QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides);
         cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
     };
+    let mut role_override_infos = quote_role_override_infos;
+    role_override_infos.extend(
+        cluster_ranges
+            .iter()
+            .filter_map(|range| range.role_override.clone()),
+    );
+    role_override_infos.sort_by_key(|info| info.range.start());
     let shapeable: Vec<_> = cluster_ranges
         .iter()
         .filter(|range| {

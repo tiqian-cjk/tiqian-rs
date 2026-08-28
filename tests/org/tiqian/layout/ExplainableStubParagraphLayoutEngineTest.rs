@@ -150,3 +150,70 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
     );
     assert_eq!(vec![TextRange::new(0, 2), TextRange::new(2, length)], styled.debug.shaping_decisions.iter().map(|decision| decision.range).collect::<Vec<_>>());
 }
+
+#[test]
+fn emoji_sequence_role_promotions_are_explainable() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let result = engine.layout(input("❤️与1️⃣"));
+
+    assert_eq!(
+        vec![
+            (TextRange::new(0, 2), "Symbol", "Emoji", "EmojiStyleVariationSequence"),
+            (TextRange::new(3, 6), "LatinText", "Emoji", "KeycapSequence"),
+        ],
+        result
+            .debug
+            .role_overrides
+            .iter()
+            .map(|info| (
+                info.range,
+                info.original_role.as_str(),
+                info.overridden_role.as_str(),
+                info.reason.as_str(),
+            ))
+            .collect::<Vec<_>>(),
+    );
+}
+
+#[test]
+fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_text() {
+    let tag_flag = "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+    let tag_flag_case = format!("a{tag_flag}中");
+    let cases = vec![
+        ("a1️⃣", vec![("a", "LatinText"), ("1️⃣", "Emoji")]),
+        ("1️⃣a", vec![("1️⃣", "Emoji"), ("a", "LatinText")]),
+        ("a😀中", vec![("a", "LatinText"), ("😀", "Emoji"), ("中", "CjkText")]),
+        ("a❤️中", vec![("a", "LatinText"), ("❤️", "Emoji"), ("中", "CjkText")]),
+        ("a©️中", vec![("a", "LatinText"), ("©️", "Emoji"), ("中", "CjkText")]),
+        ("a⌚︎中", vec![("a", "LatinText"), ("⌚︎", "Emoji"), ("中", "CjkText")]),
+        ("a1⃣中", vec![("a", "LatinText"), ("1⃣", "Emoji"), ("中", "CjkText")]),
+        ("a👍🏽中", vec![("a", "LatinText"), ("👍🏽", "Emoji"), ("中", "CjkText")]),
+        ("a👩🏽‍💻中", vec![("a", "LatinText"), ("👩🏽‍💻", "Emoji"), ("中", "CjkText")]),
+        ("a🏳️‍⚧️中", vec![("a", "LatinText"), ("🏳️‍⚧️", "Emoji"), ("中", "CjkText")]),
+        ("a🇨🇳中", vec![("a", "LatinText"), ("🇨🇳", "Emoji"), ("中", "CjkText")]),
+        (
+            tag_flag_case.as_str(),
+            vec![("a", "LatinText"), (tag_flag, "Emoji"), ("中", "CjkText")],
+        ),
+        ("中\u{FE0F}", vec![("中\u{FE0F}", "CjkText")]),
+        ("a\u{FE0F}", vec![("a\u{FE0F}", "LatinText")]),
+        ("a⃣中", vec![("a⃣", "LatinText"), ("中", "CjkText")]),
+        ("a1\u{FE0F}中", vec![("a1\u{FE0F}", "LatinText"), ("中", "CjkText")]),
+        ("中🏽", vec![("中", "CjkText"), ("🏽", "Emoji")]),
+        ("a👩‍中", vec![("a", "LatinText"), ("👩‍", "Emoji"), ("中", "CjkText")]),
+        ("中‍👩a", vec![("中", "CjkText"), ("‍", "Unknown"), ("👩", "Emoji"), ("a", "LatinText")]),
+    ];
+
+    for (text, expected) in cases {
+        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let result = engine.layout(input(&text));
+        let actual = result
+            .debug
+            .font_decisions
+            .iter()
+            .map(|decision| (decision.source_text.as_str(), decision.role.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, actual, "emoji role mismatch for {text:?}");
+    }
+}

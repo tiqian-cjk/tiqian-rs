@@ -3,6 +3,8 @@
 use unicode_general_category::{GeneralCategory, get_general_category};
 
 use super::Geometry::TextRange;
+use super::UnicodeEmojiModifierBaseData;
+use super::UnicodeExtendedPictographicData;
 
 /// 交互偏移落在一个 source 字素内部时使用的方向。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,6 +78,8 @@ fn interaction_boundaries_in_range(text: &str, start: i32, end: i32) -> Vec<i32>
     while index < end {
         let first = code_point_at_compat(text, index, end);
         let mut next = index + char_count_compat(first);
+        let mut preceding_emoji_modifier_base = UnicodeEmojiModifierBaseData::contains(first);
+        let mut preceding_extended_pictographic = UnicodeExtendedPictographicData::contains(first);
 
         if first == CR && next < end && code_point_at_compat(text, next, end) == LF {
             next += 1;
@@ -108,14 +112,37 @@ fn interaction_boundaries_in_range(text: &str, start: i32, end: i32) -> Vec<i32>
         }
 
         next = consume_extenders(text, next, end);
+        if preceding_emoji_modifier_base
+            && next < end
+            && is_emoji_modifier(code_point_at_compat(text, next, end))
+        {
+            next += char_count_compat(code_point_at_compat(text, next, end));
+            preceding_emoji_modifier_base = false;
+            next = consume_extenders(text, next, end);
+        }
         while next < end && code_point_at_compat(text, next, end) == ZWJ {
-            let after_joiner = next + 1;
-            if after_joiner >= end {
-                next = after_joiner;
+            next += 1;
+            if next >= end {
                 break;
             }
-            let joined = code_point_at_compat(text, after_joiner, end);
-            next = consume_extenders(text, after_joiner + char_count_compat(joined), end);
+            let joined = code_point_at_compat(text, next, end);
+            if !preceding_extended_pictographic
+                || !UnicodeExtendedPictographicData::contains(joined)
+            {
+                break;
+            }
+            next += char_count_compat(joined);
+            preceding_emoji_modifier_base = UnicodeEmojiModifierBaseData::contains(joined);
+            preceding_extended_pictographic = true;
+            next = consume_extenders(text, next, end);
+            if preceding_emoji_modifier_base
+                && next < end
+                && is_emoji_modifier(code_point_at_compat(text, next, end))
+            {
+                next += char_count_compat(code_point_at_compat(text, next, end));
+                preceding_emoji_modifier_base = false;
+                next = consume_extenders(text, next, end);
+            }
         }
         index = next;
         out.push(index);
@@ -170,7 +197,6 @@ fn is_interaction_extender(code_point: i32) -> bool {
         || (VARIATION_SELECTOR_BMP_START..=VARIATION_SELECTOR_BMP_END).contains(&code_point)
         || (VARIATION_SELECTOR_SUPPLEMENT_START..=VARIATION_SELECTOR_SUPPLEMENT_END)
             .contains(&code_point)
-        || (EMOJI_MODIFIER_START..=EMOJI_MODIFIER_END).contains(&code_point)
         || (EMOJI_TAG_START..=EMOJI_TAG_END).contains(&code_point)
         || (code_point <= 0xFFFF
             && char::from_u32(code_point as u32).is_some_and(|character| {
@@ -181,6 +207,10 @@ fn is_interaction_extender(code_point: i32) -> bool {
                         | GeneralCategory::EnclosingMark
                 )
             }))
+}
+
+fn is_emoji_modifier(code_point: i32) -> bool {
+    (EMOJI_MODIFIER_START..=EMOJI_MODIFIER_END).contains(&code_point)
 }
 
 fn is_regional_indicator(code_point: i32) -> bool {
@@ -227,3 +257,23 @@ const CR: i32 = 0x000D;
 const LF: i32 = 0x000A;
 const ZWNJ: i32 = 0x200C;
 const ZWJ: i32 = 0x200D;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn boundaries(text: &str) -> Vec<i32> {
+        source_grapheme_boundaries(
+            text,
+            TextRange::new(0, text.encode_utf16().count() as i32),
+        )
+    }
+
+    #[test]
+    fn emoji_graphemes_require_legal_modifier_and_zwj_context() {
+        assert_eq!(vec![0, 7], boundaries("👩🏽‍💻"));
+        assert_eq!(vec![0, 1, 3], boundaries("中🏽"));
+        assert_eq!(vec![0, 3, 4], boundaries("👩‍中"));
+        assert_eq!(vec![0, 2, 4], boundaries("中‍👩"));
+    }
+}

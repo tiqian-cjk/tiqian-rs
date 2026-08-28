@@ -71,6 +71,8 @@ mod SpacingAndLineGeometryEngineTest;
 #[allow(non_snake_case)]
 mod UnicodePunctuationBoundaryTest;
 #[allow(non_snake_case)]
+mod UnicodeEmoji17RgiRoleAuditTest;
+#[allow(non_snake_case)]
 mod VerbatimRangeAutoSpaceTest;
 #[allow(non_snake_case)]
 mod WidthIndependentAnnotationCacheTest;
