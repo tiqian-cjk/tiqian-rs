@@ -1,10 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/SourceInteractionBoundaries.kt
 
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, CodePointSetData, props::{EmojiModifier, EmojiModifierBase, ExtendedPictographic, GeneralCategory, HangulSyllableType, RegionalIndicator, VariationSelector}};
 
 use super::Geometry::TextRange;
-use super::UnicodeEmojiModifierBaseData;
-use super::UnicodeExtendedPictographicData;
 
 /// 交互偏移落在一个 source 字素内部时使用的方向。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,8 +76,8 @@ fn interaction_boundaries_in_range(text: &str, start: i32, end: i32) -> Vec<i32>
     while index < end {
         let first = code_point_at_compat(text, index, end);
         let mut next = index + char_count_compat(first);
-        let mut preceding_emoji_modifier_base = UnicodeEmojiModifierBaseData::contains(first);
-        let mut preceding_extended_pictographic = UnicodeExtendedPictographicData::contains(first);
+        let mut preceding_emoji_modifier_base = is_emoji_modifier_base(first);
+        let mut preceding_extended_pictographic = is_extended_pictographic(first);
 
         if first == CR && next < end && code_point_at_compat(text, next, end) == LF {
             next += 1;
@@ -127,12 +125,12 @@ fn interaction_boundaries_in_range(text: &str, start: i32, end: i32) -> Vec<i32>
             }
             let joined = code_point_at_compat(text, next, end);
             if !preceding_extended_pictographic
-                || !UnicodeExtendedPictographicData::contains(joined)
+                || !is_extended_pictographic(joined)
             {
                 break;
             }
             next += char_count_compat(joined);
-            preceding_emoji_modifier_base = UnicodeEmojiModifierBaseData::contains(joined);
+            preceding_emoji_modifier_base = is_emoji_modifier_base(joined);
             preceding_extended_pictographic = true;
             next = consume_extenders(text, next, end);
             if preceding_emoji_modifier_base
@@ -189,66 +187,63 @@ fn char_count_compat(code_point: i32) -> i32 {
     if code_point > 0xFFFF { 2 } else { 1 }
 }
 
-/// FIXME(unicode-data)：Kotlin `Char.category` 使用运行时 Unicode 表。这里暂用库调用保持翻译主线
-/// 不被阻塞，但依赖的 Unicode 版本可能变化；在 Unicode 数据收敛阶段替换为 Tiqian 版本固定的
-/// Mn/Mc/Me 生成数据。
 fn is_interaction_extender(code_point: i32) -> bool {
     code_point == ZWNJ
-        || (VARIATION_SELECTOR_BMP_START..=VARIATION_SELECTOR_BMP_END).contains(&code_point)
-        || (VARIATION_SELECTOR_SUPPLEMENT_START..=VARIATION_SELECTOR_SUPPLEMENT_END)
-            .contains(&code_point)
+        || CodePointSetData::new::<VariationSelector>().contains32(code_point as u32)
         || (EMOJI_TAG_START..=EMOJI_TAG_END).contains(&code_point)
-        || (code_point <= 0xFFFF
-            && char::from_u32(code_point as u32).is_some_and(|character| {
-                matches!(
-                    get_general_category(character),
-                    GeneralCategory::NonspacingMark
-                        | GeneralCategory::SpacingMark
-                        | GeneralCategory::EnclosingMark
-                )
-            }))
+        || matches!(
+            CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
+            GeneralCategory::NonspacingMark
+                | GeneralCategory::SpacingMark
+                | GeneralCategory::EnclosingMark
+        )
 }
 
 fn is_emoji_modifier(code_point: i32) -> bool {
-    (EMOJI_MODIFIER_START..=EMOJI_MODIFIER_END).contains(&code_point)
+    CodePointSetData::new::<EmojiModifier>().contains32(code_point as u32)
+}
+
+fn is_emoji_modifier_base(code_point: i32) -> bool {
+    CodePointSetData::new::<EmojiModifierBase>().contains32(code_point as u32)
+}
+
+fn is_extended_pictographic(code_point: i32) -> bool {
+    CodePointSetData::new::<ExtendedPictographic>().contains32(code_point as u32)
 }
 
 fn is_regional_indicator(code_point: i32) -> bool {
-    (REGIONAL_INDICATOR_START..=REGIONAL_INDICATOR_END).contains(&code_point)
+    CodePointSetData::new::<RegionalIndicator>().contains32(code_point as u32)
 }
 
 fn is_hangul_l(code_point: i32) -> bool {
-    (0x1100..=0x115F).contains(&code_point) || (0xA960..=0xA97C).contains(&code_point)
+    CodePointMapData::<HangulSyllableType>::new().get32(code_point as u32)
+        == HangulSyllableType::LeadingJamo
 }
 
 fn is_hangul_v(code_point: i32) -> bool {
-    (0x1160..=0x11A7).contains(&code_point) || (0xD7B0..=0xD7C6).contains(&code_point)
+    CodePointMapData::<HangulSyllableType>::new().get32(code_point as u32)
+        == HangulSyllableType::VowelJamo
 }
 
 fn is_hangul_t(code_point: i32) -> bool {
-    (0x11A8..=0x11FF).contains(&code_point) || (0xD7CB..=0xD7FB).contains(&code_point)
+    CodePointMapData::<HangulSyllableType>::new().get32(code_point as u32)
+        == HangulSyllableType::TrailingJamo
 }
 
 fn is_hangul_lv_or_lvt(code_point: i32) -> bool {
-    (HANGUL_SYLLABLE_START..=HANGUL_SYLLABLE_END).contains(&code_point)
+    matches!(
+        CodePointMapData::<HangulSyllableType>::new().get32(code_point as u32),
+        HangulSyllableType::LVSyllable | HangulSyllableType::LVTSyllable
+    )
 }
 
 fn is_hangul_lv(code_point: i32) -> bool {
-    is_hangul_lv_or_lvt(code_point) && (code_point - HANGUL_SYLLABLE_START) % 28 == 0
+    CodePointMapData::<HangulSyllableType>::new().get32(code_point as u32)
+        == HangulSyllableType::LVSyllable
 }
 
-const VARIATION_SELECTOR_BMP_START: i32 = 0xFE00;
-const VARIATION_SELECTOR_BMP_END: i32 = 0xFE0F;
-const VARIATION_SELECTOR_SUPPLEMENT_START: i32 = 0xE0100;
-const VARIATION_SELECTOR_SUPPLEMENT_END: i32 = 0xE01EF;
-const EMOJI_MODIFIER_START: i32 = 0x1F3FB;
-const EMOJI_MODIFIER_END: i32 = 0x1F3FF;
 const EMOJI_TAG_START: i32 = 0xE0020;
 const EMOJI_TAG_END: i32 = 0xE007F;
-const REGIONAL_INDICATOR_START: i32 = 0x1F1E6;
-const REGIONAL_INDICATOR_END: i32 = 0x1F1FF;
-const HANGUL_SYLLABLE_START: i32 = 0xAC00;
-const HANGUL_SYLLABLE_END: i32 = 0xD7A3;
 const HIGH_SURROGATE_START: i32 = 0xD800;
 const HIGH_SURROGATE_END: i32 = 0xDBFF;
 const LOW_SURROGATE_START: i32 = 0xDC00;

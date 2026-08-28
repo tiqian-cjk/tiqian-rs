@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/EastAsianSpacing.kt
 
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 use super::EastAsianSpacingData::lookup;
 use super::Geometry::TextRange;
@@ -79,8 +79,8 @@ pub mod unicode_east_asian_spacing {
             return EastAsianSpacingValue::Other;
         }
         if grapheme_cluster.chars().any(|character| {
-            character as u32 <= 0xFFFF
-                && get_general_category(character) == GeneralCategory::EnclosingMark
+            CodePointMapData::<GeneralCategory>::new().get(character)
+                == GeneralCategory::EnclosingMark
         }) {
             return EastAsianSpacingValue::Other;
         }

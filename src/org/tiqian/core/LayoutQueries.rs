@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
+
 use super::Geometry::{Rect, TextRange};
 use super::LayoutModel::{LayoutResult, LineBox, MetricDecisionInfo};
 use super::SourceInteractionBoundaries::{
@@ -1169,10 +1171,7 @@ fn selection_word_kind(text: &str, start: i32, end: i32) -> SelectionWordKind {
 }
 
 fn is_han_ideograph(code_point: i32) -> bool {
-    (0x3400..=0x4DBF).contains(&code_point)
-        || (0x4E00..=0x9FFF).contains(&code_point)
-        || (0xF900..=0xFAFF).contains(&code_point)
-        || (0x20000..=0x323AF).contains(&code_point)
+    CodePointSetData::new::<UnifiedIdeograph>().contains32(code_point as u32)
 }
 
 const SELECTION_WORD_CONNECTORS: [char; 3] = ['_', '\'', '\u{2019}'];

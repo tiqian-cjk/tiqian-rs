@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/UnicodeWordCharacter.kt
 
-use super::UnicodeWordCharacterData::contains as contains_in_data;
+use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 /// 为词法边界提供稳定的 Unicode 17 Letter/Mark/Number 成员判断。
 pub mod unicode_word_character {
@@ -21,6 +21,19 @@ pub mod unicode_word_character {
             !(0xD800..=0xDFFF).contains(&code_point),
             "Surrogate is not a Unicode scalar value: {code_point}"
         );
-        contains_in_data(code_point)
+        matches!(
+            CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
+            GeneralCategory::UppercaseLetter
+                | GeneralCategory::LowercaseLetter
+                | GeneralCategory::TitlecaseLetter
+                | GeneralCategory::ModifierLetter
+                | GeneralCategory::OtherLetter
+                | GeneralCategory::NonspacingMark
+                | GeneralCategory::SpacingMark
+                | GeneralCategory::EnclosingMark
+                | GeneralCategory::DecimalNumber
+                | GeneralCategory::LetterNumber
+                | GeneralCategory::OtherNumber
+        )
     }
 }

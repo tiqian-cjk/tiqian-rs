@@ -18,12 +18,8 @@ pub mod org {
             pub mod SourceInteractionBoundaries;
             pub mod TextIndex;
             pub mod TextModel;
-            pub mod UnicodeEmojiModifierBaseData;
-            pub mod UnicodeExtendedPictographicData;
             pub mod UnicodeScriptEvidence;
-            pub mod UnicodeScriptEvidenceData;
             pub mod UnicodeWordCharacter;
-            pub mod UnicodeWordCharacterData;
             pub mod Units;
         }
 
@@ -38,8 +34,6 @@ pub mod org {
         pub mod font {
             pub mod FontMetrics;
             pub mod FontPolicy;
-            pub mod UnicodeEmojiData;
-            pub mod UnicodeEmojiPresentationData;
             pub mod UnicodeEmojiStyleVariationData;
         }
 
@@ -49,7 +43,6 @@ pub mod org {
             pub mod Hyphenation;
             pub mod LineBreak;
             pub mod UnicodePunctuationLineBreak;
-            pub mod UnicodePunctuationLineBreakData;
         }
 
         #[allow(non_snake_case)]

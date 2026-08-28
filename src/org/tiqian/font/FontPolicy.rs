@@ -1,10 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, CodePointSetData, props::{EmojiPresentation, GeneralCategory, Script}};
 
 use super::super::core::Geometry::TextRange;
 use super::FontMetrics::{BaselineClass, FontMetricSource, MetricBox};
-use super::UnicodeEmojiPresentationData;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FontRequest {
@@ -142,16 +141,10 @@ impl FontRoleClassifier for CjkFontRoleClassifier {
 }
 
 fn is_cjk_code_point(code_point: i32) -> bool {
-    (0x3105..=0x312F).contains(&code_point) // Bopomofo ㄅㄆㄇ：全宽 CJK 字母，既可用于正文也可用于 ruby。
-        || (0x31A0..=0x31BF).contains(&code_point) // Bopomofo Extended
-        || (0x3400..=0x4DBF).contains(&code_point)
-        || (0x4E00..=0x9FFF).contains(&code_point)
-        || (0xF900..=0xFAFF).contains(&code_point)
-        || (0x20000..=0x2A6DF).contains(&code_point)
-        || (0x2A700..=0x2B73F).contains(&code_point)
-        || (0x2B740..=0x2B81F).contains(&code_point)
-        || (0x2B820..=0x2CEAF).contains(&code_point)
-        || (0x30000..=0x3134F).contains(&code_point)
+    matches!(
+        CodePointMapData::<Script>::new().get32(code_point as u32),
+        Script::Bopomofo | Script::Han
+    )
 }
 
 fn is_cjk_punctuation_code_point(code_point: i32) -> bool {
@@ -197,10 +190,7 @@ fn is_latin_run_code_point(code_point: i32) -> bool {
 }
 
 fn is_latin_code_point(code_point: i32) -> bool {
-    (0x0041..=0x005A).contains(&code_point)
-        || (0x0061..=0x007A).contains(&code_point)
-        || (0x0030..=0x0039).contains(&code_point)
-        || (0x00C0..=0x024F).contains(&code_point)
+    CodePointMapData::<Script>::new().get32(code_point as u32) == Script::Latin
 }
 
 /**
@@ -216,22 +206,17 @@ fn is_typed_ascii_latin(code_point: i32) -> bool {
 }
 
 pub(crate) fn is_emoji_code_point(code_point: i32) -> bool {
-    UnicodeEmojiPresentationData::contains(code_point)
+    CodePointSetData::new::<EmojiPresentation>().contains32(code_point as u32)
 }
 
 fn is_symbol_code_point(code_point: i32) -> bool {
-    if !(0..=0xFFFF).contains(&code_point) {
-        return false;
-    }
-    char::from_u32(code_point as u32).is_some_and(|character| {
-        matches!(
-            get_general_category(character),
-            GeneralCategory::MathSymbol
-                | GeneralCategory::CurrencySymbol
-                | GeneralCategory::ModifierSymbol
-                | GeneralCategory::OtherSymbol
-        )
-    })
+    matches!(
+        CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
+        GeneralCategory::MathSymbol
+            | GeneralCategory::CurrencySymbol
+            | GeneralCategory::ModifierSymbol
+            | GeneralCategory::OtherSymbol
+    )
 }
 
 fn code_point_at_compat(text: &str, index: i32) -> i32 {

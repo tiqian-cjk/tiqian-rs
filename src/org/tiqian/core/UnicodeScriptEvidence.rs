@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/UnicodeScriptEvidence.kt
 
-use super::UnicodeScriptEvidenceData::classify as classify_from_data;
+use icu_properties::{CodePointMapData, props::Script};
 
 /**
  * 为语言敏感的 Common 标点提供稳定的 Unicode Script 证据。
@@ -31,6 +31,14 @@ pub mod unicode_script_evidence_classifier {
             !(0xD800..=0xDFFF).contains(&code_point),
             "Surrogate is not a Unicode scalar value: {code_point}"
         );
-        classify_from_data(code_point)
+        match CodePointMapData::<Script>::new().get32(code_point as u32) {
+            Script::Bopomofo
+            | Script::Han
+            | Script::Hangul
+            | Script::Hiragana
+            | Script::Katakana => UnicodeScriptEvidence::EastAsian,
+            Script::Common | Script::Inherited | Script::Unknown => UnicodeScriptEvidence::Neutral,
+            _ => UnicodeScriptEvidence::Other,
+        }
     }
 }

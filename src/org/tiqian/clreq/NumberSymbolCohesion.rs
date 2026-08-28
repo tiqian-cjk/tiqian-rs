@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/clreq/NumberSymbolCohesion.kt
 
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 use super::super::core::IntRange::IntRange;
 
@@ -71,9 +71,8 @@ pub mod number_symbol_cohesion {
     }
 
     fn is_digit(code_unit: u16) -> bool {
-        char::from_u32(code_unit as u32).is_some_and(|character| {
-            get_general_category(character) == GeneralCategory::DecimalNumber
-        })
+        CodePointMapData::<GeneralCategory>::new().get32(code_unit as u32)
+            == GeneralCategory::DecimalNumber
     }
 
     const PREFIX_SIGN: [u16; 3] = ['+' as u16, '-' as u16, '±' as u16];

@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/UnicodePunctuationLineBreak.kt
 
-use super::UnicodePunctuationLineBreakData::lookup;
+use icu_properties::{CodePointMapData, props::LineBreak};
 
 /**
  * 用于保护标点边界的 UAX #14 断行类别。此处并不宣称 Tiqian 实现了完整 Unicode Line Breaking
@@ -42,20 +42,24 @@ pub mod unicode_punctuation_line_break {
             !(0xD800..=0xDFFF).contains(&code_point),
             "Surrogate is not a Unicode scalar value: {code_point}"
         );
-        match lookup(code_point) {
-            0 => UnicodePunctuationLineBreakClass::BreakAfter,
-            1 => UnicodePunctuationLineBreakClass::BreakBoth,
-            2 => UnicodePunctuationLineBreakClass::ClosePunctuation,
-            3 => UnicodePunctuationLineBreakClass::CloseParenthesis,
-            4 => UnicodePunctuationLineBreakClass::Exclamation,
-            5 => UnicodePunctuationLineBreakClass::HyphenHH,
-            6 => UnicodePunctuationLineBreakClass::Hyphen,
-            7 => UnicodePunctuationLineBreakClass::Inseparable,
-            8 => UnicodePunctuationLineBreakClass::InfixNumericSeparator,
-            9 => UnicodePunctuationLineBreakClass::Nonstarter,
-            10 => UnicodePunctuationLineBreakClass::OpenPunctuation,
-            11 => UnicodePunctuationLineBreakClass::Quotation,
-            12 => UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter,
+        match CodePointMapData::<LineBreak>::new().get32(code_point as u32) {
+            LineBreak::BreakAfter => UnicodePunctuationLineBreakClass::BreakAfter,
+            LineBreak::BreakBoth => UnicodePunctuationLineBreakClass::BreakBoth,
+            LineBreak::ClosePunctuation => UnicodePunctuationLineBreakClass::ClosePunctuation,
+            LineBreak::CloseParenthesis => UnicodePunctuationLineBreakClass::CloseParenthesis,
+            LineBreak::Exclamation => UnicodePunctuationLineBreakClass::Exclamation,
+            LineBreak::UnambiguousHyphen => UnicodePunctuationLineBreakClass::HyphenHH,
+            LineBreak::Hyphen => UnicodePunctuationLineBreakClass::Hyphen,
+            LineBreak::Inseparable => UnicodePunctuationLineBreakClass::Inseparable,
+            LineBreak::InfixNumeric => {
+                UnicodePunctuationLineBreakClass::InfixNumericSeparator
+            }
+            LineBreak::Nonstarter => UnicodePunctuationLineBreakClass::Nonstarter,
+            LineBreak::OpenPunctuation => UnicodePunctuationLineBreakClass::OpenPunctuation,
+            LineBreak::Quotation => UnicodePunctuationLineBreakClass::Quotation,
+            LineBreak::BreakSymbols => {
+                UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter
+            }
             _ => UnicodePunctuationLineBreakClass::Other,
         }
     }

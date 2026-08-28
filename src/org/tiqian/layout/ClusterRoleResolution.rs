@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, CodePointSetData, props::{Emoji, EmojiModifier, EmojiModifierBase, GeneralCategory, VariationSelector}};
 
 use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies};
 use super::super::core::Geometry::TextRange;
@@ -10,11 +10,10 @@ use super::super::core::LayoutModel::{Cluster, RoleOverrideInfo};
 use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
 use super::super::core::TextModel::InlineObjectSpan;
 use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
-use super::super::core::UnicodeEmojiModifierBaseData;
 use super::super::font::FontPolicy::{
     FontDecision, FontRole, FontRoleClassifier, FontRoleContext,
 };
-use super::super::font::{UnicodeEmojiData, UnicodeEmojiStyleVariationData};
+use super::super::font::UnicodeEmojiStyleVariationData;
 use super::super::linebreak::LineBreak::{
     is_mandatory_break_code_point, is_zero_width_space_code_point,
 };
@@ -364,7 +363,7 @@ fn char_count(code_point: i32) -> i32 {
 }
 
 fn is_variation_selector_code_point(code_point: i32) -> bool {
-    (0xFE00..=0xFE0F).contains(&code_point) || (0xE0100..=0xE01EF).contains(&code_point)
+    CodePointSetData::new::<VariationSelector>().contains32(code_point as u32)
 }
 
 /// `UnicodeEmojiSequenceRolePromotion`: promotes a text-default scalar to the Emoji fallback
@@ -382,7 +381,7 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
         }
     }
 
-    if UnicodeEmojiData::contains(base)
+    if CodePointSetData::new::<Emoji>().contains32(base as u32)
         && UnicodeEmojiStyleVariationData::contains(base)
         && next < end
         && code_point_at_compat(text, next) == EMOJI_VARIATION_SELECTOR
@@ -390,7 +389,8 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
         return Some("EmojiStyleVariationSequence");
     }
 
-    if UnicodeEmojiModifierBaseData::contains(base) {
+    if CodePointSetData::new::<EmojiModifierBase>().contains32(base as u32)
+    {
         while next < end {
             let code_point = code_point_at_compat(text, next);
             if !is_combining_mark_code_point(code_point)
@@ -400,7 +400,10 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
             }
             next += char_count(code_point);
         }
-        if next < end && (EMOJI_MODIFIER_START..=EMOJI_MODIFIER_END).contains(&code_point_at_compat(text, next)) {
+        if next < end
+            && CodePointSetData::new::<EmojiModifier>()
+                .contains32(code_point_at_compat(text, next) as u32)
+        {
             return Some("EmojiModifierSequence");
         }
     }
@@ -421,15 +424,12 @@ fn source_slice(text: &str, range: TextRange) -> &str {
 }
 
 fn is_combining_mark_code_point(code_point: i32) -> bool {
-    code_point <= 0xFFFF
-        && char::from_u32(code_point as u32).is_some_and(|character| {
-            matches!(
-                get_general_category(character),
-                GeneralCategory::NonspacingMark
-                    | GeneralCategory::SpacingMark
-                    | GeneralCategory::EnclosingMark
-            )
-        })
+    matches!(
+        CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
+        GeneralCategory::NonspacingMark
+            | GeneralCategory::SpacingMark
+            | GeneralCategory::EnclosingMark
+    )
 }
 
 fn is_ascii_point_mark_code_point(code_point: i32) -> bool {
@@ -453,8 +453,6 @@ fn kotlin_text_range_string(range: TextRange) -> String {
 
 const EMOJI_VARIATION_SELECTOR: i32 = 0xFE0F;
 const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
-const EMOJI_MODIFIER_START: i32 = 0x1F3FB;
-const EMOJI_MODIFIER_END: i32 = 0x1F3FF;
 
 #[cfg(test)]
 mod tests {

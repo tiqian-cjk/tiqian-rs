@@ -19,7 +19,7 @@ use super::super::shaping::TextShaper::{
 use super::ClusterRoleResolution::ResolvedClusterRange;
 use super::ProgressiveBreakDecisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use std::collections::{HashMap, HashSet};
-use unicode_general_category::{GeneralCategory, get_general_category};
+use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {
@@ -1004,7 +1004,7 @@ fn strong_non_lexical_reason(text: &str) -> Option<&'static str> {
     }
 }
 fn is_decimal_digit(character: char) -> bool {
-    get_general_category(character) == GeneralCategory::DecimalNumber
+    CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber
 }
 fn mandatory_break_shaping_result(text: &str, range: TextRange) -> ShapingResult {
     ShapingResult::new(
