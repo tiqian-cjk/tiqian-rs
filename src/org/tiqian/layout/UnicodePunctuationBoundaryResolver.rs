@@ -418,8 +418,8 @@ fn previous_content_cluster(index: usize, clusters: &[Cluster], text: &str) -> O
     None
 }
 fn next_content_cluster(index: usize, clusters: &[Cluster], text: &str) -> Option<i32> {
-    for i in index + 1..clusters.len() {
-        let s = cluster_text(text, &clusters[i])?;
+    for (i, cluster) in clusters.iter().enumerate().skip(index + 1) {
+        let s = cluster_text(text, cluster)?;
         if has_authored_break(s) {
             return None;
         }

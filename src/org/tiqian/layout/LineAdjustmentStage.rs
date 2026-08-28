@@ -29,7 +29,7 @@ use super::ProgressiveBreakDecisions::{ProgressiveBreakTier, ShrinkChannel};
 /// `Retry` 的重放控制流必须且仅能由 `ParagraphLayoutEngine.rs` 执行，不能迁入本文件。
 #[derive(Clone, Debug, PartialEq)]
 pub enum LineAdjustmentStageOutcome {
-    Finished(LayoutResult),
+    Finished(Box<LayoutResult>),
     Retry {
         rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     },
@@ -542,7 +542,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         emergency_tracking_eligibility_decisions: &prep.emergency_tracking_eligibility_decisions,
         progressive_break_opportunities: &plan.progressive_break_opportunities,
     });
-    LineAdjustmentStageOutcome::Finished(LayoutResult::with_debug(
+    LineAdjustmentStageOutcome::Finished(Box::new(LayoutResult::with_debug(
         prep.input.clone(),
         Size {
             width: widest_line.min(prep.input.constraints.max_width()),
@@ -552,7 +552,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         glyph_runs,
         lines,
         debug,
-    ))
+    )))
 }
 
 fn resolve_auto_space_edge_trims(

@@ -203,11 +203,11 @@ pub fn attached_ascii_point_mark_kinsoku(
         {
             end += 1;
         }
-        for i in start..=end {
+        for (i, cluster) in clusters.iter().enumerate().take(end + 1).skip(start) {
             starts.insert(i as i32);
             decisions.push(ContextualKinsokuDecisionInfo::new(
-                clusters[i].range,
-                clusters[i].text.clone(),
+                cluster.range,
+                cluster.text.clone(),
                 i as i32,
                 "LineStart".to_owned(),
                 "AttachedAsciiPointMarkKinsoku".to_owned(),

@@ -800,9 +800,9 @@ impl ParagraphDpLineBreaker {
             } else {
                 None
             };
-            if is_final && mandatory_end.is_some() {
+            if is_final && let Some(mandatory_end) = mandatory_end {
                 committed.push(compressed_line.unwrap_or(natural_line));
-                line_start = mandatory_end.expect("checked mandatory end") + 1;
+                line_start = mandatory_end + 1;
                 if line_start == context.adjusted_clusters.len() as i32 {
                     committed.push(empty_line_candidate(
                         context

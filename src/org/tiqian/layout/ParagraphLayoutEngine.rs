@@ -123,7 +123,7 @@ impl ExplainableStubParagraphLayoutEngine {
             fallback_resolver: self.fallback_resolver.as_ref(),
             text_shaper: self.text_shaper.as_ref(),
         }) {
-            LineAdjustmentStageOutcome::Finished(result) => result,
+            LineAdjustmentStageOutcome::Finished(result) => *result,
             LineAdjustmentStageOutcome::Retry {
                 rejected_technical_tiers_by_span,
             } => self.layout_with_rejected_technical_tiers(input, rejected_technical_tiers_by_span),

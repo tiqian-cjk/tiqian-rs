@@ -83,13 +83,12 @@ pub fn decide_progressive_break(
         sino_western_stretch_cap,
     );
     ((line_start + 1)..=overflow_at)
-        .filter(|boundary| {
+        .rfind(|boundary| {
             opportunities.get(boundary).is_some_and(|opportunity| {
                 opportunity.span_range == active.span_range
                     && opportunity.tier.priority() == best_priority
             })
         })
-        .next_back()
         .unwrap_or(overflow_at)
 }
 
@@ -176,15 +175,12 @@ fn progressive_break_priority_for_line(
     let mut least_loose_density = f32::INFINITY;
     let mut least_loose_boundary = line_start + 1;
     for priority in &priorities {
-        let Some(boundary) = ((line_start + 1)..=overflow_at)
-            .filter(|candidate| {
-                opportunities.get(candidate).is_some_and(|opportunity| {
-                    opportunity.span_range == active.span_range
-                        && opportunity.tier.priority() == *priority
-                })
+        let Some(boundary) = ((line_start + 1)..=overflow_at).rfind(|candidate| {
+            opportunities.get(candidate).is_some_and(|opportunity| {
+                opportunity.span_range == active.span_range
+                    && opportunity.tier.priority() == *priority
             })
-            .next_back()
-        else {
+        }) else {
             continue;
         };
         let density = progressive_candidate_stretch_density(
@@ -206,14 +202,12 @@ fn progressive_break_priority_for_line(
             return *priority;
         }
     }
-    let emergency_boundary = ((line_start + 1)..=overflow_at)
-        .filter(|candidate| {
-            opportunities.get(candidate).is_some_and(|opportunity| {
-                opportunity.span_range == active.span_range
-                    && opportunity.tier == ProgressiveBreakTier::Emergency
-            })
+    let emergency_boundary = ((line_start + 1)..=overflow_at).rfind(|candidate| {
+        opportunities.get(candidate).is_some_and(|opportunity| {
+            opportunity.span_range == active.span_range
+                && opportunity.tier == ProgressiveBreakTier::Emergency
         })
-        .next_back();
+    });
     if emergency_boundary.is_some_and(|boundary| boundary >= least_loose_boundary) {
         ProgressiveBreakTier::Emergency.priority()
     } else {
