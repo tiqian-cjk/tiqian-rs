@@ -226,7 +226,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                     });
             ClusterMetricDecision {
                 range: decision.range,
-                source_text: Text::from(prep.text.slice(decision.range)),
+                source_text: prep.text.slice_text(decision.range),
                 request: metric_request,
                 raw_metrics,
                 layout_metrics,

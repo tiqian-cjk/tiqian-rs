@@ -59,7 +59,7 @@ pub fn shape_paragraph(
         if let Some(cached) = segment_cache.get(&range) {
             return cached.clone();
         }
-        let source = Text::from(text.slice(range));
+        let source = text.slice_text(range);
         let substitution = punctuation_glyph_substitutor.substitute(&source);
         let base = style_at(range.start());
         let mut style = base.clone();
@@ -96,7 +96,7 @@ pub fn shape_paragraph(
                     .display_text(source)
                     .open_type_features(cjk_punctuation_full_width_features(
                         decision.role,
-                        &Text::from(text.slice(range)),
+                        &text.slice_text(range),
                     ))
                     .build(),
             )
@@ -128,7 +128,7 @@ pub fn shape_paragraph(
             .expect("shapeable range must have font decision");
         for segment in shaping_segments(decision, text) {
             let shaped = shape_segment(decision, segment);
-            let word = Text::from(text.slice(segment));
+            let word = text.slice_text(segment);
             let latin = decision.role == FontRole::LatinText && !segment.is_empty();
             let progressive_span = input.content.line_break_spans.iter().find(|span| {
                 span.policy == LineBreakPolicy::ProgressiveTechnical
@@ -353,7 +353,7 @@ pub fn shape_paragraph(
                 {
                     emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                         range: span.range,
-                        source_text: Text::from(text.slice(span.range)),
+                        source_text: text.slice_text(span.range),
                         reason: if let Some(rejected) = rejected_technical_tiers_by_span
                             .get(&span.range)
                             .filter(|it| !it.is_empty())
@@ -457,7 +457,7 @@ pub fn shape_paragraph(
                         .iter()
                         .any(|offset| *offset > pair[0] && *offset < pair[1])
                     {
-                        let piece = Text::from(text.slice(TextRange::new(pair[0], pair[1])));
+                        let piece = text.slice_text(TextRange::new(pair[0], pair[1]));
                         if let Some(reason) = strong_non_lexical_reason(&piece) {
                             let range = TextRange::new(pair[0], pair[1]);
                             if !emergency.iter().any(
@@ -776,7 +776,7 @@ fn technical_syllable_cuts(
                 offset += 1
             }
             if offset > start {
-                let word = Text::from(text.slice(TextRange::new(start, offset)));
+                let word = text.slice_text(TextRange::new(start, offset));
                 if strong_non_lexical_reason(&word).is_none() {
                     out.extend(
                         hyphenator
@@ -998,7 +998,7 @@ fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResul
     ShapingResult::new(
         vec![Cluster::with_display_text(
             range,
-            Text::from(text.slice(range)),
+            text.slice_text(range),
             Text::new(),
             "mandatory-break".to_owned(),
             0.,
@@ -1007,7 +1007,7 @@ fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResul
     )
 }
 fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
-    let source = Text::from(text.slice(range));
+    let source = text.slice_text(range);
     ShapingResult::with_decisions(
         vec![Cluster::with_display_text(
             range,
@@ -1033,7 +1033,7 @@ fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> Shapin
     )
 }
 fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> ShapingResult {
-    let source = Text::from(text.slice(object.range));
+    let source = text.slice_text(object.range);
     ShapingResult::with_decisions(
         vec![Cluster::with_display_text(
             object.range,

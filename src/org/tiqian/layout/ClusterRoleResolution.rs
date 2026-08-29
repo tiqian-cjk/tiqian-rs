@@ -226,7 +226,7 @@ pub fn cluster_role_ranges_with_options(
             (role == FontRole::Emoji && classified_role != FontRole::Emoji).then(|| {
                 RoleOverrideInfo {
                     range,
-                    source_text: Text::from(text.slice(range)),
+                    source_text: text.slice_text(range),
                     original_role: format!("{classified_role:?}"),
                     overridden_role: format!("{role:?}"),
                     source: "UnicodeEmojiSequenceRolePromotion".to_owned(),

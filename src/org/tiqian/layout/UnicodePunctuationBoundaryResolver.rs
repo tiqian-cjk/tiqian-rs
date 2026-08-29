@@ -355,7 +355,7 @@ fn rule_for_start(c: UnicodePunctuationLineBreakClass) -> &'static str {
     }
 }
 fn cluster_text(text: &Text, c: &Cluster) -> Option<Text> {
-    Some(Text::from(text.slice(c.range)))
+    Some(text.slice_text(c.range))
 }
 fn first_significant(s: &Text) -> Option<(i32, i32)> {
     let mut off = 0;

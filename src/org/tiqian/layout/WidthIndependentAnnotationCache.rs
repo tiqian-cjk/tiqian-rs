@@ -370,7 +370,7 @@ pub fn prepare_width_independent_annotation(
             let range = TextRange::new(decision.index, decision.index + 1);
             RoleOverrideInfo {
                 range,
-                source_text: Text::from(text.slice(range)),
+                source_text: text.slice_text(range),
                 original_role: format!(
                     "{:?}",
                     font_role_classifier.classify(&text, range, &context)

@@ -75,7 +75,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .font_decisions
         .iter()
         .map(|decision| {
-            let cluster_text = Text::from(stage.text.slice(decision.range));
+            let cluster_text = stage.text.slice_text(decision.range);
             let substitution = stage
                 .punctuation_glyph_substitutor
                 .substitute(&cluster_text);
@@ -308,7 +308,7 @@ pub fn quote_role_decisions_to_role_override_infos(
         .into_iter()
         .map(|decision| {
             let range = TextRange::new(decision.index, decision.index + 1);
-            let source_text = Text::from(text.slice(range));
+            let source_text = text.slice_text(range);
             let original_role = base_classifier.classify(text, range, context);
             RoleOverrideInfo {
                 range,

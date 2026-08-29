@@ -117,7 +117,7 @@ pub mod unicode_east_asian_spacing {
         let values: Vec<EastAsianSpacingValue> = boundaries
             .windows(2)
             .map(|boundary| {
-                let cluster = Text::from(text.slice_offsets(boundary[0], boundary[1]));
+                let cluster = text.slice_text(TextRange::new(boundary[0], boundary[1]));
                 resolved_for_grapheme_cluster(&cluster, locale)
             })
             .collect();

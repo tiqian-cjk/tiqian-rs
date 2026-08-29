@@ -36,7 +36,7 @@ impl ShapingInput {
         style: TextStyle,
         font_decision: FontDecision,
     ) -> Self {
-        let display_text = Text::from(text.slice(range));
+        let display_text = text.slice_text(range);
         Self {
             text,
             range,
@@ -127,7 +127,7 @@ pub struct ExplainableStubTextShaper;
 
 impl TextShaper for ExplainableStubTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let source_text = Text::from(input.text.slice(input.range));
+        let source_text = input.text.slice_text(input.range);
         let glyph_count = input.display_text.chars().count().max(1) as i32;
         let advance = input.style.font_size * nominal_advance_em(&source_text, &input.display_text);
         let cluster = Cluster::with_display_text(
