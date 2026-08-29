@@ -4,6 +4,8 @@
 //! files and direct dependencies have been mapped.
 
 pub mod common;
+#[cfg(not(target_arch = "wasm32"))]
+mod mimalloc;
 
 #[allow(non_snake_case)]
 pub mod org {
