@@ -1,7 +1,8 @@
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::linebreak::EnglishHyphenation::english_hyphenation;
 
 fn hyphenated(word: &str) -> String {
-    let offsets = english_hyphenation::en_us().hyphenate(word);
+    let offsets = english_hyphenation::en_us().hyphenate(&Text::from(word));
     word.chars()
         .enumerate()
         .flat_map(|(index, character)| {
@@ -24,10 +25,18 @@ fn hyphenates_common_words_at_syllable_points() {
 
 #[test]
 fn respects_margins_and_short_words() {
-    assert!(english_hyphenation::en_us().hyphenate("the").is_empty());
-    assert!(english_hyphenation::en_us().hyphenate("a").is_empty());
+    assert!(
+        english_hyphenation::en_us()
+            .hyphenate(&Text::from("the"))
+            .is_empty()
+    );
+    assert!(
+        english_hyphenation::en_us()
+            .hyphenate(&Text::from("a"))
+            .is_empty()
+    );
     let word = "supercalifragilistic";
-    let offsets = english_hyphenation::en_us().hyphenate(word);
+    let offsets = english_hyphenation::en_us().hyphenate(&Text::from(word));
     assert!(
         offsets
             .iter()
@@ -38,6 +47,14 @@ fn respects_margins_and_short_words() {
 
 #[test]
 fn honours_the_exception_list() {
-    assert!(english_hyphenation::en_us().hyphenate("project").is_empty());
-    assert!(english_hyphenation::en_us().hyphenate("present").is_empty());
+    assert!(
+        english_hyphenation::en_us()
+            .hyphenate(&Text::from("project"))
+            .is_empty()
+    );
+    assert!(
+        english_hyphenation::en_us()
+            .hyphenate(&Text::from("present"))
+            .is_empty()
+    );
 }

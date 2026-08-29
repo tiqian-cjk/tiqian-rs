@@ -17,7 +17,7 @@ use super::super::core::LayoutModel::{
     LineLengthGridDecisionInfo, MandatoryBreakDecisionInfo, RoleOverrideInfo,
     ZeroWidthBreakDecisionInfo,
 };
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{
     DecorationKind, DecorationSpan, InlineAttachment, InlineBoxOuterSpacing, InlineBoxSpan,
     InlineObjectSpan, LastLineAlignment, LayoutInput, LayoutProfileId, LineBreakPolicy,
@@ -55,7 +55,7 @@ use super::QuotePairAnalyzer::{QuotePair, QuotePairAnalyzer, QuotePairAwareFontR
 /// 宽度无关 annotation cache 的完整输入身份；被拒绝的 technical tier 也属于 key，防止重用错误的 emergency candidate 集。
 #[derive(Clone, Debug, PartialEq)]
 pub struct WidthIndependentAnnotationKey {
-    pub text: String,
+    pub text: Text,
     pub spans: Vec<TextSpan>,
     pub line_break_spans: Vec<LineBreakSpan>,
     pub source_boundaries: HashSet<i32>,
@@ -90,7 +90,7 @@ pub fn to_width_independent_annotation_key(
 }
 
 pub struct WidthIndependentParagraphAnnotation {
-    pub text: String,
+    pub text: Text,
     pub font_size: f32,
     pub style_at: Arc<dyn Fn(i32) -> TextStyle + Send + Sync>,
     pub font_size_at: Arc<dyn Fn(i32) -> f32 + Send + Sync>,
@@ -295,7 +295,7 @@ pub fn prepare_width_independent_annotation(
         .cloned()
         .collect();
     let mut boundaries = HashSet::new();
-    let length = text.encode_utf16().count() as i32;
+    let length = text.utf16_len();
     let mut add_range = |range: TextRange| {
         for offset in [range.start(), range.end()] {
             if offset > 0 && offset < length {
@@ -370,7 +370,7 @@ pub fn prepare_width_independent_annotation(
             let range = TextRange::new(decision.index, decision.index + 1);
             RoleOverrideInfo {
                 range,
-                source_text: source_slice(&text, range).to_owned(),
+                source_text: Text::from(text.slice(range)),
                 original_role: format!(
                     "{:?}",
                     font_role_classifier.classify(&text, range, &context)
@@ -452,8 +452,9 @@ pub fn prepare_width_independent_annotation(
     );
     let mut ruby_geometry = HashMap::new();
     for ruby in &pinyin_spans {
+        let empty_metric = Text::from("x");
         let metric = if ruby.text.is_empty() {
-            "x"
+            &empty_metric
         } else {
             &ruby.text
         };
@@ -461,7 +462,7 @@ pub fn prepare_width_independent_annotation(
             .locale
             .clone()
             .unwrap_or_else(|| input.text_style.locale.clone());
-        let range = TextRange::new(0, metric.encode_utf16().count() as i32);
+        let range = TextRange::new(0, metric.utf16_len());
         let decision = fallback_resolver.resolve(
             metric,
             range,
@@ -481,7 +482,7 @@ pub fn prepare_width_independent_annotation(
             .font_families(ruby.font_families.clone())
             .font_weight(ruby_font_weight)
             .italic(input.text_style.italic)
-            .face_selection_text(metric.to_owned())
+            .face_selection_text(metric.clone())
             .build(),
         );
         let shaped = (!ruby.text.is_empty()).then(|| {
@@ -493,7 +494,7 @@ pub fn prepare_width_independent_annotation(
             text_shaper.shape(
                 &ShapingInput::builder(
                     ruby.text.clone(),
-                    TextRange::new(0, ruby.text.encode_utf16().count() as i32),
+                    TextRange::new(0, ruby.text.utf16_len()),
                     style,
                     decision,
                 )
@@ -1330,13 +1331,6 @@ pub fn build_paragraph_layout_prep(
         atom_class_by_range: atom_class,
         shrink_opportunities: shrink,
     }
-}
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("source range start must lie on scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("source range end must lie on scalar boundary");
-    &text[start..end]
 }
 const RUBY_FONT_EM: f32 = 0.5;
 const RUBY_FONT_WEIGHT_BOOST: i32 = 100;

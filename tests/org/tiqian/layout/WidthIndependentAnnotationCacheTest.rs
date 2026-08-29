@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, ParagraphStyle, RubySpan,
     TextStyle, TiqianTextContent,
@@ -86,7 +87,7 @@ impl WidthIndependentAnnotationCache for DisabledCache {
 
 fn input(text: &str, width: f32) -> LayoutInput {
     LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(width),
     )
     .paragraph_style(
@@ -143,7 +144,7 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     }];
     engine.layout(emphasis_changed);
     let mut ruby_changed = base.clone();
-    ruby_changed.ruby_spans = vec![RubySpan::new(TextRange::new(0, 2), "zhōngxī".to_owned())];
+    ruby_changed.ruby_spans = vec![RubySpan::new(TextRange::new(0, 2), Text::from("zhōngxī"))];
     engine.layout(ruby_changed);
     let mut inline_box_changed = base;
     inline_box_changed.inline_boxes =

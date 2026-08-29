@@ -5,6 +5,7 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
 };
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::font::FontPolicy::FontRole;
@@ -35,7 +36,7 @@ fn layout_with_greedy(
     engine.clreq_profile_resolver = Box::new(KinsokuNoneProfile);
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
         )
         .paragraph_style(
@@ -57,7 +58,7 @@ fn layout_with_lookahead(
     engine.clreq_profile_resolver = Box::new(KinsokuNoneProfile);
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
         )
         .paragraph_style(
@@ -73,20 +74,13 @@ fn line_texts<'a>(
     result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult,
     text: &'a str,
 ) -> Vec<&'a str> {
+    let indexed = Text::from(text);
     result
         .lines
         .iter()
         .map(|line| {
-            let start = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(
-                text,
-                line.range.start(),
-            )
-            .unwrap();
-            let end = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(
-                text,
-                line.range.end(),
-            )
-            .unwrap();
+            let start = indexed.utf8_byte_index_at(line.range.start()).unwrap();
+            let end = indexed.utf8_byte_index_at(line.range.end()).unwrap();
             &text[start..end]
         })
         .collect()
@@ -94,14 +88,14 @@ fn line_texts<'a>(
 
 #[test]
 fn western_brackets_touching_cjk_expose_all_inter_char_boundaries() {
-    let text = "育(中文)后";
+    let text = Text::from("育(中文)后");
     let clusters = text
         .chars()
         .enumerate()
         .map(|(index, character)| {
             Cluster::new(
                 TextRange::new(index as i32, index as i32 + 1),
-                character.to_string(),
+                Text::from(character.to_string()),
                 if matches!(character, '(' | ')') {
                     "latin".to_owned()
                 } else {
@@ -124,7 +118,7 @@ fn western_brackets_touching_cjk_expose_all_inter_char_boundaries() {
 
     assert_eq!(
         HashSet::from([0, 1, 3, 4]),
-        resolve_western_bracket_cjk_inter_char_boundaries(text, &clusters, &roles)
+        resolve_western_bracket_cjk_inter_char_boundaries(&text, &clusters, &roles)
     );
 }
 

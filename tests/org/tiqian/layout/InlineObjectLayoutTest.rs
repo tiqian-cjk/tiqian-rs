@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
     TextStyle, TiqianTextContent,
@@ -19,7 +20,7 @@ fn style() -> ParagraphStyle {
 fn layout(objects: Vec<InlineObjectSpan>) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new("甲乙".to_owned()),
+            TiqianTextContent::new(Text::from("甲乙")),
             LayoutConstraints::with_defaults(16.0),
         )
         .text_style(TextStyle::builder().font_size(16.0).build())
@@ -82,7 +83,7 @@ fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
     let text = format!("中{INLINE_OBJECT_REPLACEMENT_CHAR}文");
     let result = ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(120.0),
         )
         .text_style(TextStyle::builder().font_size(16.0).build())

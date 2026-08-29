@@ -2,12 +2,13 @@ use std::collections::HashSet;
 
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::decide_hyphen_break;
 
 fn cluster(start: i32, advance: f32) -> Cluster {
     Cluster::new(
         TextRange::new(start, start + 1),
-        "x".to_owned(),
+        Text::from("x"),
         "k".to_owned(),
         advance,
     )

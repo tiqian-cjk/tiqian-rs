@@ -16,7 +16,7 @@ use super::super::core::LayoutModel::{
     EmergencyTrackingEligibilityDecisionInfo, Glyph, MandatoryBreakDecisionInfo, RoleOverrideInfo,
     ShapingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{
     DecorationKind, InlineAttachment, InlineObjectPreferredStretch, InlineObjectSpan, LayoutInput,
     LineBreakPolicy, RubySpan, TextStyle,
@@ -55,7 +55,7 @@ use super::WidthIndependentAnnotationCache::containing_items;
 pub struct ParagraphLayoutPrep {
     pub input: LayoutInput,
     pub rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
-    pub text: String,
+    pub text: Text,
     pub font_size: f32,
     pub style_at: Arc<dyn Fn(i32) -> TextStyle + Send + Sync>,
     pub font_size_at: Arc<dyn Fn(i32) -> f32 + Send + Sync>,
@@ -202,7 +202,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                 metric_cluster_index += 1;
             }
             if displayed_face_selection_text.is_empty() {
-                displayed_face_selection_text = source_slice(&prep.text, decision.range).to_owned();
+                displayed_face_selection_text = prep.text.slice(decision.range).to_owned();
             }
             let style = (prep.style_at)(decision.range.start());
             let metric_request = FontMetricsRequest::builder(
@@ -213,7 +213,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             )
             .font_weight(style.font_weight)
             .italic(style.italic)
-            .face_selection_text(displayed_face_selection_text)
+            .face_selection_text(Text::from(displayed_face_selection_text))
             .font_families(style.font_families)
             .build();
             let raw_metrics = request.font_metrics_resolver.resolve(&metric_request);
@@ -226,7 +226,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                     });
             ClusterMetricDecision {
                 range: decision.range,
-                source_text: source_slice(&prep.text, decision.range).to_owned(),
+                source_text: Text::from(prep.text.slice(decision.range)),
                 request: metric_request,
                 raw_metrics,
                 layout_metrics,
@@ -783,14 +783,6 @@ fn cluster_index_range_for_source_range(
         }
     }
     first.map(|first| IntRange::new(first, last))
-}
-
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("source range start must lie on scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("source range end must lie on scalar boundary");
-    &text[start..end]
 }
 
 const CJK_FACE_ASCENT_FALLBACK_EM: f32 = 0.88;

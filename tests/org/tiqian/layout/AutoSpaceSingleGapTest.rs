@@ -2,6 +2,7 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
     AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver,
 };
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -25,7 +26,7 @@ impl ClreqProfileResolver for LetterOnlyAutoSpace {
 fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(
@@ -117,7 +118,7 @@ fn letter_and_digit_boundaries_follow_separate_profile_modes() {
     engine.clreq_profile_resolver = Box::new(LetterOnlyAutoSpace);
     let result = engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new("甲A乙9丙".to_owned()),
+            TiqianTextContent::new(Text::from("甲A乙9丙")),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(

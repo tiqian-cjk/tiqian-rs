@@ -11,6 +11,7 @@ use super::super::core::LayoutModel::{
     Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentInfo, Glyph,
     InlineObjectDecisionInfo, LineBox, RubyDecisionInfo,
 };
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{
     DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment, InlineObjectSpan, LayoutInput,
     RubyKind, RubySpan, TextStyle,
@@ -434,13 +435,15 @@ fn shorten_adjacent_interlinear_lines(
             }
             let pullback = font_size * ADJACENT_LINE_SHORTEN_EM;
             segments[left].right -= pullback;
-            segments[left]
-                .reason
-                .push_str(";AdjacentInterlinearLineShortening");
+            segments[left].reason = format!(
+                "{};AdjacentInterlinearLineShortening",
+                segments[left].reason
+            );
             segments[right].left += pullback;
-            segments[right]
-                .reason
-                .push_str(";AdjacentInterlinearLineShortening");
+            segments[right].reason = format!(
+                "{};AdjacentInterlinearLineShortening",
+                segments[right].reason
+            );
         }
     }
     segments
@@ -563,7 +566,7 @@ fn compute_bopomofo_decisions(
                              top_units: i32,
                              bottom_units: i32,
                              role: BopomofoGlyphRole,
-                             text: String| {
+                             text: Text| {
                 placements.push(BopomofoGlyphPlacement::new(
                     text,
                     zone_left + left_units * h_unit,
@@ -581,7 +584,7 @@ fn compute_bopomofo_decisions(
                     top,
                     bottom,
                     BopomofoGlyphRole::Neutral,
-                    "˙".to_owned(),
+                    Text::from("˙"),
                 );
             }
             for (symbol, (top, bottom)) in parsed
@@ -608,7 +611,7 @@ fn compute_bopomofo_decisions(
                         top,
                         bottom,
                         BopomofoGlyphRole::Tone,
-                        bopomofo_tone_glyph(parsed.tone).to_owned(),
+                        Text::from(bopomofo_tone_glyph(parsed.tone)),
                     );
                 }
                 BopomofoTone::Ru => {
@@ -619,7 +622,7 @@ fn compute_bopomofo_decisions(
                         top,
                         bottom,
                         BopomofoGlyphRole::Tone,
-                        bopomofo_tone_glyph(parsed.tone).to_owned(),
+                        Text::from(bopomofo_tone_glyph(parsed.tone)),
                     );
                 }
                 BopomofoTone::Yinping | BopomofoTone::Neutral => {}
@@ -675,7 +678,7 @@ fn replay_bopomofo_placement(
     } else {
         font_size * BOPOMOFO_ANNOTATION_FONT_EM
     };
-    let range = TextRange::new(0, placement.text.encode_utf16().count() as i32);
+    let range = TextRange::new(0, placement.text.utf16_len());
     let decision = fallback_resolver.resolve(
         &placement.text,
         range,

@@ -5,6 +5,7 @@ use super::super::clreq::ClreqProfile::{
     clreq_punctuation_policies,
 };
 use super::super::core::Geometry::{Rect, TextRange};
+use super::super::core::Text::Text;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationAtom {
@@ -251,7 +252,7 @@ impl PunctuationSpacingCompressor {
     pub fn compress_cjk_closing_before_ascii_point_mark(
         &self,
         atoms: &[PunctuationAtom],
-        text: &str,
+        text: &Text,
         em: f32,
     ) -> PunctuationSpacingCompressionResult {
         let em_half = em / 2.0;
@@ -317,7 +318,7 @@ impl PunctuationAtomBuilder {
         }
     }
 
-    pub fn build_at(&self, text: &str, index: i32, em: f32) -> Option<PunctuationAtom> {
+    pub fn build_at(&self, text: &Text, index: i32, em: f32) -> Option<PunctuationAtom> {
         let character = utf16_char_at_or_none(text, index)?;
         self.build(
             character,
@@ -649,10 +650,9 @@ fn class_based_glue(
     }
 }
 
-fn utf16_char_at_or_none(text: &str, index: i32) -> Option<char> {
-    text.encode_utf16()
-        .nth(index as usize)
-        .and_then(|unit| char::from_u32(unit as u32))
+fn utf16_char_at_or_none(text: &Text, index: i32) -> Option<char> {
+    text.code_point_at_or_none(index)
+        .and_then(|code_point| char::from_u32(code_point as u32))
 }
 
 const PLACEMENT_EPSILON: f32 = 0.001;

@@ -1,5 +1,6 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::LineEndReason;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
@@ -25,7 +26,7 @@ fn technical_layout(
     engine.hyphenator = english_hyphenation::en_us();
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::builder(text.to_owned())
+            TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(vec![LineBreakSpan {
                     range,
                     policy: LineBreakPolicy::ProgressiveTechnical,
@@ -113,7 +114,7 @@ fn long_all_caps_word_is_not_tracking_eligible() {
     engine.hyphenator = english_hyphenation::en_us();
     let result = engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(101.0),
         )
         .paragraph_style(no_indent_style())
@@ -144,7 +145,7 @@ fn opaque_hard_break_keeps_combining_grapheme_intact() {
     engine.hyphenator = english_hyphenation::en_us();
     let result = engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(64.0),
         )
         .paragraph_style(no_indent_style())

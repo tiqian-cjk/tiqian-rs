@@ -1,10 +1,12 @@
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontPolicy::{FontRole, FontRoleContext};
 use tiqian::org::tiqian::layout::QuotePairAnalyzer::{QuotePair, QuotePairAnalyzer, QuoteType};
 
 fn decisions(text: &str) -> Vec<tiqian::org::tiqian::layout::QuotePairAnalyzer::QuoteRoleDecision> {
     let analyzer = QuotePairAnalyzer;
-    let pairs = analyzer.analyze(text);
-    analyzer.classify_quote_roles(text, &pairs, &FontRoleContext::default())
+    let text = Text::from(text);
+    let pairs = analyzer.analyze(&text);
+    analyzer.classify_quote_roles(&text, &pairs, &FontRoleContext::default())
 }
 
 #[test]
@@ -12,9 +14,9 @@ fn matches_simple_and_nested_quote_pairs() {
     let analyzer = QuotePairAnalyzer;
     assert_eq!(
         vec![QuotePair::new(2, 5, QuoteType::Double)],
-        analyzer.analyze("他说“你好”"),
+        analyzer.analyze(&Text::from("他说“你好”")),
     );
-    let nested = analyzer.analyze("他说：“她说‘你好’。”");
+    let nested = analyzer.analyze(&Text::from("他说：“她说‘你好’。”"));
     assert_eq!(2, nested.len());
     assert!(nested.contains(&QuotePair::new(6, 9, QuoteType::Single)));
     assert!(nested.contains(&QuotePair::new(3, 11, QuoteType::Double)));
@@ -26,7 +28,7 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
     let text = "‘that’s’";
     assert_eq!(
         vec![QuotePair::new(0, 7, QuoteType::Single)],
-        analyzer.analyze(text)
+        analyzer.analyze(&Text::from(text))
     );
 
     for word in [
@@ -38,8 +40,9 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
         "а’б",
         "e\u{0301}’s",
     ] {
-        assert!(analyzer.analyze(word).is_empty(), "{word}");
-        let roles = analyzer.classify_quote_roles(word, &[], &FontRoleContext::default());
+        let word = Text::from(word);
+        assert!(analyzer.analyze(&word).is_empty(), "{word}");
+        let roles = analyzer.classify_quote_roles(&word, &[], &FontRoleContext::default());
         assert!(
             roles
                 .iter()
@@ -122,8 +125,9 @@ fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
 fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
     let analyzer = QuotePairAnalyzer;
     for text in ["“Json是谁？”", "“2024”"] {
-        let pairs = analyzer.analyze(text);
-        let chinese = analyzer.classify_quote_roles(text, &pairs, &FontRoleContext::default());
+        let text = Text::from(text);
+        let pairs = analyzer.analyze(&text);
+        let chinese = analyzer.classify_quote_roles(&text, &pairs, &FontRoleContext::default());
         assert!(
             chinese
                 .iter()
@@ -135,7 +139,7 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
                 .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
         );
         let english = analyzer.classify_quote_roles(
-            text,
+            &text,
             &pairs,
             &FontRoleContext::with_locale("en".to_owned()),
         );

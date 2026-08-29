@@ -4,6 +4,7 @@ use tiqian::org::tiqian::core::EastAsianSpacing::unicode_east_asian_spacing;
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::IntRange::IntRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontPolicy::FontRole;
 use tiqian::org::tiqian::layout::Justifier::{JustificationRequest, Justifier};
 use tiqian::org::tiqian::layout::PunctuationModel::GlueKind;
@@ -13,7 +14,7 @@ const EM: f32 = 16.0;
 fn cluster(start: i32, end: i32, text: &str, advance: f32, font_key: &str) -> Cluster {
     Cluster::new(
         TextRange::new(start, end),
-        text.to_owned(),
+        Text::from(text),
         font_key.to_owned(),
         advance,
     )

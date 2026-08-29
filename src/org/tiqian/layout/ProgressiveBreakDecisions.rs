@@ -254,7 +254,7 @@ fn progressive_candidate_stretch_density(
                     && cluster.range.end() <= span.end()
                     && !cluster.text.chars().any(char::is_whitespace)
             })
-            .map(|cluster| cluster.text.encode_utf16().count() as i32)
+            .map(|cluster| cluster.text.utf16_len())
             .sum()
     });
     // `TerminalTechnicalTrackingDensityEstimate`：技术 prefix 到达行末时，最终可用的 tracking 是其自身

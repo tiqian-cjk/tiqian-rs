@@ -412,8 +412,8 @@ pub fn apply_auto_space_policy(
                     side: "gap".to_owned(),
                     boundary_role: "EastAsianSpacing.Wide".to_owned(),
                     mode: "Replace".to_owned(),
-                    characters_affected: c.text.encode_utf16().count() as i32,
-                    reduction_per_char: reduction / c.text.encode_utf16().count() as f32,
+                    characters_affected: c.text.utf16_len(),
+                    reduction_per_char: reduction / c.text.utf16_len() as f32,
                     total_reduction: reduction,
                     reason: "TextAutoSpaceReplace:east-asian-spacing-W-space-N".to_owned(),
                 });
@@ -614,7 +614,7 @@ fn is_mandatory_break_cluster(c: &Cluster) -> bool {
     c.font_key == "mandatory-break" && c.display_text.is_empty()
 }
 fn display_char_source_range(c: &Cluster, i: usize) -> TextRange {
-    if c.display_text.encode_utf16().count() == c.text.encode_utf16().count() {
+    if c.display_text.utf16_len() == c.text.utf16_len() {
         let start: i32 = c
             .display_text
             .chars()

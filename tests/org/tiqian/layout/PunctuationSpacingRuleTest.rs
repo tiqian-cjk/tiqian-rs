@@ -1,5 +1,6 @@
 use tiqian::org::tiqian::clreq::ClreqProfile::{PunctuationGluePlacement, PunctuationWidthPolicy};
 use tiqian::org::tiqian::core::Geometry::TextRange;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::layout::PunctuationModel::{
     PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,
 };
@@ -67,7 +68,7 @@ fn non_adjacent_atoms_are_not_compressed() {
 fn cjk_closing_before_ascii_point_mark_consumes_only_closing_glue() {
     let result = PunctuationSpacingCompressor.compress_cjk_closing_before_ascii_point_mark(
         &[atom('」', 0)],
-        "」,",
+        &Text::from("」,"),
         EM,
     );
     assert_eq!(1, result.adjustments.len());
@@ -86,7 +87,7 @@ fn cjk_closing_before_ascii_point_mark_consumes_only_closing_glue() {
 fn whitespace_blocks_closing_to_ascii_point_mark_compression() {
     let result = PunctuationSpacingCompressor.compress_cjk_closing_before_ascii_point_mark(
         &[atom('」', 0)],
-        "」 ,",
+        &Text::from("」 ,"),
         EM,
     );
     assert!(result.adjustments.is_empty());

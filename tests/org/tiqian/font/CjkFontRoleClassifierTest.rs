@@ -1,8 +1,10 @@
 use tiqian::org::tiqian::core::Geometry::TextRange;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole};
 
 fn classify(text: &str, start: i32, end: i32) -> FontRole {
-    CjkFontRoleClassifier.classify_with_default_context(text, TextRange::new(start, end))
+    CjkFontRoleClassifier
+        .classify_with_default_context(&Text::from(text), TextRange::new(start, end))
 }
 
 #[test]
@@ -27,7 +29,7 @@ fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_base
     for text in ["⌚", "🀄", "🫪"] {
         assert_eq!(
             FontRole::Emoji,
-            classify(text, 0, text.encode_utf16().count() as i32),
+            classify(text, 0, Text::from(text).utf16_len()),
             "{text}"
         );
     }

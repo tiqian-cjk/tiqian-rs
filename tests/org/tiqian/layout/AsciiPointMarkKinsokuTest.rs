@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
@@ -23,7 +24,7 @@ fn layout_with_lookahead(text: &str) -> tiqian::org::tiqian::core::LayoutModel::
 
 fn input(text: &str) -> LayoutInput {
     LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(64.0),
     )
     .paragraph_style(
@@ -69,7 +70,7 @@ fn cjk_attached_ascii_point_mark_is_separate_from_following_latin_run() {
 fn latin_tokens_keep_existing_internal_ascii_punctuation_segmentation() {
     let result = ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new("foo,bar 1,234 50% \"quoted\"".to_owned()),
+            TiqianTextContent::new(Text::from("foo,bar 1,234 50% \"quoted\"")),
             LayoutConstraints::with_defaults(1000.0),
         )
         .paragraph_style(

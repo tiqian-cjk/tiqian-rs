@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, RubyLineHeightMode, RubySpan, TiqianTextContent,
 };
@@ -15,7 +16,7 @@ fn layout(
 ) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
         )
         .paragraph_style(style)
@@ -34,7 +35,7 @@ fn ruby_uses_existing_interline_space_without_changing_line_box() {
         "中文排版",
         400.0,
         style,
-        vec![RubySpan::new(TextRange::new(0, 1), "zhōng".to_owned())],
+        vec![RubySpan::new(TextRange::new(0, 1), Text::from("zhōng"))],
     );
 
     assert_eq!(plain.lines[0].top, ruby.lines[0].top);
@@ -64,7 +65,7 @@ fn per_line_mode_expands_only_the_annotated_line_when_ruby_collides() {
         "甲乙丙丁戊己庚辛壬癸子丑",
         64.0,
         style,
-        vec![RubySpan::new(TextRange::new(4, 5), "wù".to_owned())],
+        vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))],
     );
 
     assert_eq!(plain.size.height + 6.0, annotated.size.height);
@@ -89,7 +90,7 @@ fn uniform_paragraph_mode_expands_every_line_by_same_ruby_deficit() {
         "甲乙丙丁戊己庚辛壬癸子丑",
         64.0,
         style,
-        vec![RubySpan::new(TextRange::new(4, 5), "wù".to_owned())],
+        vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))],
     );
 
     assert_eq!(3, result.lines.len());

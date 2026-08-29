@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use super::super::core::Text::Text;
+
 /**
  * 查找单个 Western word 内可插入 soft hyphen 的 offset。offset `k` 表示在 `word[k - 1]` 与
  * `word[k]` 之间断行；行尾在 `word[k - 1]` 之后绘制连字符。offset 是 code point index，按升序
@@ -12,7 +14,7 @@ use std::collections::HashMap;
  * 携带 TeX patterns 的 `EnglishHyphenation`。每个实例绑定一种语言。
  */
 pub trait Hyphenator {
-    fn hyphenate(&self, word: &str) -> Vec<i32>;
+    fn hyphenate(&self, word: &Text) -> Vec<i32>;
 }
 
 /**
@@ -23,7 +25,7 @@ pub trait Hyphenator {
 pub struct NoHyphenator;
 
 impl Hyphenator for NoHyphenator {
-    fn hyphenate(&self, _word: &str) -> Vec<i32> {
+    fn hyphenate(&self, _word: &Text) -> Vec<i32> {
         Vec::new()
     }
 }
@@ -78,7 +80,7 @@ impl LiangHyphenator {
 }
 
 impl Hyphenator for LiangHyphenator {
-    fn hyphenate(&self, word: &str) -> Vec<i32> {
+    fn hyphenate(&self, word: &Text) -> Vec<i32> {
         let word_chars: Vec<char> = word.chars().collect();
         let word_length = word_chars.len() as i32;
         if word_length < self.left_min + self.right_min {

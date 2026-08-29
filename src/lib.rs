@@ -16,7 +16,7 @@ pub mod org {
             pub mod LayoutModel;
             pub mod LayoutQueries;
             pub mod SourceInteractionBoundaries;
-            pub mod TextIndex;
+            pub mod Text;
             pub mod TextModel;
             pub mod UnicodeScriptEvidence;
             pub mod UnicodeWordCharacter;

@@ -3,6 +3,7 @@
 use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 use super::super::core::IntRange::IntRange;
+use super::super::core::Text::Text;
 
 /**
  * `NumberSymbolCohesion`——CLREQ §符号分离禁则（数字及其相应的前后缀单位符号）：
@@ -20,13 +21,12 @@ use super::super::core::IntRange::IntRange;
 pub mod number_symbol_cohesion {
     use super::*;
 
-    pub fn unbreakable_ranges(text: &str) -> Vec<IntRange> {
-        // Kotlin `String` 与 `Char` 按 UTF-16 code unit 索引；source range 必须保留相同语义。
-        let code_units: Vec<u16> = text.encode_utf16().collect();
+    pub fn unbreakable_ranges(text: &Text) -> Vec<IntRange> {
+        let text_length = text.utf16_len() as usize;
         let mut result = Vec::new();
         let mut i = 0_usize;
-        while i < code_units.len() {
-            if !is_digit(code_units[i]) {
+        while i < text_length {
+            if !is_digit(text.utf16_code_unit_at(i as i32) as u16) {
                 i += 1;
                 continue;
             }
@@ -34,13 +34,13 @@ pub mod number_symbol_cohesion {
             // 最大数字串。仅当内部 `.` / `,` 位于两个数字之间时才吸收它们，亦即小数点或
             // 千分位，而不是句末句号或列表逗号。
             let mut end = i;
-            while end + 1 < code_units.len() {
-                let character = code_units[end + 1];
+            while end + 1 < text_length {
+                let character = text.utf16_code_unit_at((end + 1) as i32) as u16;
                 if is_digit(character) {
                     end += 1;
                 } else if (character == b'.' as u16 || character == b',' as u16)
-                    && end + 2 < code_units.len()
-                    && is_digit(code_units[end + 2])
+                    && end + 2 < text_length
+                    && is_digit(text.utf16_code_unit_at((end + 2) as i32) as u16)
                 {
                     end += 2;
                 } else {
@@ -51,16 +51,21 @@ pub mod number_symbol_cohesion {
             let mut start = i;
             // 前缀：紧邻数字之前的一个正负号或前置货币符号。
             if start > 0
-                && (PREFIX_SIGN.contains(&code_units[start - 1])
-                    || FRONT_CURRENCY.contains(&code_units[start - 1]))
+                && (PREFIX_SIGN.contains(&(text.utf16_code_unit_at((start - 1) as i32) as u16))
+                    || FRONT_CURRENCY
+                        .contains(&(text.utf16_code_unit_at((start - 1) as i32) as u16)))
             {
                 start -= 1;
             }
             // 后缀：连续单位符号，之后还可带一个后置货币符号。
-            while end + 1 < code_units.len() && SUFFIX_UNIT.contains(&code_units[end + 1]) {
+            while end + 1 < text_length
+                && SUFFIX_UNIT.contains(&(text.utf16_code_unit_at((end + 1) as i32) as u16))
+            {
                 end += 1;
             }
-            if end + 1 < code_units.len() && BACK_CURRENCY.contains(&code_units[end + 1]) {
+            if end + 1 < text_length
+                && BACK_CURRENCY.contains(&(text.utf16_code_unit_at((end + 1) as i32) as u16))
+            {
                 end += 1;
             }
 

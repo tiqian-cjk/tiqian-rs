@@ -2,7 +2,7 @@
 
 /// FIXME(UTF-16)：Kotlin 的 source range 以 UTF-16 code unit 计数。`start` 与 `end`
 /// 必须保持该语义，不能直接用作 Rust UTF-8 byte index；实际索引转换使用 Rust 原生
-/// `TextIndex.rs`。
+/// `Text` (UTF-16 优化)。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TextRange {
     start: i32,

@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -20,7 +21,7 @@ fn punctuation_resolved_advance_never_falls_below_body_width() {
         for max_width in [48.0, 64.0, 80.0, 100.0, 160.0, 320.0] {
             let result = engine.layout(
                 LayoutInput::builder(
-                    TiqianTextContent::new(text.to_owned()),
+                    TiqianTextContent::new(Text::from(text)),
                     LayoutConstraints::with_defaults(max_width),
                 )
                 .paragraph_style(

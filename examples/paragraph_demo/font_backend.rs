@@ -6,6 +6,7 @@ use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
 use tiqian::org::tiqian::core::Geometry::{Rect, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontMetrics::{
     FontMetricSource, FontMetricsRequest, FontMetricsResolver,
 };
@@ -347,7 +348,7 @@ impl DemoFontFace {
 }
 
 impl FallbackResolver for DemoFontCatalog {
-    fn resolve(&self, _text: &str, range: TextRange, request: &FontRequest) -> FontDecision {
+    fn resolve(&self, _text: &Text, range: TextRange, request: &FontRequest) -> FontDecision {
         let face = self.role_default_face(request.role);
         FontDecision {
             range,
@@ -427,7 +428,7 @@ impl TextShaper for DemoFontCatalog {
         let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as i32;
         let glyphs_without_ink_bounds =
             glyphs.iter().filter(|glyph| glyph.bounds.is_none()).count() as i32;
-        let source_text = source_slice(&input.text, input.range).to_owned();
+        let source_text = Text::from(input.text.slice(input.range));
         let glyph_count = glyphs.len() as i32;
         let decision = ShapingDecisionInfo::builder(
             input.range,
@@ -443,7 +444,13 @@ impl TextShaper for DemoFontCatalog {
         .missing_glyphs(missing_glyphs)
         .resolved_face(Some(exact_key))
         .language(Some(input.style.locale.clone()))
-        .feature_evidence((!features.is_empty()).then(|| features.join(",")))
+        .feature_evidence((!features.is_empty()).then(|| {
+            features
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(",")
+        }))
         .build();
         ShapingResult::with_decisions(
             clusters
@@ -451,13 +458,12 @@ impl TextShaper for DemoFontCatalog {
                 .map(|cluster| {
                     Cluster::with_display_text(
                         cluster.range,
-                        source_slice(&input.text, cluster.range).to_owned(),
-                        utf16_slice(
-                            &input.display_text,
-                            cluster.display_start,
-                            cluster.display_end,
-                        )
-                        .to_owned(),
+                        Text::from(input.text.slice(cluster.range)),
+                        Text::from(
+                            input
+                                .display_text
+                                .slice_offsets(cluster.display_start, cluster.display_end),
+                        ),
                         face.key.to_owned(),
                         cluster.advance,
                     )
@@ -533,24 +539,6 @@ fn clustered_glyph_group(
         advance,
         glyphs,
     }
-}
-
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start =
-        tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.start())
-            .expect("paragraph-demo shape range start must be a scalar boundary");
-    let end =
-        tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, range.end())
-            .expect("paragraph-demo shape range end must be a scalar boundary");
-    &text[start..end]
-}
-
-fn utf16_slice(text: &str, start: i32, end: i32) -> &str {
-    let start = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, start)
-        .expect("paragraph-demo display cluster start must be a scalar boundary");
-    let end = tiqian::org::tiqian::core::TextIndex::utf16_offset_to_utf8_byte_index(text, end)
-        .expect("paragraph-demo display cluster end must be a scalar boundary");
-    &text[start..end]
 }
 
 fn utf8_offset_to_utf16(text: &str, byte_offset: u32) -> Option<i32> {
@@ -673,7 +661,7 @@ mod tests {
         catalog.validate_demo_faces().unwrap();
         let cjk = FallbackResolver::resolve(
             &catalog,
-            "中文",
+            &"中文".into(),
             TextRange::new(0, 2),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -683,7 +671,7 @@ mod tests {
         );
         let latin = FallbackResolver::resolve(
             &catalog,
-            "Latin",
+            &"Latin".into(),
             TextRange::new(0, 5),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -694,7 +682,7 @@ mod tests {
         assert_eq!(cjk.candidate.key, CJK_FONT_KEY);
         assert_eq!(latin.candidate.key, LATIN_FONT_KEY);
         let result = catalog.shape(&ShapingInput::new(
-            "中文".to_owned(),
+            "中文".into(),
             TextRange::new(0, 2),
             TextStyle::default(),
             cjk,
@@ -734,7 +722,7 @@ mod tests {
             let range = TextRange::new(0, text.encode_utf16().count() as i32);
             let decision = FallbackResolver::resolve(
                 &catalog,
-                text,
+                &text.into(),
                 range,
                 &FontRequest {
                     preferred_families: vec![family.to_owned()],
@@ -744,7 +732,7 @@ mod tests {
             );
             assert_eq!(decision.candidate.key, LATIN_FONT_KEY);
             let shaped = catalog.shape(&ShapingInput::new(
-                text.to_owned(),
+                text.into(),
                 range,
                 TextStyle::builder()
                     .font_families(vec![family.to_owned()])
@@ -772,7 +760,7 @@ mod tests {
         let catalog = DemoFontCatalog::load().unwrap();
         let punctuation = FallbackResolver::resolve(
             &catalog,
-            "（",
+            &"（".into(),
             TextRange::new(0, 1),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -782,7 +770,7 @@ mod tests {
         );
         let halt = catalog.shape(
             &ShapingInput::builder(
-                "（".to_owned(),
+                "（".into(),
                 TextRange::new(0, 1),
                 TextStyle::default(),
                 punctuation,
@@ -804,7 +792,7 @@ mod tests {
 
         let bopomofo = FallbackResolver::resolve(
             &catalog,
-            "ㄅ",
+            &"ㄅ".into(),
             TextRange::new(0, 1),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -814,7 +802,7 @@ mod tests {
         );
         let vertical = catalog.shape(
             &ShapingInput::builder(
-                "ㄅ".to_owned(),
+                "ㄅ".into(),
                 TextRange::new(0, 1),
                 TextStyle::default(),
                 bopomofo,
@@ -840,7 +828,7 @@ mod tests {
         let catalog = DemoFontCatalog::load().unwrap();
         let decision = FallbackResolver::resolve(
             &catalog,
-            "a😀b",
+            &"a😀b".into(),
             TextRange::new(0, 4),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -849,7 +837,7 @@ mod tests {
             },
         );
         let shaped = catalog.shape(&ShapingInput::new(
-            "a😀b".to_owned(),
+            "a😀b".into(),
             TextRange::new(0, 4),
             TextStyle::default(),
             decision,
@@ -880,7 +868,7 @@ mod tests {
         engine.text_shaper = Box::new(catalog);
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new("中文（English）".to_owned()),
+                TiqianTextContent::new("中文（English）".into()),
                 LayoutConstraints::with_defaults(160.0),
             )
             .build(),
@@ -907,7 +895,7 @@ mod tests {
         let catalog = DemoFontCatalog::load().unwrap();
         let decision = FallbackResolver::resolve(
             &catalog,
-            "中",
+            &"中".into(),
             TextRange::new(0, 1),
             &FontRequest {
                 preferred_families: Vec::new(),
@@ -916,7 +904,7 @@ mod tests {
             },
         );
         let shaped = catalog.shape(&ShapingInput::new(
-            "中".to_owned(),
+            "中".into(),
             TextRange::new(0, 1),
             TextStyle::default(),
             decision,
@@ -945,7 +933,7 @@ mod tests {
             let range = TextRange::new(0, emoji.encode_utf16().count() as i32);
             let decision = FallbackResolver::resolve(
                 &catalog,
-                emoji,
+                &emoji.into(),
                 range,
                 &FontRequest {
                     preferred_families: Vec::new(),
@@ -955,7 +943,7 @@ mod tests {
             );
             assert_eq!(decision.candidate.key, EMOJI_FONT_KEY);
             let shaped = catalog.shape(&ShapingInput::new(
-                emoji.to_owned(),
+                emoji.into(),
                 range,
                 TextStyle::default(),
                 decision,
@@ -1004,7 +992,7 @@ mod tests {
         engine.text_shaper = Box::new(catalog);
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new("甲👩🏽‍💻乙".to_owned()),
+                TiqianTextContent::new("甲👩🏽‍💻乙".into()),
                 LayoutConstraints::with_defaults(24.0),
             )
             .text_style(

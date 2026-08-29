@@ -8,6 +8,7 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
     BuiltInClreqProfileResolver, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
 };
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, InlineAttachment, LastLineAlignment, LayoutInput,
     LayoutProfileId, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
@@ -195,7 +196,7 @@ fn to_input(wire: &InputWire) -> LayoutInput {
         wire.inline_objects.is_empty(),
         "fixture runner does not yet support inline objects"
     );
-    let content = TiqianTextContent::builder(wire.content.text.clone())
+    let content = TiqianTextContent::builder(Text::from(wire.content.text.clone()))
         .source_boundaries(
             wire.content
                 .source_boundaries
@@ -288,7 +289,7 @@ fn to_input(wire: &InputWire) -> LayoutInput {
                 .iter()
                 .map(|span| RubySpan {
                     base_range: range(&span.base_range),
-                    text: span.text.clone(),
+                    text: Text::from(span.text.clone()),
                     font_families: span.font_families.clone(),
                     kind: ruby_kind(&span.kind),
                     locale: span.locale.clone(),

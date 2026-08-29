@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LayoutInput, ParagraphStyle, TiqianTextContent,
 };
@@ -14,7 +15,7 @@ fn layout(
 ) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(240.0),
         )
         .paragraph_style(style)

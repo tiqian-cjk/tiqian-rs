@@ -3,11 +3,12 @@
 use std::collections::HashSet;
 
 use super::Geometry::TextRange;
+use super::Text::Text;
 use super::Units::Ic;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TiqianTextContent {
-    pub text: String,
+    pub text: Text,
     pub spans: Vec<TextSpan>,
     /// 即使不携带影响布局的样式，也必须成为 cluster 边界的 source offset（UTF-16 code unit）。链接、颜色、
     /// 下划线等仅渲染范围需要精确的占用几何；否则，拉丁 cluster 中在尾随标点前结束的范围
@@ -21,7 +22,7 @@ pub struct TiqianTextContent {
 }
 
 impl TiqianTextContent {
-    pub fn new(text: String) -> Self {
+    pub fn new(text: Text) -> Self {
         Self {
             text,
             spans: Vec::new(),
@@ -31,7 +32,7 @@ impl TiqianTextContent {
         }
     }
 
-    pub fn builder(text: String) -> TiqianTextContentBuilder {
+    pub fn builder(text: Text) -> TiqianTextContentBuilder {
         TiqianTextContentBuilder {
             content: Self::new(text),
         }
@@ -72,11 +73,13 @@ impl TiqianTextContentBuilder {
 /// 去掉 `https://` / `http://` / `mailto:` 前缀。只有这类链接使用
 /// `LineBreakPolicy::ProgressiveTechnical`；其他链接文字保留正文断行。
 pub mod link_address_display {
-    pub fn displays_address(display: &str, target: &str) -> bool {
+    use super::Text;
+
+    pub fn displays_address(display: &Text, target: &str) -> bool {
         if display.is_empty() || target.is_empty() {
             return false;
         }
-        if display == target {
+        if display.as_str() == target {
             return true;
         }
         target == format!("https://{display}")
@@ -805,7 +808,7 @@ pub enum RichTextRole {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RubySpan {
     pub base_range: TextRange,
-    pub text: String,
+    pub text: Text,
     /// 注文专用字体（family 名优先列表）。注音需含 ㄅㄆㄇ 字形的字体、拼音/释义可用各自字体——
     /// 注文字体本就应独立于正文（ADR 0032）。空 = 渲染器默认。
     pub font_families: Vec<String>,
@@ -817,7 +820,7 @@ pub struct RubySpan {
 }
 
 impl RubySpan {
-    pub fn new(base_range: TextRange, text: String) -> Self {
+    pub fn new(base_range: TextRange, text: Text) -> Self {
         Self {
             base_range,
             text,
@@ -827,7 +830,7 @@ impl RubySpan {
         }
     }
 
-    pub fn with_kind(base_range: TextRange, text: String, kind: RubyKind) -> Self {
+    pub fn with_kind(base_range: TextRange, text: Text, kind: RubyKind) -> Self {
         let locale = if kind == RubyKind::Bopomofo {
             Some("zh-TW".to_owned())
         } else {
@@ -842,7 +845,7 @@ impl RubySpan {
         }
     }
 
-    pub fn builder(base_range: TextRange, text: String) -> RubySpanBuilder {
+    pub fn builder(base_range: TextRange, text: Text) -> RubySpanBuilder {
         RubySpanBuilder {
             span: Self::new(base_range, text),
             locale_was_set: false,

@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use super::super::core::Geometry::TextRange;
+use super::super::core::Text::Text;
 use super::super::font::FontPolicy::{FontRole, FontRoleClassifier, FontRoleContext};
 use super::ContextualQuoteRoleResolver::ContextualQuoteRoleResolver;
 
@@ -38,17 +39,12 @@ pub struct QuoteRoleDecision {
 }
 
 impl QuoteRoleDecision {
-    pub fn new(
-        index: i32,
-        role: FontRole,
-        source: impl Into<String>,
-        reason: impl Into<String>,
-    ) -> Self {
+    pub fn new(index: i32, role: FontRole, source: String, reason: String) -> Self {
         Self {
             index,
             role,
-            source: source.into(),
-            reason: reason.into(),
+            source,
+            reason,
         }
     }
 }
@@ -62,12 +58,12 @@ impl QuoteRoleDecision {
 pub struct QuotePairAnalyzer;
 
 impl QuotePairAnalyzer {
-    pub fn analyze(&self, text: &str) -> Vec<QuotePair> {
+    pub fn analyze(&self, text: &Text) -> Vec<QuotePair> {
         let mut stack = Vec::new();
         let mut pairs = Vec::new();
-        let text_length = utf16_length(text);
+        let text_length = text.utf16_len();
         for index in 0..text_length {
-            match utf16_code_unit_at(text, index) {
+            match text.utf16_code_unit_at(index) {
                 0x201C => stack.push((index, QuoteType::Double)),
                 0x2018 => stack.push((index, QuoteType::Single)),
                 0x201D
@@ -95,7 +91,7 @@ impl QuotePairAnalyzer {
 
     pub fn classify_pairs(
         &self,
-        text: &str,
+        text: &Text,
         pairs: &[QuotePair],
         context: &FontRoleContext,
     ) -> HashMap<i32, FontRole> {
@@ -111,7 +107,7 @@ impl QuotePairAnalyzer {
      */
     pub fn classify_pairs_with_font_role_classifier(
         &self,
-        text: &str,
+        text: &Text,
         pairs: &[QuotePair],
         _font_role_classifier: &dyn FontRoleClassifier,
         context: &FontRoleContext,
@@ -121,7 +117,7 @@ impl QuotePairAnalyzer {
 
     pub fn classify_quote_roles(
         &self,
-        text: &str,
+        text: &Text,
         pairs: &[QuotePair],
         context: &FontRoleContext,
     ) -> Vec<QuoteRoleDecision> {
@@ -131,7 +127,7 @@ impl QuotePairAnalyzer {
     /** `classify_pairs` 的 source-compatible 对应入口。 */
     pub fn classify_quote_roles_with_font_role_classifier(
         &self,
-        text: &str,
+        text: &Text,
         pairs: &[QuotePair],
         _font_role_classifier: &dyn FontRoleClassifier,
         context: &FontRoleContext,
@@ -140,9 +136,12 @@ impl QuotePairAnalyzer {
     }
 }
 
-pub fn is_non_cjk_in_word_apostrophe(text: &str, index: i32) -> bool {
-    code_point_before(text, index).is_some_and(is_non_cjk_word_character)
-        && code_point_at_or_none(text, index + 1).is_some_and(is_non_cjk_word_character)
+pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
+    text.code_point_before(index)
+        .is_some_and(is_non_cjk_word_character)
+        && text
+            .code_point_at_or_none(index + 1)
+            .is_some_and(is_non_cjk_word_character)
 }
 
 fn is_non_cjk_word_character(code_point: i32) -> bool {
@@ -150,46 +149,6 @@ fn is_non_cjk_word_character(code_point: i32) -> bool {
         && super::super::core::UnicodeScriptEvidence::unicode_script_evidence_classifier::classify(
             code_point,
         ) != super::super::core::UnicodeScriptEvidence::UnicodeScriptEvidence::EastAsian
-}
-
-fn code_point_before(text: &str, index: i32) -> Option<i32> {
-    if index <= 0 {
-        return None;
-    }
-    let low = utf16_code_unit_at(text, index - 1);
-    if !(0xDC00..=0xDFFF).contains(&low) || index < 2 {
-        return Some(low);
-    }
-    let high = utf16_code_unit_at(text, index - 2);
-    if !(0xD800..=0xDBFF).contains(&high) {
-        return Some(low);
-    }
-    Some(0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00))
-}
-
-fn code_point_at_or_none(text: &str, index: i32) -> Option<i32> {
-    if !(0..utf16_length(text)).contains(&index) {
-        return None;
-    }
-    let high = utf16_code_unit_at(text, index);
-    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= utf16_length(text) {
-        return Some(high);
-    }
-    let low = utf16_code_unit_at(text, index + 1);
-    if !(0xDC00..=0xDFFF).contains(&low) {
-        return Some(high);
-    }
-    Some(0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00))
-}
-
-fn utf16_length(text: &str) -> i32 {
-    text.encode_utf16().count() as i32
-}
-
-fn utf16_code_unit_at(text: &str, index: i32) -> i32 {
-    text.encode_utf16()
-        .nth(index as usize)
-        .expect("quote pair offset must address a UTF-16 code unit") as i32
 }
 
 /**
@@ -214,7 +173,7 @@ impl<'a> QuotePairAwareFontRoleClassifier<'a> {
 }
 
 impl FontRoleClassifier for QuotePairAwareFontRoleClassifier<'_> {
-    fn classify(&self, text: &str, range: TextRange, context: &FontRoleContext) -> FontRole {
+    fn classify(&self, text: &Text, range: TextRange, context: &FontRoleContext) -> FontRole {
         self.quote_roles
             .get(&range.start())
             .copied()

@@ -1,6 +1,7 @@
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::IntRange::IntRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
 use tiqian::org::tiqian::layout::LineOptimization::RepairOption;
 use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
@@ -8,7 +9,7 @@ use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, Shri
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
         TextRange::new(index, index + 1),
-        text.to_owned(),
+        Text::from(text),
         "test".to_owned(),
         16.0,
     )

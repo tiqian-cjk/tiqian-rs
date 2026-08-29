@@ -1,17 +1,18 @@
 use tiqian::org::tiqian::core::EastAsianSpacing::{
     EastAsianSpacingEdges, EastAsianSpacingValue, unicode_east_asian_spacing,
 };
+use tiqian::org::tiqian::core::Text::Text;
 
 #[test]
 fn chinese_language_context_uses_pinned_macrolanguage_registry() {
     assert!(unicode_east_asian_spacing::is_chinese_language_context(
-        "zh-Hans"
+        &Text::from("zh-Hans")
     ));
     assert!(unicode_east_asian_spacing::is_chinese_language_context(
-        "yue-Hant-HK"
+        &Text::from("yue-Hant-HK")
     ));
     assert!(!unicode_east_asian_spacing::is_chinese_language_context(
-        "en"
+        &Text::from("en")
     ));
 }
 
@@ -59,15 +60,24 @@ fn uses_pinned_unicode_draft_data_across_scripts() {
 fn resolves_conditional_values_from_chinese_language_context() {
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster("%", "zh-Hans")
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
+            &Text::from("%"),
+            &Text::from("zh-Hans"),
+        )
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster("%", "yue-Hant-HK")
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
+            &Text::from("%"),
+            &Text::from("yue-Hant-HK"),
+        )
     );
     assert_eq!(
         EastAsianSpacingValue::Other,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster("%", "en")
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
+            &Text::from("%"),
+            &Text::from("en"),
+        )
     );
 }
 
@@ -75,7 +85,10 @@ fn resolves_conditional_values_from_chinese_language_context() {
 fn enclosing_mark_makes_the_whole_grapheme_cluster_other() {
     assert_eq!(
         EastAsianSpacingValue::Other,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster("A\u{20DD}", "zh-Hans")
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
+            &Text::from("A\u{20DD}"),
+            &Text::from("zh-Hans"),
+        )
     );
 }
 
@@ -87,7 +100,7 @@ fn resolves_actual_source_units_at_each_shaping_cluster_edge() {
             trailing: EastAsianSpacingValue::Narrow,
             contains_wide: false,
         },
-        unicode_east_asian_spacing::resolved_edges("/Hi", "zh-Hans"),
+        unicode_east_asian_spacing::resolved_edges(&Text::from("/Hi"), &Text::from("zh-Hans"),),
     );
     assert_eq!(
         EastAsianSpacingEdges {
@@ -95,6 +108,9 @@ fn resolves_actual_source_units_at_each_shaping_cluster_edge() {
             trailing: EastAsianSpacingValue::Other,
             contains_wide: false,
         },
-        unicode_east_asian_spacing::resolved_edges("A\u{20DD}", "zh-Hans"),
+        unicode_east_asian_spacing::resolved_edges(
+            &Text::from("A\u{20DD}"),
+            &Text::from("zh-Hans"),
+        ),
     );
 }

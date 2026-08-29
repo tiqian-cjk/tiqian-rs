@@ -2,6 +2,7 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
     ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
 };
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
@@ -31,7 +32,7 @@ fn layout_with(
     engine.hyphenator = hyphenator;
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
         )
         .paragraph_style(
@@ -105,7 +106,7 @@ fn hyphenated_syllable_clusters_match_the_injected_hyphenator() {
         .map(|cluster| cluster.text.as_str())
         .collect::<Vec<_>>()
         .join("-");
-    let offsets = english_hyphenation::en_us().hyphenate(word);
+    let offsets = english_hyphenation::en_us().hyphenate(&Text::from(word));
     let mut expected = String::new();
     let mut previous = 0;
     for offset in offsets {
@@ -160,7 +161,7 @@ fn tight_cjk_stretch_avoids_hyphenation_with_push_out_only() {
     engine.clreq_profile_resolver = Box::new(PushOutOnlyProfile);
     let result = engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new("中文中文中文中文 coffee".to_owned()),
+            TiqianTextContent::new(Text::from("中文中文中文中文 coffee")),
             LayoutConstraints::with_defaults(180.0),
         )
         .paragraph_style(

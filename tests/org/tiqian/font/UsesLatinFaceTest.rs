@@ -1,3 +1,4 @@
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontPolicy::{FontRole, font_role_name_uses_latin_face};
 
 #[test]
@@ -29,9 +30,11 @@ fn name_overload_agrees_with_enum() {
     ] {
         assert_eq!(
             role.uses_latin_face(),
-            font_role_name_uses_latin_face(Some(name))
+            font_role_name_uses_latin_face(Some(&Text::from(name)))
         );
     }
     assert!(!font_role_name_uses_latin_face(None));
-    assert!(!font_role_name_uses_latin_face(Some("NotARole")));
+    assert!(!font_role_name_uses_latin_face(Some(&Text::from(
+        "NotARole"
+    ))));
 }

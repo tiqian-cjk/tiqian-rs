@@ -7,6 +7,7 @@
 
 use tiqian::org::tiqian::clreq::ClreqProfile::ClreqProfile;
 use tiqian::org::tiqian::core::Geometry::TextRange;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole, FontRoleContext};
 use tiqian::org::tiqian::layout::ClusterRoleResolution::cluster_role_ranges;
 
@@ -18,7 +19,7 @@ fn fully_qualified_emoji_sequences_resolve_to_one_emoji_range() {
     let failures: Vec<_> = FULLY_QUALIFIED_CODE_POINT_SEQUENCES
         .iter()
         .filter_map(|code_points| {
-            let text = code_points_to_string(code_points);
+            let text = Text::from(code_points_to_string(code_points));
             let actual = cluster_role_ranges(
                 &text,
                 &classifier,

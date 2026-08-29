@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
@@ -24,7 +25,7 @@ fn layout_reference(text: &str) -> tiqian::org::tiqian::core::LayoutModel::Layou
     let start = text[..byte_start].encode_utf16().count() as i32;
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::builder(text.to_owned())
+            TiqianTextContent::builder(Text::from(text))
                 .spans(vec![attached_span(TextRange::new(start, start + 3))])
                 .build(),
             LayoutConstraints::with_defaults(320.0),
@@ -65,6 +66,7 @@ fn virtual_punctuation_boundary_compresses_only_when_followed_by_punctuation() {
         .find(|decision| {
             decision
                 .reason
+                .as_str()
                 .starts_with("AttachedInlineVirtualPunctuationBoundary")
         })
         .unwrap();
@@ -83,6 +85,7 @@ fn virtual_punctuation_boundary_compresses_only_when_followed_by_punctuation() {
         .find(|decision| {
             decision
                 .reason
+                .as_str()
                 .starts_with("AttachedInlineVirtualPunctuationBoundary")
         })
         .unwrap();
@@ -118,7 +121,7 @@ fn attached_reference_never_starts_wrapped_line_for_supported_breakers() {
         engine.line_breaker = breaker;
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::builder(text.to_owned())
+                TiqianTextContent::builder(Text::from(text))
                     .spans(vec![attached_span(range)])
                     .build(),
                 LayoutConstraints::with_defaults(32.0),

@@ -9,7 +9,7 @@ use super::super::core::LayoutModel::{
     ShapingDecisionInfo,
 };
 use super::super::core::SourceInteractionBoundaries::source_grapheme_boundaries;
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{InlineObjectSpan, LayoutInput, LineBreakPolicy, TextStyle};
 use super::super::font::FontPolicy::{FontDecision, FontRole};
 use super::super::linebreak::Hyphenation::Hyphenator;
@@ -40,7 +40,7 @@ pub fn shape_paragraph(
     text_shaper: &dyn TextShaper,
     hyphenator: &dyn Hyphenator,
     input: &LayoutInput,
-    text: &str,
+    text: &Text,
     font_size: f32,
     measure: f32,
     cluster_ranges: &[ResolvedClusterRange],
@@ -59,7 +59,7 @@ pub fn shape_paragraph(
         if let Some(cached) = segment_cache.get(&range) {
             return cached.clone();
         }
-        let source = source_slice(text, range).to_owned();
+        let source = Text::from(text.slice(range));
         let substitution = punctuation_glyph_substitutor.substitute(&source);
         let base = style_at(range.start());
         let mut style = base.clone();
@@ -67,7 +67,7 @@ pub fn shape_paragraph(
             style.italic = true;
         }
         let shaped = text_shaper.shape(
-            &ShapingInput::builder(text.to_owned(), range, style.clone(), decision.clone())
+            &ShapingInput::builder(text.clone(), range, style.clone(), decision.clone())
                 .display_text(substitution.display_text.clone())
                 .open_type_features(cjk_punctuation_full_width_features(
                     decision.role,
@@ -92,11 +92,11 @@ pub fn shape_paragraph(
         let result = if let Some(cause) = rollback {
             rollbacks.insert(range, cause.to_owned());
             text_shaper.shape(
-                &ShapingInput::builder(text.to_owned(), range, style, decision.clone())
+                &ShapingInput::builder(text.clone(), range, style, decision.clone())
                     .display_text(source)
                     .open_type_features(cjk_punctuation_full_width_features(
                         decision.role,
-                        source_slice(text, range),
+                        &Text::from(text.slice(range)),
                     ))
                     .build(),
             )
@@ -128,14 +128,14 @@ pub fn shape_paragraph(
             .expect("shapeable range must have font decision");
         for segment in shaping_segments(decision, text) {
             let shaped = shape_segment(decision, segment);
-            let word = source_slice(text, segment);
+            let word = Text::from(text.slice(segment));
             let latin = decision.role == FontRole::LatinText && !segment.is_empty();
             let progressive_span = input.content.line_break_spans.iter().find(|span| {
                 span.policy == LineBreakPolicy::ProgressiveTechnical
                     && segment.start() >= span.range.start()
                     && segment.end() <= span.range.end()
             });
-            let word_length = word.encode_utf16().count() as i32;
+            let word_length = word.utf16_len();
             let all_letters = latin && word.chars().all(char::is_alphabetic);
             let all_caps =
                 all_letters && word_length >= 2 && word.chars().all(|c| !c.is_lowercase());
@@ -146,7 +146,7 @@ pub fn shape_paragraph(
                 && word.chars().skip(1).any(char::is_uppercase);
             let token_advance: f32 = shaped.clusters.iter().map(|c| c.advance).sum();
             let strong = if latin {
-                strong_non_lexical_reason(word)
+                strong_non_lexical_reason(&word)
             } else {
                 None
             };
@@ -156,13 +156,13 @@ pub fn shape_paragraph(
                 && !word.contains('-')
                 && strong.is_none()
             {
-                hyphenator.hyphenate(word)
+                hyphenator.hyphenate(&word)
             } else {
                 Vec::new()
             };
             syllable.sort();
             syllable.dedup();
-            let longest = syllable_bounds(&syllable, word.encode_utf16().count() as i32)
+            let longest = syllable_bounds(&syllable, word.utf16_len())
                 .windows(2)
                 .map(|bounds| bounds[1] - bounds[0])
                 .max()
@@ -171,9 +171,7 @@ pub fn shape_paragraph(
                 all_letters && !abbreviation && !camel && longest >= LATIN_OPAQUE_TOKEN_MIN_LENGTH;
             let long_opaque = strong.is_some()
                 || long_letters
-                || (latin
-                    && !all_letters
-                    && word.encode_utf16().count() as i32 >= LATIN_OPAQUE_TOKEN_MIN_LENGTH);
+                || (latin && !all_letters && word.utf16_len() >= LATIN_OPAQUE_TOKEN_MIN_LENGTH);
             let structural = if progressive_span.is_some() && latin {
                 progressive_structural_cuts(text, segment)
             } else {
@@ -270,7 +268,7 @@ pub fn shape_paragraph(
                     if !offsets.is_empty() {
                         decisions.push(BreakOpportunityDecisionInfo::with_tier(
                             segment,
-                            word.to_owned(),
+                            word.clone(),
                             offsets.clone(),
                             if tier == ProgressiveBreakTier::Emergency
                                 && rejected_technical_tiers_by_span
@@ -295,7 +293,8 @@ pub fn shape_paragraph(
                     }
                 }
                 let tier = if segment.start() > span.range.start()
-                    && code_point_before(text, segment.start())
+                    && text
+                        .code_point_before(segment.start())
                         .is_some_and(|c| char::from_u32(c as u32).is_some_and(char::is_whitespace))
                 {
                     ProgressiveBreakTier::Whitespace
@@ -317,7 +316,7 @@ pub fn shape_paragraph(
                     }
                     decisions.push(BreakOpportunityDecisionInfo::with_tier(
                         segment,
-                        word.to_owned(),
+                        word.clone(),
                         vec![segment.start()],
                         if tier == ProgressiveBreakTier::Whitespace {
                             "ProgressiveTechnicalWhitespaceBreak".to_owned()
@@ -354,7 +353,7 @@ pub fn shape_paragraph(
                 {
                     emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                         range: span.range,
-                        source_text: source_slice(text, span.range).to_owned(),
+                        source_text: Text::from(text.slice(span.range)),
                         reason: if let Some(rejected) = rejected_technical_tiers_by_span
                             .get(&span.range)
                             .filter(|it| !it.is_empty())
@@ -387,22 +386,22 @@ pub fn shape_paragraph(
             } else if word.contains('-') {
                 [
                     existing_hyphen_cuts(text, segment),
-                    latin_separator_cuts(word, segment, token_advance, measure, long_opaque),
+                    latin_separator_cuts(&word, segment, token_advance, measure, long_opaque),
                 ]
                 .concat()
             } else if camel {
                 camel_case_cuts(text, segment)
             } else if !all_letters {
-                latin_separator_cuts(word, segment, token_advance, measure, long_opaque)
+                latin_separator_cuts(&word, segment, token_advance, measure, long_opaque)
             } else {
                 Vec::new()
             };
             if progressive_span.is_none() && latin && (word.contains('-') || !all_letters) {
-                let locator = bibliographic_numeric_locator_break_offsets(word);
+                let locator = bibliographic_numeric_locator_break_offsets(&word);
                 if !locator.is_empty() {
                     decisions.push(BreakOpportunityDecisionInfo::new(
                         segment,
-                        word.to_owned(),
+                        word.clone(),
                         locator
                             .into_iter()
                             .map(|offset| segment.start() + offset)
@@ -458,8 +457,8 @@ pub fn shape_paragraph(
                         .iter()
                         .any(|offset| *offset > pair[0] && *offset < pair[1])
                     {
-                        let piece = source_slice(text, TextRange::new(pair[0], pair[1]));
-                        if let Some(reason) = strong_non_lexical_reason(piece) {
+                        let piece = Text::from(text.slice(TextRange::new(pair[0], pair[1])));
+                        if let Some(reason) = strong_non_lexical_reason(&piece) {
                             let range = TextRange::new(pair[0], pair[1]);
                             if !emergency.iter().any(
                                 |decision: &EmergencyTrackingEligibilityDecisionInfo| {
@@ -468,7 +467,7 @@ pub fn shape_paragraph(
                             ) {
                                 emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                                     range,
-                                    source_text: piece.to_owned(),
+                                    source_text: piece,
                                     reason: reason.to_owned(),
                                 });
                             }
@@ -487,12 +486,12 @@ pub fn shape_paragraph(
                 if hyphen_advance.is_none() {
                     let h = text_shaper.shape(
                         &ShapingInput::builder(
-                            "-".to_owned(),
+                            Text::from("-"),
                             TextRange::new(0, 1),
                             input.text_style.clone(),
                             decision.clone(),
                         )
-                        .display_text("-".to_owned())
+                        .display_text(Text::from("-"))
                         .build(),
                     );
                     hyphen_advance = Some(if h.clusters.len() == 1 {
@@ -553,14 +552,7 @@ pub fn shape_paragraph(
         segment_shaping_cache: segment_cache,
     }
 }
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("shaping range start must lie on scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("shaping range end must lie on scalar boundary");
-    &text[start..end]
-}
-fn cjk_punctuation_full_width_features(role: FontRole, text: &str) -> Vec<String> {
+fn cjk_punctuation_full_width_features(role: FontRole, text: &Text) -> Vec<String> {
     if role == FontRole::CjkPunctuation
         && text
             .chars()
@@ -571,7 +563,7 @@ fn cjk_punctuation_full_width_features(role: FontRole, text: &str) -> Vec<String
         Vec::new()
     }
 }
-fn dash_ink_coverage_deficient(result: &ShapingResult, display: &str, size: f32) -> bool {
+fn dash_ink_coverage_deficient(result: &ShapingResult, display: &Text, size: f32) -> bool {
     if !display.contains('\u{2E3A}') {
         return false;
     }
@@ -588,15 +580,15 @@ fn dash_ink_coverage_deficient(result: &ShapingResult, display: &str, size: f32)
     };
     ink.right - ink.left < DASH_SUBSTITUTION_TARGET_EM * size * DASH_SUBSTITUTION_MIN_INK_COVERAGE
 }
-fn shaping_segments(decision: &FontDecision, text: &str) -> Vec<TextRange> {
+fn shaping_segments(decision: &FontDecision, text: &Text) -> Vec<TextRange> {
     if decision.role != FontRole::LatinText {
         return vec![decision.range];
     }
     let mut out = Vec::new();
     let mut start = decision.range.start();
-    let mut in_space = code_point_at(text, start) == Some(' ' as i32);
+    let mut in_space = text.code_point_at_or_none(start) == Some(' ' as i32);
     for offset in utf16_offsets_after(text, decision.range) {
-        let space = code_point_at(text, offset) == Some(' ' as i32);
+        let space = text.code_point_at_or_none(offset) == Some(' ' as i32);
         if space != in_space {
             out.push(TextRange::new(start, offset));
             start = offset;
@@ -606,10 +598,10 @@ fn shaping_segments(decision: &FontDecision, text: &str) -> Vec<TextRange> {
     out.push(TextRange::new(start, decision.range.end()));
     out
 }
-fn utf16_offsets_after(text: &str, range: TextRange) -> Vec<i32> {
+fn utf16_offsets_after(text: &Text, range: TextRange) -> Vec<i32> {
     let mut out = Vec::new();
     let mut offset = range.start();
-    while let Some(code) = code_point_at(text, offset) {
+    while let Some(code) = text.code_point_at_or_none(offset) {
         let width = if code > 0xFFFF { 2 } else { 1 };
         offset += width;
         if offset < range.end() {
@@ -620,18 +612,11 @@ fn utf16_offsets_after(text: &str, range: TextRange) -> Vec<i32> {
     }
     out
 }
-fn code_point_at(text: &str, offset: i32) -> Option<i32> {
-    let byte = utf16_offset_to_utf8_byte_index(text, offset)?;
-    text[byte..].chars().next().map(|c| c as i32)
-}
-fn code_point_before(text: &str, offset: i32) -> Option<i32> {
-    let byte = utf16_offset_to_utf8_byte_index(text, offset)?;
-    text[..byte].chars().next_back().map(|c| c as i32)
-}
-fn point_mark_prefixed_ranges(text: &str, range: TextRange) -> Vec<TextRange> {
+fn point_mark_prefixed_ranges(text: &Text, range: TextRange) -> Vec<TextRange> {
     let mut end = range.start();
     while end < range.end()
-        && code_point_at(text, end)
+        && text
+            .code_point_at_or_none(end)
             .and_then(|code_point| char::from_u32(code_point as u32))
             .is_some_and(clreq_punctuation_policies::is_ascii_point_mark)
     {
@@ -647,7 +632,7 @@ fn point_mark_prefixed_ranges(text: &str, range: TextRange) -> Vec<TextRange> {
     }
 }
 fn latin_word_cuts(
-    text: &str,
+    text: &Text,
     range: TextRange,
     syllable: &[i32],
     measure: f32,
@@ -685,8 +670,8 @@ fn syllable_bounds(syllable: &[i32], length: i32) -> Vec<i32> {
     out.dedup();
     out
 }
-fn existing_hyphen_cuts(text: &str, range: TextRange) -> Vec<i32> {
-    let chars: Vec<_> = source_slice(text, range).chars().collect();
+fn existing_hyphen_cuts(text: &Text, range: TextRange) -> Vec<i32> {
+    let chars: Vec<_> = text.slice(range).chars().collect();
     let mut out = Vec::new();
     let mut offset = range.start();
     for (i, c) in chars.iter().enumerate() {
@@ -709,8 +694,8 @@ fn existing_hyphen_cuts(text: &str, range: TextRange) -> Vec<i32> {
     }
     out
 }
-fn camel_case_cuts(text: &str, range: TextRange) -> Vec<i32> {
-    let chars: Vec<_> = source_slice(text, range).chars().collect();
+fn camel_case_cuts(text: &Text, range: TextRange) -> Vec<i32> {
+    let chars: Vec<_> = text.slice(range).chars().collect();
     let humps: Vec<_> = (1..chars.len())
         .filter(|index| {
             chars[*index].is_uppercase()
@@ -744,9 +729,9 @@ fn camel_case_cuts(text: &str, range: TextRange) -> Vec<i32> {
         .map(|hump| offsets[hump])
         .collect()
 }
-fn progressive_structural_cuts(text: &str, range: TextRange) -> Vec<i32> {
+fn progressive_structural_cuts(text: &Text, range: TextRange) -> Vec<i32> {
     let mut out = camel_case_cuts(text, range);
-    let chars: Vec<_> = source_slice(text, range).chars().collect();
+    let chars: Vec<_> = text.slice(range).chars().collect();
     let mut offset = range.start();
     for (i, c) in chars.iter().enumerate() {
         if i + 1 < chars.len()
@@ -763,7 +748,7 @@ fn progressive_structural_cuts(text: &str, range: TextRange) -> Vec<i32> {
     out
 }
 fn technical_syllable_cuts(
-    text: &str,
+    text: &Text,
     range: TextRange,
     structural: &[i32],
     hyphenator: &dyn Hyphenator,
@@ -776,24 +761,26 @@ fn technical_syllable_cuts(
         let mut offset = pair[0];
         while offset < pair[1] {
             while offset < pair[1]
-                && code_point_at(text, offset)
+                && text
+                    .code_point_at_or_none(offset)
                     .is_some_and(|c| char::from_u32(c as u32).is_none_or(|x| !x.is_alphabetic()))
             {
                 offset += 1
             }
             let start = offset;
             while offset < pair[1]
-                && code_point_at(text, offset)
+                && text
+                    .code_point_at_or_none(offset)
                     .is_some_and(|c| char::from_u32(c as u32).is_some_and(char::is_alphabetic))
             {
                 offset += 1
             }
             if offset > start {
-                let word = source_slice(text, TextRange::new(start, offset));
-                if strong_non_lexical_reason(word).is_none() {
+                let word = Text::from(text.slice(TextRange::new(start, offset)));
+                if strong_non_lexical_reason(&word).is_none() {
                     out.extend(
                         hyphenator
-                            .hyphenate(word)
+                            .hyphenate(&word)
                             .into_iter()
                             .filter(|x| *x > 0 && *x < offset - start)
                             .map(|x| start + x),
@@ -810,7 +797,7 @@ fn technical_syllable_cuts(
     out
 }
 fn latin_separator_cuts(
-    word: &str,
+    word: &Text,
     range: TextRange,
     advance: f32,
     measure: f32,
@@ -846,7 +833,7 @@ fn latin_separator_cuts(
     out
 }
 fn opaque_hard_cuts(
-    text: &str,
+    text: &Text,
     range: TextRange,
     clean: &[i32],
     measure: f32,
@@ -881,7 +868,7 @@ fn opaque_hard_cuts(
     out.dedup();
     out
 }
-fn domain_like(text: &str) -> bool {
+fn domain_like(text: &Text) -> bool {
     let chars: Vec<_> = text.chars().collect();
     chars.iter().enumerate().any(|(index, character)| {
         *character == '.'
@@ -896,7 +883,7 @@ fn domain_like(text: &str) -> bool {
                 >= 2
     })
 }
-fn breakable_latin_solidus(text: &str) -> bool {
+fn breakable_latin_solidus(text: &Text) -> bool {
     let chars: Vec<_> = text.chars().collect();
     chars.iter().enumerate().any(|(index, character)| {
         *character == '/'
@@ -906,7 +893,7 @@ fn breakable_latin_solidus(text: &str) -> bool {
             && chars[index + 1].is_alphanumeric()
     })
 }
-fn bibliographic_numeric_locator_break_offsets(text: &str) -> Vec<i32> {
+fn bibliographic_numeric_locator_break_offsets(text: &Text) -> Vec<i32> {
     let chars: Vec<_> = text.chars().collect();
     let Some(open) = chars.iter().position(|character| *character == '(') else {
         return Vec::new();
@@ -976,9 +963,9 @@ fn bibliographic_numeric_locator_break_offsets(text: &str) -> Vec<i32> {
     };
     vec![utf16_at(open), utf16_at(colon + 1)]
 }
-fn strong_non_lexical_reason(text: &str) -> Option<&'static str> {
+fn strong_non_lexical_reason(text: &Text) -> Option<&'static str> {
     let chars: Vec<_> = text.chars().collect();
-    if text.encode_utf16().count() < EMERGENCY_TRACKING_TOKEN_MIN_LENGTH {
+    if (text.utf16_len() as usize) < EMERGENCY_TRACKING_TOKEN_MIN_LENGTH {
         return None;
     }
     if chars.iter().all(|c| c.is_alphabetic())
@@ -1007,25 +994,25 @@ fn strong_non_lexical_reason(text: &str) -> Option<&'static str> {
 fn is_decimal_digit(character: char) -> bool {
     CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber
 }
-fn mandatory_break_shaping_result(text: &str, range: TextRange) -> ShapingResult {
+fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
     ShapingResult::new(
         vec![Cluster::with_display_text(
             range,
-            source_slice(text, range).to_owned(),
-            String::new(),
+            Text::from(text.slice(range)),
+            Text::new(),
             "mandatory-break".to_owned(),
             0.,
         )],
         Vec::new(),
     )
 }
-fn zero_width_soft_break_shaping_result(text: &str, range: TextRange) -> ShapingResult {
-    let source = source_slice(text, range).to_owned();
+fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
+    let source = Text::from(text.slice(range));
     ShapingResult::with_decisions(
         vec![Cluster::with_display_text(
             range,
             source.clone(),
-            String::new(),
+            Text::new(),
             "zero-width-space".to_owned(),
             0.,
         )],
@@ -1034,7 +1021,7 @@ fn zero_width_soft_break_shaping_result(text: &str, range: TextRange) -> Shaping
             ShapingDecisionInfo::builder(
                 range,
                 source,
-                String::new(),
+                Text::new(),
                 "zero-width-space".to_owned(),
                 0,
                 0.,
@@ -1045,13 +1032,13 @@ fn zero_width_soft_break_shaping_result(text: &str, range: TextRange) -> Shaping
         ],
     )
 }
-fn inline_object_shaping_result(text: &str, object: &InlineObjectSpan) -> ShapingResult {
-    let source = source_slice(text, object.range).to_owned();
+fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> ShapingResult {
+    let source = Text::from(text.slice(object.range));
     ShapingResult::with_decisions(
         vec![Cluster::with_display_text(
             object.range,
             source.clone(),
-            String::new(),
+            Text::new(),
             "inline-object".to_owned(),
             object.advance,
         )],
@@ -1060,7 +1047,7 @@ fn inline_object_shaping_result(text: &str, object: &InlineObjectSpan) -> Shapin
             ShapingDecisionInfo::builder(
                 object.range,
                 source,
-                String::new(),
+                Text::new(),
                 "inline-object".to_owned(),
                 0,
                 object.advance,

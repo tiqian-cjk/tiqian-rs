@@ -138,7 +138,7 @@ impl ParagraphLayoutEngine for ExplainableStubParagraphLayoutEngine {
 }
 
 fn validate_layout_input(input: &LayoutInput) {
-    let text_length = input.content.text.encode_utf16().count() as i32;
+    let text_length = input.content.text.utf16_len();
     assert!(
         input.paragraph_style.emphasis_dot_gap_em.is_finite()
             && input.paragraph_style.emphasis_dot_gap_em >= 0.0,

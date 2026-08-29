@@ -1,3 +1,5 @@
+use super::super::core::Text::Text;
+
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/clreq/BopomofoReading.kt
 
 /**
@@ -22,7 +24,7 @@ pub enum BopomofoTone {
 /// 解析后的注音读音：1–3 个 ㄅㄆㄇ 符号与声调（ADR 0033）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BopomofoReading {
-    pub symbols: Vec<String>,
+    pub symbols: Vec<Text>,
     pub tone: BopomofoTone,
 }
 
@@ -39,7 +41,7 @@ pub struct BopomofoReading {
 pub mod bopomofo_parser {
     use super::*;
 
-    pub fn parse(reading: &str) -> BopomofoReading {
+    pub fn parse(reading: &Text) -> BopomofoReading {
         if reading.is_empty() {
             return BopomofoReading {
                 symbols: Vec::new(),
@@ -49,7 +51,7 @@ pub mod bopomofo_parser {
 
         if reading.starts_with(NEUTRAL) {
             return BopomofoReading {
-                symbols: symbols_of(&reading[NEUTRAL.len_utf8()..]),
+                symbols: symbols_of(&reading.as_str()[NEUTRAL.len_utf8()..]),
                 tone: BopomofoTone::Neutral,
             };
         }
@@ -66,9 +68,9 @@ pub mod bopomofo_parser {
         };
         let has_suffix_mark = matches!(last, YANGPING | SHANG | QU | YINPING_MACRON);
         let body = if has_suffix_mark {
-            &reading[..reading.len() - last.len_utf8()]
+            &reading.as_str()[..reading.len() - last.len_utf8()]
         } else {
-            reading
+            reading.as_str()
         };
         BopomofoReading {
             symbols: symbols_of(body),
@@ -76,9 +78,9 @@ pub mod bopomofo_parser {
         }
     }
 
-    fn symbols_of(body: &str) -> Vec<String> {
+    fn symbols_of(body: &str) -> Vec<Text> {
         body.chars()
-            .map(|character| character.to_string())
+            .map(|character| Text::from(character.to_string()))
             .collect()
     }
 

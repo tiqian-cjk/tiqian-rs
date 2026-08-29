@@ -7,10 +7,9 @@ use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 use super::Geometry::{Rect, TextRange};
 use super::LayoutModel::{LayoutResult, LineBox, MetricDecisionInfo};
 use super::SourceInteractionBoundaries::{
-    SourceBoundaryBias, code_point_at_compat, coerce_to_interaction_boundary,
-    interaction_boundaries,
+    SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
 };
-use super::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::Text::Text;
 use super::TextModel::{
     RichTextBackgroundMetricPolicy, RichTextPaint, RichTextRole, RichTextSpan, TextStyle,
 };
@@ -239,21 +238,21 @@ pub fn resolved_background_corner_radii(
 /// never enter this string: it starts from source text, then mirrors the Web frontend's annotation
 /// contract by appending a fully-selected ruby / 注音 reading in full-width parentheses after its
 /// base. A partial selection of a multi-character base does not invent a detached reading.
-pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> String {
+pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> Text {
     let source = &result.input.content.text;
-    let text_length = source.encode_utf16().count() as i32;
+    let text_length = source.utf16_len();
     let start = range.start().clamp(0, text_length);
     let end = range.end().clamp(start, text_length);
     if start == end {
-        return String::new();
+        return Text::new();
     }
 
-    let mut annotations_by_end: Vec<(i32, Vec<String>)> = Vec::new();
-    let mut add_annotation = |base_range: TextRange, text: &str| {
+    let mut annotations_by_end: Vec<(i32, Vec<Text>)> = Vec::new();
+    let mut add_annotation = |base_range: TextRange, text: &Text| {
         if base_range.start() < start || base_range.end() > end {
             return;
         }
-        let annotation = format!("（{text}）");
+        let annotation = Text::from(format!("（{text}）"));
         if let Some((_, annotations)) = annotations_by_end
             .iter_mut()
             .find(|(annotation_end, _)| *annotation_end == base_range.end())
@@ -277,22 +276,14 @@ pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> String {
         if annotation_end < cursor || annotation_end > end {
             continue;
         }
-        let byte_start = utf16_offset_to_utf8_byte_index(source, cursor)
-            .expect("Tiqian copy range start must be a Unicode scalar boundary");
-        let byte_end = utf16_offset_to_utf8_byte_index(source, annotation_end)
-            .expect("Tiqian copy range end must be a Unicode scalar boundary");
-        out.push_str(&source[byte_start..byte_end]);
+        out.push_str(source.slice_offsets(cursor, annotation_end));
         for annotation in annotations {
-            out.push_str(&annotation);
+            out.push_str(annotation.as_str());
         }
         cursor = annotation_end;
     }
-    let byte_start = utf16_offset_to_utf8_byte_index(source, cursor)
-        .expect("Tiqian copy range start must be a Unicode scalar boundary");
-    let byte_end = utf16_offset_to_utf8_byte_index(source, end)
-        .expect("Tiqian copy range end must be a Unicode scalar boundary");
-    out.push_str(&source[byte_start..byte_end]);
-    out
+    out.push_str(source.slice_offsets(cursor, end));
+    Text::from(out)
 }
 
 /// Returns each cluster's occupied rectangle using the same line/cluster advances consumed by
@@ -367,7 +358,7 @@ pub fn get_line_for_offset(result: &LayoutResult, offset: i32) -> i32 {
     if result.lines.is_empty() {
         return -1;
     }
-    let text_length = result.input.content.text.encode_utf16().count() as i32;
+    let text_length = result.input.content.text.utf16_len();
     let clamped = offset.clamp(0, text_length);
     if clamped == text_length {
         return result.lines.len() as i32 - 1;
@@ -391,7 +382,7 @@ pub fn get_bounding_box(result: &LayoutResult, offset: i32) -> Rect {
             bottom: 0.0,
         };
     }
-    let text_length = result.input.content.text.encode_utf16().count() as i32;
+    let text_length = result.input.content.text.utf16_len();
     let clamped = offset.clamp(0, text_length);
     if clamped == text_length {
         return get_cursor_rect(result, clamped);
@@ -410,7 +401,7 @@ pub fn get_bounding_boxes(result: &LayoutResult, range: TextRange) -> Vec<Rect> 
     if range.is_empty() || result.lines.is_empty() {
         return Vec::new();
     }
-    let text_length = result.input.content.text.encode_utf16().count() as i32;
+    let text_length = result.input.content.text.utf16_len();
     let start = range.start().clamp(0, text_length);
     let end = range.end().clamp(start, text_length);
     if start == end {
@@ -441,7 +432,7 @@ pub fn positioned_rich_text_segments(
         return Vec::new();
     }
     let clusters = positioned_clusters(result);
-    let text_length = result.input.content.text.encode_utf16().count() as i32;
+    let text_length = result.input.content.text.utf16_len();
     let mut out = Vec::new();
     for span in spans {
         let start = span.range.start().clamp(0, text_length);
@@ -905,7 +896,7 @@ pub fn get_cursor_rect(result: &LayoutResult, offset: i32) -> Rect {
             bottom: 0.0,
         };
     }
-    let text_length = result.input.content.text.encode_utf16().count() as i32;
+    let text_length = result.input.content.text.utf16_len();
     let clamped = offset.clamp(0, text_length);
     let line_index = get_line_for_offset(result, clamped).max(0) as usize;
     let line = &result.lines[line_index];
@@ -1037,7 +1028,7 @@ pub fn coerce_selection_offset(
     bias: SourceBoundaryBias,
 ) -> i32 {
     let text = &result.input.content.text;
-    let text_length = text.encode_utf16().count() as i32;
+    let text_length = text.utf16_len();
     let clamped = offset.clamp(0, text_length);
     if let Some(inline_object) = result.input.inline_objects.iter().find(|inline_object| {
         clamped > inline_object.range.start() && clamped < inline_object.range.end()
@@ -1066,7 +1057,7 @@ pub fn get_selection_word_boundary(result: &LayoutResult, offset: i32) -> TextRa
     if text.is_empty() {
         return TextRange::new(0, 0);
     }
-    let text_length = text.encode_utf16().count() as i32;
+    let text_length = text.utf16_len();
     let clamped = offset.clamp(0, text_length);
     if let Some(inline_object) = result.input.inline_objects.iter().find(|inline_object| {
         clamped >= inline_object.range.start() && clamped < inline_object.range.end()
@@ -1146,8 +1137,8 @@ enum SelectionWordKind {
     Single,
 }
 
-fn selection_word_kind(text: &str, start: i32, end: i32) -> SelectionWordKind {
-    let code_point = code_point_at_compat(text, start, end);
+fn selection_word_kind(text: &Text, start: i32, end: i32) -> SelectionWordKind {
+    let code_point = text.code_point_at_compat(start, end);
     if SELECTION_MANDATORY_BREAKS.contains(&code_point) {
         return SelectionWordKind::Single;
     }

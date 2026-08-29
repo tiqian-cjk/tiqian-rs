@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LastLineAlignment, LayoutInput, ParagraphStyle,
     RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
@@ -49,7 +50,7 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
     let mourning = range_of(text, "句号");
     let proper_noun = range_of(text, "punctuation");
     let book_title = range_of(text, "text");
-    let content = TiqianTextContent::builder(text.to_owned())
+    let content = TiqianTextContent::builder(Text::from(text))
         .source_boundaries(HashSet::from([
             title.start(),
             title.end(),
@@ -105,8 +106,8 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
         },
     ])
     .ruby_spans(vec![
-        RubySpan::new(ruby, "zhōng wén".to_owned()),
-        RubySpan::builder(bopomofo, "ㄓㄨˋ ㄧㄣ".to_owned())
+        RubySpan::new(ruby, Text::from("zhōng wén")),
+        RubySpan::builder(bopomofo, Text::from("ㄓㄨˋ ㄧㄣ"))
             .kind(RubyKind::Bopomofo)
             .build(),
     ])
@@ -264,7 +265,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
                 style: title_style,
             }],
             vec![],
-            vec![RubySpan::new(range_of(title, "提椠"), "tíqiàn".to_owned())],
+            vec![RubySpan::new(range_of(title, "提椠"), Text::from("tíqiàn"))],
             vec![],
             vec![],
         )),
@@ -417,7 +418,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             uniform_ruby,
             vec![],
             vec![emphasis(pinyin, "注文")],
-            vec![RubySpan::new(range_of(pinyin, "提椠"), "tíqiàn".to_owned())],
+            vec![RubySpan::new(
+                range_of(pinyin, "提椠"),
+                Text::from("tíqiàn"),
+            )],
             vec![],
             vec![],
         )),
@@ -429,10 +433,10 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             vec![],
             vec![emphasis(bopomofo, "清楚而稳定")],
             vec![
-                RubySpan::builder(range_of(bopomofo, "您"), "ㄋㄧㄣˊ".to_owned())
+                RubySpan::builder(range_of(bopomofo, "您"), Text::from("ㄋㄧㄣˊ"))
                     .kind(RubyKind::Bopomofo)
                     .build(),
-                RubySpan::builder(range_of(bopomofo, "好"), "ㄏㄠˇ".to_owned())
+                RubySpan::builder(range_of(bopomofo, "好"), Text::from("ㄏㄠˇ"))
                     .kind(RubyKind::Bopomofo)
                     .build(),
             ],
@@ -983,7 +987,7 @@ fn demo_document(
         source_boundaries.insert(range.start());
         source_boundaries.insert(range.end());
     }
-    let content = TiqianTextContent::builder(text.to_owned())
+    let content = TiqianTextContent::builder(Text::from(text))
         .source_boundaries(source_boundaries)
         .spans(spans)
         .build();

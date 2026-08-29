@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
@@ -20,7 +21,7 @@ fn layout(
     }
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::builder(text.to_owned())
+            TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(spans)
                 .build(),
             LayoutConstraints::with_defaults(max_width),

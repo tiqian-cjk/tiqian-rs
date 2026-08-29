@@ -209,7 +209,7 @@ impl PunctuationGeometryLedger {
             if left > 0. || right != adjusted {
                 let p = &self.natural_clusters[prev as usize];
                 let nc = next.map(|n| &self.natural_clusters[n as usize]);
-                decisions.push(SpacingDecisionInfo{range:TextRange::new(p.range.start(),nc.map_or(self.natural_clusters[end as usize].range.end(),|c|c.range.end())),left_char:p.text.chars().next_back().unwrap_or('\0'),right_char:nc.and_then(|c|c.text.chars().next()).unwrap_or('\0'),natural_inner_glue:natural,adjusted_inner_glue:adjusted,reduction:natural-adjusted,reduction_target_range:p.range,reason:if next.is_none(){"AttachedInlineVirtualPunctuationBoundary:line-end"}else if left_atom.is_some()&&right_atom.is_some(){"AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation"}else if left_atom.is_some_and(|a|a.punctuation_class==PunctuationClass::Closing)&&next_char.is_some_and(super::super::clreq::ClreqProfile::clreq_punctuation_policies::is_ascii_point_mark){"AttachedInlineVirtualPunctuationBoundary:ascii-point-mark"}else{"AttachedInlineVirtualPunctuationBoundary:natural"}.to_owned()});
+                decisions.push(SpacingDecisionInfo{range:TextRange::new(p.range.start(),nc.map_or(self.natural_clusters[end as usize].range.end(),|c|c.range.end())),left_char:p.text.chars().next_back().unwrap_or('\0'),right_char:nc.and_then(|c|c.text.chars().next()).unwrap_or('\0'),natural_inner_glue:natural,adjusted_inner_glue:adjusted,reduction:natural-adjusted,reduction_target_range:p.range,reason:(if next.is_none(){"AttachedInlineVirtualPunctuationBoundary:line-end"}else if left_atom.is_some()&&right_atom.is_some(){"AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation"}else if left_atom.is_some_and(|a|a.punctuation_class==PunctuationClass::Closing)&&next_char.is_some_and(super::super::clreq::ClreqProfile::clreq_punctuation_policies::is_ascii_point_mark){"AttachedInlineVirtualPunctuationBoundary:ascii-point-mark"}else{"AttachedInlineVirtualPunctuationBoundary:natural"}).to_owned()});
             }
         }
         let mut geometry = self.clone();
@@ -459,8 +459,8 @@ pub struct AttachedInlinePunctuationBoundaryResult {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationClusterGeometry {
     pub range: TextRange,
-    pub source_text: String,
-    pub display_text: String,
+    pub source_text: super::super::core::Text::Text,
+    pub display_text: super::super::core::Text::Text,
     pub base_advance: f32,
     pub body_width: f32,
     pub leading_glue_natural: f32,

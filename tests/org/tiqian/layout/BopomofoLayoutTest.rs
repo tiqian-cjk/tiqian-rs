@@ -1,5 +1,6 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::BopomofoGlyphRole;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
@@ -14,7 +15,7 @@ fn layout(
 ) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::builder("中文".to_owned())
+            TiqianTextContent::builder(Text::from("中文"))
                 .spans(spans)
                 .build(),
             LayoutConstraints::with_defaults(4000.0),
@@ -35,10 +36,14 @@ fn bopomofo_symbols_and_tones_occupy_right_side_annotation_zone() {
         vec![
             RubySpan::with_kind(
                 TextRange::new(0, 1),
-                "ㄓㄨㄥ".to_owned(),
+                Text::from("ㄓㄨㄥ"),
                 RubyKind::Bopomofo,
             ),
-            RubySpan::with_kind(TextRange::new(1, 2), "ㄔㄤˊ".to_owned(), RubyKind::Bopomofo),
+            RubySpan::with_kind(
+                TextRange::new(1, 2),
+                Text::from("ㄔㄤˊ"),
+                RubyKind::Bopomofo,
+            ),
         ],
         Vec::new(),
     );
@@ -94,7 +99,7 @@ fn bopomofo_reserves_annotated_base_without_changing_unannotated_neighbor() {
     let annotated = layout(
         vec![RubySpan::with_kind(
             TextRange::new(0, 1),
-            "ㄓㄨㄥ".to_owned(),
+            Text::from("ㄓㄨㄥ"),
             RubyKind::Bopomofo,
         )],
         Vec::new(),
@@ -110,10 +115,14 @@ fn bopomofo_weight_clamps_and_annotation_keeps_reading_locale_and_neutral_tone()
         vec![
             RubySpan::with_kind(
                 TextRange::new(0, 1),
-                "ㄓㄨㄥ".to_owned(),
+                Text::from("ㄓㄨㄥ"),
                 RubyKind::Bopomofo,
             ),
-            RubySpan::with_kind(TextRange::new(1, 2), "ㄨㄣˊ".to_owned(), RubyKind::Bopomofo),
+            RubySpan::with_kind(
+                TextRange::new(1, 2),
+                Text::from("ㄨㄣˊ"),
+                RubyKind::Bopomofo,
+            ),
         ],
         vec![
             TextSpan {
@@ -150,7 +159,7 @@ fn bopomofo_weight_clamps_and_annotation_keeps_reading_locale_and_neutral_tone()
     let neutral = layout(
         vec![RubySpan::with_kind(
             TextRange::new(0, 1),
-            "˙ㄉㄜ".to_owned(),
+            Text::from("˙ㄉㄜ"),
             RubyKind::Bopomofo,
         )],
         Vec::new(),

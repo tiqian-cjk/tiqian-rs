@@ -7,6 +7,7 @@ use super::super::core::LayoutModel::{
     Cluster, Glyph, InlineObjectLineHeightDecisionInfo, LineBox, LineDebugInfo, LineEndReason,
     MaxLinesDecisionInfo, RubyLineHeightDecisionInfo,
 };
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{
     InlineObjectSpan, LastLineAlignment, LayoutInput, RubyLineHeightMode, RubySpan,
 };
@@ -39,7 +40,7 @@ pub struct LineVerticalGeometryStageResult {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClusterMetricDecision {
     pub range: super::super::core::Geometry::TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub request: FontMetricsRequest,
     pub raw_metrics: RawFontMetrics,
     pub layout_metrics: LayoutFontMetrics,

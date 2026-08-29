@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -8,7 +9,7 @@ use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
 fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(

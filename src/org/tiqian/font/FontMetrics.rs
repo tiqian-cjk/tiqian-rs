@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontMetrics.kt
 
+use super::super::core::Text::Text;
 use super::FontPolicy::{
     BaselinePolicy, FontMetricsPolicy, FontRole, LayoutFontMetrics, RawFontMetrics,
 };
@@ -23,7 +24,7 @@ pub struct FontMetricsRequest {
      * source text 仅用于解析 `font_families` 中哪个具体 face 拥有此次 metric decision。
      * metrics 仍属于 face level；text 是 fallback selection evidence 的一部分，而不是 glyph bounds sample。
      */
-    pub face_selection_text: String,
+    pub face_selection_text: Text,
 }
 
 impl FontMetricsRequest {
@@ -36,7 +37,7 @@ impl FontMetricsRequest {
             font_families: Vec::new(),
             font_weight: 400,
             italic: false,
-            face_selection_text: String::new(),
+            face_selection_text: Text::new(),
         }
     }
 
@@ -72,7 +73,7 @@ impl FontMetricsRequestBuilder {
         self
     }
 
-    pub fn face_selection_text(mut self, value: String) -> Self {
+    pub fn face_selection_text(mut self, value: Text) -> Self {
         self.request.face_selection_text = value;
         self
     }

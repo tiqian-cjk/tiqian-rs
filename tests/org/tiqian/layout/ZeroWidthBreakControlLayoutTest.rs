@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
@@ -31,7 +32,7 @@ fn layout_with_lookahead(
 
 fn input(text: &str, max_width: f32) -> LayoutInput {
     LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(max_width),
     )
     .paragraph_style(

@@ -1,7 +1,8 @@
 use tiqian::org::tiqian::clreq::NumberSymbolCohesion::number_symbol_cohesion;
+use tiqian::org::tiqian::core::Text::Text;
 
 fn groups(text: &str) -> Vec<String> {
-    number_symbol_cohesion::unbreakable_ranges(text)
+    number_symbol_cohesion::unbreakable_ranges(&Text::from(text))
         .into_iter()
         .map(|range| {
             let units: Vec<u16> = text.encode_utf16().collect();

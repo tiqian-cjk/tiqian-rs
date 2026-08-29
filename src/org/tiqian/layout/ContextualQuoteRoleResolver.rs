@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::super::core::EastAsianSpacing::unicode_east_asian_spacing;
+use super::super::core::Text::Text;
 use super::super::core::UnicodeScriptEvidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
 };
@@ -24,7 +25,7 @@ use super::QuotePairAnalyzer::{QuotePair, QuoteRoleDecision, is_non_cjk_in_word_
  * `（如 ‘O’, ‘Q’）` 的作者拼写，同时不让混合中文引号起始处的 Latin identifier 接管整对引号。
  */
 pub struct ContextualQuoteRoleResolver<'a> {
-    text: &'a str,
+    text: &'a Text,
     pairs: &'a [QuotePair],
     context: &'a FontRoleContext,
     pair_by_open: HashMap<i32, QuotePair>,
@@ -33,7 +34,7 @@ pub struct ContextualQuoteRoleResolver<'a> {
 }
 
 impl<'a> ContextualQuoteRoleResolver<'a> {
-    pub fn new(text: &'a str, pairs: &'a [QuotePair], context: &'a FontRoleContext) -> Self {
+    pub fn new(text: &'a Text, pairs: &'a [QuotePair], context: &'a FontRoleContext) -> Self {
         let pair_by_open = pairs
             .iter()
             .copied()
@@ -91,10 +92,10 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             .iter()
             .flat_map(|pair| [pair.open_index, pair.close_index])
             .collect();
-        let text_length = utf16_length(self.text);
+        let text_length = self.text.utf16_len();
         for index in 0..text_length {
             if paired_indices.contains(&index)
-                || !is_ambiguous_curly_quote(utf16_code_unit_at(self.text, index))
+                || !is_ambiguous_curly_quote(self.text.utf16_code_unit_at(index))
             {
                 continue;
             }
@@ -118,9 +119,8 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     ) -> Resolution {
         let parent = self.parent_by_pair[&pair];
         let enclosing_start = parent.map_or(0, |parent_pair| parent_pair.open_index + 1);
-        let enclosing_end = parent.map_or(utf16_length(self.text), |parent_pair| {
-            parent_pair.close_index
-        });
+        let enclosing_end =
+            parent.map_or(self.text.utf16_len(), |parent_pair| parent_pair.close_index);
         let mut outer_evidence = ScriptEvidence::default();
         self.add_script_evidence_range(&mut outer_evidence, enclosing_start, pair.open_index);
         self.add_script_evidence_range(&mut outer_evidence, pair.close_index + 1, enclosing_end);
@@ -131,7 +131,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             pair.close_index,
         );
 
-        if utf16_code_unit_at_or_none(self.text, pair.open_index - 1)
+        if self
+            .text
+            .utf16_code_unit_at_or_none(pair.open_index - 1)
             .is_some_and(is_ascii_space_or_tab)
             && content_evidence.has_western
             && !content_evidence.has_cjk
@@ -181,7 +183,7 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     }
 
     fn resolve_unmatched(&self, index: i32) -> Resolution {
-        if utf16_code_unit_at(self.text, index) == 0x2019
+        if self.text.utf16_code_unit_at(index) == 0x2019
             && is_non_cjk_in_word_apostrophe(self.text, index)
         {
             return Resolution::new(
@@ -193,7 +195,10 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
 
         let left_role = self.nearest_strong_script_role(index - 1, -1);
         let right_role = self.nearest_strong_script_role(index + 1, 1);
-        if utf16_code_unit_at_or_none(self.text, index - 1).is_some_and(is_ascii_space_or_tab)
+        if self
+            .text
+            .utf16_code_unit_at_or_none(index - 1)
+            .is_some_and(is_ascii_space_or_tab)
             && right_role == Some(FontRole::LatinText)
         {
             return Resolution::new(
@@ -230,7 +235,7 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
 
     fn nearest_strong_script_role(&self, start_index: i32, direction: i32) -> Option<FontRole> {
         let mut index = start_index;
-        let text_length = utf16_length(self.text);
+        let text_length = self.text.utf16_len();
         while (0..text_length).contains(&index) {
             if direction < 0 {
                 if let Some(pair) = self.pair_by_close.get(&index) {
@@ -243,9 +248,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             }
 
             let scalar_start = if direction < 0
-                && (0xDC00..=0xDFFF).contains(&utf16_code_unit_at(self.text, index))
+                && (0xDC00..=0xDFFF).contains(&self.text.utf16_code_unit_at(index))
                 && index > 0
-                && (0xD800..=0xDBFF).contains(&utf16_code_unit_at(self.text, index - 1))
+                && (0xD800..=0xDBFF).contains(&self.text.utf16_code_unit_at(index - 1))
             {
                 index - 1
             } else {
@@ -311,7 +316,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     }
 
     fn strong_script_role(&self, index: i32, code_point_length: i32) -> Option<FontRole> {
-        let code_point = code_point_at_compat(self.text, index, index + code_point_length);
+        let code_point = self
+            .text
+            .code_point_at_compat(index, index + code_point_length);
         match unicode_script_evidence_classifier::classify(code_point) {
             UnicodeScriptEvidence::Neutral => None,
             UnicodeScriptEvidence::EastAsian => Some(FontRole::CjkPunctuation),
@@ -357,45 +364,12 @@ impl Resolution {
     }
 }
 
-fn code_point_at_compat(text: &str, index: i32, end: i32) -> i32 {
-    let high = utf16_code_unit_at(text, index);
-    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= end {
-        return high;
-    }
-    let low = utf16_code_unit_at(text, index + 1);
-    if !(0xDC00..=0xDFFF).contains(&low) {
-        return high;
-    }
-    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
-}
-
-fn code_point_length_at(text: &str, index: i32, end: i32) -> i32 {
-    let high = utf16_code_unit_at(text, index);
-    if (0xD800..=0xDBFF).contains(&high)
-        && index + 1 < end
-        && (0xDC00..=0xDFFF).contains(&utf16_code_unit_at(text, index + 1))
-    {
+fn code_point_length_at(text: &Text, index: i32, end: i32) -> i32 {
+    if text.code_point_at_compat(index, end) > 0xFFFF {
         2
     } else {
         1
     }
-}
-
-fn utf16_length(text: &str) -> i32 {
-    text.encode_utf16().count() as i32
-}
-
-fn utf16_code_unit_at_or_none(text: &str, index: i32) -> Option<i32> {
-    if !(0..utf16_length(text)).contains(&index) {
-        return None;
-    }
-    Some(utf16_code_unit_at(text, index))
-}
-
-fn utf16_code_unit_at(text: &str, index: i32) -> i32 {
-    text.encode_utf16()
-        .nth(index as usize)
-        .expect("quote resolver offset must address a UTF-16 code unit") as i32
 }
 
 fn is_ambiguous_curly_quote(code_unit: i32) -> bool {

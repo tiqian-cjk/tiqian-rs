@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 
+use super::super::core::Text::Text;
 use super::super::core::TextModel::{LayoutProfileId, built_in_layout_profiles};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -840,7 +841,9 @@ pub mod clreq_punctuation_policies {
 }
 
 pub mod clreq_punctuation_advance_policy {
-    pub fn advance_em(source_text: &str, display_text: &str) -> f32 {
+    use super::Text;
+
+    pub fn advance_em(source_text: &Text, display_text: &Text) -> f32 {
         if display_text == "⸺" || source_text == "⸺" {
             2.0
         } else {
@@ -851,8 +854,8 @@ pub mod clreq_punctuation_advance_policy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CjkPunctuationGlyphSubstitution {
-    pub source_text: String,
-    pub display_text: String,
+    pub source_text: Text,
+    pub display_text: Text,
     pub reason: String,
 }
 
@@ -872,15 +875,15 @@ impl ClreqPunctuationGlyphSubstitutor {
         Self { policy }
     }
 
-    pub fn substitute(&self, source_text: &str) -> CjkPunctuationGlyphSubstitution {
+    pub fn substitute(&self, source_text: &Text) -> CjkPunctuationGlyphSubstitution {
         let display_text = match self.policy {
-            CjkPunctuationGlyphPolicy::PreserveInput => source_text.to_owned(),
+            CjkPunctuationGlyphPolicy::PreserveInput => source_text.clone(),
             CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints
             | CjkPunctuationGlyphPolicy::ForceClreqRecommendedCodepoints => {
                 to_clreq_recommended_display_text(source_text)
             }
         };
-        let reason = if display_text == source_text {
+        let reason = if display_text == *source_text {
             format!("CjkPunctuationGlyphPolicy:{:?}:preserve", self.policy)
         } else {
             format!(
@@ -891,26 +894,28 @@ impl ClreqPunctuationGlyphSubstitutor {
             )
         };
         CjkPunctuationGlyphSubstitution {
-            source_text: source_text.to_owned(),
+            source_text: source_text.clone(),
             display_text,
             reason,
         }
     }
 }
 
-fn to_clreq_recommended_display_text(source_text: &str) -> String {
-    if source_text.encode_utf16().all(|unit| unit == '…' as u16) {
-        "⋯".repeat(source_text.encode_utf16().count())
+fn to_clreq_recommended_display_text(source_text: &Text) -> Text {
+    if (0..source_text.utf16_len())
+        .all(|offset| source_text.utf16_code_unit_at(offset) == '…' as i32)
+    {
+        Text::from("⋯".repeat(source_text.utf16_len() as usize))
     } else if source_text == "——" {
-        "⸺".to_owned()
-    } else if matches!(source_text, "・" | "‧" | "•") {
-        "·".to_owned()
+        Text::from("⸺")
+    } else if matches!(source_text.as_str(), "・" | "‧" | "•") {
+        Text::from("·")
     } else {
-        source_text.to_owned()
+        source_text.clone()
     }
 }
 
-fn to_code_point_labels(text: &str) -> String {
+fn to_code_point_labels(text: &Text) -> String {
     text.encode_utf16()
         .map(|unit| format!("U+{unit:04X}"))
         .collect::<Vec<_>>()

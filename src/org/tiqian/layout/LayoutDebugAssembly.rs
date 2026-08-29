@@ -17,7 +17,7 @@ use super::super::core::LayoutModel::{
     RoleOverrideInfo, RubyDecisionInfo, RubyLineHeightDecisionInfo, ShapingDecisionInfo,
     SpacingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::font::FontPolicy::{FontDecision, FontRoleClassifier, FontRoleContext};
 use super::Justifier::JustificationPlan;
 use super::LineGeometryStage::ClusterMetricDecision;
@@ -28,7 +28,7 @@ use super::PunctuationModel::{PunctuationAtom, PunctuationSpacingCompressionResu
 use super::QuotePairAnalyzer::QuoteRoleDecision;
 
 pub struct LayoutDebugStageInput<'a> {
-    pub text: &'a str,
+    pub text: &'a Text,
     pub font_decisions: &'a [FontDecision],
     pub punctuation_glyph_substitutor: &'a ClreqPunctuationGlyphSubstitutor,
     pub substitution_rollbacks: &'a HashMap<TextRange, String>,
@@ -75,7 +75,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .font_decisions
         .iter()
         .map(|decision| {
-            let cluster_text = source_slice(stage.text, decision.range).to_owned();
+            let cluster_text = Text::from(stage.text.slice(decision.range));
             let substitution = stage
                 .punctuation_glyph_substitutor
                 .substitute(&cluster_text);
@@ -298,7 +298,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
 
 pub fn quote_role_decisions_to_role_override_infos(
     decisions: &[QuoteRoleDecision],
-    text: &str,
+    text: &Text,
     base_classifier: &dyn FontRoleClassifier,
     context: &FontRoleContext,
 ) -> Vec<RoleOverrideInfo> {
@@ -308,7 +308,7 @@ pub fn quote_role_decisions_to_role_override_infos(
         .into_iter()
         .map(|decision| {
             let range = TextRange::new(decision.index, decision.index + 1);
-            let source_text = source_slice(text, range).to_owned();
+            let source_text = Text::from(text.slice(range));
             let original_role = base_classifier.classify(text, range, context);
             RoleOverrideInfo {
                 range,
@@ -434,12 +434,4 @@ fn repair_name(repair: &RepairOption) -> String {
 
 fn is_inside(inner: TextRange, outer: TextRange) -> bool {
     inner.start() >= outer.start() && inner.end() <= outer.end()
-}
-
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("source range start must lie on scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("source range end must lie on scalar boundary");
-    &text[start..end]
 }

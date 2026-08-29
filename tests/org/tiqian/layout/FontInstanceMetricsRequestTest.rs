@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
@@ -43,7 +44,7 @@ fn per_span_weight_and_italic_reach_metrics_resolver() {
         .build();
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::builder("中A".to_owned())
+            TiqianTextContent::builder(Text::from("中A"))
                 .spans(vec![TextSpan {
                     range: TextRange::new(1, 2),
                     style: TextStyle::builder()
@@ -85,7 +86,7 @@ fn display_substitution_and_ruby_use_the_actual_metric_face_instance() {
     let mut engine = engine_with_requests(requests.clone());
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new("——中".to_owned()),
+            TiqianTextContent::new(Text::from("——中")),
             LayoutConstraints::with_defaults(180.0),
         )
         .text_style(
@@ -97,7 +98,7 @@ fn display_substitution_and_ruby_use_the_actual_metric_face_instance() {
         )
         .ruby_spans(vec![RubySpan::new(
             TextRange::new(2, 3),
-            "zhōng".to_owned(),
+            Text::from("zhōng"),
         )])
         .build(),
     );

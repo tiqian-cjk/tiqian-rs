@@ -1,5 +1,6 @@
 use tiqian::org::tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver};
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
@@ -19,7 +20,7 @@ impl ClreqProfileResolver for TaiwanProfile {
 fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(
@@ -74,7 +75,7 @@ fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
     engine.clreq_profile_resolver = Box::new(TaiwanProfile);
     let result = engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new("你好。".to_owned()),
+            TiqianTextContent::new(Text::from("你好。")),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(
@@ -93,7 +94,7 @@ fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
         .unwrap();
     assert_eq!(4.0, punctuation.leading_glue_natural);
     assert_eq!(4.0, punctuation.trailing_glue_natural);
-    assert_eq!("Center", punctuation.anchor);
+    assert_eq!("Center", punctuation.anchor.as_str());
     let geometry = result
         .debug
         .geometry_decisions
@@ -134,7 +135,7 @@ fn adjacent_closing_and_pause_stop_compression_is_reflected_in_drawable_ledger()
 fn push_in_consumes_punctuation_glue_before_carrying_line_start_stop() {
     let result = ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new("中文中。".to_owned()),
+            TiqianTextContent::new(Text::from("中文中。")),
             LayoutConstraints::with_defaults(60.0),
         )
         .paragraph_style(

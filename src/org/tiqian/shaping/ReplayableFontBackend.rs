@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
+use super::super::core::Text::Text;
 use super::super::font::FontPolicy::FontRole;
 
 /**
@@ -114,7 +115,7 @@ pub struct ReplayableFontFaceRequest {
     pub italic: bool,
     pub locale: String,
     /// 用于拒绝无法覆盖此具体 run 的 face 的文本。
-    pub selection_text: String,
+    pub selection_text: Text,
 }
 
 impl ReplayableFontFaceRequest {
@@ -125,7 +126,7 @@ impl ReplayableFontFaceRequest {
         weight: i32,
         italic: bool,
         locale: String,
-        selection_text: String,
+        selection_text: Text,
     ) -> Self {
         assert!(
             font_size > 0.0 && font_size.is_finite(),

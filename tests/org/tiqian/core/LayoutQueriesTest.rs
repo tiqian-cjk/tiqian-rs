@@ -10,13 +10,14 @@ use tiqian::org::tiqian::core::LayoutQueries::{
     positioned_rich_text_segments, trimmed_rich_text_decoration_segments,
 };
 use tiqian::org::tiqian::core::SourceInteractionBoundaries::SourceBoundaryBias;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     InlineObjectSpan, LayoutInput, RichTextRole, RichTextSpan, TextStyle, TiqianTextContent,
 };
 
 fn layout_input(text: &str, max_width: f32) -> LayoutInput {
     LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(max_width),
     )
     .text_style(TextStyle::builder().font_size(10.0).build())
@@ -50,7 +51,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
         .ruby_decisions(vec![
             RubyDecisionInfo::builder(
                 TextRange::new(0, 2),
-                "tíqiàn".to_owned(),
+                Text::from("tíqiàn"),
                 0,
                 0.0,
                 0.0,
@@ -61,7 +62,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
         ])
         .bopomofo_decisions(vec![BopomofoDecisionInfo::new(
             TextRange::new(3, 4),
-            "ㄋㄧㄣˊ".to_owned(),
+            Text::from("ㄋㄧㄣˊ"),
             0,
             Vec::new(),
         )])
@@ -80,16 +81,19 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
 
     assert_eq!(
         "提椠（tíqiàn）与您（ㄋㄧㄣˊ）",
-        get_text_for_copy(&result, TextRange::new(0, 4))
+        get_text_for_copy(&result, TextRange::new(0, 4)).as_str()
     );
-    assert_eq!("提", get_text_for_copy(&result, TextRange::new(0, 1)));
+    assert_eq!(
+        "提",
+        get_text_for_copy(&result, TextRange::new(0, 1)).as_str()
+    );
     assert_eq!(
         "提椠（tíqiàn）",
-        get_text_for_copy(&result, TextRange::new(0, 2))
+        get_text_for_copy(&result, TextRange::new(0, 2)).as_str()
     );
     assert_eq!(
         "您（ㄋㄧㄣˊ）",
-        get_text_for_copy(&result, TextRange::new(3, 4))
+        get_text_for_copy(&result, TextRange::new(3, 4)).as_str()
     );
 }
 
@@ -116,13 +120,13 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
         vec![
             Cluster::new(
                 TextRange::new(0, 1),
-                "中".to_owned(),
+                Text::from("中"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
                 TextRange::new(1, 3),
-                "Hi".to_owned(),
+                Text::from("Hi"),
                 "latin".to_owned(),
                 22.5,
             ),
@@ -172,7 +176,7 @@ fn glyph_ink_bounds_keep_overhang_separate_from_occupied_geometry() {
         },
         vec![Cluster::new(
             TextRange::new(0, 1),
-            "f".to_owned(),
+            Text::from("f"),
             "latin".to_owned(),
             10.0,
         )],
@@ -255,19 +259,19 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
         vec![
             Cluster::new(
                 TextRange::new(0, 2),
-                "😀".to_owned(),
+                Text::from("😀"),
                 "emoji".to_owned(),
                 20.0,
             ),
             Cluster::new(
                 TextRange::new(2, 4),
-                "é".to_owned(),
+                Text::from("é"),
                 "latin".to_owned(),
                 20.0,
             ),
             Cluster::new(
                 TextRange::new(4, 9),
-                "👩‍👩".to_owned(),
+                Text::from("👩‍👩"),
                 "emoji".to_owned(),
                 50.0,
             ),
@@ -311,7 +315,7 @@ fn inline_object_is_a_single_selection_unit() {
     let source = "a\\operatorname{lim}b";
     let object_range = TextRange::new(1, source.encode_utf16().count() as i32 - 1);
     let input = LayoutInput::builder(
-        TiqianTextContent::new(source.to_owned()),
+        TiqianTextContent::new(Text::from(source)),
         LayoutConstraints::with_defaults(200.0),
     )
     .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
@@ -365,25 +369,25 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         vec![
             Cluster::new(
                 TextRange::new(0, 1),
-                "（".to_owned(),
+                Text::from("（"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
                 TextRange::new(1, 2),
-                "，".to_owned(),
+                Text::from("，"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
                 TextRange::new(2, 3),
-                "中".to_owned(),
+                Text::from("中"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
                 TextRange::new(3, 4),
-                "）".to_owned(),
+                Text::from("）"),
                 "cjk".to_owned(),
                 10.0,
             ),
@@ -433,20 +437,20 @@ fn sample_multiline_result() -> LayoutResult {
         vec![
             Cluster::new(
                 TextRange::new(0, 1),
-                "甲".to_owned(),
+                Text::from("甲"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::with_display_text(
                 TextRange::new(1, 3),
-                "——".to_owned(),
-                "⸺".to_owned(),
+                Text::from("——"),
+                Text::from("⸺"),
                 "cjk".to_owned(),
                 20.0,
             ),
             Cluster::new(
                 TextRange::new(3, 4),
-                "乙".to_owned(),
+                Text::from("乙"),
                 "cjk".to_owned(),
                 10.0,
             ),
@@ -485,8 +489,8 @@ fn punctuation_geometry(
 ) -> ClusterGeometryDecisionInfo {
     ClusterGeometryDecisionInfo::builder(
         range,
-        text.to_owned(),
-        text.to_owned(),
+        Text::from(text),
+        Text::from(text),
         10.0,
         10.0 - leading_glue_natural - trailing_glue_natural,
         leading_glue_natural,

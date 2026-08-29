@@ -2,7 +2,7 @@
 
 use super::super::core::Geometry::TextRange;
 use super::super::core::LayoutModel::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::core::TextModel::TextStyle;
 use super::super::font::FontPolicy::FontDecision;
 
@@ -20,23 +20,23 @@ pub const PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE: &str = "PlatformMultiFaceString
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShapingInput {
-    pub text: String,
+    pub text: Text,
     pub range: TextRange,
     pub style: TextStyle,
     pub font_decision: FontDecision,
-    pub display_text: String,
+    pub display_text: Text,
     /// 此 replay run 明确要求的非默认 OpenType feature。
     pub open_type_features: Vec<String>,
 }
 
 impl ShapingInput {
     pub fn new(
-        text: String,
+        text: Text,
         range: TextRange,
         style: TextStyle,
         font_decision: FontDecision,
     ) -> Self {
-        let display_text = source_slice(&text, range).to_owned();
+        let display_text = Text::from(text.slice(range));
         Self {
             text,
             range,
@@ -48,7 +48,7 @@ impl ShapingInput {
     }
 
     pub fn builder(
-        text: String,
+        text: Text,
         range: TextRange,
         style: TextStyle,
         font_decision: FontDecision,
@@ -64,7 +64,7 @@ pub struct ShapingInputBuilder {
 }
 
 impl ShapingInputBuilder {
-    pub fn display_text(mut self, value: String) -> Self {
+    pub fn display_text(mut self, value: Text) -> Self {
         self.input.display_text = value;
         self
     }
@@ -127,7 +127,7 @@ pub struct ExplainableStubTextShaper;
 
 impl TextShaper for ExplainableStubTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let source_text = source_slice(&input.text, input.range).to_owned();
+        let source_text = Text::from(input.text.slice(input.range));
         let glyph_count = input.display_text.chars().count().max(1) as i32;
         let advance = input.style.font_size * nominal_advance_em(&source_text, &input.display_text);
         let cluster = Cluster::with_display_text(
@@ -168,14 +168,14 @@ impl TextShaper for ExplainableStubTextShaper {
     }
 }
 
-fn nominal_advance_em(source_text: &str, display_text: &str) -> f32 {
+fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32 {
     if source_text == "⸺" || display_text == "⸺" {
         2.0
     // 简体中文网格中的 U+0020 是二分空（半 em），而不是全宽空白。deterministic stub 将每个
     // 空格建模为 0.5em，使 word space 与 sino-western gap 处于现实的不足/等于 em 宽度，
     // 而不是人为的 1em。
     } else if !source_text.is_empty() && source_text.chars().all(|character| character == ' ') {
-        0.5 * source_text.encode_utf16().count() as f32
+        0.5 * source_text.utf16_len() as f32
     } else {
         source_text
             .chars()
@@ -191,12 +191,4 @@ impl TextShaper for UnimplementedTextShaper {
     fn shape(&self, _input: &ShapingInput) -> ShapingResult {
         panic!("Text shaping is platform-specific and has not been wired for this target yet.")
     }
-}
-
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("shaping range start must lie on a Unicode scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("shaping range end must lie on a Unicode scalar boundary");
-    &text[start..end]
 }

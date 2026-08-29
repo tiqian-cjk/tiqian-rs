@@ -857,6 +857,7 @@ fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srg
 mod tests {
     use super::*;
     use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+    use tiqian::org::tiqian::core::Text::Text;
     use tiqian::org::tiqian::core::TextModel::{
         DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
         RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
@@ -876,7 +877,7 @@ mod tests {
         engine.text_shaper = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new("中文 English".to_owned()),
+                TiqianTextContent::new(Text::from("中文 English")),
                 LayoutConstraints::with_defaults(160.0),
             )
             .build(),
@@ -904,12 +905,12 @@ mod tests {
         engine.text_shaper = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new("中文".to_owned()),
+                TiqianTextContent::new(Text::from("中文")),
                 LayoutConstraints::with_defaults(160.0),
             )
             .ruby_spans(vec![
-                RubySpan::new(TextRange::new(0, 1), "zhōng".to_owned()),
-                RubySpan::builder(TextRange::new(1, 2), "ㄨㄣˊ".to_owned())
+                RubySpan::new(TextRange::new(0, 1), Text::from("zhōng")),
+                RubySpan::builder(TextRange::new(1, 2), Text::from("ㄨㄣˊ"))
                     .kind(RubyKind::Bopomofo)
                     .build(),
             ])
@@ -1002,7 +1003,7 @@ mod tests {
             .map(|width| {
                 engine.layout(
                     LayoutInput::builder(
-                        TiqianTextContent::new("representation".to_owned()),
+                        TiqianTextContent::new(Text::from("representation")),
                         LayoutConstraints::with_defaults(width as f32),
                     )
                     .paragraph_style(
@@ -1050,7 +1051,7 @@ mod tests {
         engine.text_shaper = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new("中文书名".to_owned()),
+                TiqianTextContent::new(Text::from("中文书名")),
                 LayoutConstraints::with_defaults(160.0),
             )
             .decorations(vec![

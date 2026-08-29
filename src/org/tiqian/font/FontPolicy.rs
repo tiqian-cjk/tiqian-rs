@@ -6,6 +6,7 @@ use icu_properties::{
 };
 
 use super::super::core::Geometry::TextRange;
+use super::super::core::Text::Text;
 use super::FontMetrics::{BaselineClass, FontMetricSource, MetricBox};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,7 +75,7 @@ pub struct FontDecision {
 }
 
 pub trait FallbackResolver {
-    fn resolve(&self, text: &str, range: TextRange, request: &FontRequest) -> FontDecision;
+    fn resolve(&self, text: &Text, range: TextRange, request: &FontRequest) -> FontDecision;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -106,21 +107,21 @@ impl FontRoleContext {
 }
 
 pub trait FontRoleClassifier {
-    fn classify(&self, text: &str, range: TextRange, context: &FontRoleContext) -> FontRole;
+    fn classify(&self, text: &Text, range: TextRange, context: &FontRoleContext) -> FontRole;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CjkFontRoleClassifier;
 
 impl CjkFontRoleClassifier {
-    pub fn classify_with_default_context(&self, text: &str, range: TextRange) -> FontRole {
+    pub fn classify_with_default_context(&self, text: &Text, range: TextRange) -> FontRole {
         <Self as FontRoleClassifier>::classify(self, text, range, &FontRoleContext::default())
     }
 }
 
 impl FontRoleClassifier for CjkFontRoleClassifier {
-    fn classify(&self, text: &str, range: TextRange, _context: &FontRoleContext) -> FontRole {
-        let first_code_point = code_point_at_compat(text, range.start());
+    fn classify(&self, text: &Text, range: TextRange, _context: &FontRoleContext) -> FontRole {
+        let first_code_point = text.code_point_at_compat(range.start(), text.utf16_len());
         if is_cjk_code_point(first_code_point) {
             FontRole::CjkText
         // 仅弯引号是 CJK/Western 共享码点，需由上下文决定。其他字符均为原生归属：
@@ -176,10 +177,14 @@ fn is_cjk_punctuation_code_point(code_point: i32) -> bool {
         || code_point == 0xFF5E
 }
 
-fn is_latin_curly_quote(code_point: i32, text: &str, range: TextRange) -> bool {
+fn is_latin_curly_quote(code_point: i32, text: &Text, range: TextRange) -> bool {
     is_ambiguous_curly_quote(code_point)
-        && previous_code_point_before(text, range.start()).is_some_and(is_latin_run_code_point)
-        && next_code_point_after(text, range.end()).is_some_and(is_latin_run_code_point)
+        && text
+            .code_point_before(range.start())
+            .is_some_and(is_latin_run_code_point)
+        && text
+            .code_point_at_or_none(range.end())
+            .is_some_and(is_latin_run_code_point)
 }
 
 fn is_ambiguous_curly_quote(code_point: i32) -> bool {
@@ -220,43 +225,6 @@ fn is_symbol_code_point(code_point: i32) -> bool {
             | GeneralCategory::ModifierSymbol
             | GeneralCategory::OtherSymbol
     )
-}
-
-fn code_point_at_compat(text: &str, index: i32) -> i32 {
-    let code_units: Vec<u16> = text.encode_utf16().collect();
-    let high = code_units[index as usize] as i32;
-    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= code_units.len() as i32 {
-        return high;
-    }
-    let low = code_units[index as usize + 1] as i32;
-    if !(0xDC00..=0xDFFF).contains(&low) {
-        return high;
-    }
-    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
-}
-
-fn previous_code_point_before(text: &str, index: i32) -> Option<i32> {
-    if index <= 0 {
-        return None;
-    }
-    let code_units: Vec<u16> = text.encode_utf16().collect();
-    let low = code_units[index as usize - 1] as i32;
-    if !(0xDC00..=0xDFFF).contains(&low) || index - 2 < 0 {
-        return Some(low);
-    }
-    let high = code_units[index as usize - 2] as i32;
-    if !(0xD800..=0xDBFF).contains(&high) {
-        return Some(low);
-    }
-    Some(0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00))
-}
-
-fn next_code_point_after(text: &str, index: i32) -> Option<i32> {
-    if index >= text.encode_utf16().count() as i32 {
-        None
-    } else {
-        Some(code_point_at_compat(text, index))
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -318,7 +286,7 @@ impl PreferCjkForAmbiguousPunctuationResolverBuilder {
 }
 
 impl FallbackResolver for PreferCjkForAmbiguousPunctuationResolver {
-    fn resolve(&self, _text: &str, range: TextRange, request: &FontRequest) -> FontDecision {
+    fn resolve(&self, _text: &Text, range: TextRange, request: &FontRequest) -> FontDecision {
         let role = request.role;
         let candidate = match role {
             FontRole::CjkText | FontRole::CjkPunctuation => FontCandidate {

@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -9,7 +10,7 @@ use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
 fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
     let text = "这是第一行测试文字这是第一行测试\n（Shaping & Font Metrics）这是第二行文字\n（GPOS / GSUB 特性表查询）这是第三行文字";
     let input = LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(672.0),
     )
     .paragraph_style(
@@ -33,5 +34,10 @@ fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
         .filter(|decision| decision.reason == "LineStartHalfWidthPunctuation")
         .collect();
     assert_eq!(2, start_trims.len());
-    assert!(start_trims.iter().all(|decision| decision.side == "leading" && (decision.trim_amount - 8.0).abs() < 0.01));
+    assert!(
+        start_trims
+            .iter()
+            .all(|decision| decision.side == "leading"
+                && (decision.trim_amount - 8.0).abs() < 0.01)
+    );
 }

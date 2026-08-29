@@ -4,6 +4,7 @@ use tiqian::org::tiqian::clreq::ClreqProfile::{
     CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver,
 };
 use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::org::tiqian::core::Units::Ic;
 use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
@@ -41,7 +42,7 @@ fn layout(
     }
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(text.to_owned()),
+            TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(
@@ -101,6 +102,7 @@ fn profile_can_preserve_input_display_glyphs() {
             .find(|cluster| cluster.text == "……")
             .unwrap()
             .display_text
+            .as_str()
     );
     assert_eq!(
         "——",
@@ -110,6 +112,7 @@ fn profile_can_preserve_input_display_glyphs() {
             .find(|cluster| cluster.text == "——")
             .unwrap()
             .display_text
+            .as_str()
     );
 }
 

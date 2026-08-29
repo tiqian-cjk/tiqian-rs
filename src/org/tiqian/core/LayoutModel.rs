@@ -2,13 +2,14 @@
 
 use super::Geometry::{Rect, Size, TextRange};
 use super::IntRange::IntRange;
+use super::Text::Text;
 use super::TextModel::LayoutInput;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cluster {
     pub range: TextRange,
-    pub text: String,
-    pub display_text: String,
+    pub text: Text,
+    pub display_text: Text,
     pub font_key: String,
     pub advance: f32,
     /// 绘制此 cluster 时添加到 line baseline 的垂直偏移（px，+down），使 non-Roman mixed font/size
@@ -24,7 +25,7 @@ pub struct Cluster {
 }
 
 impl Cluster {
-    pub fn new(range: TextRange, text: String, font_key: String, advance: f32) -> Self {
+    pub fn new(range: TextRange, text: Text, font_key: String, advance: f32) -> Self {
         Self {
             display_text: text.clone(),
             range,
@@ -38,8 +39,8 @@ impl Cluster {
     }
     pub fn with_display_text(
         range: TextRange,
-        text: String,
-        display_text: String,
+        text: Text,
+        display_text: Text,
         font_key: String,
         advance: f32,
     ) -> Self {
@@ -56,8 +57,8 @@ impl Cluster {
     }
     pub fn with_baseline_shift(
         range: TextRange,
-        text: String,
-        display_text: String,
+        text: Text,
+        display_text: Text,
         font_key: String,
         advance: f32,
         baseline_shift: f32,
@@ -73,12 +74,7 @@ impl Cluster {
             glyph_inline_shift: 0.0,
         }
     }
-    pub fn builder(
-        range: TextRange,
-        text: String,
-        font_key: String,
-        advance: f32,
-    ) -> ClusterBuilder {
+    pub fn builder(range: TextRange, text: Text, font_key: String, advance: f32) -> ClusterBuilder {
         ClusterBuilder {
             cluster: Self::new(range, text, font_key, advance),
         }
@@ -89,7 +85,7 @@ pub struct ClusterBuilder {
     cluster: Cluster,
 }
 impl ClusterBuilder {
-    pub fn display_text(mut self, value: String) -> Self {
+    pub fn display_text(mut self, value: Text) -> Self {
         self.cluster.display_text = value;
         self
     }
@@ -581,7 +577,7 @@ impl LayoutDebugInfoBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BreakOpportunityDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub break_offsets: Vec<i32>,
     pub reason: String,
     /// 当此 decision 属于 progressive break span 时的有序 policy tier。
@@ -590,7 +586,7 @@ pub struct BreakOpportunityDecisionInfo {
 impl BreakOpportunityDecisionInfo {
     pub fn new(
         range: TextRange,
-        source_text: String,
+        source_text: Text,
         break_offsets: Vec<i32>,
         reason: String,
     ) -> Self {
@@ -604,7 +600,7 @@ impl BreakOpportunityDecisionInfo {
     }
     pub fn with_tier(
         range: TextRange,
-        source_text: String,
+        source_text: Text,
         break_offsets: Vec<i32>,
         reason: String,
         tier: Option<String>,
@@ -624,7 +620,7 @@ impl BreakOpportunityDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EmergencyTrackingEligibilityDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub reason: String,
 }
 
@@ -822,12 +818,12 @@ impl InlineObjectDecisionInfoBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ZeroWidthBreakDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub cluster_index: i32,
     pub reason: String,
 }
 impl ZeroWidthBreakDecisionInfo {
-    pub fn new(range: TextRange, source_text: String, cluster_index: i32) -> Self {
+    pub fn new(range: TextRange, source_text: Text, cluster_index: i32) -> Self {
         Self {
             range,
             source_text,
@@ -837,7 +833,7 @@ impl ZeroWidthBreakDecisionInfo {
     }
     pub fn with_reason(
         range: TextRange,
-        source_text: String,
+        source_text: Text,
         cluster_index: i32,
         reason: String,
     ) -> Self {
@@ -853,7 +849,7 @@ impl ZeroWidthBreakDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MandatoryBreakDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub break_after_cluster_index: i32,
     pub reason: String,
 }
@@ -926,7 +922,7 @@ pub struct KinsokuDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContextualKinsokuDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub cluster_index: i32,
     pub forbidden_position: String,
     pub reason: String,
@@ -936,7 +932,7 @@ pub struct ContextualKinsokuDecisionInfo {
 impl ContextualKinsokuDecisionInfo {
     pub fn new(
         range: TextRange,
-        source_text: String,
+        source_text: Text,
         cluster_index: i32,
         forbidden_position: String,
         reason: String,
@@ -952,7 +948,7 @@ impl ContextualKinsokuDecisionInfo {
     }
     pub fn with_impossible_measure_fallback(
         range: TextRange,
-        source_text: String,
+        source_text: Text,
         cluster_index: i32,
         forbidden_position: String,
         reason: String,
@@ -978,7 +974,7 @@ pub struct InlineObjectPunctuationAttachmentDecisionInfo {
     pub object_range: TextRange,
     pub separator_range: TextRange,
     pub punctuation_range: TextRange,
-    pub punctuation_text: String,
+    pub punctuation_text: Text,
     pub protected_range: TextRange,
     pub collapsed_advance: f32,
     pub reason: String,
@@ -988,7 +984,7 @@ impl InlineObjectPunctuationAttachmentDecisionInfo {
         object_range: TextRange,
         separator_range: TextRange,
         punctuation_range: TextRange,
-        punctuation_text: String,
+        punctuation_text: Text,
         protected_range: TextRange,
         collapsed_advance: f32,
     ) -> Self {
@@ -1006,7 +1002,7 @@ impl InlineObjectPunctuationAttachmentDecisionInfo {
         object_range: TextRange,
         separator_range: TextRange,
         punctuation_range: TextRange,
-        punctuation_text: String,
+        punctuation_text: Text,
         protected_range: TextRange,
         collapsed_advance: f32,
         reason: String,
@@ -1081,7 +1077,7 @@ pub struct InlineObjectLineHeightDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RubyDecisionInfo {
     pub base_range: TextRange,
-    pub text: String,
+    pub text: Text,
     pub line_index: i32,
     pub center_x: f32,
     pub baseline_y: f32,
@@ -1104,7 +1100,7 @@ pub struct RubyDecisionInfo {
 impl RubyDecisionInfo {
     pub fn builder(
         base_range: TextRange,
-        text: String,
+        text: Text,
         line_index: i32,
         center_x: f32,
         baseline_y: f32,
@@ -1174,7 +1170,7 @@ impl RubyDecisionInfoBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BopomofoDecisionInfo {
     pub base_range: TextRange,
-    pub text: String,
+    pub text: Text,
     pub line_index: i32,
     pub placements: Vec<BopomofoGlyphPlacement>,
     /// 注文 font（必须携带 ㄅㄆㄇ glyph）；空 = renderer 的 CJK default。
@@ -1187,7 +1183,7 @@ pub struct BopomofoDecisionInfo {
 impl BopomofoDecisionInfo {
     pub fn new(
         base_range: TextRange,
-        text: String,
+        text: Text,
         line_index: i32,
         placements: Vec<BopomofoGlyphPlacement>,
     ) -> Self {
@@ -1203,7 +1199,7 @@ impl BopomofoDecisionInfo {
     }
     pub fn builder(
         base_range: TextRange,
-        text: String,
+        text: Text,
         line_index: i32,
         placements: Vec<BopomofoGlyphPlacement>,
     ) -> BopomofoDecisionInfoBuilder {
@@ -1235,7 +1231,7 @@ impl BopomofoDecisionInfoBuilder {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BopomofoGlyphPlacement {
-    pub text: String,
+    pub text: Text,
     pub left: f32,
     pub top: f32,
     pub width: f32,
@@ -1249,7 +1245,7 @@ pub struct BopomofoGlyphPlacement {
 }
 impl BopomofoGlyphPlacement {
     pub fn new(
-        text: String,
+        text: Text,
         left: f32,
         top: f32,
         width: f32,
@@ -1270,7 +1266,7 @@ impl BopomofoGlyphPlacement {
         }
     }
     pub fn builder(
-        text: String,
+        text: Text,
         left: f32,
         top: f32,
         width: f32,
@@ -1341,7 +1337,7 @@ pub struct DecorationSegmentInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecorationDecisionInfo {
     pub cluster_range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub kind: String,
     pub applied: bool,
     pub reason: String,
@@ -1354,7 +1350,7 @@ pub struct DecorationDecisionInfo {
 impl DecorationDecisionInfo {
     pub fn new(
         cluster_range: TextRange,
-        source_text: String,
+        source_text: Text,
         kind: String,
         applied: bool,
         reason: String,
@@ -1372,7 +1368,7 @@ impl DecorationDecisionInfo {
     }
     pub fn builder(
         cluster_range: TextRange,
-        source_text: String,
+        source_text: Text,
         kind: String,
         applied: bool,
         reason: String,
@@ -1429,8 +1425,8 @@ pub struct AutoSpaceDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
-    pub display_text: String,
+    pub source_text: Text,
+    pub display_text: Text,
     pub role: String,
     pub font_key: String,
     pub reason: String,
@@ -1440,8 +1436,8 @@ pub struct FontDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShapingDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
-    pub display_text: String,
+    pub source_text: Text,
+    pub display_text: Text,
     pub font_key: String,
     pub glyph_count: i32,
     pub advance: f32,
@@ -1469,8 +1465,8 @@ pub struct ShapingDecisionInfo {
 impl ShapingDecisionInfo {
     pub fn builder(
         range: TextRange,
-        source_text: String,
-        display_text: String,
+        source_text: Text,
+        display_text: Text,
         font_key: String,
         glyph_count: i32,
         advance: f32,
@@ -1543,7 +1539,7 @@ impl ShapingDecisionInfoBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetricDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub role: String,
     pub font_key: String,
     pub raw_ascent: f32,
@@ -1706,8 +1702,8 @@ impl PunctuationDecisionInfoBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClusterGeometryDecisionInfo {
     pub range: TextRange,
-    pub source_text: String,
-    pub display_text: String,
+    pub source_text: Text,
+    pub display_text: Text,
     pub base_advance: f32,
     pub body_width: f32,
     pub leading_glue_natural: f32,
@@ -1729,8 +1725,8 @@ pub struct ClusterGeometryDecisionInfo {
 impl ClusterGeometryDecisionInfo {
     pub fn builder(
         range: TextRange,
-        source_text: String,
-        display_text: String,
+        source_text: Text,
+        display_text: Text,
         base_advance: f32,
         body_width: f32,
         leading_glue_natural: f32,
@@ -1800,7 +1796,7 @@ pub struct SpacingDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleOverrideInfo {
     pub range: TextRange,
-    pub source_text: String,
+    pub source_text: Text,
     pub original_role: String,
     pub overridden_role: String,
     pub source: String,

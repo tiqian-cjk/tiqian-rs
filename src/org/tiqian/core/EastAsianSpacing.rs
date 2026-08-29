@@ -5,7 +5,7 @@ use icu_properties::{CodePointMapData, props::GeneralCategory};
 use super::EastAsianSpacingData::lookup;
 use super::Geometry::TextRange;
 use super::SourceInteractionBoundaries::interaction_boundaries;
-use super::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::Text::Text;
 
 /**
  * Unicode 草案属性 `East_Asian_Spacing` 的取值。
@@ -72,7 +72,7 @@ pub mod unicode_east_asian_spacing {
      * 空输入或无效输入返回 Other，而不是虚构一个边界。
      */
     pub fn resolved_for_grapheme_cluster(
-        grapheme_cluster: &str,
+        grapheme_cluster: &Text,
         locale: &str,
     ) -> EastAsianSpacingValue {
         if grapheme_cluster.is_empty() {
@@ -84,7 +84,8 @@ pub mod unicode_east_asian_spacing {
         }) {
             return EastAsianSpacingValue::Other;
         }
-        let property = property_of(code_point_at_compat(grapheme_cluster, 0));
+        let property =
+            property_of(grapheme_cluster.code_point_at_compat(0, grapheme_cluster.utf16_len()));
         match property {
             EastAsianSpacingValue::Conditional => {
                 if super::is_chinese_language_context(locale) {
@@ -103,7 +104,7 @@ pub mod unicode_east_asian_spacing {
      * 这里有意复用 Tiqian 的交互边界映射，使间距、选择与命中测试不会对不可分割的 source
      * 单元产生分歧；完整 UAX #29 覆盖仍属于该映射自身持续跟踪的契约，不在这里重新实现。
      */
-    pub fn resolved_edges(text: &str, locale: &str) -> EastAsianSpacingEdges {
+    pub fn resolved_edges(text: &Text, locale: &str) -> EastAsianSpacingEdges {
         if text.is_empty() {
             return EastAsianSpacingEdges {
                 leading: EastAsianSpacingValue::Other,
@@ -111,16 +112,13 @@ pub mod unicode_east_asian_spacing {
                 contains_wide: false,
             };
         }
-        let text_length = text.encode_utf16().count() as i32;
+        let text_length = text.utf16_len();
         let boundaries = interaction_boundaries(text, TextRange::new(0, text_length));
         let values: Vec<EastAsianSpacingValue> = boundaries
             .windows(2)
             .map(|boundary| {
-                let start = utf16_offset_to_utf8_byte_index(text, boundary[0])
-                    .expect("interaction boundary must be a Unicode scalar boundary");
-                let end = utf16_offset_to_utf8_byte_index(text, boundary[1])
-                    .expect("interaction boundary must be a Unicode scalar boundary");
-                resolved_for_grapheme_cluster(&text[start..end], locale)
+                let cluster = Text::from(text.slice_offsets(boundary[0], boundary[1]));
+                resolved_for_grapheme_cluster(&cluster, locale)
             })
             .collect();
         EastAsianSpacingEdges {
@@ -131,6 +129,12 @@ pub mod unicode_east_asian_spacing {
     }
 }
 
+/// 上述固定 IANA 语言子标签注册表版本中的 `Macrolanguage: zh` 记录。
+const CHINESE_MACROLANGUAGE_MEMBERS: [&str; 19] = [
+    "cdo", "cjy", "cmn", "cnp", "cpx", "csp", "czh", "czo", "gan", "hak", "hnm", "hsn", "luh",
+    "lzh", "mnp", "nan", "sjc", "wuu", "yue",
+];
+
 fn is_chinese_language_context(locale: &str) -> bool {
     let language = locale
         .split(['-', '_'])
@@ -138,29 +142,4 @@ fn is_chinese_language_context(locale: &str) -> bool {
         .expect("split always yields at least one segment")
         .to_lowercase();
     language == "zh" || CHINESE_MACROLANGUAGE_MEMBERS.contains(&language.as_str())
-}
-
-/// 上述固定 IANA 语言子标签注册表版本中的 `Macrolanguage: zh` 记录。
-const CHINESE_MACROLANGUAGE_MEMBERS: [&str; 19] = [
-    "cdo", "cjy", "cmn", "cnp", "cpx", "csp", "czh", "czo", "gan", "hak", "hnm", "hsn", "luh",
-    "lzh", "mnp", "nan", "sjc", "wuu", "yue",
-];
-
-fn code_point_at_compat(text: &str, index: i32) -> i32 {
-    let length = text.encode_utf16().count() as i32;
-    let high = text
-        .encode_utf16()
-        .nth(index as usize)
-        .expect("index must address a UTF-16 code unit") as i32;
-    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= length {
-        return high;
-    }
-    let low = text
-        .encode_utf16()
-        .nth(index as usize + 1)
-        .expect("following index must address a UTF-16 code unit") as i32;
-    if !(0xDC00..=0xDFFF).contains(&low) {
-        return high;
-    }
-    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
 }

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, decide_progressive_break,
     progressive_candidate_allowed,
@@ -10,7 +11,7 @@ use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
         TextRange::new(index, index + 1),
-        text.to_owned(),
+        Text::from(text),
         "test".to_owned(),
         advance,
     )

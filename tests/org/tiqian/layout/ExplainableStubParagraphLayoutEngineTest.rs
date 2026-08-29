@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, Rect, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, LineEndReason};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
@@ -14,7 +15,7 @@ use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, Text
 
 fn input(text: &str) -> LayoutInput {
     LayoutInput::builder(
-        TiqianTextContent::new(text.to_owned()),
+        TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(240.0),
     )
     .paragraph_style(
@@ -166,7 +167,7 @@ fn combining_marks_remain_in_their_base_shaping_runs() {
             .debug
             .shaping_decisions
             .iter()
-            .all(|decision| decision.source_text != "ຶ" && decision.source_text != "̷")
+            .all(|decision| { decision.source_text != "ຶ" && decision.source_text != "̷" })
     );
 }
 
@@ -174,7 +175,7 @@ fn combining_marks_remain_in_their_base_shaping_runs() {
 fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
     let text = "👩🏽‍💻";
     let length = text.encode_utf16().count() as i32;
-    let atomic_content = TiqianTextContent::builder(text.to_owned())
+    let atomic_content = TiqianTextContent::builder(Text::from(text))
         .source_boundaries(HashSet::from([2]))
         .build();
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
@@ -197,7 +198,7 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
             .collect::<Vec<_>>()
     );
 
-    let styled_content = TiqianTextContent::builder(text.to_owned())
+    let styled_content = TiqianTextContent::builder(Text::from(text))
         .spans(vec![TextSpan {
             range: TextRange::new(2, length),
             style: TextStyle::builder().font_weight(700).build(),

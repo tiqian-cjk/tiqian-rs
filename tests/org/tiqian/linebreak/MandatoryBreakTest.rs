@@ -1,3 +1,4 @@
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::linebreak::LineBreak::{
     BreakKind, LineBreakAnalyzer, SimpleCharacterLineBreakAnalyzer, is_mandatory_break_code_point,
     is_zero_width_space_code_point,
@@ -32,7 +33,7 @@ fn recognizes_zero_width_space_without_conflating_no_break_controls() {
 
 #[test]
 fn marks_required_after_line_feed() {
-    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze("a\nb");
+    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze(&Text::from("a\nb"));
     assert_eq!(
         BreakKind::Required,
         opportunities
@@ -53,7 +54,7 @@ fn marks_required_after_line_feed() {
 
 #[test]
 fn collapses_crlf_to_a_single_break_after_lf() {
-    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze("a\r\nb");
+    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze(&Text::from("a\r\nb"));
     assert_eq!(
         BreakKind::Allowed,
         opportunities
@@ -74,7 +75,7 @@ fn collapses_crlf_to_a_single_break_after_lf() {
 
 #[test]
 fn preserves_each_blank_line_break() {
-    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze("a\n\nb");
+    let opportunities = SimpleCharacterLineBreakAnalyzer.analyze(&Text::from("a\n\nb"));
     assert_eq!(
         BreakKind::Required,
         opportunities

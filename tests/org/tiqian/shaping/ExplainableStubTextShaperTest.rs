@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::TextRange;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::TextStyle;
 use tiqian::org::tiqian::font::FontPolicy::{FontCandidate, FontDecision, FontRole};
 use tiqian::org::tiqian::shaping::TextShaper::{
@@ -6,9 +7,9 @@ use tiqian::org::tiqian::shaping::TextShaper::{
 };
 
 fn input(text: &str, role: FontRole, display_text: &str) -> ShapingInput {
-    let range = TextRange::new(0, text.encode_utf16().count() as i32);
+    let range = TextRange::new(0, Text::from(text).utf16_len());
     ShapingInput::builder(
-        text.to_owned(),
+        Text::from(text),
         range,
         TextStyle::builder().font_size(16.0).build(),
         FontDecision {
@@ -22,7 +23,7 @@ fn input(text: &str, role: FontRole, display_text: &str) -> ShapingInput {
             reason: "test".to_owned(),
         },
     )
-    .display_text(display_text.to_owned())
+    .display_text(Text::from(display_text))
     .build()
 }
 

@@ -11,7 +11,7 @@ use super::super::clreq::ClreqProfile::{ClreqProfile, clreq_punctuation_policies
 use super::super::core::Geometry::TextRange;
 use super::super::core::LayoutModel::{Cluster, RoleOverrideInfo};
 use super::super::core::SourceInteractionBoundaries::interaction_boundaries;
-use super::super::core::TextIndex::utf16_offset_to_utf8_byte_index;
+use super::super::core::Text::Text;
 use super::super::core::TextModel::InlineObjectSpan;
 use super::super::font::FontPolicy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::font::UnicodeEmojiStyleVariationData;
@@ -70,7 +70,7 @@ impl ClusterRoleRangeOptionsBuilder {
 }
 
 pub fn cluster_role_ranges(
-    text: &str,
+    text: &Text,
     classifier: &dyn FontRoleClassifier,
     context: &FontRoleContext,
     profile: &ClreqProfile,
@@ -85,13 +85,13 @@ pub fn cluster_role_ranges(
 }
 
 pub fn cluster_role_ranges_with_options(
-    text: &str,
+    text: &Text,
     classifier: &dyn FontRoleClassifier,
     context: &FontRoleContext,
     profile: &ClreqProfile,
     options: &ClusterRoleRangeOptions,
 ) -> Vec<ResolvedClusterRange> {
-    let text_length = utf16_length(text);
+    let text_length = text.utf16_len();
     let source_grapheme_boundaries = interaction_boundaries(text, TextRange::new(0, text_length));
     let coalesce_set = &profile.coalesce_repeatable_punctuation;
     let mut ranges = Vec::new();
@@ -106,13 +106,13 @@ pub fn cluster_role_ranges_with_options(
             continue;
         }
 
-        let code_point = code_point_at_compat(text, index);
+        let code_point = text.code_point_at_compat(index, text.utf16_len());
         let code_point_length = char_count(code_point);
         let start = index;
         if is_mandatory_break_code_point_at(code_point, text, index) {
             let end = if code_point == 0x000D
                 && index + 1 < text_length
-                && utf16_code_unit_at(text, index + 1) == 0x000A
+                && text.utf16_code_unit_at(index + 1) == 0x000A
             {
                 index + 2
             } else {
@@ -149,7 +149,7 @@ pub fn cluster_role_ranges_with_options(
             && previous_range.is_some_and(|previous| {
                 previous.role != FontRole::Unknown
                     && previous.range.end() == start
-                    && !is_whitespace_code_unit(utf16_code_unit_at(text, previous.range.end() - 1))
+                    && !is_whitespace_code_unit(text.utf16_code_unit_at(previous.range.end() - 1))
             });
 
         index += code_point_length;
@@ -170,7 +170,7 @@ pub fn cluster_role_ranges_with_options(
                 // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
                 // 这样 kinsoku 无须移动整个 `,anyway` token。
                 while index < text_length && !options.span_boundaries.contains(&index) {
-                    let next_code_point = code_point_at_compat(text, index);
+                    let next_code_point = text.code_point_at_compat(index, text.utf16_len());
                     if !is_ascii_point_mark_code_point(next_code_point) {
                         break;
                     }
@@ -180,7 +180,7 @@ pub fn cluster_role_ranges_with_options(
                 // Latin run 或 coalesced 标点 run 内的 sized-span edge 在此结束 cluster，
                 // 从而令每个 cluster 携带单个 font size（ADR 0030）。
                 while index < text_length && !options.span_boundaries.contains(&index) {
-                    let next_code_point = code_point_at_compat(text, index);
+                    let next_code_point = text.code_point_at_compat(index, text.utf16_len());
                     let next_char_count = char_count(next_code_point);
                     let next_range = TextRange::new(index, index + next_char_count);
                     if classifier.classify(text, next_range, context) != FontRole::LatinText
@@ -193,7 +193,7 @@ pub fn cluster_role_ranges_with_options(
             }
         } else if role == FontRole::CjkPunctuation && coalesce_set.contains(&code_point) {
             while index < text_length && !options.span_boundaries.contains(&index) {
-                let next_code_point = code_point_at_compat(text, index);
+                let next_code_point = text.code_point_at_compat(index, text.utf16_len());
                 if next_code_point != code_point {
                     break;
                 }
@@ -210,7 +210,7 @@ pub fn cluster_role_ranges_with_options(
          * 处于这个窄辅助函数范围之外。
          */
         while index < text_length && !options.span_boundaries.contains(&index) {
-            let extender = code_point_at_compat(text, index);
+            let extender = text.code_point_at_compat(index, text.utf16_len());
             if !is_combining_mark_code_point(extender)
                 && !is_variation_selector_code_point(extender)
             {
@@ -226,7 +226,7 @@ pub fn cluster_role_ranges_with_options(
             (role == FontRole::Emoji && classified_role != FontRole::Emoji).then(|| {
                 RoleOverrideInfo {
                     range,
-                    source_text: source_slice(text, range).to_owned(),
+                    source_text: Text::from(text.slice(range)),
                     original_role: format!("{classified_role:?}"),
                     overridden_role: format!("{role:?}"),
                     source: "UnicodeEmojiSequenceRolePromotion".to_owned(),
@@ -331,32 +331,9 @@ impl ResolvedClusterRange {
     }
 }
 
-fn is_mandatory_break_code_point_at(code_point: i32, text: &str, index: i32) -> bool {
+fn is_mandatory_break_code_point_at(code_point: i32, text: &Text, index: i32) -> bool {
     is_mandatory_break_code_point(code_point)
-        && !(code_point == 0x000A && index > 0 && utf16_code_unit_at(text, index - 1) == 0x000D)
-}
-
-fn code_point_at_compat(text: &str, index: i32) -> i32 {
-    let high = utf16_code_unit_at(text, index);
-    let text_length = utf16_length(text);
-    if !(0xD800..=0xDBFF).contains(&high) || index + 1 >= text_length {
-        return high;
-    }
-    let low = utf16_code_unit_at(text, index + 1);
-    if !(0xDC00..=0xDFFF).contains(&low) {
-        return high;
-    }
-    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
-}
-
-fn utf16_length(text: &str) -> i32 {
-    text.encode_utf16().count() as i32
-}
-
-fn utf16_code_unit_at(text: &str, index: i32) -> i32 {
-    text.encode_utf16()
-        .nth(index as usize)
-        .expect("cluster role offset must address a UTF-16 code unit") as i32
+        && !(code_point == 0x000A && index > 0 && text.utf16_code_unit_at(index - 1) == 0x000D)
 }
 
 fn char_count(code_point: i32) -> i32 {
@@ -369,15 +346,19 @@ fn is_variation_selector_code_point(code_point: i32) -> bool {
 
 /// `UnicodeEmojiSequenceRolePromotion`: promotes a text-default scalar to the Emoji fallback
 /// policy only for a Unicode keycap, emoji-style variation, or modifier sequence.
-fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'static str> {
-    let base = code_point_at_compat(text, start);
+fn emoji_role_promotion_reason(text: &Text, start: i32, end: i32) -> Option<&'static str> {
+    let base = text.code_point_at_compat(start, text.utf16_len());
     let mut next = start + char_count(base);
 
     if is_keycap_base_code_point(base) {
-        if next < end && code_point_at_compat(text, next) == EMOJI_VARIATION_SELECTOR {
+        if next < end
+            && text.code_point_at_compat(next, text.utf16_len()) == EMOJI_VARIATION_SELECTOR
+        {
             next += char_count(EMOJI_VARIATION_SELECTOR);
         }
-        if next < end && code_point_at_compat(text, next) == COMBINING_ENCLOSING_KEYCAP {
+        if next < end
+            && text.code_point_at_compat(next, text.utf16_len()) == COMBINING_ENCLOSING_KEYCAP
+        {
             return Some("KeycapSequence");
         }
     }
@@ -385,14 +366,14 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
     if CodePointSetData::new::<Emoji>().contains32(base as u32)
         && UnicodeEmojiStyleVariationData::contains(base)
         && next < end
-        && code_point_at_compat(text, next) == EMOJI_VARIATION_SELECTOR
+        && text.code_point_at_compat(next, text.utf16_len()) == EMOJI_VARIATION_SELECTOR
     {
         return Some("EmojiStyleVariationSequence");
     }
 
     if CodePointSetData::new::<EmojiModifierBase>().contains32(base as u32) {
         while next < end {
-            let code_point = code_point_at_compat(text, next);
+            let code_point = text.code_point_at_compat(next, text.utf16_len());
             if !is_combining_mark_code_point(code_point)
                 && !is_variation_selector_code_point(code_point)
             {
@@ -402,7 +383,7 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
         }
         if next < end
             && CodePointSetData::new::<EmojiModifier>()
-                .contains32(code_point_at_compat(text, next) as u32)
+                .contains32(text.code_point_at_compat(next, text.utf16_len()) as u32)
         {
             return Some("EmojiModifierSequence");
         }
@@ -413,14 +394,6 @@ fn emoji_role_promotion_reason(text: &str, start: i32, end: i32) -> Option<&'sta
 
 fn is_keycap_base_code_point(code_point: i32) -> bool {
     code_point == 0x0023 || code_point == 0x002A || (0x0030..=0x0039).contains(&code_point)
-}
-
-fn source_slice(text: &str, range: TextRange) -> &str {
-    let start = utf16_offset_to_utf8_byte_index(text, range.start())
-        .expect("source range start must lie on scalar boundary");
-    let end = utf16_offset_to_utf8_byte_index(text, range.end())
-        .expect("source range end must lie on scalar boundary");
-    &text[start..end]
 }
 
 fn is_combining_mark_code_point(code_point: i32) -> bool {
@@ -469,9 +442,9 @@ mod tests {
 
     #[test]
     fn complex_emoji_graphemes_are_single_emoji_shaping_ranges() {
-        let text = "前👩🏽‍💻后🇨🇳与1️⃣。";
+        let text = Text::from("前👩🏽‍💻后🇨🇳与1️⃣。");
         let ranges = cluster_role_ranges(
-            text,
+            &text,
             &CjkFontRoleClassifier,
             &FontRoleContext::default(),
             &ClreqProfile::mainland_horizontal(),
@@ -496,9 +469,9 @@ mod tests {
 
     #[test]
     fn unicode_emoji_properties_cover_text_default_and_composed_graphemes() {
-        let text = "⌚🀄❤️❤☝🏻";
+        let text = Text::from("⌚🀄❤️❤☝🏻");
         let ranges = cluster_role_ranges(
-            text,
+            &text,
             &CjkFontRoleClassifier,
             &FontRoleContext::default(),
             &ClreqProfile::mainland_horizontal(),
@@ -521,11 +494,11 @@ mod tests {
 
     #[test]
     fn complex_emoji_graphemes_reach_the_text_shaper_as_complete_ranges() {
-        let text = "前👩🏽‍💻后🇨🇳与1️⃣。";
+        let text = Text::from("前👩🏽‍💻后🇨🇳与1️⃣。");
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::new(text.to_owned()),
+                TiqianTextContent::new(text),
                 LayoutConstraints::with_defaults(1_000.0),
             )
             .build(),
@@ -553,8 +526,9 @@ mod tests {
             .span_boundaries([2].into_iter().collect())
             .emoji_shaping_boundaries(HashSet::new())
             .build();
+        let text = Text::from("👩🏽‍💻");
         let ranges = cluster_role_ranges_with_options(
-            "👩🏽‍💻",
+            &text,
             &CjkFontRoleClassifier,
             &FontRoleContext::default(),
             &ClreqProfile::mainland_horizontal(),
@@ -572,7 +546,7 @@ mod tests {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::builder("👩🏽‍💻".to_owned())
+                TiqianTextContent::builder(Text::from("👩🏽‍💻"))
                     .source_boundaries([2].into_iter().collect())
                     .build(),
                 LayoutConstraints::with_defaults(1_000.0),
@@ -598,8 +572,9 @@ mod tests {
             .span_boundaries(hard_boundary.clone())
             .emoji_shaping_boundaries(hard_boundary)
             .build();
+        let text = Text::from("👩🏽‍💻");
         let ranges = cluster_role_ranges_with_options(
-            "👩🏽‍💻",
+            &text,
             &CjkFontRoleClassifier,
             &FontRoleContext::default(),
             &ClreqProfile::mainland_horizontal(),
@@ -620,7 +595,7 @@ mod tests {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
         let result = engine.layout(
             LayoutInput::builder(
-                TiqianTextContent::builder("👩🏽‍💻".to_owned())
+                TiqianTextContent::builder(Text::from("👩🏽‍💻"))
                     .spans(vec![TextSpan {
                         range: TextRange::new(2, 7),
                         style: TextStyle {
@@ -649,8 +624,9 @@ mod tests {
     #[test]
     fn unicode_emoji_sequence_roles_reject_unrelated_extenders() {
         let resolve = |text| {
+            let text = Text::from(text);
             cluster_role_ranges(
-                text,
+                &text,
                 &CjkFontRoleClassifier,
                 &FontRoleContext::default(),
                 &ClreqProfile::mainland_horizontal(),

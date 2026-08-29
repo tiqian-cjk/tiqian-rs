@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::IntRange::IntRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::layout::LineBreaker::rebuild_line;
 use tiqian::org::tiqian::layout::LineOptimization::{LineCandidate, RepairOption};
 use tiqian::org::tiqian::layout::LineRepair::apply_fill_push_in;
@@ -13,7 +14,7 @@ use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
         TextRange::new(index, index + 1),
-        text.to_owned(),
+        Text::from(text),
         "test".to_owned(),
         advance,
     )

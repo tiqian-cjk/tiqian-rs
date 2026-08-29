@@ -1,4 +1,5 @@
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, LayoutInput, TiqianTextContent,
 };
@@ -10,7 +11,7 @@ use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
 fn emphasis_dots_han_but_not_western_text() {
     let result = ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
-            TiqianTextContent::new("强调中A中".to_owned()),
+            TiqianTextContent::new(Text::from("强调中A中")),
             LayoutConstraints::with_defaults(400.0),
         )
         .decorations(vec![DecorationSpan {

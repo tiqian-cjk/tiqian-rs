@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/LineBreak.kt
 
 use super::super::core::Geometry::TextRange;
+use super::super::core::Text::Text;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BreakOpportunity {
@@ -65,31 +66,31 @@ pub fn is_zero_width_space_code_point(code_point: i32) -> bool {
 }
 
 pub trait LineBreakAnalyzer {
-    fn analyze(&self, text: &str) -> Vec<BreakOpportunity>;
+    fn analyze(&self, text: &Text) -> Vec<BreakOpportunity>;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SimpleCharacterLineBreakAnalyzer;
 
 impl LineBreakAnalyzer for SimpleCharacterLineBreakAnalyzer {
-    fn analyze(&self, text: &str) -> Vec<BreakOpportunity> {
-        let code_units: Vec<u16> = text.encode_utf16().collect();
-        if code_units.is_empty() {
+    fn analyze(&self, text: &Text) -> Vec<BreakOpportunity> {
+        let length = text.utf16_len();
+        if length == 0 {
             return Vec::new();
         }
 
-        let mut opportunities = Vec::with_capacity(code_units.len());
-        for index in 1..=code_units.len() {
-            let previous = code_units[index - 1] as i32;
+        let mut opportunities = Vec::with_capacity(length as usize);
+        for index in 1..=length {
+            let previous = text.utf16_code_unit_at(index - 1);
             // mandatory-break 字符强制其后的 Required break；但 CRLF 中的 CR 例外，
             // 换行属于紧随其后的 LF。
             let mandatory = is_mandatory_break_code_point(previous)
                 && !(previous == 0x000D
-                    && index < code_units.len()
-                    && code_units[index] as i32 == 0x000A);
+                    && index < length
+                    && text.utf16_code_unit_at(index) == 0x000A);
             opportunities.push(BreakOpportunity::new(
-                index as i32,
-                if index == code_units.len() || mandatory {
+                index,
+                if index == length || mandatory {
                     BreakKind::Required
                 } else {
                     BreakKind::Allowed
