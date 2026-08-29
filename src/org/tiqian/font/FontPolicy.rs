@@ -122,7 +122,11 @@ impl CjkFontRoleClassifier {
 impl FontRoleClassifier for CjkFontRoleClassifier {
     fn classify(&self, text: &Text, range: TextRange, _context: &FontRoleContext) -> FontRole {
         let first_code_point = text.code_point_at_compat(range.start(), text.utf16_len());
-        if is_cjk_code_point(first_code_point) {
+        // Printable ASCII can never reach the CJK or curly-quote branches below,
+        // so resolve it without touching the Unicode property tries.
+        if is_typed_ascii_latin(first_code_point) {
+            FontRole::LatinText
+        } else if is_cjk_code_point(first_code_point) {
             FontRole::CjkText
         // 仅弯引号是 CJK/Western 共享码点，需由上下文决定。其他字符均为原生归属：
         // 输入的 ASCII 属于 Latin，CJK 码点属于 CJK。
@@ -130,8 +134,6 @@ impl FontRoleClassifier for CjkFontRoleClassifier {
             FontRole::LatinText
         } else if is_cjk_punctuation_code_point(first_code_point) {
             FontRole::CjkPunctuation
-        } else if is_typed_ascii_latin(first_code_point) {
-            FontRole::LatinText
         } else if is_latin_code_point(first_code_point) {
             FontRole::LatinText
         } else if is_emoji_code_point(first_code_point) {
@@ -193,8 +195,8 @@ fn is_ambiguous_curly_quote(code_point: i32) -> bool {
 
 fn is_latin_run_code_point(code_point: i32) -> bool {
     is_typed_ascii_latin(code_point)
-        || is_latin_code_point(code_point)
         || is_ambiguous_curly_quote(code_point)
+        || is_latin_code_point(code_point)
 }
 
 fn is_latin_code_point(code_point: i32) -> bool {
