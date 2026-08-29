@@ -201,7 +201,11 @@ impl DesktopParagraphDemo {
         if self.layout_key == Some(key) {
             return;
         }
+
+        let t = std::time::Instant::now();
+
         let document = build_document_demo(physical_content_width as f32, scale_factor);
+
         let mut blocks = Vec::new();
         let mut y = 0.0;
         let mut left_overhang = 0.0_f32;
@@ -311,6 +315,13 @@ impl DesktopParagraphDemo {
                 DemoDocumentDemoBlock::Section { height } => y += height,
             }
         }
+
+        println!(
+            "layout demo page with physical_content_width={} in {:?}",
+            physical_content_width,
+            t.elapsed()
+        );
+
         self.page = Some(DemoPage {
             blocks,
             height: y,
@@ -864,7 +875,8 @@ mod tests {
                     document,
                     max_width,
                 } => {
-                    let is_hanging_sample = document.input.content.text == "校样排印，宜留呼吸。";
+                    let is_hanging_sample =
+                        document.input.content.text.as_str() == "校样排印，宜留呼吸。";
                     let is_hyphenation_sample = document
                         .input
                         .content
