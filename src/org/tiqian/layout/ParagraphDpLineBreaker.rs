@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphDpLineBreaker.kt
 
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 use std::rc::Rc;
 
 use super::super::core::Geometry::TextRange;

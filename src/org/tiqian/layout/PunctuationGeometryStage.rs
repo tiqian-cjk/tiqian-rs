@@ -15,7 +15,7 @@ use super::KinsokuRule::KinsokuRule;
 use super::PunctuationGeometryLedger::cluster_index_range_for;
 use super::PunctuationModel::{PunctuationAtom, PunctuationAtomBuilder, PunctuationInkInput};
 use super::UnicodePunctuationBoundaryResolver::resolve_attached_inline_virtual_boundaries;
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContextualKinsoku {

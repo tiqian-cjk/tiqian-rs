@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/TextModel.kt
 
-use std::collections::HashSet;
+use crate::common::HashSet;
 
 use super::Geometry::TextRange;
 use super::Text::Text;

@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineAdjustmentStage.kt
 
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 use super::super::clreq::ClreqProfile::{LineEndPunctuationStyle, PunctuationClass};
 use super::super::core::Geometry::{Size, TextRange};

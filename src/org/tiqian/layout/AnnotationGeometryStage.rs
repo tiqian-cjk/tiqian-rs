@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/AnnotationGeometryStage.kt
 
-use std::collections::HashMap;
+use crate::common::HashMap;
 
 use super::super::clreq::BopomofoReading::{BopomofoTone, bopomofo_parser};
 use super::super::clreq::ClreqProfile::ClreqProfile;

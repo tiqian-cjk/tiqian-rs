@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LayoutDebugAssembly.kt
 
-use std::collections::HashMap;
+use crate::common::HashMap;
 
 use super::super::clreq::ClreqProfile::ClreqPunctuationGlyphSubstitutor;
 use super::super::core::Geometry::TextRange;

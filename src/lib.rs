@@ -3,6 +3,8 @@
 //! Translation modules are added only after their corresponding Kotlin source
 //! files and direct dependencies have been mapped.
 
+pub mod common;
+
 #[allow(non_snake_case)]
 pub mod org {
     #[allow(non_snake_case)]

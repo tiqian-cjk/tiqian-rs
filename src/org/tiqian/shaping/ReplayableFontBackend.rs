@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/shaping/ReplayableFontBackend.kt
 
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 use super::super::core::Text::Text;

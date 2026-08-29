@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use tiqian::common::HashSet;
 
 use tiqian::org::tiqian::clreq::ClreqProfile::{
     CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver,

@@ -1,6 +1,6 @@
 //! Development-only fixture runner. It accepts one JSON fixture on stdin and emits Kotlin's layout dump.
 
-use std::collections::HashSet;
+use tiqian::common::HashSet;
 use std::io::{self, Read};
 
 use serde::Deserialize;

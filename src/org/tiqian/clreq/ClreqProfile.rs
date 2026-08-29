@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/clreq/ClreqProfile.kt
 
-use std::collections::HashSet;
+use crate::common::HashSet;
 
 use super::super::core::Text::Text;
 use super::super::core::TextModel::{LayoutProfileId, built_in_layout_profiles};

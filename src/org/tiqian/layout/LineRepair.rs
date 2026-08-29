@@ -11,7 +11,7 @@ use super::LineOptimization::{
 use super::ProgressiveBreakDecisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, line_limit,
 };
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PushInResult {

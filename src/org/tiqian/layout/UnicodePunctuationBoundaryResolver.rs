@@ -11,7 +11,7 @@ use super::super::linebreak::UnicodePunctuationLineBreak::{
     UnicodePunctuationLineBreakClass, unicode_punctuation_line_break,
 };
 use super::QuotePairAnalyzer::QuotePair;
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnicodePunctuationBoundaries {

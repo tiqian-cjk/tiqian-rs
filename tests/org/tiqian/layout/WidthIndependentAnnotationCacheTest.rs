@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use tiqian::common::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 

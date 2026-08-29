@@ -1,6 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/WidthIndependentAnnotationCache.kt
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
+
+use crate::common::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::super::clreq::ClreqProfile::ClreqProfileResolver;

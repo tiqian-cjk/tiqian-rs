@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/Hyphenation.kt
 
-use std::collections::HashMap;
+use crate::common::HashMap;
 
 use super::super::core::Text::Text;
 

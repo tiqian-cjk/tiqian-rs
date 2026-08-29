@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineOptimization.kt
 
-use std::collections::HashSet;
+use crate::common::HashSet;
 
 use super::super::core::Geometry::TextRange;
 use super::super::core::IntRange::IntRange;

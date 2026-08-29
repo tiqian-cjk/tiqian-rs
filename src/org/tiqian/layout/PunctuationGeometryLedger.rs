@@ -11,7 +11,7 @@ use super::PunctuationModel::{
     PunctuationSpacingCompressionResult,
 };
 use super::UnicodePunctuationBoundaryResolver::resolve_attached_inline_virtual_boundaries;
-use std::collections::HashMap;
+use crate::common::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationGeometryLedger {

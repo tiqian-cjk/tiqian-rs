@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use tiqian::common::HashSet;
 
 use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, Rect, TextRange};
 use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, LineEndReason};

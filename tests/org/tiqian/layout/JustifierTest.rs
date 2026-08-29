@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use tiqian::common::HashSet;
 
 use tiqian::org::tiqian::core::EastAsianSpacing::unicode_east_asian_spacing;
 use tiqian::org::tiqian::core::Geometry::TextRange;
@@ -129,7 +129,7 @@ fn typed_sino_western_space_is_capped_before_final_uniform_spacing() {
         HashSet::from([1, 2]),
         sino.iter()
             .map(|allocation| allocation.target_cluster_index)
-            .collect()
+            .collect::<HashSet<_>>()
     );
     assert!(
         sino.iter()
@@ -145,7 +145,7 @@ fn typed_sino_western_space_is_capped_before_final_uniform_spacing() {
         uniform
             .iter()
             .map(|allocation| allocation.target_cluster_index)
-            .collect()
+            .collect::<HashSet<_>>()
     );
     assert!(
         uniform

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use tiqian::common::HashMap;
 
 use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, UnicodeBuffer};
 use read_fonts::model::pen::ControlBoundsPen;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use tiqian::common::HashMap;
 
 use tiqian::org::tiqian::core::Text::Text;
 use tiqian::org::tiqian::linebreak::Hyphenation::{

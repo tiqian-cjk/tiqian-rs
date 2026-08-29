@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use tiqian::common::HashSet;
 
 use tiqian::org::tiqian::clreq::ClreqProfile::{
     ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode,

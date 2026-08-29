@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineBreaker.kt
 
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 use super::super::core::IntRange::IntRange;
 use super::super::core::LayoutModel::{Cluster, LineEndReason};

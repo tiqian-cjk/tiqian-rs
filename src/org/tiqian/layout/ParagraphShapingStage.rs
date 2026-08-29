@@ -19,7 +19,7 @@ use super::super::shaping::TextShaper::{
 use super::ClusterRoleResolution::ResolvedClusterRange;
 use super::ProgressiveBreakDecisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
-use std::collections::{HashMap, HashSet};
+use crate::common::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {

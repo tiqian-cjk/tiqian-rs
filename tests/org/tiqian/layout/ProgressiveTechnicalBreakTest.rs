@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use tiqian::common::{HashMap, HashSet};
 
 use tiqian::org::tiqian::core::Geometry::TextRange;
 use tiqian::org::tiqian::core::LayoutModel::Cluster;
