@@ -106,7 +106,7 @@ pub fn cluster_role_ranges_with_options(
             continue;
         }
 
-        let code_point = text.code_point_at_compat(index, text.utf16_len());
+        let code_point = text.code_point_at_compat(index, text_length);
         let code_point_length = char_count(code_point);
         let start = index;
         if is_mandatory_break_code_point_at(code_point, text, index) {
@@ -170,7 +170,7 @@ pub fn cluster_role_ranges_with_options(
                 // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
                 // 这样 kinsoku 无须移动整个 `,anyway` token。
                 while index < text_length && !options.span_boundaries.contains(&index) {
-                    let next_code_point = text.code_point_at_compat(index, text.utf16_len());
+                    let next_code_point = text.code_point_at_compat(index, text_length);
                     if !is_ascii_point_mark_code_point(next_code_point) {
                         break;
                     }
@@ -180,7 +180,7 @@ pub fn cluster_role_ranges_with_options(
                 // Latin run 或 coalesced 标点 run 内的 sized-span edge 在此结束 cluster，
                 // 从而令每个 cluster 携带单个 font size（ADR 0030）。
                 while index < text_length && !options.span_boundaries.contains(&index) {
-                    let next_code_point = text.code_point_at_compat(index, text.utf16_len());
+                    let next_code_point = text.code_point_at_compat(index, text_length);
                     let next_char_count = char_count(next_code_point);
                     let next_range = TextRange::new(index, index + next_char_count);
                     if classifier.classify(text, next_range, context) != FontRole::LatinText
@@ -193,7 +193,7 @@ pub fn cluster_role_ranges_with_options(
             }
         } else if role == FontRole::CjkPunctuation && coalesce_set.contains(&code_point) {
             while index < text_length && !options.span_boundaries.contains(&index) {
-                let next_code_point = text.code_point_at_compat(index, text.utf16_len());
+                let next_code_point = text.code_point_at_compat(index, text_length);
                 if next_code_point != code_point {
                     break;
                 }
@@ -210,7 +210,7 @@ pub fn cluster_role_ranges_with_options(
          * 处于这个窄辅助函数范围之外。
          */
         while index < text_length && !options.span_boundaries.contains(&index) {
-            let extender = text.code_point_at_compat(index, text.utf16_len());
+            let extender = text.code_point_at_compat(index, text_length);
             if !is_combining_mark_code_point(extender)
                 && !is_variation_selector_code_point(extender)
             {
@@ -347,18 +347,15 @@ fn is_variation_selector_code_point(code_point: i32) -> bool {
 /// `UnicodeEmojiSequenceRolePromotion`: promotes a text-default scalar to the Emoji fallback
 /// policy only for a Unicode keycap, emoji-style variation, or modifier sequence.
 fn emoji_role_promotion_reason(text: &Text, start: i32, end: i32) -> Option<&'static str> {
-    let base = text.code_point_at_compat(start, text.utf16_len());
+    let text_length = text.utf16_len();
+    let base = text.code_point_at_compat(start, text_length);
     let mut next = start + char_count(base);
 
     if is_keycap_base_code_point(base) {
-        if next < end
-            && text.code_point_at_compat(next, text.utf16_len()) == EMOJI_VARIATION_SELECTOR
-        {
+        if next < end && text.code_point_at_compat(next, text_length) == EMOJI_VARIATION_SELECTOR {
             next += char_count(EMOJI_VARIATION_SELECTOR);
         }
-        if next < end
-            && text.code_point_at_compat(next, text.utf16_len()) == COMBINING_ENCLOSING_KEYCAP
-        {
+        if next < end && text.code_point_at_compat(next, text_length) == COMBINING_ENCLOSING_KEYCAP {
             return Some("KeycapSequence");
         }
     }
@@ -366,7 +363,7 @@ fn emoji_role_promotion_reason(text: &Text, start: i32, end: i32) -> Option<&'st
     if CodePointSetData::new::<Emoji>().contains32(base as u32)
         && UnicodeEmojiStyleVariationData::contains(base)
         && next < end
-        && text.code_point_at_compat(next, text.utf16_len()) == EMOJI_VARIATION_SELECTOR
+        && text.code_point_at_compat(next, text_length) == EMOJI_VARIATION_SELECTOR
     {
         return Some("EmojiStyleVariationSequence");
     }

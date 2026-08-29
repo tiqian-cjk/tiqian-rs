@@ -94,36 +94,26 @@ fn interaction_boundaries_in_range(text: &Text, start: i32, end: i32) -> Vec<i32
                 next += char_count_compat(following);
             }
         } else if is_hangul_l(first) {
-            while next < end && is_hangul_l(text.code_point_at_compat(next, end)) {
-                next += char_count_compat(text.code_point_at_compat(next, end));
-            }
-            if next < end && is_hangul_v(text.code_point_at_compat(next, end)) {
-                while next < end && is_hangul_v(text.code_point_at_compat(next, end)) {
-                    next += char_count_compat(text.code_point_at_compat(next, end));
-                }
-                while next < end && is_hangul_t(text.code_point_at_compat(next, end)) {
-                    next += char_count_compat(text.code_point_at_compat(next, end));
-                }
+            next = consume_while(text, next, end, is_hangul_l);
+            let after_v = consume_while(text, next, end, is_hangul_v);
+            if after_v > next {
+                next = consume_while(text, after_v, end, is_hangul_t);
             }
         } else if is_hangul_lv_or_lvt(first) {
             if is_hangul_lv(first) {
-                while next < end && is_hangul_v(text.code_point_at_compat(next, end)) {
-                    next += char_count_compat(text.code_point_at_compat(next, end));
-                }
+                next = consume_while(text, next, end, is_hangul_v);
             }
-            while next < end && is_hangul_t(text.code_point_at_compat(next, end)) {
-                next += char_count_compat(text.code_point_at_compat(next, end));
-            }
+            next = consume_while(text, next, end, is_hangul_t);
         }
 
-        next = consume_extenders(text, next, end);
-        if preceding_emoji_modifier_base
-            && next < end
-            && is_emoji_modifier(text.code_point_at_compat(next, end))
-        {
-            next += char_count_compat(text.code_point_at_compat(next, end));
-            preceding_emoji_modifier_base = false;
-            next = consume_extenders(text, next, end);
+        next = consume_while(text, next, end, is_interaction_extender);
+        if preceding_emoji_modifier_base && next < end {
+            let code_point = text.code_point_at_compat(next, end);
+            if is_emoji_modifier(code_point) {
+                next += char_count_compat(code_point);
+                preceding_emoji_modifier_base = false;
+                next = consume_while(text, next, end, is_interaction_extender);
+            }
         }
         while next < end && text.code_point_at_compat(next, end) == ZWJ {
             next += 1;
@@ -137,14 +127,14 @@ fn interaction_boundaries_in_range(text: &Text, start: i32, end: i32) -> Vec<i32
             next += char_count_compat(joined);
             preceding_emoji_modifier_base = is_emoji_modifier_base(joined);
             preceding_extended_pictographic = true;
-            next = consume_extenders(text, next, end);
-            if preceding_emoji_modifier_base
-                && next < end
-                && is_emoji_modifier(text.code_point_at_compat(next, end))
-            {
-                next += char_count_compat(text.code_point_at_compat(next, end));
-                preceding_emoji_modifier_base = false;
-                next = consume_extenders(text, next, end);
+            next = consume_while(text, next, end, is_interaction_extender);
+            if preceding_emoji_modifier_base && next < end {
+                let modifier = text.code_point_at_compat(next, end);
+                if is_emoji_modifier(modifier) {
+                    next += char_count_compat(modifier);
+                    preceding_emoji_modifier_base = false;
+                    next = consume_while(text, next, end, is_interaction_extender);
+                }
             }
         }
         index = next;
@@ -153,11 +143,11 @@ fn interaction_boundaries_in_range(text: &Text, start: i32, end: i32) -> Vec<i32
     out
 }
 
-fn consume_extenders(text: &Text, from: i32, end: i32) -> i32 {
+fn consume_while(text: &Text, from: i32, end: i32, accept: fn(i32) -> bool) -> i32 {
     let mut index = from;
     while index < end {
         let code_point = text.code_point_at_compat(index, end);
-        if !is_interaction_extender(code_point) {
+        if !accept(code_point) {
             break;
         }
         index += char_count_compat(code_point);
