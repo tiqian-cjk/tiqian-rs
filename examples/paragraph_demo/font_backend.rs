@@ -4,14 +4,14 @@ use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, 
 use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
-use tiqian::core::Geometry::{Rect, TextRange};
-use tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
-use tiqian::core::Text::Text;
-use tiqian::font::FontMetrics::{FontMetricSource, FontMetricsRequest, FontMetricsResolver};
-use tiqian::font::FontPolicy::{
+use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
+use tiqian::core::text::Text;
+use tiqian::font::font_metrics::{FontMetricSource, FontMetricsRequest, FontMetricsResolver};
+use tiqian::font::font_policy::{
     FallbackResolver, FontCandidate, FontDecision, FontRequest, FontRole, RawFontMetrics,
 };
-use tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
+use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
 use vello::kurbo::Affine;
 use vello::peniko::color::{AlphaColor, Srgb};
 use vello::peniko::{Blob, Fill, FontData};
@@ -648,8 +648,8 @@ fn fixed_at(bytes: &[u8], offset: usize) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tiqian::core::TextModel::TextStyle;
-    use tiqian::shaping::TextShaper::ShapingInput;
+    use tiqian::core::text_model::TextStyle;
+    use tiqian::shaping::text_shaper::ShapingInput;
 
     #[test]
     fn controlled_faces_shape_and_measure_their_own_roles() {
@@ -851,9 +851,9 @@ mod tests {
 
     #[test]
     fn catalog_replaces_the_engine_stub_font_path() {
-        use tiqian::core::Geometry::LayoutConstraints;
-        use tiqian::core::TextModel::{LayoutInput, TiqianTextContent};
-        use tiqian::layout::ParagraphLayoutEngine::{
+        use tiqian::core::geometry::LayoutConstraints;
+        use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
+        use tiqian::layout::paragraph_layout_engine::{
             ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
         };
 
@@ -975,9 +975,9 @@ mod tests {
 
     #[test]
     fn complex_emoji_layout_keeps_the_noto_face_and_source_range() {
-        use tiqian::core::Geometry::LayoutConstraints;
-        use tiqian::core::TextModel::{LayoutInput, TiqianTextContent};
-        use tiqian::layout::ParagraphLayoutEngine::{
+        use tiqian::core::geometry::LayoutConstraints;
+        use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
+        use tiqian::layout::paragraph_layout_engine::{
             ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
         };
 

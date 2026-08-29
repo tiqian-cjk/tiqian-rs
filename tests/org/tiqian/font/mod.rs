@@ -1,6 +1,3 @@
-#[allow(non_snake_case)]
-mod CjkFontRoleClassifierTest;
-#[allow(non_snake_case)]
-mod ScriptAwareFontMetricsNormalizerTest;
-#[allow(non_snake_case)]
-mod UsesLatinFaceTest;
+mod cjk_font_role_classifier_test;
+mod script_aware_font_metrics_normalizer_test;
+mod uses_latin_face_test;

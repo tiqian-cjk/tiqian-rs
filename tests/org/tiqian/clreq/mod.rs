@@ -1,10 +1,5 @@
-#[allow(non_snake_case)]
-mod BopomofoParserTest;
-#[allow(non_snake_case)]
-mod ClreqPunctuationGlyphSubstitutorTest;
-#[allow(non_snake_case)]
-mod KinsokuLevelTest;
-#[allow(non_snake_case)]
-mod NumberSymbolCohesionTest;
-#[allow(non_snake_case)]
-mod PunctuationGluePlacementTest;
+mod bopomofo_parser_test;
+mod clreq_punctuation_glyph_substitutor_test;
+mod kinsoku_level_test;
+mod number_symbol_cohesion_test;
+mod punctuation_glue_placement_test;

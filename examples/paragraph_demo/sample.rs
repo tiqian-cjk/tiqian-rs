@@ -1,13 +1,13 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::core::Text::Text;
-use tiqian::core::TextModel::{
+use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::text::Text;
+use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, LastLineAlignment, LayoutInput, ParagraphStyle,
     RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
     RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::core::Units::Ic;
+use tiqian::core::units::Ic;
 use vello::peniko::color::AlphaColor;
 
 use crate::renderer::DemoColorSpan;

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use tiqian::core::Geometry::LayoutConstraints;
-use tiqian::core::LayoutModel::LayoutResult;
-use tiqian::core::LayoutQueries::positioned_clusters;
-use tiqian::core::TextModel::LineLengthGrid;
-use tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::geometry::LayoutConstraints;
+use tiqian::core::layout_model::LayoutResult;
+use tiqian::core::layout_queries::positioned_clusters;
+use tiqian::core::text_model::LineLengthGrid;
+use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use vello::peniko::color::palette::css::WHITE;

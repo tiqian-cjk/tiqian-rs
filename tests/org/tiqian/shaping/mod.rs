@@ -1,2 +1,1 @@
-#[allow(non_snake_case)]
-mod ExplainableStubTextShaperTest;
+mod explainable_stub_text_shaper_test;

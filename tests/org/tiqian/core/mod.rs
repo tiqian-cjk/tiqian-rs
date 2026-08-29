@@ -1,12 +1,6 @@
-#[allow(non_snake_case)]
-mod EastAsianSpacingTest;
-#[allow(non_snake_case)]
-mod LayoutQueriesTest;
-#[allow(non_snake_case)]
-mod LinkAddressDisplayTest;
-#[allow(non_snake_case)]
-mod TextRangeTest;
-#[allow(non_snake_case)]
-mod UnicodeScriptEvidenceTest;
-#[allow(non_snake_case)]
-mod UnicodeWordCharacterTest;
+mod east_asian_spacing_test;
+mod layout_queries_test;
+mod link_address_display_test;
+mod text_range_test;
+mod unicode_script_evidence_test;
+mod unicode_word_character_test;

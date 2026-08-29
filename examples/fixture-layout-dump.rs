@@ -4,25 +4,25 @@ use std::io::{self, Read};
 use tiqian::common::HashSet;
 
 use serde::Deserialize;
-use tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::clreq_profile::{
     BuiltInClreqProfileResolver, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
 };
-use tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::core::Text::Text;
-use tiqian::core::TextModel::{
+use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::text::Text;
+use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineAttachment, LastLineAlignment, LayoutInput,
     LayoutProfileId, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
     MeasureAdaptiveFirstLineIndent, ParagraphStyle, RubyKind, RubyLineHeightMode, RubySpan,
     TextStyle, TiqianTextContent, WritingMode,
 };
-use tiqian::core::Units::Ic;
-use tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
-use tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::units::Ic;
+use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
+use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
+use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::linebreak::EnglishHyphenation::english_hyphenation;
-use tiqian::linebreak::Hyphenation::{Hyphenator, NoHyphenator};
+use tiqian::linebreak::english_hyphenation::english_hyphenation;
+use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
 
 static NO_HYPHENATOR: NoHyphenator = NoHyphenator;
 
@@ -131,7 +131,7 @@ struct FixtureProfileResolver {
     pin_basic_no_hang: bool,
 }
 impl ClreqProfileResolver for FixtureProfileResolver {
-    fn resolve(&self, profile_id: &LayoutProfileId) -> tiqian::clreq::ClreqProfile::ClreqProfile {
+    fn resolve(&self, profile_id: &LayoutProfileId) -> tiqian::clreq::clreq_profile::ClreqProfile {
         let mut profile = BuiltInClreqProfileResolver.resolve(profile_id);
         if self.pin_basic_no_hang {
             profile.kinsoku_mode = KinsokuMode::fixed(KinsokuLevel::Basic);
@@ -158,7 +158,7 @@ fn main() {
     }
 }
 
-fn layout(wire: &FixtureWire, breaker: &str) -> tiqian::core::LayoutModel::LayoutResult {
+fn layout(wire: &FixtureWire, breaker: &str) -> tiqian::core::layout_model::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = match breaker {
         "greedy" => Box::new(GreedyLineBreaker::default()),
@@ -325,11 +325,11 @@ fn ruby_line_height_mode(value: &str) -> RubyLineHeightMode {
         RubyLineHeightMode::PerLine
     }
 }
-fn alignment(value: Option<&str>) -> Option<tiqian::core::TextModel::LastLineAlignment> {
+fn alignment(value: Option<&str>) -> Option<tiqian::core::text_model::LastLineAlignment> {
     match value {
-        None | Some("Start") => value.map(|_| tiqian::core::TextModel::LastLineAlignment::Start),
-        Some("Center") => Some(tiqian::core::TextModel::LastLineAlignment::Center),
-        Some("End") => Some(tiqian::core::TextModel::LastLineAlignment::End),
+        None | Some("Start") => value.map(|_| tiqian::core::text_model::LastLineAlignment::Start),
+        Some("Center") => Some(tiqian::core::text_model::LastLineAlignment::Center),
+        Some("End") => Some(tiqian::core::text_model::LastLineAlignment::End),
         Some(other) => panic!("unsupported alignment {other}"),
     }
 }
@@ -349,7 +349,7 @@ fn writing_mode(value: &str) -> WritingMode {
     }
 }
 
-fn dump_result(label: &str, result: &tiqian::core::LayoutModel::LayoutResult) -> String {
+fn dump_result(label: &str, result: &tiqian::core::layout_model::LayoutResult) -> String {
     let mut out = format!(
         "== {label} ==\nsize {}x{}\n",
         fmt(result.size.width),

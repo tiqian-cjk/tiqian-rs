@@ -1,80 +1,39 @@
-#[allow(non_snake_case)]
-mod AsciiPointMarkKinsokuTest;
-#[allow(non_snake_case)]
-#[allow(non_snake_case)]
-#[allow(non_snake_case)]
-mod AttachedInlineBoundaryRelocationTest;
-#[allow(non_snake_case)]
-mod AutoSpaceSingleGapTest;
-#[allow(non_snake_case)]
-mod BaselineAlignmentTest;
-#[allow(non_snake_case)]
-mod BilingualEmphasisTest;
-#[allow(non_snake_case)]
-mod BopomofoLayoutTest;
-#[allow(non_snake_case)]
-mod DecideHyphenBreakTest;
-#[allow(non_snake_case)]
-mod DisplayGlyphSubstitutionEngineTest;
-#[allow(non_snake_case)]
-mod EmergencyGraphemeTrackingTest;
-#[allow(non_snake_case)]
-mod ExplainableStubParagraphLayoutEngineTest;
-#[allow(non_snake_case)]
-mod FontInstanceMetricsRequestTest;
-#[allow(non_snake_case)]
-mod GreedyLineBreakerTest;
-#[allow(non_snake_case)]
-mod HyphenationLayoutTest;
-#[allow(non_snake_case)]
-mod InlineBoxLayoutTest;
-#[allow(non_snake_case)]
-mod InlineObjectLayoutTest;
-#[allow(non_snake_case)]
-mod JustifierCompressionTest;
-#[allow(non_snake_case)]
-mod JustifierEngineTest;
-#[allow(non_snake_case)]
-mod JustifierTest;
-#[allow(non_snake_case)]
-mod KinsokuAndCohesionRepairEngineTest;
-#[allow(non_snake_case)]
-mod LineAdjustmentPushInTest;
-#[allow(non_snake_case)]
-mod LineBreakRepairEngineTest;
-#[allow(non_snake_case)]
-mod LookaheadLineBreakerTest;
-#[allow(non_snake_case)]
-mod OpeningBracketLineStartTest;
-#[allow(non_snake_case)]
-mod ParagraphDpLineBreakerTest;
-#[allow(non_snake_case)]
-mod ProgressiveTechnicalBreakTest;
-#[allow(non_snake_case)]
-mod PunctuationAtomBuilderHaltTest;
-#[allow(non_snake_case)]
-mod PunctuationBodyFloorInvariantTest;
-#[allow(non_snake_case)]
-mod PunctuationGeometryEngineTest;
-#[allow(non_snake_case)]
-mod PunctuationSpacingRuleTest;
-#[allow(non_snake_case)]
-mod PushInLineWideCapacityTest;
-#[allow(non_snake_case)]
-mod QuoteClassificationEngineTest;
-#[allow(non_snake_case)]
-mod QuotePairAnalyzerTest;
-#[allow(non_snake_case)]
-mod RubyLayoutTest;
-#[allow(non_snake_case)]
-mod SpacingAndLineGeometryEngineTest;
-#[allow(non_snake_case)]
-mod UnicodeEmoji17RgiRoleAuditTest;
-#[allow(non_snake_case)]
-mod UnicodePunctuationBoundaryTest;
-#[allow(non_snake_case)]
-mod VerbatimRangeAutoSpaceTest;
-#[allow(non_snake_case)]
-mod WidthIndependentAnnotationCacheTest;
-#[allow(non_snake_case)]
-mod ZeroWidthBreakControlLayoutTest;
+mod ascii_point_mark_kinsoku_test;
+mod attached_inline_boundary_relocation_test;
+mod auto_space_single_gap_test;
+mod baseline_alignment_test;
+mod bilingual_emphasis_test;
+mod bopomofo_layout_test;
+mod decide_hyphen_break_test;
+mod display_glyph_substitution_engine_test;
+mod emergency_grapheme_tracking_test;
+mod explainable_stub_paragraph_layout_engine_test;
+mod font_instance_metrics_request_test;
+mod greedy_line_breaker_test;
+mod hyphenation_layout_test;
+mod inline_box_layout_test;
+mod inline_object_layout_test;
+mod justifier_compression_test;
+mod justifier_engine_test;
+mod justifier_test;
+mod kinsoku_and_cohesion_repair_engine_test;
+mod line_adjustment_push_in_test;
+mod line_break_repair_engine_test;
+mod lookahead_line_breaker_test;
+mod opening_bracket_line_start_test;
+mod paragraph_dp_line_breaker_test;
+mod progressive_technical_break_test;
+mod punctuation_atom_builder_halt_test;
+mod punctuation_body_floor_invariant_test;
+mod punctuation_geometry_engine_test;
+mod punctuation_spacing_rule_test;
+mod push_in_line_wide_capacity_test;
+mod quote_classification_engine_test;
+mod quote_pair_analyzer_test;
+mod ruby_layout_test;
+mod spacing_and_line_geometry_engine_test;
+mod unicode_emoji17_rgi_role_audit_test;
+mod unicode_punctuation_boundary_test;
+mod verbatim_range_auto_space_test;
+mod width_independent_annotation_cache_test;
+mod zero_width_break_control_layout_test;

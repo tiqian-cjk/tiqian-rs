@@ -1,13 +1,13 @@
 use tiqian::common::HashMap;
 
-use tiqian::core::Geometry::TextRange;
-use tiqian::core::LayoutModel::LayoutResult;
-use tiqian::core::LayoutQueries::{
+use tiqian::core::geometry::TextRange;
+use tiqian::core::layout_model::LayoutResult;
+use tiqian::core::layout_queries::{
     positioned_clusters, positioned_rich_text_segments, resolved_background_corner_radii,
     rich_text_background_segments, rich_text_decoration_line_y,
     trimmed_rich_text_decoration_segments,
 };
-use tiqian::core::TextModel::{
+use tiqian::core::text_model::{
     RichTextBackgroundDrawStyle, RichTextLinePattern, RichTextRole, RichTextSpan, TextSpan,
     TextStyle,
 };
@@ -178,7 +178,7 @@ impl<'a> DemoRenderer<'a> {
     fn paint_annotation_glyph(
         &self,
         scene: &mut Scene,
-        glyph: &tiqian::core::LayoutModel::Glyph,
+        glyph: &tiqian::core::layout_model::Glyph,
         font_size: f32,
         origin_x: f32,
         origin_y: f32,
@@ -372,7 +372,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        segment: &tiqian::core::LayoutQueries::RichTextLineSegment,
+        segment: &tiqian::core::layout_queries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -395,7 +395,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        segment: &tiqian::core::LayoutQueries::RichTextLineSegment,
+        segment: &tiqian::core::layout_queries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
         dash_length: f32,
@@ -427,7 +427,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        segment: &tiqian::core::LayoutModel::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         font_size: f32,
         stroke_width: f32,
@@ -503,7 +503,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        segment: &tiqian::core::LayoutModel::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -532,7 +532,7 @@ impl<'a> DemoRenderer<'a> {
     fn kept_intervals_for_rich_text_line(
         &self,
         result: &LayoutResult,
-        segment: &tiqian::core::LayoutQueries::RichTextLineSegment,
+        segment: &tiqian::core::layout_queries::RichTextLineSegment,
         line_y: f32,
         stroke_width: f32,
     ) -> Vec<(f32, f32)> {
@@ -586,7 +586,7 @@ impl<'a> DemoRenderer<'a> {
     fn stroke_mourning_segment(
         &self,
         scene: &mut Scene,
-        segment: &tiqian::core::LayoutModel::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -856,15 +856,15 @@ fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srg
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tiqian::core::Geometry::{LayoutConstraints, TextRange};
-    use tiqian::core::Text::Text;
-    use tiqian::core::TextModel::{
+    use tiqian::core::geometry::{LayoutConstraints, TextRange};
+    use tiqian::core::text::Text;
+    use tiqian::core::text_model::{
         DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
         RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
         RubyKind, RubySpan, TextStyle, TiqianTextContent,
     };
-    use tiqian::core::Units::Ic;
-    use tiqian::layout::ParagraphLayoutEngine::{
+    use tiqian::core::units::Ic;
+    use tiqian::layout::paragraph_layout_engine::{
         ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
     };
 
