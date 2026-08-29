@@ -10,11 +10,18 @@ version = "0.1.0"
 
 include = ["src/**/*", "resources/hyphenation/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
+[features]
+collections-hashbrown = ["dep:hashbrown"]
+collections-std = []
+default = ["collections-hashbrown"]
+
 [dependencies]
-bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
-icu_properties = { version = "2.3", features = ["compiled_data"] }
+bytecount = {version = "0.6", features = ["runtime-dispatch-simd"]}
+icu_properties = {version = "2.3", features = ["compiled_data"]}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
+
+hashbrown = {version = "0.17", optional = true}
 
 [dev-dependencies]
 harfrust = "0.13"
