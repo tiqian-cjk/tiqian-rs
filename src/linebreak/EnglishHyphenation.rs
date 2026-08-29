@@ -27,5 +27,5 @@ pub mod english_hyphenation {
 }
 
 fn load_bundled_english_hyphenation_patterns() -> &'static str {
-    include_str!("../../../../resources/hyphenation/hyph-en-us.tex")
+    include_str!("../../resources/hyphenation/hyph-en-us.tex")
 }

@@ -1,7 +1,7 @@
-use tiqian::org::tiqian::core::EastAsianSpacing::{
+use tiqian::core::EastAsianSpacing::{
     EastAsianSpacingEdges, EastAsianSpacingValue, unicode_east_asian_spacing,
 };
-use tiqian::org::tiqian::core::Text::Text;
+use tiqian::core::Text::Text;
 
 #[test]
 fn chinese_language_context_uses_pinned_macrolanguage_registry() {

@@ -1,9 +1,9 @@
-use tiqian::org::tiqian::font::FontMetrics::FontMetricsRequest;
-use tiqian::org::tiqian::font::FontMetrics::{
+use tiqian::font::FontMetrics::FontMetricsRequest;
+use tiqian::font::FontMetrics::{
     BaselineClass, FontMetricSource, FontMetricsNormalizationInput, FontMetricsNormalizer,
     FontMetricsResolver, MetricBox, ScriptAwareFontMetricsNormalizer, StubFontMetricsResolver,
 };
-use tiqian::org::tiqian::font::FontPolicy::{FontMetricsPolicy, FontRole, RawFontMetrics};
+use tiqian::font::FontPolicy::{FontMetricsPolicy, FontRole, RawFontMetrics};
 
 fn request(font_key: &str, role: FontRole, locale: &str) -> FontMetricsRequest {
     FontMetricsRequest::new(font_key.to_owned(), 16.0, role, locale.to_owned())

@@ -18,8 +18,8 @@ use super::super::shaping::TextShaper::{
 };
 use super::ClusterRoleResolution::ResolvedClusterRange;
 use super::ProgressiveBreakDecisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
-use icu_properties::{CodePointMapData, props::GeneralCategory};
 use crate::common::{HashMap, HashSet};
+use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {

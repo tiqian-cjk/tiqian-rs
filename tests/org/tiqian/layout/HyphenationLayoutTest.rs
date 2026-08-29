@@ -1,22 +1,18 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
-};
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
-    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::EnglishHyphenation::english_hyphenation;
-use tiqian::org::tiqian::linebreak::Hyphenation::{Hyphenator, NoHyphenator};
+use tiqian::linebreak::EnglishHyphenation::english_hyphenation;
+use tiqian::linebreak::Hyphenation::{Hyphenator, NoHyphenator};
 
 struct PushOutOnlyProfile;
 
 impl ClreqProfileResolver for PushOutOnlyProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.adjustment.line_adjustment = LineAdjustmentStrategy::PushOutOnly;
         profile
@@ -27,7 +23,7 @@ fn layout_with(
     hyphenator: &'static dyn Hyphenator,
     text: &str,
     max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = hyphenator;
     engine.layout(

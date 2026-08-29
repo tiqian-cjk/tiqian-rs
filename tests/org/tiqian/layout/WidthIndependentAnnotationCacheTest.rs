@@ -1,23 +1,23 @@
-use tiqian::common::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use tiqian::common::HashMap;
 
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, ParagraphStyle, RubySpan,
     TextStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::layout::WidthIndependentAnnotationCache::{
+use tiqian::layout::WidthIndependentAnnotationCache::{
     LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
     WidthIndependentAnnotationKey, WidthIndependentParagraphAnnotation,
     to_width_independent_annotation_key,
 };
-use tiqian::org::tiqian::shaping::TextShaper::{
+use tiqian::shaping::TextShaper::{
     ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
 };
 

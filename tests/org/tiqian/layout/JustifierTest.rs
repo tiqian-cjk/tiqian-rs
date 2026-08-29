@@ -1,13 +1,13 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::EastAsianSpacing::unicode_east_asian_spacing;
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::font::FontPolicy::FontRole;
-use tiqian::org::tiqian::layout::Justifier::{JustificationRequest, Justifier};
-use tiqian::org::tiqian::layout::PunctuationModel::GlueKind;
+use tiqian::core::EastAsianSpacing::unicode_east_asian_spacing;
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::font::FontPolicy::FontRole;
+use tiqian::layout::Justifier::{JustificationRequest, Justifier};
+use tiqian::layout::PunctuationModel::GlueKind;
 
 const EM: f32 = 16.0;
 
@@ -20,9 +20,7 @@ fn cluster(start: i32, end: i32, text: &str, advance: f32, font_key: &str) -> Cl
     )
 }
 
-fn edges(
-    clusters: &[Cluster],
-) -> Vec<tiqian::org::tiqian::core::EastAsianSpacing::EastAsianSpacingEdges> {
+fn edges(clusters: &[Cluster]) -> Vec<tiqian::core::EastAsianSpacing::EastAsianSpacingEdges> {
     clusters
         .iter()
         .map(|cluster| unicode_east_asian_spacing::resolved_edges(&cluster.text, "zh-Hans"))
@@ -34,7 +32,7 @@ fn justify(
     roles: &[FontRole],
     max_width: f32,
     configure: impl FnOnce(&mut JustificationRequest<'_>),
-) -> tiqian::org::tiqian::layout::Justifier::JustificationPlan {
+) -> tiqian::layout::Justifier::JustificationPlan {
     let spacing = edges(clusters);
     let mut request = JustificationRequest::new(
         clusters,

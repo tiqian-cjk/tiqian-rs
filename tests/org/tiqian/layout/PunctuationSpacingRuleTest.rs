@@ -1,7 +1,7 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{PunctuationGluePlacement, PunctuationWidthPolicy};
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::PunctuationModel::{
+use tiqian::clreq::ClreqProfile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::Text::Text;
+use tiqian::layout::PunctuationModel::{
     PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,
 };
 

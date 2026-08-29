@@ -1,4 +1,4 @@
-use tiqian::org::tiqian::core::UnicodeWordCharacter::unicode_word_character;
+use tiqian::core::UnicodeWordCharacter::unicode_word_character;
 
 #[test]
 fn letters_and_numbers_are_word_characters_across_scripts() {

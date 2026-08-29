@@ -1,18 +1,18 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::LayoutModel::BopomofoGlyphRole;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::LayoutModel::BopomofoGlyphRole;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
 fn layout(
     ruby_spans: Vec<RubySpan>,
     spans: Vec<TextSpan>,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中文"))

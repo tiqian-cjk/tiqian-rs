@@ -1,15 +1,15 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::org::tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
+use tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::layout::UnicodePunctuationBoundaryResolver::resolve_attached_inline_virtual_boundaries;
+use tiqian::layout::UnicodePunctuationBoundaryResolver::resolve_attached_inline_virtual_boundaries;
 
 fn attached_span(range: TextRange) -> TextSpan {
     TextSpan {
@@ -20,7 +20,7 @@ fn attached_span(range: TextRange) -> TextSpan {
     }
 }
 
-fn layout_reference(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_reference(text: &str) -> tiqian::core::LayoutModel::LayoutResult {
     let byte_start = text.find("[1]").unwrap();
     let start = text[..byte_start].encode_utf16().count() as i32;
     ExplainableStubParagraphLayoutEngine::default().layout(
@@ -104,17 +104,17 @@ fn attached_reference_never_starts_wrapped_line_for_supported_breakers() {
         (
             "greedy",
             Box::new(GreedyLineBreaker::default())
-                as Box<dyn tiqian::org::tiqian::layout::LineBreaker::LineBreaker>,
+                as Box<dyn tiqian::layout::LineBreaker::LineBreaker>,
         ),
         (
             "lookahead",
             Box::new(LookaheadLineBreaker::default())
-                as Box<dyn tiqian::org::tiqian::layout::LineBreaker::LineBreaker>,
+                as Box<dyn tiqian::layout::LineBreaker::LineBreaker>,
         ),
         (
             "paragraph-dp",
             Box::new(ParagraphDpLineBreaker::default())
-                as Box<dyn tiqian::org::tiqian::layout::LineBreaker::LineBreaker>,
+                as Box<dyn tiqian::layout::LineBreaker::LineBreaker>,
         ),
     ] {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();

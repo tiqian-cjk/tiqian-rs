@@ -1,6 +1,6 @@
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::Text::Text;
+use tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole};
 
 fn classify(text: &str, start: i32, end: i32) -> FontRole {
     CjkFontRoleClassifier

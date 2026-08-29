@@ -1,21 +1,17 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
-};
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
-    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::Hyphenation::NoHyphenator;
+use tiqian::linebreak::Hyphenation::NoHyphenator;
 
 struct FixedBasicProfile;
 
 impl ClreqProfileResolver for FixedBasicProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.kinsoku_mode = KinsokuMode::fixed(KinsokuLevel::Basic);
         profile
@@ -29,11 +25,7 @@ fn engine() -> ExplainableStubParagraphLayoutEngine {
     engine
 }
 
-fn layout(
-    text: &str,
-    max_width: f32,
-    grid: bool,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(text: &str, max_width: f32, grid: bool) -> tiqian::core::LayoutModel::LayoutResult {
     engine().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

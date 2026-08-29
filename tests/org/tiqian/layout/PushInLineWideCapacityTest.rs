@@ -1,10 +1,10 @@
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
-use tiqian::org::tiqian::layout::LineOptimization::RepairOption;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
+use tiqian::layout::LineOptimization::RepairOption;
+use tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
@@ -27,7 +27,7 @@ fn break_lines(
     clusters: &[Cluster],
     opportunities: Vec<ShrinkOpportunity>,
     max_width: f32,
-) -> tiqian::org::tiqian::layout::LineOptimization::LineSolution {
+) -> tiqian::layout::LineOptimization::LineSolution {
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities = opportunities;
     GreedyLineBreaker::default().break_lines(clusters, clusters, max_width, &config)

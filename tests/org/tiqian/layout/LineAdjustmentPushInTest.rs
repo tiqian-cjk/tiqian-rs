@@ -1,13 +1,13 @@
 use tiqian::common::{HashMap, HashSet};
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::LineBreaker::rebuild_line;
-use tiqian::org::tiqian::layout::LineOptimization::{LineCandidate, RepairOption};
-use tiqian::org::tiqian::layout::LineRepair::apply_fill_push_in;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::layout::LineBreaker::rebuild_line;
+use tiqian::layout::LineOptimization::{LineCandidate, RepairOption};
+use tiqian::layout::LineRepair::apply_fill_push_in;
+use tiqian::layout::ProgressiveBreakDecisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
 };
 
@@ -28,7 +28,7 @@ fn lines(clusters: &[Cluster], ranges: &[(i32, i32)]) -> Vec<LineCandidate> {
                 IntRange::new(*first, *last),
                 clusters,
                 clusters,
-                tiqian::org::tiqian::core::LayoutModel::LineEndReason::AutoWrap,
+                tiqian::core::LayoutModel::LineEndReason::AutoWrap,
                 None,
                 Vec::new(),
             )

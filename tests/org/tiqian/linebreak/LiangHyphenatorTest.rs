@@ -1,7 +1,7 @@
 use tiqian::common::HashMap;
 
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::linebreak::Hyphenation::{
+use tiqian::core::Text::Text;
+use tiqian::linebreak::Hyphenation::{
     Hyphenator, LiangHyphenator, NoHyphenator, parse_tex_hyphenation_patterns,
 };
 

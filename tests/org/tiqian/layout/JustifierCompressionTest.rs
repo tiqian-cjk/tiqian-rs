@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::layout::Justifier::Justifier;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::Justifier::Justifier;
+use tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn opportunity(cluster_index: i32, tier: i32, capacity: f32) -> ShrinkOpportunity {
     ShrinkOpportunity::new(cluster_index, tier, capacity, ShrinkChannel::TrailingGlue)

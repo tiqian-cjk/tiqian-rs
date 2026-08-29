@@ -1,10 +1,8 @@
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::TextStyle;
-use tiqian::org::tiqian::font::FontPolicy::{FontCandidate, FontDecision, FontRole};
-use tiqian::org::tiqian::shaping::TextShaper::{
-    ExplainableStubTextShaper, ShapingInput, TextShaper,
-};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::TextStyle;
+use tiqian::font::FontPolicy::{FontCandidate, FontDecision, FontRole};
+use tiqian::shaping::TextShaper::{ExplainableStubTextShaper, ShapingInput, TextShaper};
 
 fn input(text: &str, role: FontRole, display_text: &str) -> ShapingInput {
     let range = TextRange::new(0, Text::from(text).utf16_len());

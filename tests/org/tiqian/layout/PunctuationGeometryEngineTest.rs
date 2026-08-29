@@ -1,23 +1,21 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver};
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
-    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver};
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
 struct TaiwanProfile;
 
 impl ClreqProfileResolver for TaiwanProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         ClreqProfile::taiwan_horizontal()
     }
 }
 
-fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(text: &str) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

@@ -1,4 +1,4 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::ClreqProfile::{
     ClreqProfile, ClreqRegion, GlueSide, PunctuationClass, PunctuationGluePlacement,
 };
 

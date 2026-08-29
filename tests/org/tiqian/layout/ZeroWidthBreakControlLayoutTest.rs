@@ -1,29 +1,21 @@
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
-    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::Hyphenation::NoHyphenator;
+use tiqian::linebreak::Hyphenation::NoHyphenator;
 
-fn layout_with_greedy(
-    text: &str,
-    max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_greedy(text: &str, max_width: f32) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(GreedyLineBreaker::default());
     engine.hyphenator = &NoHyphenator;
     engine.layout(input(text, max_width))
 }
 
-fn layout_with_lookahead(
-    text: &str,
-    max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_lookahead(text: &str, max_width: f32) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(LookaheadLineBreaker::default());
     engine.hyphenator = &NoHyphenator;

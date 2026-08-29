@@ -1,10 +1,10 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, RubyLineHeightMode, RubySpan, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
@@ -13,7 +13,7 @@ fn layout(
     max_width: f32,
     style: ParagraphStyle,
     ruby_spans: Vec<RubySpan>,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

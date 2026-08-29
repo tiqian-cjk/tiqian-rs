@@ -1,4 +1,4 @@
-use tiqian::org::tiqian::linebreak::UnicodePunctuationLineBreak::{
+use tiqian::linebreak::UnicodePunctuationLineBreak::{
     UnicodePunctuationLineBreakClass, unicode_punctuation_line_break,
 };
 

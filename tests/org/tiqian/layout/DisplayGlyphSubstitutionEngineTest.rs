@@ -1,20 +1,18 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver,
-};
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::clreq::ClreqProfile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
 struct PreserveInputProfile;
 
 impl ClreqProfileResolver for PreserveInputProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.punctuation_glyph_policy = CjkPunctuationGlyphPolicy::PreserveInput;
         profile
@@ -24,7 +22,7 @@ impl ClreqProfileResolver for PreserveInputProfile {
 struct SplitDashProfile;
 
 impl ClreqProfileResolver for SplitDashProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.punctuation_glyph_policy = CjkPunctuationGlyphPolicy::PreserveInput;
         profile.coalesce_repeatable_punctuation = HashSet::new();
@@ -35,7 +33,7 @@ impl ClreqProfileResolver for SplitDashProfile {
 fn layout(
     text: &str,
     profile: Option<Box<dyn ClreqProfileResolver>>,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     if let Some(profile) = profile {
         engine.clreq_profile_resolver = profile;

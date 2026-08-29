@@ -1,17 +1,17 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, Rect, TextRange};
-use tiqian::org::tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, LineEndReason};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::LayoutModel::{Cluster, Glyph, GlyphRun, LineEndReason};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::LineBreaker::LookaheadLineBreaker;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::LineBreaker::LookaheadLineBreaker;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::TextShaper::{ShapingInput, ShapingResult, TextShaper};
 
 fn input(text: &str) -> LayoutInput {
     LayoutInput::builder(

@@ -1,15 +1,12 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
-fn layout(
-    text: &str,
-    suppressed: Vec<TextRange>,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(text: &str, suppressed: Vec<TextRange>) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))

@@ -1,9 +1,9 @@
 use tiqian::common::{HashMap, HashSet};
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::layout::ProgressiveBreakDecisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, decide_progressive_break,
     progressive_candidate_allowed,
 };

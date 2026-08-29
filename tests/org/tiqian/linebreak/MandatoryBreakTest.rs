@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::linebreak::LineBreak::{
+use tiqian::core::Text::Text;
+use tiqian::linebreak::LineBreak::{
     BreakKind, LineBreakAnalyzer, SimpleCharacterLineBreakAnalyzer, is_mandatory_break_code_point,
     is_zero_width_space_code_point,
 };

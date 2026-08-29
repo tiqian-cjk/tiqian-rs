@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::link_address_display::displays_address;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::link_address_display::displays_address;
 
 #[test]
 fn identical_display_and_target_is_an_address() {

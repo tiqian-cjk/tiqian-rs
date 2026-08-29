@@ -1,20 +1,18 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
-};
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LastLineAlignment, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
 struct PushOutOnlyProfile;
 
 impl ClreqProfileResolver for PushOutOnlyProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.adjustment.line_adjustment = LineAdjustmentStrategy::PushOutOnly;
         profile
@@ -31,7 +29,7 @@ fn layout(
     text: &str,
     max_width: f32,
     style: ParagraphStyle,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     engine().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

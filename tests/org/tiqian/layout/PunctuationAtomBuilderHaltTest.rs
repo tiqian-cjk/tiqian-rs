@@ -1,8 +1,8 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::ClreqProfile::{
     InteriorPunctuationStyle, PunctuationGluePlacement, PunctuationWidthPolicy,
 };
-use tiqian::org::tiqian::core::Geometry::{Rect, TextRange};
-use tiqian::org::tiqian::layout::PunctuationModel::{
+use tiqian::core::Geometry::{Rect, TextRange};
+use tiqian::layout::PunctuationModel::{
     PunctuationAnchor, PunctuationAtomBuilder, PunctuationInkInput,
 };
 
@@ -13,7 +13,7 @@ fn atom(
     ink: PunctuationInkInput,
     placement: PunctuationGluePlacement,
     width: PunctuationWidthPolicy,
-) -> tiqian::org::tiqian::layout::PunctuationModel::PunctuationAtom {
+) -> tiqian::layout::PunctuationModel::PunctuationAtom {
     PunctuationAtomBuilder::new(placement, width)
         .build(
             character,

@@ -1,4 +1,4 @@
-use tiqian::org::tiqian::core::Geometry::TextRange;
+use tiqian::core::Geometry::TextRange;
 
 #[test]
 fn exposes_length() {

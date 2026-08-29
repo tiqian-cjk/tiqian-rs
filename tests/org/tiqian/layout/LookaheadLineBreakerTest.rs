@@ -1,14 +1,14 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::LineBreaker::{
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::layout::LineBreaker::{
     GreedyLineBreaker, LineBreaker, LineBreakerConfig, LookaheadLineBreaker,
 };
-use tiqian::org::tiqian::layout::LineOptimization::{LineCandidate, RepairOption};
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::LineOptimization::{LineCandidate, RepairOption};
+use tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn cluster(start: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -24,7 +24,7 @@ fn break_lines(
     clusters: &[Cluster],
     max_width: f32,
     config: LineBreakerConfig,
-) -> tiqian::org::tiqian::layout::LineOptimization::LineSolution {
+) -> tiqian::layout::LineOptimization::LineSolution {
     breaker.break_lines(clusters, clusters, max_width, &config)
 }
 
@@ -37,14 +37,14 @@ fn hanging_tail_is_excluded_from_fill_density_geometry() {
     assert_eq!(IntRange::new(0, 0), line.in_measure_cluster_range());
     assert_eq!(
         0,
-        tiqian::org::tiqian::layout::LineBreaker::line_gap_count(
+        tiqian::layout::LineBreaker::line_gap_count(
             line.in_measure_cluster_range(),
             &HashSet::from([1, 2])
         )
     );
     assert_eq!(
         0.0,
-        tiqian::org::tiqian::layout::LineBreaker::line_adjustment_density(
+        tiqian::layout::LineBreaker::line_adjustment_density(
             &line,
             48.0,
             false,
@@ -169,7 +169,7 @@ fn lookahead_scores_kinsoku_repairs_with_unbreakable_ranges() {
     config.unbreakable_ranges = vec![IntRange::new(6, 7)];
     config.forbidden_line_start_clusters = Some(HashSet::from([8]));
     let breaker = LookaheadLineBreaker::new(
-        Box::new(tiqian::org::tiqian::layout::KinsokuRule::ClreqKinsokuRule::default()),
+        Box::new(tiqian::layout::KinsokuRule::ClreqKinsokuRule::default()),
         2,
         2,
         0.5,
@@ -208,7 +208,7 @@ fn window_zero_reduces_lookahead_to_greedy() {
         cluster(6, "。", 16.0),
     ];
     let breaker = LookaheadLineBreaker::new(
-        Box::new(tiqian::org::tiqian::layout::KinsokuRule::ClreqKinsokuRule::default()),
+        Box::new(tiqian::layout::KinsokuRule::ClreqKinsokuRule::default()),
         0,
         2,
         0.5,

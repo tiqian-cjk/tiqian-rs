@@ -1,15 +1,11 @@
 use std::sync::{Arc, Mutex};
 
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
-    LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent,
-};
-use tiqian::org::tiqian::font::FontMetrics::{
-    FontMetricsRequest, FontMetricsResolver, StubFontMetricsResolver,
-};
-use tiqian::org::tiqian::font::FontPolicy::{FontRole, RawFontMetrics};
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent};
+use tiqian::font::FontMetrics::{FontMetricsRequest, FontMetricsResolver, StubFontMetricsResolver};
+use tiqian::font::FontPolicy::{FontRole, RawFontMetrics};
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 

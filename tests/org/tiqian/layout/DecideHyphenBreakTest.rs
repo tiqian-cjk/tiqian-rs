@@ -1,9 +1,9 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::decide_hyphen_break;
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::layout::ProgressiveBreakDecisions::decide_hyphen_break;
 
 fn cluster(start: i32, advance: f32) -> Cluster {
     Cluster::new(

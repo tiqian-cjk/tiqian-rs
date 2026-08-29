@@ -1,35 +1,30 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::clreq::ClreqProfile::{
-    ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
-};
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::LayoutModel::Cluster;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::font::FontPolicy::FontRole;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::clreq::ClreqProfile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::LayoutModel::Cluster;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::font::FontPolicy::FontRole;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::layout::UnicodePunctuationBoundaryResolver::resolve_western_bracket_cjk_inter_char_boundaries;
-use tiqian::org::tiqian::linebreak::Hyphenation::NoHyphenator;
+use tiqian::layout::UnicodePunctuationBoundaryResolver::resolve_western_bracket_cjk_inter_char_boundaries;
+use tiqian::linebreak::Hyphenation::NoHyphenator;
 
 struct KinsokuNoneProfile;
 
 impl ClreqProfileResolver for KinsokuNoneProfile {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.kinsoku_mode = KinsokuMode::fixed(KinsokuLevel::None);
         profile
     }
 }
 
-fn layout_with_greedy(
-    text: &str,
-    max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_greedy(text: &str, max_width: f32) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(GreedyLineBreaker::default());
     engine.hyphenator = &NoHyphenator;
@@ -48,10 +43,7 @@ fn layout_with_greedy(
     )
 }
 
-fn layout_with_lookahead(
-    text: &str,
-    max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout_with_lookahead(text: &str, max_width: f32) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(LookaheadLineBreaker::default());
     engine.hyphenator = &NoHyphenator;
@@ -70,10 +62,7 @@ fn layout_with_lookahead(
     )
 }
 
-fn line_texts<'a>(
-    result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult,
-    text: &'a str,
-) -> Vec<&'a str> {
+fn line_texts<'a>(result: &tiqian::core::LayoutModel::LayoutResult, text: &'a str) -> Vec<&'a str> {
     let indexed = Text::from(text);
     result
         .lines

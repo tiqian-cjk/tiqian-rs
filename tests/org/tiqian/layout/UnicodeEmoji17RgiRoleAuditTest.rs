@@ -5,11 +5,11 @@
 // Copyright © 2025 Unicode, Inc.
 // Terms of Use: https://www.unicode.org/terms_of_use.html
 
-use tiqian::org::tiqian::clreq::ClreqProfile::ClreqProfile;
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole, FontRoleContext};
-use tiqian::org::tiqian::layout::ClusterRoleResolution::cluster_role_ranges;
+use tiqian::clreq::ClreqProfile::ClreqProfile;
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::Text::Text;
+use tiqian::font::FontPolicy::{CjkFontRoleClassifier, FontRole, FontRoleContext};
+use tiqian::layout::ClusterRoleResolution::cluster_role_ranges;
 
 #[test]
 fn fully_qualified_emoji_sequences_resolve_to_one_emoji_range() {

@@ -1,12 +1,12 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::{Cluster, LineEndReason};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
-use tiqian::org::tiqian::layout::LineOptimization::RepairOption;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::{Cluster, LineEndReason};
+use tiqian::core::Text::Text;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
+use tiqian::layout::LineOptimization::RepairOption;
+use tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn cluster(start: i32, end: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -21,7 +21,7 @@ fn break_lines(
     clusters: &[Cluster],
     max_width: f32,
     config: LineBreakerConfig,
-) -> tiqian::org::tiqian::layout::LineOptimization::LineSolution {
+) -> tiqian::layout::LineOptimization::LineSolution {
     GreedyLineBreaker::default().break_lines(clusters, clusters, max_width, &config)
 }
 

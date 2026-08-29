@@ -1,13 +1,13 @@
 use tiqian::common::HashSet;
 
-use tiqian::org::tiqian::core::Geometry::TextRange;
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::{Cluster, LineEndReason};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::layout::LineBreaker::{LineBreaker, LineBreakerConfig};
-use tiqian::org::tiqian::layout::LineOptimization::RepairOption;
-use tiqian::org::tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
-use tiqian::org::tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::core::Geometry::TextRange;
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::{Cluster, LineEndReason};
+use tiqian::core::Text::Text;
+use tiqian::layout::LineBreaker::{LineBreaker, LineBreakerConfig};
+use tiqian::layout::LineOptimization::RepairOption;
+use tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
+use tiqian::layout::ProgressiveBreakDecisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -26,14 +26,11 @@ fn break_lines(
     clusters: &[Cluster],
     max_width: f32,
     config: LineBreakerConfig,
-) -> tiqian::org::tiqian::layout::LineOptimization::LineSolution {
+) -> tiqian::layout::LineOptimization::LineSolution {
     ParagraphDpLineBreaker::default().break_lines(clusters, clusters, max_width, &config)
 }
 
-fn assert_tiles(
-    solution: &tiqian::org::tiqian::layout::LineOptimization::LineSolution,
-    cluster_count: i32,
-) {
+fn assert_tiles(solution: &tiqian::layout::LineOptimization::LineSolution, cluster_count: i32) {
     let mut expected = 0;
     for line in &solution.lines {
         if line.cluster_range.is_empty() {

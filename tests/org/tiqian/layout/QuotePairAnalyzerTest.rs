@@ -1,8 +1,8 @@
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::font::FontPolicy::{FontRole, FontRoleContext};
-use tiqian::org::tiqian::layout::QuotePairAnalyzer::{QuotePair, QuotePairAnalyzer, QuoteType};
+use tiqian::core::Text::Text;
+use tiqian::font::FontPolicy::{FontRole, FontRoleContext};
+use tiqian::layout::QuotePairAnalyzer::{QuotePair, QuotePairAnalyzer, QuoteType};
 
-fn decisions(text: &str) -> Vec<tiqian::org::tiqian::layout::QuotePairAnalyzer::QuoteRoleDecision> {
+fn decisions(text: &str) -> Vec<tiqian::layout::QuotePairAnalyzer::QuoteRoleDecision> {
     let analyzer = QuotePairAnalyzer;
     let text = Text::from(text);
     let pairs = analyzer.analyze(&text);

@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::font::FontPolicy::{FontRole, font_role_name_uses_latin_face};
+use tiqian::core::Text::Text;
+use tiqian::font::FontPolicy::{FontRole, font_role_name_uses_latin_face};
 
 #[test]
 fn only_latin_text_uses_latin_face() {

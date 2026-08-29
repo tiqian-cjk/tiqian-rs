@@ -1,8 +1,8 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::ClreqProfile::{
     CjkPunctuationGlyphPolicy, ClreqPunctuationGlyphSubstitutor, clreq_punctuation_advance_policy,
     clreq_punctuation_policies,
 };
-use tiqian::org::tiqian::core::Text::Text;
+use tiqian::core::Text::Text;
 
 #[test]
 fn prefer_policy_uses_clreq_recommended_display_codepoints() {

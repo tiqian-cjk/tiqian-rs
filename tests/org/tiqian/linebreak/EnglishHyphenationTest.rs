@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::linebreak::EnglishHyphenation::english_hyphenation;
+use tiqian::core::Text::Text;
+use tiqian::linebreak::EnglishHyphenation::english_hyphenation;
 
 fn hyphenated(word: &str) -> String {
     let offsets = english_hyphenation::en_us().hyphenate(&Text::from(word));

@@ -1,17 +1,17 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, Rect, Size, TextRange};
-use tiqian::org::tiqian::core::IntRange::IntRange;
-use tiqian::org::tiqian::core::LayoutModel::{
+use tiqian::core::Geometry::{LayoutConstraints, Rect, Size, TextRange};
+use tiqian::core::IntRange::IntRange;
+use tiqian::core::LayoutModel::{
     AutoSpaceDecisionInfo, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph,
     GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyDecisionInfo,
 };
-use tiqian::org::tiqian::core::LayoutQueries::{
+use tiqian::core::LayoutQueries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
     positioned_rich_text_segments, trimmed_rich_text_decoration_segments,
 };
-use tiqian::org::tiqian::core::SourceInteractionBoundaries::SourceBoundaryBias;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::SourceInteractionBoundaries::SourceBoundaryBias;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     InlineObjectSpan, LayoutInput, RichTextRole, RichTextSpan, TextStyle, TiqianTextContent,
 };
 

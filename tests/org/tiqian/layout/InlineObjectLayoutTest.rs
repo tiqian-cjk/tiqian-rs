@@ -1,11 +1,11 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
     TextStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
@@ -17,7 +17,7 @@ fn style() -> ParagraphStyle {
         .build()
 }
 
-fn layout(objects: Vec<InlineObjectSpan>) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(objects: Vec<InlineObjectSpan>) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("甲乙")),

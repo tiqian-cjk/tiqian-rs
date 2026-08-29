@@ -1,4 +1,4 @@
-use tiqian::org::tiqian::core::UnicodeScriptEvidence::{
+use tiqian::core::UnicodeScriptEvidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
 };
 

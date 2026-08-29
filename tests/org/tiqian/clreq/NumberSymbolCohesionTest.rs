@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::clreq::NumberSymbolCohesion::number_symbol_cohesion;
-use tiqian::org::tiqian::core::Text::Text;
+use tiqian::clreq::NumberSymbolCohesion::number_symbol_cohesion;
+use tiqian::core::Text::Text;
 
 fn groups(text: &str) -> Vec<String> {
     number_symbol_cohesion::unbreakable_ranges(&Text::from(text))

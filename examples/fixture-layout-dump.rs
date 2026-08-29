@@ -1,28 +1,28 @@
 //! Development-only fixture runner. It accepts one JSON fixture on stdin and emits Kotlin's layout dump.
 
-use tiqian::common::HashSet;
 use std::io::{self, Read};
+use tiqian::common::HashSet;
 
 use serde::Deserialize;
-use tiqian::org::tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::ClreqProfile::{
     BuiltInClreqProfileResolver, ClreqProfileResolver, KinsokuLevel, KinsokuMode,
 };
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     DecorationKind, DecorationSpan, InlineAttachment, LastLineAlignment, LayoutInput,
     LayoutProfileId, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
     MeasureAdaptiveFirstLineIndent, ParagraphStyle, RubyKind, RubyLineHeightMode, RubySpan,
     TextStyle, TiqianTextContent, WritingMode,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::org::tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::LineBreaker::{GreedyLineBreaker, LookaheadLineBreaker};
+use tiqian::layout::ParagraphDpLineBreaker::ParagraphDpLineBreaker;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::EnglishHyphenation::english_hyphenation;
-use tiqian::org::tiqian::linebreak::Hyphenation::{Hyphenator, NoHyphenator};
+use tiqian::linebreak::EnglishHyphenation::english_hyphenation;
+use tiqian::linebreak::Hyphenation::{Hyphenator, NoHyphenator};
 
 static NO_HYPHENATOR: NoHyphenator = NoHyphenator;
 
@@ -131,10 +131,7 @@ struct FixtureProfileResolver {
     pin_basic_no_hang: bool,
 }
 impl ClreqProfileResolver for FixtureProfileResolver {
-    fn resolve(
-        &self,
-        profile_id: &LayoutProfileId,
-    ) -> tiqian::org::tiqian::clreq::ClreqProfile::ClreqProfile {
+    fn resolve(&self, profile_id: &LayoutProfileId) -> tiqian::clreq::ClreqProfile::ClreqProfile {
         let mut profile = BuiltInClreqProfileResolver.resolve(profile_id);
         if self.pin_basic_no_hang {
             profile.kinsoku_mode = KinsokuMode::fixed(KinsokuLevel::Basic);
@@ -161,10 +158,7 @@ fn main() {
     }
 }
 
-fn layout(
-    wire: &FixtureWire,
-    breaker: &str,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(wire: &FixtureWire, breaker: &str) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = match breaker {
         "greedy" => Box::new(GreedyLineBreaker::default()),
@@ -331,15 +325,11 @@ fn ruby_line_height_mode(value: &str) -> RubyLineHeightMode {
         RubyLineHeightMode::PerLine
     }
 }
-fn alignment(
-    value: Option<&str>,
-) -> Option<tiqian::org::tiqian::core::TextModel::LastLineAlignment> {
+fn alignment(value: Option<&str>) -> Option<tiqian::core::TextModel::LastLineAlignment> {
     match value {
-        None | Some("Start") => {
-            value.map(|_| tiqian::org::tiqian::core::TextModel::LastLineAlignment::Start)
-        }
-        Some("Center") => Some(tiqian::org::tiqian::core::TextModel::LastLineAlignment::Center),
-        Some("End") => Some(tiqian::org::tiqian::core::TextModel::LastLineAlignment::End),
+        None | Some("Start") => value.map(|_| tiqian::core::TextModel::LastLineAlignment::Start),
+        Some("Center") => Some(tiqian::core::TextModel::LastLineAlignment::Center),
+        Some("End") => Some(tiqian::core::TextModel::LastLineAlignment::End),
         Some(other) => panic!("unsupported alignment {other}"),
     }
 }
@@ -359,10 +349,7 @@ fn writing_mode(value: &str) -> WritingMode {
     }
 }
 
-fn dump_result(
-    label: &str,
-    result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult,
-) -> String {
+fn dump_result(label: &str, result: &tiqian::core::LayoutModel::LayoutResult) -> String {
     let mut out = format!(
         "== {label} ==\nsize {}x{}\n",
         fmt(result.size.width),

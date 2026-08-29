@@ -1,20 +1,20 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::Hyphenation::NoHyphenator;
+use tiqian::linebreak::Hyphenation::NoHyphenator;
 
 fn layout(
     text: &str,
     max_width: f32,
     spans: Vec<LineBreakSpan>,
     no_hyphenation: bool,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+) -> tiqian::core::LayoutModel::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     if no_hyphenation {
         engine.hyphenator = &NoHyphenator;
@@ -36,10 +36,7 @@ fn layout(
     )
 }
 
-fn line_text(
-    result: &tiqian::org::tiqian::core::LayoutModel::LayoutResult,
-    index: usize,
-) -> String {
+fn line_text(result: &tiqian::core::LayoutModel::LayoutResult, index: usize) -> String {
     let line = &result.lines[index];
     result.clusters[line.cluster_range.first() as usize..=line.cluster_range.last() as usize]
         .iter()

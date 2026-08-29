@@ -355,7 +355,8 @@ fn emoji_role_promotion_reason(text: &Text, start: i32, end: i32) -> Option<&'st
         if next < end && text.code_point_at_compat(next, text_length) == EMOJI_VARIATION_SELECTOR {
             next += char_count(EMOJI_VARIATION_SELECTOR);
         }
-        if next < end && text.code_point_at_compat(next, text_length) == COMBINING_ENCLOSING_KEYCAP {
+        if next < end && text.code_point_at_compat(next, text_length) == COMBINING_ENCLOSING_KEYCAP
+        {
             return Some("KeycapSequence");
         }
     }
@@ -427,13 +428,11 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::org::tiqian::clreq::ClreqProfile::ClreqProfile;
-    use crate::org::tiqian::core::Geometry::LayoutConstraints;
-    use crate::org::tiqian::core::TextModel::{
-        LayoutInput, TextSpan, TextStyle, TiqianTextContent,
-    };
-    use crate::org::tiqian::font::FontPolicy::CjkFontRoleClassifier;
-    use crate::org::tiqian::layout::ParagraphLayoutEngine::{
+    use crate::clreq::ClreqProfile::ClreqProfile;
+    use crate::core::Geometry::LayoutConstraints;
+    use crate::core::TextModel::{LayoutInput, TextSpan, TextStyle, TiqianTextContent};
+    use crate::font::FontPolicy::CjkFontRoleClassifier;
+    use crate::layout::ParagraphLayoutEngine::{
         ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
     };
 

@@ -1,18 +1,18 @@
-use tiqian::org::tiqian::clreq::ClreqProfile::{
+use tiqian::clreq::ClreqProfile::{
     AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver,
 };
-use tiqian::org::tiqian::core::Geometry::LayoutConstraints;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Geometry::LayoutConstraints;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{LayoutInput, ParagraphStyle, TiqianTextContent};
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 
 struct LetterOnlyAutoSpace;
 
 impl ClreqProfileResolver for LetterOnlyAutoSpace {
-    fn resolve(&self, _: &tiqian::org::tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
+    fn resolve(&self, _: &tiqian::core::TextModel::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.auto_space = AutoSpacePolicy {
             cjk_latin: AutoSpaceMode::Insert,
@@ -23,7 +23,7 @@ impl ClreqProfileResolver for LetterOnlyAutoSpace {
     }
 }
 
-fn layout(text: &str) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn layout(text: &str) -> tiqian::core::LayoutModel::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

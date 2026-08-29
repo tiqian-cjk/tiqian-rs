@@ -1,14 +1,14 @@
-use tiqian::org::tiqian::core::Geometry::{LayoutConstraints, TextRange};
-use tiqian::org::tiqian::core::LayoutModel::LineEndReason;
-use tiqian::org::tiqian::core::Text::Text;
-use tiqian::org::tiqian::core::TextModel::{
+use tiqian::core::Geometry::{LayoutConstraints, TextRange};
+use tiqian::core::LayoutModel::LineEndReason;
+use tiqian::core::Text::Text;
+use tiqian::core::TextModel::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
-use tiqian::org::tiqian::core::Units::Ic;
-use tiqian::org::tiqian::layout::ParagraphLayoutEngine::{
+use tiqian::core::Units::Ic;
+use tiqian::layout::ParagraphLayoutEngine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::org::tiqian::linebreak::EnglishHyphenation::english_hyphenation;
+use tiqian::linebreak::EnglishHyphenation::english_hyphenation;
 
 fn no_indent_style() -> ParagraphStyle {
     ParagraphStyle::builder()
@@ -17,10 +17,7 @@ fn no_indent_style() -> ParagraphStyle {
         .build()
 }
 
-fn technical_layout(
-    text: &str,
-    max_width: f32,
-) -> tiqian::org::tiqian::core::LayoutModel::LayoutResult {
+fn technical_layout(text: &str, max_width: f32) -> tiqian::core::LayoutModel::LayoutResult {
     let range = TextRange::new(0, text.encode_utf16().count() as i32);
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = english_hyphenation::en_us();

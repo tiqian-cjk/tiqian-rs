@@ -1,5 +1,5 @@
-use tiqian::org::tiqian::clreq::BopomofoReading::{BopomofoReading, BopomofoTone, bopomofo_parser};
-use tiqian::org::tiqian::core::Text::Text;
+use tiqian::clreq::BopomofoReading::{BopomofoReading, BopomofoTone, bopomofo_parser};
+use tiqian::core::Text::Text;
 
 #[test]
 fn yinping_has_no_mark() {
