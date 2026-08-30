@@ -144,6 +144,31 @@ pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
             .is_some_and(is_non_cjk_word_character)
 }
 
+pub fn is_non_cjk_word_internal_quote_pair(text: &Text, pair: QuotePair) -> bool {
+    if !(text
+        .code_point_before(pair.open_index)
+        .is_some_and(is_non_cjk_word_character)
+        && text
+            .code_point_at_or_none(pair.close_index + 1)
+            .is_some_and(is_non_cjk_word_character))
+    {
+        return false;
+    }
+
+    // UTF-16 offsets must advance by code point to avoid inspecting a low surrogate.
+    let mut index = pair.open_index + 1;
+    while index < pair.close_index {
+        let Some(code_point) = text.code_point_at_or_none(index) else {
+            return false;
+        };
+        if !is_non_cjk_word_character(code_point) {
+            return false;
+        }
+        index += if code_point > 0xFFFF { 2 } else { 1 };
+    }
+    true
+}
+
 fn is_non_cjk_word_character(code_point: i32) -> bool {
     super::super::core::unicode_word_character::unicode_word_character::contains(code_point)
         && super::super::core::unicode_script_evidence::unicode_script_evidence_classifier::classify(

@@ -8,7 +8,10 @@ use super::super::core::unicode_script_evidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
 };
 use super::super::font::font_policy::{FontRole, FontRoleContext};
-use super::quote_pair_analyzer::{QuotePair, QuoteRoleDecision, is_non_cjk_in_word_apostrophe};
+use super::quote_pair_analyzer::{
+    QuotePair, QuoteRoleDecision, is_non_cjk_in_word_apostrophe,
+    is_non_cjk_word_internal_quote_pair,
+};
 
 /**
  * 从完整引号结构解析共享弯引号码点的字体角色。
@@ -142,6 +145,14 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
                 FontRole::LatinText,
                 "DelimitedWesternQuotationRun",
                 "whitespace-delimited-wholly-western-quotation",
+            );
+        }
+
+        if is_non_cjk_word_internal_quote_pair(self.text, pair) {
+            return Resolution::new(
+                FontRole::LatinText,
+                "NonCjkWordInternalQuotePair",
+                "non-cjk-word-internal-quotation",
             );
         }
 
