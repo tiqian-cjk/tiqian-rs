@@ -226,8 +226,8 @@ fn latin_word_internal_quotes_support_supplementary_letters() {
 }
 
 #[test]
-fn numeric_word_internal_quotes_stay_latin() {
-    let result = layout("中文1“2”3中文");
+fn letter_bounded_word_internal_quotes_stay_latin() {
+    let result = layout("中a“b”c文");
 
     let overrides = result
         .debug
@@ -239,6 +239,40 @@ fn numeric_word_internal_quotes_stay_latin() {
     assert!(overrides.iter().all(|override_info| {
         override_info.overridden_role == "LatinText"
             && override_info.source == "NonCjkWordInternalQuotePair"
+    }));
+}
+
+#[test]
+fn digit_content_inside_letter_bounded_quotes_stays_latin() {
+    let result = layout("中a“1”c文");
+
+    let overrides = result
+        .debug
+        .role_overrides
+        .iter()
+        .filter(|override_info| matches!(override_info.source_text.as_str(), "“" | "”"))
+        .collect::<Vec<_>>();
+    assert_eq!(2, overrides.len());
+    assert!(overrides.iter().all(|override_info| {
+        override_info.overridden_role == "LatinText"
+            && override_info.source == "NonCjkWordInternalQuotePair"
+    }));
+}
+
+#[test]
+fn digit_bounded_word_internal_quotes_stay_cjk() {
+    let result = layout("中1“1”2文");
+
+    let overrides = result
+        .debug
+        .role_overrides
+        .iter()
+        .filter(|override_info| matches!(override_info.source_text.as_str(), "“" | "”"))
+        .collect::<Vec<_>>();
+    assert_eq!(2, overrides.len());
+    assert!(overrides.iter().all(|override_info| {
+        override_info.overridden_role == "CjkPunctuation"
+            && override_info.source == "PairedPunctuationOuterScriptContext"
     }));
 }
 
