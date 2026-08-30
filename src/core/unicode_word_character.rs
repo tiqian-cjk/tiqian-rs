@@ -36,4 +36,21 @@ pub mod unicode_word_character {
                 | GeneralCategory::OtherNumber
         )
     }
+
+    pub fn is_number(code_point: i32) -> bool {
+        assert!(
+            (0..=0x10FFFF).contains(&code_point),
+            "Not a Unicode scalar value: {code_point}"
+        );
+        assert!(
+            !(0xD800..=0xDFFF).contains(&code_point),
+            "Surrogate is not a Unicode scalar value: {code_point}"
+        );
+        matches!(
+            CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
+            GeneralCategory::DecimalNumber
+                | GeneralCategory::LetterNumber
+                | GeneralCategory::OtherNumber
+        )
+    }
 }

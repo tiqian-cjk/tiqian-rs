@@ -147,10 +147,10 @@ pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
 pub fn is_non_cjk_word_internal_quote_pair(text: &Text, pair: QuotePair) -> bool {
     if !(text
         .code_point_before(pair.open_index)
-        .is_some_and(is_non_cjk_word_character)
+        .is_some_and(is_non_cjk_non_numeric_word_character)
         && text
             .code_point_at_or_none(pair.close_index + 1)
-            .is_some_and(is_non_cjk_word_character))
+            .is_some_and(is_non_cjk_non_numeric_word_character))
     {
         return false;
     }
@@ -174,6 +174,13 @@ fn is_non_cjk_word_character(code_point: i32) -> bool {
         && super::super::core::unicode_script_evidence::unicode_script_evidence_classifier::classify(
             code_point,
         ) != super::super::core::unicode_script_evidence::UnicodeScriptEvidence::EastAsian
+}
+
+fn is_non_cjk_non_numeric_word_character(code_point: i32) -> bool {
+    is_non_cjk_word_character(code_point)
+        && !super::super::core::unicode_word_character::unicode_word_character::is_number(
+            code_point,
+        )
 }
 
 /**
