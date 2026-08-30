@@ -259,6 +259,9 @@ impl DemoFontFace {
         buffer.push_str(&input.display_text);
         buffer.guess_segment_properties();
         buffer.set_direction(Direction::LeftToRight);
+        if input.font_decision.role == FontRole::CjkPunctuation {
+            buffer.set_script(harfrust::script::HAN);
+        }
         buffer.set_language(
             input
                 .style
@@ -885,6 +888,75 @@ mod tests {
                 .all(|decision| { decision.raw_source == "RawTables" })
         );
     }
+
+        #[test]
+        fn cjk_dashes_share_the_ideograph_vertical_center() {
+            use tiqian::core::geometry::LayoutConstraints;
+            use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
+            use tiqian::layout::paragraph_layout_engine::{
+                ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
+            };
+
+            for source in ["中—中", "中——中"] {
+                let catalog = DemoFontCatalog::load().unwrap();
+                let mut engine = ExplainableStubParagraphLayoutEngine::default();
+                engine.fallback_resolver = Box::new(catalog.clone());
+                engine.font_metrics_resolver = Box::new(catalog.clone());
+                engine.text_shaper = Box::new(catalog);
+                let result = engine.layout(
+                    LayoutInput::builder(
+                        TiqianTextContent::new(source.into()),
+                        LayoutConstraints::with_defaults(320.0),
+                    )
+                    .text_style(
+                        TextStyle::builder()
+                            .font_families(vec!["Source Han Sans SC".to_owned()])
+                            .font_size(16.0)
+                            .build(),
+                    )
+                    .build(),
+                );
+
+                let ideograph = result.clusters.iter().find(|cluster| cluster.text == "中").unwrap();
+                let dash = result
+                    .clusters
+                    .iter()
+                    .find(|cluster| cluster.text.contains('—'))
+                    .unwrap();
+                let ideograph_glyph = result
+                    .glyph_runs
+                    .iter()
+                    .flat_map(|run| &run.glyphs)
+                    .find(|glyph| glyph.cluster_range == ideograph.range)
+                    .unwrap();
+                let dash_glyph = result
+                    .glyph_runs
+                    .iter()
+                    .flat_map(|run| &run.glyphs)
+                    .find(|glyph| glyph.cluster_range == dash.range)
+                    .unwrap();
+                let ideograph_bounds = ideograph_glyph.bounds.unwrap();
+                let dash_bounds = dash_glyph.bounds.unwrap();
+                let baseline = result
+                    .lines
+                    .iter()
+                    .find(|line| line.range.start() <= ideograph.range.start()
+                        && ideograph.range.end() <= line.range.end())
+                    .unwrap()
+                    .baseline;
+                let ideograph_center = baseline
+                    + ideograph_glyph.y
+                    + (ideograph_bounds.top + ideograph_bounds.bottom) / 2.0;
+                let dash_center = baseline
+                    + dash_glyph.y
+                    + (dash_bounds.top + dash_bounds.bottom) / 2.0;
+
+                assert!(
+                    (dash_center - ideograph_center).abs() <= 1.0,
+                    "{source}: dash center={dash_center}, ideograph center={ideograph_center}"
+                );
+            }
+        }
 
     #[test]
     fn render_font_key_replays_a_shaped_glyph_outline() {
