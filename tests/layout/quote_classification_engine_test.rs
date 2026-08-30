@@ -277,6 +277,23 @@ fn digit_bounded_word_internal_quotes_stay_cjk() {
 }
 
 #[test]
+fn fullwidth_letter_bounded_word_internal_quotes_stay_cjk() {
+    let result = layout("中Ａ“Ｂ”Ｃ文");
+
+    let overrides = result
+        .debug
+        .role_overrides
+        .iter()
+        .filter(|override_info| matches!(override_info.source_text.as_str(), "“" | "”"))
+        .collect::<Vec<_>>();
+    assert_eq!(2, overrides.len());
+    assert!(overrides.iter().all(|override_info| {
+        override_info.overridden_role == "CjkPunctuation"
+            && override_info.source == "ParagraphLanguageQuoteContext"
+    }));
+}
+
+#[test]
 fn empty_word_internal_quotes_stay_latin() {
     let result = layout("中文a“”b中文");
 
