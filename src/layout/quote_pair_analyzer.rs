@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/QuotePairAnalyzer.kt
 
 use crate::common::HashMap;
+use icu_properties::{CodePointMapData, props::EastAsianWidth};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::text::Text;
@@ -181,6 +182,8 @@ fn is_non_cjk_non_numeric_word_character(code_point: i32) -> bool {
         && !super::super::core::unicode_word_character::unicode_word_character::is_number(
             code_point,
         )
+        && CodePointMapData::<EastAsianWidth>::new().get32(code_point as u32)
+            != EastAsianWidth::Fullwidth
 }
 
 /**
