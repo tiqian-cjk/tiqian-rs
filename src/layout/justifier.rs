@@ -625,6 +625,13 @@ impl Justifier {
         surplus: f32,
         shrink_opportunities: &[ShrinkOpportunity],
     ) -> CompressionPlan {
+        if surplus.is_nan() {
+            return CompressionPlan {
+                allocations: Vec::new(),
+                surplus_before: surplus,
+                unfilled_surplus: surplus,
+            };
+        }
         if surplus <= 0.0 {
             return CompressionPlan {
                 allocations: Vec::new(),

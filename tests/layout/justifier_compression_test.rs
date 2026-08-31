@@ -74,6 +74,14 @@ fn reports_unfilled_when_capacity_is_exhausted() {
 }
 
 #[test]
+fn nan_surplus_emits_no_allocations() {
+    let plan = Justifier::default().compress(f32::NAN, &[opportunity(0, 1, 5.0)]);
+
+    assert!(plan.allocations.is_empty());
+    assert!(plan.unfilled_surplus.is_nan());
+}
+
+#[test]
 fn zero_surplus_is_no_op() {
     let plan = Justifier::default().compress(0.0, &[opportunity(0, 1, 5.0)]);
     assert!(plan.allocations.is_empty());
