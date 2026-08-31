@@ -23,6 +23,7 @@ mod line_break_repair_engine_test;
 mod lookahead_line_breaker_test;
 mod opening_bracket_line_start_test;
 mod paragraph_dp_line_breaker_test;
+mod prepared_paragraph_test;
 mod progressive_technical_break_test;
 mod punctuation_atom_builder_halt_test;
 mod punctuation_body_floor_invariant_test;

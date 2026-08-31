@@ -5,14 +5,21 @@ use crate::common::{HashMap, HashSet};
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::LayoutResult;
 use super::super::core::layout_queries::positioned_clusters;
+use super::super::core::text_model::{DecorationKind, TextStyle};
 
 /**
  * 供 build-time snapshot 与 browser exact-font fallback 共用的规范纯段落 render plan。
  * lowering 与 [`LayoutResult`] 同处，避免两个 Web 入口各自生成不一致的 DOM geometry。
  */
-pub fn to_prepared_paragraph_json(result: &LayoutResult) -> String {
+/// Emits the prepared paragraph plan with Kotlin's optional render evidence.
+pub fn to_prepared_paragraph_json(
+    result: &LayoutResult,
+    render_evidence: bool,
+) -> String {
     let mut natural_width: HashMap<TextRange, f32> = HashMap::new();
     let mut open_type_features: HashMap<TextRange, Vec<String>> = HashMap::new();
+    let mut render_font_family: HashMap<TextRange, String> = HashMap::new();
+    let mut glyph_ids_by_range: HashMap<TextRange, Vec<u32>> = HashMap::new();
     for run in &result.glyph_runs {
         for glyph in &run.glyphs {
             *natural_width.entry(glyph.cluster_range).or_insert(0.0) += glyph.advance;
@@ -24,6 +31,13 @@ pub fn to_prepared_paragraph_json(result: &LayoutResult) -> String {
                     }
                 }
             }
+            if let Some(render_font_key) = &glyph.render_font_key {
+                render_font_family.insert(glyph.cluster_range, render_font_key.clone());
+            }
+            glyph_ids_by_range
+                .entry(glyph.cluster_range)
+                .or_default()
+                .push(glyph.id);
         }
     }
     let zero_width_breaks: HashSet<TextRange> = result
@@ -31,6 +45,38 @@ pub fn to_prepared_paragraph_json(result: &LayoutResult) -> String {
         .zero_width_break_decisions
         .iter()
         .map(|decision| decision.range)
+        .collect();
+    let shaping_decision_by_range: HashMap<_, _> = result
+        .debug
+        .shaping_decisions
+        .iter()
+        .map(|decision| (decision.range, decision))
+        .collect();
+    let punctuation_decision_by_range: HashMap<_, _> = result
+        .debug
+        .punctuation_decisions
+        .iter()
+        .map(|decision| (decision.range, decision))
+        .collect();
+    let mut inline_start_by_offset: HashMap<i32, f32> = HashMap::new();
+    let mut inline_end_by_offset: HashMap<i32, f32> = HashMap::new();
+    for inline_box in &result.input.inline_boxes {
+        if inline_box.inline_start != 0.0 {
+            *inline_start_by_offset
+                .entry(inline_box.range.start())
+                .or_insert(0.0) += inline_box.inline_start;
+        }
+        if inline_box.inline_end != 0.0 {
+            *inline_end_by_offset
+                .entry(inline_box.range.end())
+                .or_insert(0.0) += inline_box.inline_end;
+        }
+    }
+    let inline_object_advance_by_range: HashMap<_, _> = result
+        .input
+        .inline_objects
+        .iter()
+        .map(|inline_object| (inline_object.range, inline_object.advance))
         .collect();
     let positioned = positioned_clusters(result);
     let mut out = String::from("{\"schema\":1,\"layoutRevision\":\"tiqian-layout-v2\",\"width\":");
@@ -47,7 +93,10 @@ pub fn to_prepared_paragraph_json(result: &LayoutResult) -> String {
             .filter(|position| {
                 position.line_index == line_index as i32 && {
                     let cluster = &result.clusters[position.cluster_index as usize];
-                    !cluster.display_text.is_empty() || zero_width_breaks.contains(&cluster.range)
+                    !cluster.display_text.is_empty()
+                        || zero_width_breaks.contains(&cluster.range)
+                        || (render_evidence
+                            && inline_object_advance_by_range.contains_key(&cluster.range))
                 }
             })
             .collect();
@@ -112,12 +161,327 @@ pub fn to_prepared_paragraph_json(result: &LayoutResult) -> String {
                 }
                 out.push(']');
             }
+            if render_evidence {
+                append_cell_render_evidence(
+                    &mut out,
+                    result,
+                    cluster,
+                    natural_width.get(&cluster.range).copied(),
+                    render_font_family.get(&cluster.range),
+                    glyph_ids_by_range.get(&cluster.range),
+                    shaping_decision_by_range.get(&cluster.range).copied(),
+                    punctuation_decision_by_range.get(&cluster.range).copied(),
+                    inline_object_advance_by_range.get(&cluster.range).copied(),
+                );
+            }
             out.push('}');
         }
         out.push_str("]}");
     }
-    out.push_str("]}");
+    out.push(']');
+    if render_evidence {
+        append_paragraph_render_evidence(
+            &mut out,
+            result,
+            &inline_start_by_offset,
+            &inline_end_by_offset,
+        );
+    }
+    out.push('}');
     out
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_cell_render_evidence(
+    out: &mut String,
+    result: &LayoutResult,
+    cluster: &super::super::core::layout_model::Cluster,
+    natural_width: Option<f32>,
+    render_font_family: Option<&String>,
+    glyph_ids: Option<&Vec<u32>>,
+    shaping_decision: Option<&super::super::core::layout_model::ShapingDecisionInfo>,
+    punctuation_decision: Option<&super::super::core::layout_model::PunctuationDecisionInfo>,
+    inline_object_advance: Option<f32>,
+) {
+    if let Some(inline_object_advance) = inline_object_advance {
+        out.push_str(",\"inlineObject\":");
+        append_json_number(out, inline_object_advance);
+    }
+    let glyph_width = inline_object_advance.or(natural_width).unwrap_or(cluster.advance);
+    if cluster.advance != glyph_width {
+        out.push_str(",\"advance\":");
+        append_json_number(out, cluster.advance);
+    }
+    if let Some(render_font_family) = render_font_family {
+        out.push_str(",\"renderFontFamily\":");
+        append_json_string(out, render_font_family);
+    }
+    if let Some(strategy) = shaping_decision.and_then(|decision| decision.strategy.as_ref()) {
+        out.push_str(",\"dashStrategy\":");
+        append_json_string(out, strategy);
+        if let Some(language) = shaping_decision.and_then(|decision| decision.language.as_ref()) {
+            out.push_str(",\"shapingLanguage\":");
+            append_json_string(out, language);
+        }
+        if let Some(resolved_face) = shaping_decision.and_then(|decision| decision.resolved_face.as_ref()) {
+            out.push_str(",\"resolvedFace\":");
+            append_json_string(out, resolved_face);
+        }
+        if let Some(glyph_ids) = glyph_ids.filter(|glyph_ids| !glyph_ids.is_empty()) {
+            out.push_str(",\"glyphIds\":");
+            append_json_string(out, &glyph_ids.iter().map(u32::to_string).collect::<Vec<_>>().join(","));
+        }
+        out.push_str(",\"shapingEvidence\":");
+        append_json_string(out, &shaping_decision.expect("strategy has a shaping decision").reason);
+    }
+    if let Some(punctuation_decision) = punctuation_decision
+        && punctuation_decision.ink_containment_applied
+        && let Some(floor) = punctuation_decision.ink_containment_body_floor
+    {
+        out.push_str(",\"punctuationInkFloor\":");
+        append_json_number(out, floor);
+        out.push_str(",\"punctuationBodyWidth\":");
+        append_json_number(out, punctuation_decision.body_width);
+    }
+    let latin = result.debug.font_decisions.iter().any(|decision| {
+        cluster.range.start() >= decision.range.start()
+            && cluster.range.end() <= decision.range.end()
+            && decision.role == "LatinText"
+    });
+    if latin {
+        out.push_str(",\"latin\":true");
+    }
+    let cluster_style = style_at(result, cluster.range.start());
+    if cluster_style != &result.input.text_style {
+        out.push_str(",\"style\":{");
+        let mut field_count = 0;
+        if cluster_style.font_size != result.input.text_style.font_size {
+            out.push_str("\"fontSize\":");
+            append_json_number(out, cluster_style.font_size);
+            field_count += 1;
+        }
+        if cluster_style.font_weight != result.input.text_style.font_weight {
+            if field_count > 0 {
+                out.push(',');
+            }
+            out.push_str("\"fontWeight\":");
+            out.push_str(&cluster_style.font_weight.to_string());
+            field_count += 1;
+        }
+        if cluster_style.italic != result.input.text_style.italic {
+            if field_count > 0 {
+                out.push(',');
+            }
+            out.push_str("\"italic\":");
+            out.push_str(&cluster_style.italic.to_string());
+        }
+        out.push('}');
+    }
+}
+
+fn style_at(result: &LayoutResult, offset: i32) -> &TextStyle {
+    result
+        .input
+        .content
+        .spans
+        .iter()
+        .rev()
+        .find(|span| offset >= span.range.start() && offset < span.range.end())
+        .map_or(&result.input.text_style, |span| &span.style)
+}
+
+fn append_paragraph_render_evidence(
+    out: &mut String,
+    result: &LayoutResult,
+    inline_start_by_offset: &HashMap<i32, f32>,
+    inline_end_by_offset: &HashMap<i32, f32>,
+) {
+    out.push_str(",\"fontSize\":");
+    append_json_number(out, result.input.text_style.font_size);
+    out.push_str(",\"overlayWidth\":");
+    append_json_number(out, result.size.width);
+    let emphasis_ranges: Vec<_> = result
+        .input
+        .decorations
+        .iter()
+        .filter(|span| span.kind == DecorationKind::Emphasis)
+        .collect();
+    if !emphasis_ranges.is_empty() {
+        out.push_str(",\"emphasisRanges\":[");
+        for (index, span) in emphasis_ranges.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push('[');
+            out.push_str(&span.range.start().to_string());
+            out.push(',');
+            out.push_str(&span.range.end().to_string());
+            out.push(']');
+        }
+        out.push(']');
+    }
+    if !inline_start_by_offset.is_empty() || !inline_end_by_offset.is_empty() {
+        let mut offsets: Vec<_> = inline_start_by_offset
+            .keys()
+            .chain(inline_end_by_offset.keys())
+            .copied()
+            .collect();
+        offsets.sort_unstable();
+        offsets.dedup();
+        out.push_str(",\"inlineEdges\":[");
+        for (index, offset) in offsets.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"offset\":");
+            out.push_str(&offset.to_string());
+            if let Some(inline_start) = inline_start_by_offset.get(offset) {
+                out.push_str(",\"inlineStart\":");
+                append_json_number(out, *inline_start);
+            }
+            if let Some(inline_end) = inline_end_by_offset.get(offset) {
+                out.push_str(",\"inlineEnd\":");
+                append_json_number(out, *inline_end);
+            }
+            out.push('}');
+        }
+        out.push(']');
+    }
+    if !result.debug.ruby_decisions.is_empty() {
+        out.push_str(",\"rubyDecisions\":[");
+        for (index, ruby) in result.debug.ruby_decisions.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"baseRangeStart\":");
+            out.push_str(&ruby.base_range.start().to_string());
+            out.push_str(",\"baseRangeEnd\":");
+            out.push_str(&ruby.base_range.end().to_string());
+            out.push_str(",\"text\":");
+            append_json_string(out, &ruby.text);
+            out.push_str(",\"centerX\":");
+            append_json_number(out, ruby.center_x);
+            out.push_str(",\"baselineY\":");
+            append_json_number(out, ruby.baseline_y);
+            out.push_str(",\"fontSize\":");
+            append_json_number(out, ruby.font_size);
+            out.push_str(",\"ascent\":");
+            append_json_number(out, ruby.ascent);
+            out.push_str(",\"fontWeight\":");
+            out.push_str(&ruby.font_weight.to_string());
+            append_json_string_array(out, "fontFamilies", &ruby.font_families);
+            out.push('}');
+        }
+        out.push(']');
+    }
+    if !result.debug.bopomofo_decisions.is_empty() {
+        out.push_str(",\"bopomofoDecisions\":[");
+        for (index, bopomofo) in result.debug.bopomofo_decisions.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"baseRangeStart\":");
+            out.push_str(&bopomofo.base_range.start().to_string());
+            out.push_str(",\"baseRangeEnd\":");
+            out.push_str(&bopomofo.base_range.end().to_string());
+            out.push_str(",\"text\":");
+            append_json_string(out, &bopomofo.text);
+            out.push_str(",\"fontWeight\":");
+            out.push_str(&bopomofo.font_weight.to_string());
+            append_json_string_array(out, "fontFamilies", &bopomofo.font_families);
+            out.push_str(",\"placements\":[");
+            for (placement_index, placement) in bopomofo.placements.iter().enumerate() {
+                if placement_index > 0 {
+                    out.push(',');
+                }
+                out.push_str("{\"text\":");
+                append_json_string(out, &placement.text);
+                out.push_str(",\"left\":");
+                append_json_number(out, placement.left);
+                out.push_str(",\"top\":");
+                append_json_number(out, placement.top);
+                out.push_str(",\"width\":");
+                append_json_number(out, placement.width);
+                out.push_str(",\"height\":");
+                append_json_number(out, placement.height);
+                out.push_str(",\"role\":");
+                append_json_string(out, &format!("{:?}", placement.role));
+                out.push('}');
+            }
+            out.push_str("]}");
+        }
+        out.push(']');
+    }
+    let decoration_segments: Vec<_> = result
+        .debug
+        .decoration_segments
+        .iter()
+        .filter(|segment| matches!(segment.kind.as_str(), "ProperNoun" | "BookTitle"))
+        .collect();
+    if !decoration_segments.is_empty() {
+        out.push_str(",\"decorationSegments\":[");
+        for (index, segment) in decoration_segments.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"kind\":");
+            append_json_string(out, &segment.kind);
+            out.push_str(",\"left\":");
+            append_json_number(out, segment.left);
+            out.push_str(",\"top\":");
+            append_json_number(out, segment.top);
+            out.push_str(",\"right\":");
+            append_json_number(out, segment.right);
+            out.push_str(",\"sourceRangeStart\":");
+            out.push_str(&segment.source_range.start().to_string());
+            out.push_str(",\"sourceRangeEnd\":");
+            out.push_str(&segment.source_range.end().to_string());
+            out.push('}');
+        }
+        out.push(']');
+    }
+    let emphasis_dots: Vec<_> = result
+        .debug
+        .decoration_decisions
+        .iter()
+        .filter(|decision| {
+            decision.applied && decision.kind == "Emphasis" && decision.dot_diameter > 0.0
+        })
+        .collect();
+    if !emphasis_dots.is_empty() {
+        out.push_str(",\"emphasisDots\":[");
+        for (index, dot) in emphasis_dots.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"clusterRangeStart\":");
+            out.push_str(&dot.cluster_range.start().to_string());
+            out.push_str(",\"anchorX\":");
+            append_json_number(out, dot.anchor_x);
+            out.push_str(",\"anchorY\":");
+            append_json_number(out, dot.anchor_y);
+            out.push_str(",\"dotDiameter\":");
+            append_json_number(out, dot.dot_diameter);
+            out.push('}');
+        }
+        out.push(']');
+    }
+}
+
+fn append_json_string_array(out: &mut String, field: &str, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    out.push_str(",\"");
+    out.push_str(field);
+    out.push_str("\":[");
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        append_json_string(out, value);
+    }
+    out.push(']');
 }
 
 /// Kotlin/JS、JVM 与 Native 的 Float.toString 不同；此处将 Float 归一到 ECMAScript Number::toString 计划格式。
@@ -129,7 +493,17 @@ fn append_json_number(out: &mut String, value: f32) {
     }
 }
 
-fn ecma_json_number(value: f32) -> String {
+pub fn ecma_json_number(value: f32) -> String {
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value.is_infinite() {
+        return if value.is_sign_negative() {
+            "-Infinity".to_owned()
+        } else {
+            "Infinity".to_owned()
+        };
+    }
     let raw = value as f64;
     let negative = raw.is_sign_negative();
     let mut body = raw.abs().to_string();
