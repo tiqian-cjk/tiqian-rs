@@ -6,6 +6,8 @@ fixtures=(
     basic-pause-stop
     ellipsis-and-dash
     nested-quotes
+    contextual-dash-ellipsis
+    parenthetical-dash-pairs
     adjacent-punctuation-spacing
     contextual-curly-quotes
     mixed-script-quote-paragraph-language

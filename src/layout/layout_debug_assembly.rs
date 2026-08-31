@@ -78,7 +78,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
             let cluster_text = stage.text.slice_text(decision.range);
             let substitution = stage
                 .punctuation_glyph_substitutor
-                .substitute(&cluster_text);
+                .substitute_for_role(&cluster_text, decision.role);
             let rollback_cause = stage
                 .substitution_rollbacks
                 .iter()

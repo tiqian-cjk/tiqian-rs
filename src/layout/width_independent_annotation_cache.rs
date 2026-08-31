@@ -37,6 +37,9 @@ use super::cluster_role_resolution::{
     ClusterRoleRangeOptions, ResolvedClusterRange, cluster_role_ranges_with_options,
     require_covered_by,
 };
+use super::contextual_dash_ellipsis_role_resolver::{
+    ContextualDashEllipsisAwareFontRoleClassifier, ContextualDashEllipsisRoleResolver,
+};
 use super::kinsoku_rule::ClreqKinsokuRule;
 use super::line_break_planning_stage::ParagraphLayoutPrep;
 use super::paragraph_shaping_stage::{
@@ -383,6 +386,32 @@ pub fn prepare_width_independent_annotation(
             }
         })
         .collect();
+    let dash_ellipsis_role_decisions = ContextualDashEllipsisRoleResolver.resolve(&text, &context);
+    let dash_ellipsis_role_override_infos: Vec<_> = dash_ellipsis_role_decisions
+        .iter()
+        .map(|decision| {
+            let first_code_point_range = TextRange::new(
+                decision.range.start(),
+                decision.range.start() + 1,
+            );
+            RoleOverrideInfo {
+                range: decision.range,
+                source_text: text.slice_text(decision.range),
+                original_role: format!(
+                    "{:?}",
+                    if overrides.is_empty() {
+                        font_role_classifier.classify(&text, first_code_point_range, &context)
+                    } else {
+                        QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides)
+                            .classify(&text, first_code_point_range, &context)
+                    }
+                ),
+                overridden_role: format!("{:?}", decision.role),
+                source: decision.source.clone(),
+                reason: decision.reason.clone(),
+            }
+        })
+        .collect();
     let inline_by_start: HashMap<_, _> = input
         .inline_objects
         .iter()
@@ -394,13 +423,27 @@ pub fn prepare_width_independent_annotation(
         .emoji_shaping_boundaries(emoji_shaping_boundaries)
         .inline_objects_by_start(inline_by_start)
         .build();
-    let cluster_ranges = if overrides.is_empty() {
+    let cluster_ranges = if overrides.is_empty() && dash_ellipsis_role_decisions.is_empty() {
         cluster_role_ranges_with_options(&text, font_role_classifier, &context, &profile, &options)
-    } else {
+    } else if dash_ellipsis_role_decisions.is_empty() {
         let aware = QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides);
+        cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
+    } else if overrides.is_empty() {
+        let aware = ContextualDashEllipsisAwareFontRoleClassifier::new(
+            font_role_classifier,
+            &dash_ellipsis_role_decisions,
+        );
+        cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
+    } else {
+        let quote_aware = QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides);
+        let aware = ContextualDashEllipsisAwareFontRoleClassifier::new(
+            &quote_aware,
+            &dash_ellipsis_role_decisions,
+        );
         cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
     };
     let mut role_override_infos = quote_role_override_infos;
+    role_override_infos.extend(dash_ellipsis_role_override_infos);
     role_override_infos.extend(
         cluster_ranges
             .iter()

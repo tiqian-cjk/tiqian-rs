@@ -49,6 +49,7 @@ pub mod shaping {
 pub mod layout {
     pub mod annotation_geometry_stage;
     pub mod cluster_role_resolution;
+    pub mod contextual_dash_ellipsis_role_resolver;
     pub mod contextual_quote_role_resolver;
     pub mod default_hyphenator;
     pub mod justifier;

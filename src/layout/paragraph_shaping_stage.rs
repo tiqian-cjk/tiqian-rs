@@ -60,7 +60,7 @@ pub fn shape_paragraph(
             return cached.clone();
         }
         let source = text.slice_text(range);
-        let substitution = punctuation_glyph_substitutor.substitute(&source);
+        let substitution = punctuation_glyph_substitutor.substitute_for_role(&source, decision.role);
         let base = style_at(range.start());
         let mut style = base.clone();
         if decision.role == FontRole::LatinText && emphasis_italic_at(range.start()) {

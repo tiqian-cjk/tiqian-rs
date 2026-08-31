@@ -3,6 +3,7 @@
 use crate::common::HashSet;
 
 use super::super::core::text::Text;
+use super::super::font::font_policy::FontRole;
 use super::super::core::text_model::{LayoutProfileId, built_in_layout_profiles};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -897,6 +898,27 @@ impl ClreqPunctuationGlyphSubstitutor {
             source_text: source_text.clone(),
             display_text,
             reason,
+        }
+    }
+
+    /**
+     * `CjkRoleGatedDisplaySubstitution` keeps CLREQ display-codepoint
+     * replacement downstream of contextual font-role resolution.
+     */
+    pub fn substitute_for_role(
+        &self,
+        source_text: &Text,
+        role: FontRole,
+    ) -> CjkPunctuationGlyphSubstitution {
+        let candidate = self.substitute(source_text);
+        if role == FontRole::CjkPunctuation || candidate.display_text == *source_text {
+            candidate
+        } else {
+            CjkPunctuationGlyphSubstitution {
+                source_text: source_text.clone(),
+                display_text: source_text.clone(),
+                reason: format!("CjkRoleGatedDisplaySubstitution:preserve-role-{role:?}"),
+            }
         }
     }
 }

@@ -168,7 +168,21 @@ pub fn cluster_role_ranges_with_options(
                 .min()
                 .unwrap_or(grapheme_end);
         } else if role == FontRole::LatinText {
-            if attached_ascii_point_mark {
+            if is_contextual_dash_ellipsis_code_point(code_point) {
+                // `ContextualDashEllipsisRunSegmentation`: a mark run resolved to the
+                // Latin face still forms its own cluster, keeping the code-point
+                // line-break classes' opportunities at the run boundary. The same
+                // profile coalesce set gates repeats on both faces.
+                if coalesce_set.contains(&code_point) {
+                    while index < text_length && !options.span_boundaries.contains(&index) {
+                        let next_code_point = text.code_point_at_compat(index, text_length);
+                        if next_code_point != code_point {
+                            break;
+                        }
+                        index += char_count(next_code_point);
+                    }
+                }
+            } else if attached_ascii_point_mark {
                 // `AttachedAsciiPointMarkSegmentation`：保持前导点号 run 独立于后续 Latin text，
                 // 这样 kinsoku 无须移动整个 `,anyway` token。
                 while index < text_length && !options.span_boundaries.contains(&index) {
@@ -185,7 +199,8 @@ pub fn cluster_role_ranges_with_options(
                     let next_code_point = text.code_point_at_compat(index, text_length);
                     let next_char_count = char_count(next_code_point);
                     let next_range = TextRange::new(index, index + next_char_count);
-                    if classifier.classify(text, next_range, context) != FontRole::LatinText
+                    if is_contextual_dash_ellipsis_code_point(next_code_point)
+                        || classifier.classify(text, next_range, context) != FontRole::LatinText
                         || emoji_role_promotion_reason(text, index, text_length).is_some()
                     {
                         break;
@@ -409,6 +424,10 @@ fn is_ascii_point_mark_code_point(code_point: i32) -> bool {
     code_point <= 0xFFFF
         && char::from_u32(code_point as u32)
             .is_some_and(clreq_punctuation_policies::is_ascii_point_mark)
+}
+
+fn is_contextual_dash_ellipsis_code_point(code_point: i32) -> bool {
+    matches!(code_point, 0x2014 | 0x2026)
 }
 
 fn is_whitespace_code_unit(code_unit: i32) -> bool {

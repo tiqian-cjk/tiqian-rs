@@ -6,6 +6,7 @@ mod bilingual_emphasis_test;
 mod bopomofo_layout_test;
 mod decide_hyphen_break_test;
 mod display_glyph_substitution_engine_test;
+mod contextual_dash_ellipsis_role_resolver_test;
 mod emergency_grapheme_tracking_test;
 mod explainable_stub_paragraph_layout_engine_test;
 mod font_instance_metrics_request_test;
