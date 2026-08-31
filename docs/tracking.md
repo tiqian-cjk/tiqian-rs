@@ -70,6 +70,14 @@ git diff --check
 涉及 Unicode 属性源时，标准 Unicode 属性固定使用 `icu_properties` 2.3.x 的编译期 Unicode 17
 数据；emoji style variation base 集合和 UTR #59 `East_Asian_Spacing` 仍是 Rust 本地数据。
 
+### 处理大跨度同步
+
+1. 当发现 commit 之间跨度很大，如包含上百个 commit 或有大量文件变更时。不试图一次性了解全部，而是先获得文件 diff stat，将变更的文件分成多个批次来检查，期间可以多次编辑日志文档。
+2. 应当在第一次查询 diff 后就把完整的变更文件列表写入文档，之后再对其分组。
+3. 所有的要点必须经常更新到文档中，不要使用上下文或记忆维持。
+4. 避免一次性读取太多代码导致上下文压缩死循环。
+5. 不要使用 subagent 进行调研，但可以用其做复核。而 subagent 所说并非一定正确，需要对其进行验证。
+
 ## 记录规则
 
 每轮审计创建
