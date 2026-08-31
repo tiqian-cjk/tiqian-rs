@@ -1,5 +1,8 @@
 //! Development-only fixture runner. It accepts one JSON fixture on stdin and emits Kotlin's layout dump.
 
+#[path = "fixture_layout_dump/recorded_shaping_evidence.rs"]
+mod recorded_shaping_evidence;
+
 use std::io::{self, Read};
 use tiqian::common::HashSet;
 
@@ -23,6 +26,9 @@ use tiqian::layout::paragraph_layout_engine::{
 };
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
+use recorded_shaping_evidence::{
+    RecordedEvidenceFontMetricsResolver, RecordedEvidenceTextShaper, RecordedShapingEvidence,
+};
 
 static NO_HYPHENATOR: NoHyphenator = NoHyphenator;
 
@@ -146,6 +152,9 @@ fn main() {
         .read_to_string(&mut json)
         .expect("read fixture JSON from stdin");
     let wire: FixtureWire = serde_json::from_str(&json).expect("parse fixture JSON");
+    let evidence = std::env::var("TIQIAN_SHAPING_EVIDENCE")
+        .ok()
+        .map(|path| RecordedShapingEvidence::load(&path));
     print!(
         "fixture: {}\ntext: {}\nmaxWidth: {}\n",
         wire.id,
@@ -153,12 +162,16 @@ fn main() {
         fmt(wire.input.constraints.max_width)
     );
     for label in ["greedy", "lookahead", "paragraph-dp"] {
-        let result = layout(&wire, label);
+        let result = layout(&wire, label, evidence.as_ref());
         print!("{}", dump_result(label, &result));
     }
 }
 
-fn layout(wire: &FixtureWire, breaker: &str) -> tiqian::core::layout_model::LayoutResult {
+fn layout(
+    wire: &FixtureWire,
+    breaker: &str,
+    evidence: Option<&RecordedShapingEvidence>,
+) -> tiqian::core::layout_model::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = match breaker {
         "greedy" => Box::new(GreedyLineBreaker::default()),
@@ -174,6 +187,11 @@ fn layout(wire: &FixtureWire, breaker: &str) -> tiqian::core::layout_model::Layo
     engine.clreq_profile_resolver = Box::new(FixtureProfileResolver {
         pin_basic_no_hang: wire.pin_basic_no_hang,
     });
+    if let Some(evidence) = evidence {
+        engine.text_shaper = Box::new(RecordedEvidenceTextShaper::new(evidence.clone()));
+        engine.font_metrics_resolver =
+            Box::new(RecordedEvidenceFontMetricsResolver::new(evidence.clone()));
+    }
     engine.layout(to_input(&wire.input))
 }
 
@@ -742,7 +760,24 @@ fn dump_result(label: &str, result: &tiqian::core::layout_model::LayoutResult) -
 }
 
 fn fmt(value: f32) -> String {
-    format!("{value:.1}")
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value.is_infinite() {
+        return if value.is_sign_positive() {
+            "Infinity".to_owned()
+        } else {
+            "-Infinity".to_owned()
+        };
+    }
+    let negative = value.to_bits() & 0x8000_0000 != 0;
+    let scaled = ((value.abs() as f64 * 10.0) + 0.5).floor() as i64;
+    format!(
+        "{}{}.{}",
+        if negative { "-" } else { "" },
+        scaled / 10,
+        scaled % 10
+    )
 }
 fn fmts(values: &[f32]) -> String {
     if values.is_empty() {
