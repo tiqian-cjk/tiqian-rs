@@ -200,7 +200,10 @@ fn is_latin_run_code_point(code_point: i32) -> bool {
 }
 
 fn is_latin_code_point(code_point: i32) -> bool {
-    CodePointMapData::<Script>::new().get32(code_point as u32) == Script::Latin
+    (0x0041..=0x005A).contains(&code_point)
+        || (0x0061..=0x007A).contains(&code_point)
+        || (0x0030..=0x0039).contains(&code_point)
+        || (0x00C0..=0x024F).contains(&code_point)
 }
 
 /**

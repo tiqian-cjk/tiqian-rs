@@ -9,7 +9,7 @@ use super::super::core::unicode_script_evidence::{
 };
 use super::super::font::font_policy::{FontRole, FontRoleContext};
 use super::quote_pair_analyzer::{
-    QuotePair, QuoteRoleDecision, is_non_cjk_in_word_apostrophe,
+    QuotePair, QuoteRoleDecision, is_digit_bound_closing_quote, is_non_cjk_in_word_apostrophe,
     is_non_cjk_word_internal_quote_pair,
 };
 
@@ -201,6 +201,18 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
                 FontRole::LatinText,
                 "NonCjkInWordApostrophe",
                 "non-cjk-in-word-apostrophe",
+            );
+        }
+
+        // `NumericPrimeUnmatchedQuote`: an unmatched closing quote directly
+        // after a digit is minute/second/inch notation (`1’30”`, `6.1”`), not
+        // a quotation; a genuine accent pair (`“1‘2’3”`) never reaches this
+        // branch because its marks pair up.
+        if is_digit_bound_closing_quote(self.text, index) {
+            return Resolution::new(
+                FontRole::LatinText,
+                "NumericPrimeUnmatchedQuote",
+                "digit-bound-unmatched-quote-as-prime",
             );
         }
 

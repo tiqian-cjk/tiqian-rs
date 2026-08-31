@@ -25,6 +25,13 @@ fn classifies_latin_text() {
 }
 
 #[test]
+fn leaves_fullwidth_latin_letters_unknown() {
+    for text in ["Ａ", "Ｂ", "Ｃ"] {
+        assert_eq!(FontRole::Unknown, classify(text, 0, 1), "{text}");
+    }
+}
+
+#[test]
 fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_bases() {
     for text in ["⌚", "🀄", "🫪"] {
         assert_eq!(

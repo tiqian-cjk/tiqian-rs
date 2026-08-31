@@ -138,11 +138,25 @@ impl QuotePairAnalyzer {
 }
 
 pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
-    text.code_point_before(index)
-        .is_some_and(is_non_cjk_word_character)
-        && text
-            .code_point_at_or_none(index + 1)
-            .is_some_and(is_non_cjk_word_character)
+    let Some(before) = text.code_point_before(index) else {
+        return false;
+    };
+    let Some(after) = text.code_point_at_or_none(index + 1) else {
+        return false;
+    };
+    // Digits alone stay neutral, so `1‘2’3` keeps its single quotes pairable
+    // while `don’t` and `90’s` remain in-word apostrophes.
+    is_non_cjk_word_character(before)
+        && is_non_cjk_word_character(after)
+        && (is_non_cjk_non_numeric_word_character(before)
+            || is_non_cjk_non_numeric_word_character(after))
+}
+
+pub fn is_digit_bound_closing_quote(text: &Text, index: i32) -> bool {
+    matches!(text.utf16_code_unit_at(index), 0x2019 | 0x201D)
+        && text.code_point_before(index).is_some_and(
+            super::super::core::unicode_word_character::unicode_word_character::is_number,
+        )
 }
 
 pub fn is_non_cjk_word_internal_quote_pair(text: &Text, pair: QuotePair) -> bool {

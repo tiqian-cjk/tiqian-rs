@@ -1,6 +1,9 @@
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{FontRole, FontRoleContext};
-use tiqian::layout::quote_pair_analyzer::{QuotePair, QuotePairAnalyzer, QuoteType};
+use tiqian::layout::quote_pair_analyzer::{
+    QuotePair, QuotePairAnalyzer, QuoteType, is_digit_bound_closing_quote,
+    is_non_cjk_in_word_apostrophe,
+};
 
 fn decisions(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDecision> {
     let analyzer = QuotePairAnalyzer;
@@ -53,6 +56,40 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
                 .iter()
                 .all(|decision| decision.source == "NonCjkInWordApostrophe")
         );
+    }
+}
+
+#[test]
+fn digit_only_flanks_leave_single_quotes_pairable() {
+    let analyzer = QuotePairAnalyzer;
+    let text = Text::from("“1‘2’3”");
+    assert!(!is_non_cjk_in_word_apostrophe(&text, 3));
+    assert_eq!(
+        vec![
+            QuotePair::new(2, 4, QuoteType::Single),
+            QuotePair::new(0, 6, QuoteType::Double),
+        ],
+        analyzer.analyze(&text),
+    );
+}
+
+#[test]
+fn letter_flanked_decade_apostrophe_stays_in_word() {
+    let analyzer = QuotePairAnalyzer;
+    let text = Text::from("90’s");
+    assert!(is_non_cjk_in_word_apostrophe(&text, 2));
+    assert!(analyzer.analyze(&text).is_empty());
+    let roles = analyzer.classify_quote_roles(&text, &[], &FontRoleContext::default());
+    assert_eq!(1, roles.len());
+    assert_eq!(FontRole::LatinText, roles[0].role);
+    assert_eq!("NonCjkInWordApostrophe", roles[0].source);
+}
+
+#[test]
+fn digit_bound_closing_quotes_are_detected_as_prime_candidates() {
+    for (text, index) in [("1’30”", 1), ("1’30”", 4), ("6.1”", 3)] {
+        let text = Text::from(text);
+        assert!(is_digit_bound_closing_quote(&text, index));
     }
 }
 

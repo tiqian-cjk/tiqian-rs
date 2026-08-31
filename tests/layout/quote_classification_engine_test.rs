@@ -559,6 +559,55 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
     assert_eq!("CjkPunctuation", override_info.overridden_role);
 }
 
+#[test]
+fn keeps_digit_bounded_single_quote_pair_cjk_via_enclosing_quotation() {
+    let result = layout("尾号是“1‘2’3”。");
+
+    let singles: Vec<_> = result
+        .debug
+        .role_overrides
+        .iter()
+        .filter(|override_info| matches!(override_info.source_text.as_str(), "‘" | "’"))
+        .collect();
+    assert_eq!(2, singles.len());
+    assert!(singles.iter().all(|override_info| {
+        override_info.overridden_role == "CjkPunctuation"
+            && override_info.source == "PairedPunctuationEnclosingQuoteContext"
+    }));
+}
+
+#[test]
+fn resolves_digit_bound_unmatched_quotes_as_primes() {
+    let result = layout("他用时1’30”，屏幕是6.1”的。");
+
+    let marks: Vec<_> = result
+        .debug
+        .role_overrides
+        .iter()
+        .filter(|override_info| matches!(override_info.source_text.as_str(), "’" | "”"))
+        .collect();
+    assert_eq!(3, marks.len());
+    assert!(marks.iter().all(|override_info| {
+        override_info.overridden_role == "LatinText"
+            && override_info.source == "NumericPrimeUnmatchedQuote"
+            && override_info.reason == "digit-bound-unmatched-quote-as-prime"
+    }));
+}
+
+#[test]
+fn keeps_decade_style_apostrophe_with_letter_flank_latin() {
+    let result = layout("那是90’s的音乐。");
+
+    let apostrophe = result
+        .debug
+        .role_overrides
+        .iter()
+        .find(|override_info| override_info.source_text == "’")
+        .unwrap();
+    assert_eq!("LatinText", apostrophe.overridden_role);
+    assert_eq!("NonCjkInWordApostrophe", apostrophe.source);
+}
+
 struct ProportionalQuoteTextShaper;
 
 impl TextShaper for ProportionalQuoteTextShaper {

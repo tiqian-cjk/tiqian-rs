@@ -8,6 +8,7 @@ fixtures=(
     nested-quotes
     contextual-dash-ellipsis
     parenthetical-dash-pairs
+    quote-digit-boundaries
     adjacent-punctuation-spacing
     contextual-curly-quotes
     mixed-script-quote-paragraph-language
