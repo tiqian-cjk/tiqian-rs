@@ -1225,9 +1225,7 @@ pub fn build_paragraph_layout_prep(
             let class = atom_class.get(&cluster.range).copied();
             let tier = match class {
                 Some(PunctuationClass::Interpunct | PunctuationClass::MiddleDot) => 3,
-                Some(
-                    PunctuationClass::Opening | PunctuationClass::Closing | PunctuationClass::Quote,
-                ) => 4,
+                Some(PunctuationClass::Opening | PunctuationClass::Closing) => 4,
                 Some(PunctuationClass::PauseOrStop)
                     if cluster
                         .display_text

@@ -30,7 +30,6 @@ fn mainland_splits_symmetric_punctuation_on_both_sides() {
         PunctuationClass::MiddleDot,
         PunctuationClass::Ellipsis,
         PunctuationClass::Dash,
-        PunctuationClass::Quote,
     ] {
         assert_eq!(GlueSide::BothSides, placement.glue_side_for(class));
     }

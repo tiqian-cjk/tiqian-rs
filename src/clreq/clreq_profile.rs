@@ -648,7 +648,6 @@ pub enum PunctuationClass {
     Solidus,
     Ellipsis,
     Dash,
-    Quote,
     Other,
 }
 
@@ -784,7 +783,6 @@ pub mod clreq_punctuation_policies {
         match classify(character) {
             PunctuationClass::PauseOrStop
             | PunctuationClass::Closing
-            | PunctuationClass::Quote
             | PunctuationClass::Connector
             | PunctuationClass::MiddleDot
             | PunctuationClass::Interpunct
