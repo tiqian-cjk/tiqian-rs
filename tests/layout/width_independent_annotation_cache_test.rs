@@ -207,3 +207,68 @@ fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
         }
     }
 }
+
+fn body_input(text: &str, width: f32) -> LayoutInput {
+    LayoutInput::builder(
+        TiqianTextContent::new(Text::from(text)),
+        LayoutConstraints::with_defaults(width),
+    )
+    .paragraph_style(
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic { count: 2.0 }))
+            .build(),
+    )
+    .build()
+}
+
+fn assert_cached_and_uncached_match(expected: &tiqian::core::layout_model::LayoutResult, actual: &tiqian::core::layout_model::LayoutResult, width: f32) {
+    assert_eq!(expected.lines.len(), actual.lines.len(), "line count at width {width}");
+    for (index, (expected_line, actual_line)) in expected.lines.iter().zip(&actual.lines).enumerate() {
+        assert_eq!(expected_line.range, actual_line.range, "line {index} range at width {width}");
+        assert!((expected_line.visual_width - actual_line.visual_width).abs() < 0.001, "line {index} visual width at width {width}");
+        assert!((expected_line.adjusted_width - actual_line.adjusted_width).abs() < 0.001, "line {index} adjusted width at width {width}");
+        assert!((expected_line.natural_width - actual_line.natural_width).abs() < 0.001, "line {index} natural width at width {width}");
+        assert!((expected_line.indent - actual_line.indent).abs() < 0.001, "line {index} indent at width {width}");
+        assert!((expected_line.hanging_punctuation_advance - actual_line.hanging_punctuation_advance).abs() < 0.001, "line {index} hanging punctuation at width {width}");
+        assert_eq!(expected_line.end_reason, actual_line.end_reason, "line {index} end reason at width {width}");
+    }
+}
+
+#[test]
+fn cached_and_uncached_engines_produce_identical_layout_results_across_widths() {
+    let fixtures = [
+        "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。",
+        "在《中文排版需求》（CLREQ）中，要求正文「两端对齐」；当遇到『标点符号』与西文（如 OpenType / CSS Grid）混排时，应正确执行挤压与推入推出——即使在 120Hz 高频拖拽下也是如此！",
+        "第一行缩进两个字身框。标点符号如……省略号、破折号——不应出现在行首，逗号、句号。也不得出现在行首。这就是避头尾（Kinsoku）规则的严格要求。",
+    ];
+    let mut cached = ExplainableStubParagraphLayoutEngine::default();
+    let mut uncached = ExplainableStubParagraphLayoutEngine::default();
+    uncached.annotation_cache = Box::new(DisabledCache);
+
+    let mut width = 80.0;
+    while width <= 650.0 {
+        for fixture in fixtures {
+            let expected = uncached.layout(body_input(fixture, width));
+            let actual = cached.layout(body_input(fixture, width));
+            assert_cached_and_uncached_match(&expected, &actual, width);
+        }
+        width += 7.3;
+    }
+}
+
+#[test]
+fn reflow_fuzzing_random_sequence_produces_exact_output() {
+    let fixture = "提椠段落排版：严格遵循简体中文 CLREQ 规范。包含“双引号”、‘单引号’、以及（括号）与【括号】；汉字与 English words 混排时自动添加 0.25em 间距，最后一行保持左对齐。";
+    let mut cached = ExplainableStubParagraphLayoutEngine::default();
+    let mut uncached = ExplainableStubParagraphLayoutEngine::default();
+    uncached.annotation_cache = Box::new(DisabledCache);
+
+    for width in [
+        320.0, 150.0, 480.5, 95.2, 210.0, 600.0, 120.3, 450.0, 180.7, 300.0,
+        75.0, 520.0, 133.3, 266.6, 399.9, 110.0, 470.0, 195.0, 345.0, 580.0,
+    ] {
+        let expected = uncached.layout(body_input(fixture, width));
+        let actual = cached.layout(body_input(fixture, width));
+        assert_cached_and_uncached_match(&expected, &actual, width);
+    }
+}

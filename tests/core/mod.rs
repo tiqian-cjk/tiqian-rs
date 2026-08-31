@@ -1,6 +1,7 @@
 mod east_asian_spacing_test;
 mod layout_queries_test;
 mod link_address_display_test;
+mod source_interaction_boundaries_coverage_test;
 mod text_range_test;
 mod unicode_script_evidence_test;
 mod unicode_word_character_test;

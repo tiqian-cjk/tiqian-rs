@@ -42,6 +42,27 @@ fn layout_with(
 }
 
 #[test]
+fn hyphenation_is_on_by_default() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中文中 coffee")),
+            LayoutConstraints::with_defaults(112.0),
+        )
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
+        .build(),
+    );
+
+    assert!(result.clusters.iter().any(|cluster| cluster.text == "cof"));
+    assert!(result.clusters.iter().any(|cluster| cluster.text == "fee"));
+    assert!(result.lines.iter().any(|line| line.hyphen_advance > 0.0));
+}
+
+#[test]
 fn fitting_word_hyphenates_only_when_a_hyphenator_is_injected() {
     let no_hyphen = layout_with(&NoHyphenator, "中文中 coffee", 112.0);
     let hyphenated = layout_with(english_hyphenation::en_us(), "中文中 coffee", 112.0);

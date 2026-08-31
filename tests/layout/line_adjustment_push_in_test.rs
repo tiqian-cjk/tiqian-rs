@@ -1,11 +1,17 @@
 use tiqian::common::{HashMap, HashSet};
 
+use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
 use tiqian::core::geometry::TextRange;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
+use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
 use tiqian::layout::line_breaker::rebuild_line;
+use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
+use tiqian::layout::paragraph_layout_engine::{
+    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
+};
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -65,6 +71,66 @@ fn fill(
 
 fn push_in(line: &LineCandidate) -> &RepairOption {
     line.repair.as_ref().expect("expected PushIn repair")
+}
+
+struct AdjustmentProfile(LineAdjustmentStrategy);
+
+impl ClreqProfileResolver for AdjustmentProfile {
+    fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
+        let mut profile = ClreqProfile::mainland_horizontal();
+        profile.adjustment.line_adjustment = self.0;
+        profile
+    }
+}
+
+fn layout(strategy: LineAdjustmentStrategy) -> tiqian::core::layout_model::LayoutResult {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    engine.clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
+    engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from(
+                "咖啡（coffee）在十七世纪经威尼斯传入欧洲。最初它被当作药物出售，价格高得吓人，真正"
+                    .to_owned()
+                    + "让它流行起来的是随后遍地开花的咖啡馆——读报、辩论、下棋、写作——城市生活忽然多出一个公"
+                    + "共客厅。意大利人做出了 espresso，维也纳人往杯里加奶油，土耳其人坚持连渣同煮……"
+                    + "每座城市都相信自己手里那一杯才是正统。有人说：「先有咖啡馆，后有启蒙运动」。这话说得夸张"
+                    + "，但也不算太离谱。",
+            )),
+            tiqian::core::geometry::LayoutConstraints::with_defaults(320.0),
+        )
+        .build(),
+    )
+}
+
+fn fill_push_in_count(result: &tiqian::core::layout_model::LayoutResult) -> usize {
+    result
+        .debug
+        .line_decisions
+        .iter()
+        .filter(|decision| {
+            decision
+                .repair_decision
+                .as_ref()
+                .is_some_and(|repair| repair.reason_code == "LineAdjustmentPushIn")
+        })
+        .count()
+}
+
+#[test]
+fn push_in_first_compresses_some_boundaries_push_out_only_none() {
+    let push_in_first = layout(LineAdjustmentStrategy::PushInFirst);
+    let push_out_only = layout(LineAdjustmentStrategy::PushOutOnly);
+
+    assert_eq!(0, fill_push_in_count(&push_out_only));
+    assert!(fill_push_in_count(&push_in_first) > 0);
+    assert!(push_in_first.lines.len() <= push_out_only.lines.len());
+}
+
+#[test]
+fn push_in_first_does_not_compress_every_line() {
+    let result = layout(LineAdjustmentStrategy::PushInFirst);
+    assert!(fill_push_in_count(&result) < result.lines.len());
 }
 
 #[test]
