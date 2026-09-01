@@ -32,7 +32,7 @@ use super::kinsoku_rule::KinsokuRule;
 use super::line_breaker::{LineBreaker, LineBreakerConfig};
 use super::line_geometry_stage::{ClusterMetricDecision, ResolvedLineMetrics, line_metrics};
 use super::progressive_break_decisions::{
-    ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkOpportunity,
+    ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkOpportunity, UnbreakableRanges,
 };
 use super::punctuation_geometry_ledger::{
     AttachedInlinePunctuationBoundaryResult, PunctuationGeometryLedger,
@@ -505,14 +505,13 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         .filter(|span| span.policy == LineBreakPolicy::ProgressiveTechnical)
         .map(|span| span.range)
         .collect();
+    let progressive_technical_overlap = IntervalOverlapIndex::new(progressive_technical_ranges);
     let number_symbol_cluster_ranges: Vec<_> =
         number_symbol_cohesion::unbreakable_ranges(&prep.text)
             .into_iter()
             .filter(|source_range| {
-                !progressive_technical_ranges.iter().any(|technical_range| {
-                    source_range.first() < technical_range.end()
-                        && source_range.last() + 1 > technical_range.start()
-                })
+                !progressive_technical_overlap
+                    .overlaps(source_range.first(), source_range.last() + 1)
             })
             .filter_map(|source_range| {
                 cluster_index_range_for_source_range(
@@ -561,39 +560,39 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                 .then_some((right - 1, opportunity.tier))
         })
         .collect();
-    let emergency_tracking_boundary_after_clusters: HashMap<_, _> =
-        (0..prep.natural_clusters.len().saturating_sub(1))
-            .filter_map(|left| {
-                let right = left + 1;
-                let left_cluster = &prep.natural_clusters[left];
-                let right_cluster = &prep.natural_clusters[right];
-                if left_cluster.range.end() != right_cluster.range.start()
-                    || prep
-                        .inline_object_by_cluster_index
-                        .contains_key(&(left as i32))
-                    || prep
-                        .inline_object_by_cluster_index
-                        .contains_key(&(right as i32))
-                    || prep.zero_width_break_clusters.contains(&(left as i32))
-                    || prep.zero_width_break_clusters.contains(&(right as i32))
-                    || prep.mandatory_break_clusters.contains(&(left as i32))
-                    || prep.mandatory_break_clusters.contains(&(right as i32))
-                    || left_cluster.text.is_empty()
-                    || right_cluster.text.is_empty()
-                    || left_cluster.text.chars().all(char::is_whitespace)
-                    || right_cluster.text.chars().all(char::is_whitespace)
-                {
-                    return None;
-                }
-                prep.emergency_tracking_eligibility_decisions
-                    .iter()
-                    .find(|decision| {
-                        left_cluster.range.start() >= decision.range.start()
-                            && right_cluster.range.end() <= decision.range.end()
-                    })
-                    .map(|decision| (left as i32, decision.reason.clone()))
-            })
-            .collect();
+    let boundary_eligible: Vec<_> = (0..prep.natural_clusters.len().saturating_sub(1))
+        .map(|left| {
+            let right = left + 1;
+            let left_cluster = &prep.natural_clusters[left];
+            let right_cluster = &prep.natural_clusters[right];
+            left_cluster.range.end() == right_cluster.range.start()
+                && !prep.inline_object_by_cluster_index.contains_key(&(left as i32))
+                && !prep.inline_object_by_cluster_index.contains_key(&(right as i32))
+                && !prep.zero_width_break_clusters.contains(&(left as i32))
+                && !prep.zero_width_break_clusters.contains(&(right as i32))
+                && !prep.mandatory_break_clusters.contains(&(left as i32))
+                && !prep.mandatory_break_clusters.contains(&(right as i32))
+                && !left_cluster.text.is_empty()
+                && !right_cluster.text.is_empty()
+                && !left_cluster.text.chars().all(char::is_whitespace)
+                && !right_cluster.text.chars().all(char::is_whitespace)
+        })
+        .collect();
+    let mut emergency_tracking_boundary_after_clusters = HashMap::new();
+    for decision in &prep.emergency_tracking_eligibility_decisions {
+        let Some(cluster_range) =
+            cluster_index_range_for_source_range(&prep.natural_clusters, decision.range)
+        else {
+            continue;
+        };
+        for left in cluster_range.first()..cluster_range.last() {
+            if boundary_eligible[left as usize] {
+                emergency_tracking_boundary_after_clusters
+                    .entry(left)
+                    .or_insert_with(|| decision.reason.clone());
+            }
+        }
+    }
     let adjustable_inline_boundary_right_clusters: HashSet<_> = prep
         .uniform_inline_object_boundary_after_clusters
         .iter()
@@ -701,7 +700,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
     } else {
         let mut config = LineBreakerConfig::default();
         config.shrink_opportunities = prep.shrink_opportunities.clone();
-        config.unbreakable_ranges = unbreakable_ranges;
+        config.unbreakable_ranges = UnbreakableRanges::new(unbreakable_ranges);
         config.first_line_indent = first_line_indent - block_indent;
         config.hangable_clusters = resolved_hangable_clusters;
         config.extendable_hang_ranges = ascii_point_mark_kinsoku
@@ -773,17 +772,42 @@ fn cluster_index_range_for_source_range(
     clusters: &[Cluster],
     source_range: TextRange,
 ) -> Option<IntRange> {
-    let mut first = None;
-    let mut last = 0;
-    for (index, cluster) in clusters.iter().enumerate() {
-        if cluster.range.start() >= source_range.start()
-            && cluster.range.end() <= source_range.end()
-        {
-            first.get_or_insert(index as i32);
-            last = index as i32;
+    let first = clusters.partition_point(|cluster| cluster.range.start() < source_range.start());
+    let last_exclusive = first
+        + clusters[first..].partition_point(|cluster| cluster.range.end() <= source_range.end());
+    (first < last_exclusive).then_some(IntRange::new(first as i32, last_exclusive as i32 - 1))
+}
+
+struct IntervalOverlapIndex {
+    starts_sorted: Vec<i32>,
+    prefix_max_end: Vec<i32>,
+}
+
+impl IntervalOverlapIndex {
+    fn new(ranges: Vec<TextRange>) -> Self {
+        let mut by_start = ranges;
+        by_start.sort_by_key(|range| range.start());
+        let starts_sorted = by_start.iter().map(|range| range.start()).collect();
+        let mut running = i32::MIN;
+        let prefix_max_end = by_start
+            .iter()
+            .map(|range| {
+                running = running.max(range.end());
+                running
+            })
+            .collect();
+        Self {
+            starts_sorted,
+            prefix_max_end,
         }
     }
-    first.map(|first| IntRange::new(first, last))
+
+    fn overlaps(&self, start: i32, end_exclusive: i32) -> bool {
+        let index = self
+            .starts_sorted
+            .partition_point(|range_start| *range_start < end_exclusive);
+        index > 0 && self.prefix_max_end[index - 1] > start
+    }
 }
 
 const CJK_FACE_ASCENT_FALLBACK_EM: f32 = 0.88;

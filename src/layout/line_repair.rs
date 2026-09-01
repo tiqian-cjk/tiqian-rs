@@ -10,6 +10,7 @@ use super::line_optimization::{
 };
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, line_limit,
+    UnbreakableRanges,
 };
 use crate::common::{HashMap, HashSet};
 
@@ -31,7 +32,7 @@ pub fn apply_kinsoku_repairs(
     push_in_penalty: i32,
     carry_previous_penalty: i32,
     leave_ragged_penalty: i32,
-    unbreakable: &[IntRange],
+    unbreakable: &UnbreakableRanges,
     first_line_indent: f32,
     hangable: &HashSet<i32>,
     extendable_hang: &[IntRange],
@@ -148,7 +149,6 @@ pub fn apply_kinsoku_repairs(
                     None,
                     Vec::new(),
                 );
-                i += 1
             }
             continue;
         }
@@ -166,9 +166,7 @@ pub fn apply_kinsoku_repairs(
             continue;
         }
         let carried = previous.cluster_range.last();
-        if unbreakable
-            .iter()
-            .any(|range| carried > range.first() && carried <= range.last())
+        if unbreakable.contains_boundary(carried)
         {
             lines[i] = leave_ragged(
                 curr,
@@ -397,7 +395,7 @@ pub fn apply_fill_push_in(
     compress_bias: f32,
     forbidden_start: Option<&HashSet<i32>>,
     forbidden_end: &HashSet<i32>,
-    unbreakable: &[IntRange],
+    unbreakable: &UnbreakableRanges,
     penalty: i32,
     gap_boundaries: &HashSet<i32>,
     progressive: &HashMap<i32, ProgressiveBreakOpportunity>,
@@ -536,7 +534,7 @@ pub fn with_fill_push_in(
     compress_bias: f32,
     forbidden_start: Option<&HashSet<i32>>,
     forbidden_end: &HashSet<i32>,
-    unbreakable: &[IntRange],
+    unbreakable: &UnbreakableRanges,
     penalty: i32,
     gap_boundaries: &HashSet<i32>,
     progressive: &HashMap<i32, ProgressiveBreakOpportunity>,
@@ -625,13 +623,11 @@ fn fill_push_in_group_end(
     current: &LineCandidate,
     forbidden_start: Option<&HashSet<i32>>,
     forbidden_end: &HashSet<i32>,
-    unbreakable: &[IntRange],
+    unbreakable: &UnbreakableRanges,
 ) -> Option<i32> {
     let mut end = current.cluster_range.first();
     while end <= current.cluster_range.last() {
-        if let Some(range) = unbreakable
-            .iter()
-            .find(|range| range.contains(end) && range.last() > end)
+        if let Some(range) = unbreakable.containing_from_closed_start_or_null(end)
         {
             end = range.last();
             if end > current.cluster_range.last() {
@@ -707,6 +703,12 @@ fn distribute_push_in_shrink(
     result
 }
 fn portable(value: f32) -> String {
+    if value == f32::INFINITY {
+        return "Infinity.0".to_owned();
+    }
+    if value == f32::NEG_INFINITY {
+        return "-Infinity.0".to_owned();
+    }
     let out = value.to_string();
     if !out.contains('.') && !out.contains('e') && !out.contains('E') {
         format!("{out}.0")

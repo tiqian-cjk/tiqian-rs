@@ -15,7 +15,8 @@ use super::line_optimization::{LineCandidate, LineSolution};
 use super::line_repair::{apply_kinsoku_repairs, try_push_in};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkOpportunity, adjust_break_for_unbreakables,
-    decide_hyphen_break, decide_progressive_break, line_limit, progressive_candidate_allowed,
+    UnbreakableRanges, decide_hyphen_break, decide_progressive_break, line_limit,
+    progressive_candidate_allowed,
 };
 
 const HYPHEN_RUN_STATE_CAP: i32 = 3;
@@ -58,7 +59,7 @@ struct DpContext<'a> {
     adjusted_clusters: &'a [Cluster],
     max_width: f32,
     shrink_opportunities: &'a [ShrinkOpportunity],
-    unbreakable_ranges: &'a [IntRange],
+    unbreakable_ranges: &'a UnbreakableRanges,
     first_line_indent: f32,
     forbidden_line_start_clusters: Option<&'a HashSet<i32>>,
     forbidden_line_end_clusters: &'a HashSet<i32>,
@@ -255,11 +256,6 @@ impl ParagraphDpLineBreaker {
             context.sino_western_boundaries,
             context.sino_western_stretch_cap,
         );
-        let unbreakable: Vec<_> = context
-            .unbreakable_ranges
-            .iter()
-            .map(|range| (range.first(), range.last()))
-            .collect();
         let baseline = adjust_break_for_unbreakables(
             decide_hyphen_break(
                 start,
@@ -273,7 +269,7 @@ impl ParagraphDpLineBreaker {
                 context.sino_western_stretch_cap,
             ),
             start,
-            &unbreakable,
+            context.unbreakable_ranges,
         );
         let mut compressed = Vec::new();
         if context.allow_compression_edges {
@@ -316,11 +312,7 @@ impl ParagraphDpLineBreaker {
             {
                 continue;
             }
-            if context
-                .unbreakable_ranges
-                .iter()
-                .any(|range| end > range.first() && end <= range.last())
-            {
+            if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
             if !is_compressed_promotion(end)
@@ -354,11 +346,7 @@ impl ParagraphDpLineBreaker {
             {
                 continue;
             }
-            if context
-                .unbreakable_ranges
-                .iter()
-                .any(|range| end > range.first() && end <= range.last())
-            {
+            if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
             if !is_compressed_promotion(end)
@@ -646,11 +634,6 @@ impl ParagraphDpLineBreaker {
     ) -> Vec<i32> {
         let mut ends = Vec::new();
         let mut start = segment_start;
-        let unbreakable: Vec<_> = context
-            .unbreakable_ranges
-            .iter()
-            .map(|range| (range.first(), range.last()))
-            .collect();
         while start < segment_end_exclusive {
             let limit = line_limit(context.max_width, context.first_line_indent, start);
             let raw_greedy = find_greedy_end(
@@ -686,7 +669,7 @@ impl ParagraphDpLineBreaker {
                         context.sino_western_stretch_cap,
                     ),
                     start,
-                    &unbreakable,
+                    context.unbreakable_ranges,
                 )
                 .max(start + 1)
             };

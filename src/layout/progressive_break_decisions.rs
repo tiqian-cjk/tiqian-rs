@@ -3,6 +3,7 @@
 use crate::common::{HashMap, HashSet};
 
 use super::super::core::geometry::TextRange;
+use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::Cluster;
 
 /// 一个 progressive technical span 内的有序 fallback tier。
@@ -381,19 +382,73 @@ pub enum ShrinkChannel {
     RawAdvance,
 }
 
+/// Kotlin `UnbreakableRanges`: indexed containment retains source-list priority.
+#[derive(Clone, Debug, Default)]
+pub struct UnbreakableRanges {
+    ranges: Vec<IntRange>,
+    starts_sorted: Vec<i32>,
+    prefix_max_last: Vec<i32>,
+}
+
+impl UnbreakableRanges {
+    pub fn new(ranges: Vec<IntRange>) -> Self {
+        let mut by_start = ranges.clone();
+        by_start.sort_by_key(|range| range.first());
+        let starts_sorted = by_start.iter().map(|range| range.first()).collect();
+        let mut running = i32::MIN;
+        let prefix_max_last = by_start
+            .iter()
+            .map(|range| {
+                running = running.max(range.last());
+                running
+            })
+            .collect();
+        Self {
+            ranges,
+            starts_sorted,
+            prefix_max_last,
+        }
+    }
+
+    pub fn contains_boundary(&self, candidate: i32) -> bool {
+        let index = self.starts_sorted.partition_point(|start| *start < candidate);
+        index > 0 && self.prefix_max_last[index - 1] >= candidate
+    }
+
+    pub fn containing_or_null(&self, candidate: i32) -> Option<IntRange> {
+        self.contains_boundary(candidate).then(|| {
+            self.ranges
+                .iter()
+                .copied()
+                .find(|range| candidate > range.first() && candidate <= range.last())
+                .expect("indexed unbreakable boundary must have a containing range")
+        })
+    }
+
+    pub fn containing_from_closed_start_or_null(&self, index: i32) -> Option<IntRange> {
+        let position = self.starts_sorted.partition_point(|start| *start <= index);
+        if position == 0 || self.prefix_max_last[position - 1] <= index {
+            return None;
+        }
+        self.ranges
+            .iter()
+            .copied()
+            .find(|range| range.contains(index) && range.last() > index)
+    }
+}
+
 pub fn adjust_break_for_unbreakables(
     break_at: i32,
     line_start: i32,
-    unbreakable_ranges: &[(i32, i32)],
+    unbreakable_ranges: &UnbreakableRanges,
 ) -> i32 {
     let mut candidate = break_at;
     loop {
-        let Some(&(first, _)) = unbreakable_ranges
-            .iter()
-            .find(|&&(first, last)| candidate > first && candidate <= last)
+        let Some(containing) = unbreakable_ranges.containing_or_null(candidate)
         else {
             return candidate;
         };
+        let first = containing.first();
         if first <= line_start {
             return break_at;
         }

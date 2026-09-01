@@ -519,15 +519,10 @@ pub fn cluster_index_range_for(
     clusters: &[Cluster],
     source_range: TextRange,
 ) -> Option<(i32, i32)> {
-    let mut first = None;
-    let mut last = 0;
-    for (i, c) in clusters.iter().enumerate() {
-        if c.range.start() >= source_range.start() && c.range.end() <= source_range.end() {
-            first.get_or_insert(i as i32);
-            last = i as i32;
-        }
-    }
-    first.map(|f| (f, last))
+    let first = clusters.partition_point(|cluster| cluster.range.start() < source_range.start());
+    let last_exclusive = first
+        + clusters[first..].partition_point(|cluster| cluster.range.end() <= source_range.end());
+    (first < last_exclusive).then_some((first as i32, last_exclusive as i32 - 1))
 }
 fn build_geometries(
     clusters: &[Cluster],

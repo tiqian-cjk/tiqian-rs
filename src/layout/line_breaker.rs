@@ -10,7 +10,8 @@ use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
 use super::line_repair::{apply_kinsoku_repairs, with_fill_push_in};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkOpportunity, adjust_break_for_unbreakables,
-    decide_hyphen_break, decide_progressive_break, line_limit, progressive_candidate_allowed,
+    UnbreakableRanges, decide_hyphen_break, decide_progressive_break, line_limit,
+    progressive_candidate_allowed,
 };
 
 /// Kotlin `LineBreaker` 的 Rust trait；默认参数由 `LineBreakerConfig` 映射。
@@ -32,7 +33,7 @@ pub trait LineBreaker {
 #[derive(Clone, Debug)]
 pub struct LineBreakerConfig {
     pub shrink_opportunities: Vec<ShrinkOpportunity>,
-    pub unbreakable_ranges: Vec<IntRange>,
+    pub unbreakable_ranges: UnbreakableRanges,
     pub first_line_indent: f32,
     pub hangable_clusters: HashSet<i32>,
     pub extendable_hang_ranges: Vec<IntRange>,
@@ -54,7 +55,7 @@ impl Default for LineBreakerConfig {
     fn default() -> Self {
         Self {
             shrink_opportunities: Vec::new(),
-            unbreakable_ranges: Vec::new(),
+            unbreakable_ranges: UnbreakableRanges::default(),
             first_line_indent: 0.0,
             hangable_clusters: HashSet::new(),
             extendable_hang_ranges: Vec::new(),
@@ -149,11 +150,7 @@ impl GreedyLineBreaker {
                 let after_unbreak = adjust_break_for_unbreakables(
                     decided,
                     line_start,
-                    &config
-                        .unbreakable_ranges
-                        .iter()
-                        .map(|range| (range.first(), range.last()))
-                        .collect::<Vec<_>>(),
+                    &config.unbreakable_ranges,
                 );
                 let break_at = adjust_break_for_line_end(
                     after_unbreak,
@@ -535,11 +532,6 @@ impl LookaheadLineBreaker {
             return Vec::new();
         }
         assert!(max_lines > 0, "maxLines must be positive");
-        let unbreakable: Vec<_> = config
-            .unbreakable_ranges
-            .iter()
-            .map(|range| (range.first(), range.last()))
-            .collect();
         let mut lines = Vec::new();
         let mut line_start = start;
         let mut accumulated = 0.0;
@@ -570,7 +562,11 @@ impl LookaheadLineBreaker {
                     &config.sino_western_boundaries,
                     config.sino_western_stretch_cap,
                 );
-                let break_at = adjust_break_for_unbreakables(hyphen, line_start, &unbreakable);
+                let break_at = adjust_break_for_unbreakables(
+                    hyphen,
+                    line_start,
+                    &config.unbreakable_ranges,
+                );
                 lines.push(rebuild_line(
                     IntRange::new(line_start, break_at - 1),
                     natural,
@@ -747,12 +743,6 @@ impl LineBreaker for LookaheadLineBreaker {
         let mut sorted_breaks: Vec<_> = config.hard_break_after_clusters.iter().copied().collect();
         sorted_breaks.sort();
         let mut break_cursor = 0usize;
-        let unbreakable: Vec<_> = config
-            .unbreakable_ranges
-            .iter()
-            .map(|range| (range.first(), range.last()))
-            .collect();
-
         while line_start < adjusted.len() as i32 {
             while break_cursor < sorted_breaks.len() && sorted_breaks[break_cursor] < line_start {
                 break_cursor += 1;
@@ -789,7 +779,11 @@ impl LineBreaker for LookaheadLineBreaker {
                 &config.sino_western_boundaries,
                 config.sino_western_stretch_cap,
             );
-            let greedy_end = adjust_break_for_unbreakables(hyphen, line_start, &unbreakable);
+            let greedy_end = adjust_break_for_unbreakables(
+                hyphen,
+                line_start,
+                &config.unbreakable_ranges,
+            );
             if greedy_end >= segment_end_exclusive {
                 if let Some(mandatory_end) = mandatory_end {
                     committed.push(rebuild_line(
@@ -831,12 +825,7 @@ impl LineBreaker for LookaheadLineBreaker {
                         && *end <= adjusted.len() as i32
                         && *end <= segment_end_exclusive
                 })
-                .filter(|end| {
-                    !config
-                        .unbreakable_ranges
-                        .iter()
-                        .any(|range| *end > range.first() && *end <= range.last())
-                })
+                .filter(|end| !config.unbreakable_ranges.contains_boundary(*end))
                 .filter(|end| {
                     progressive_candidate_allowed(
                         line_start,
@@ -863,7 +852,7 @@ impl LineBreaker for LookaheadLineBreaker {
                 candidates.push(adjust_break_for_unbreakables(
                     greedy_end,
                     line_start,
-                    &unbreakable,
+                    &config.unbreakable_ranges,
                 ));
             }
             let mut best_end = greedy_end;
