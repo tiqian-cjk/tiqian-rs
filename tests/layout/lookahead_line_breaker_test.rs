@@ -8,7 +8,9 @@ use tiqian::layout::line_breaker::{
     GreedyLineBreaker, LineBreaker, LineBreakerConfig, LookaheadLineBreaker,
 };
 use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
-use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::progressive_break_decisions::{
+    ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
+};
 
 fn cluster(start: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -51,6 +53,28 @@ fn hanging_tail_is_excluded_from_fill_density_geometry() {
             &HashSet::from([1, 2])
         )
     );
+}
+
+#[test]
+#[should_panic(expected = "Hanging clusters must be a trailing line suffix")]
+fn hanging_clusters_must_be_a_contiguous_trailing_suffix() {
+    let mut line = LineCandidate::new(IntRange::new(0, 2), TextRange::new(0, 3), 48.0, 32.0);
+    line.hanging_cluster_indices = HashSet::from([1]);
+    line.validate_hanging_suffix();
+}
+
+#[test]
+fn compatibility_hanging_index_skips_a_trailing_mandatory_break_control() {
+    let mut line = LineCandidate::new(IntRange::new(0, 2), TextRange::new(0, 3), 32.0, 16.0);
+    line.repair = Some(RepairOption::Hang {
+        penalty: 5,
+        reason: "test".to_owned(),
+        offender_cluster_index: 1,
+    });
+    line.hanging_cluster_indices = HashSet::from([1, 2]);
+    line.validate_hanging_suffix();
+
+    assert_eq!(Some(1), line.hanging_cluster_index());
 }
 
 #[test]
@@ -126,6 +150,31 @@ fn lookahead_shifts_break_earlier_to_avoid_kinsoku_repair() {
 }
 
 #[test]
+fn lookahead_keeps_greedy_break_when_push_in_glue_covers_repair() {
+    let clusters = vec![
+        cluster(0, "中", 16.0),
+        cluster(1, "文", 16.0),
+        cluster(2, "中", 16.0),
+        cluster(3, "。", 16.0),
+    ];
+    let mut config = LineBreakerConfig::default();
+    config.shrink_opportunities = vec![ShrinkOpportunity::new(
+        3,
+        6,
+        4.0,
+        ShrinkChannel::TrailingGlue,
+    )];
+    let solution = break_lines(&LookaheadLineBreaker::default(), &clusters, 60.0, config);
+
+    assert_eq!(1, solution.lines.len());
+    let line = &solution.lines[0];
+    assert_eq!(IntRange::new(0, 3), line.cluster_range);
+    assert_eq!(60.0, line.adjusted_width);
+    assert!(matches!(line.repair, Some(RepairOption::PushIn { .. })));
+    assert_eq!(2.0, solution.total_badness);
+}
+
+#[test]
 fn lookahead_scores_future_push_in_before_choosing_earlier_break() {
     let clusters = vec![
         cluster(0, "中", 16.0),
@@ -162,11 +211,55 @@ fn lookahead_scores_future_push_in_before_choosing_earlier_break() {
 }
 
 #[test]
+fn lookahead_falls_back_to_greedy_when_alternatives_are_worse() {
+    let clusters: Vec<_> = (0..9).map(|index| cluster(index, "x", 16.0)).collect();
+    let solution = break_lines(
+        &LookaheadLineBreaker::default(),
+        &clusters,
+        64.0,
+        LineBreakerConfig::default(),
+    );
+
+    assert_eq!(3, solution.lines.len());
+    assert_eq!(IntRange::new(0, 3), solution.lines[0].cluster_range);
+    assert_eq!(IntRange::new(4, 7), solution.lines[1].cluster_range);
+    assert_eq!(IntRange::new(8, 8), solution.lines[2].cluster_range);
+}
+
+#[test]
+fn lookahead_avoids_consecutive_synthetic_hyphen_breaks() {
+    let clusters: Vec<_> = (0..8).map(|index| cluster(index, "x", 10.0)).collect();
+    let mut config = LineBreakerConfig::default();
+    config.hyphen_break_clusters = HashSet::from([3, 6]);
+    let no_penalty = LookaheadLineBreaker::new(
+        Box::new(tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default()),
+        2,
+        2,
+        0.5,
+        2,
+        10,
+        20,
+        0.0,
+    )
+    .break_lines(&clusters, &clusters, 30.0, &config);
+    let with_penalty = LookaheadLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
+
+    assert_eq!(
+        vec![IntRange::new(0, 2), IntRange::new(3, 5), IntRange::new(6, 7)],
+        no_penalty.lines.iter().map(|line| line.cluster_range).collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec![IntRange::new(0, 1), IntRange::new(2, 4), IntRange::new(5, 7)],
+        with_penalty.lines.iter().map(|line| line.cluster_range).collect::<Vec<_>>(),
+    );
+}
+
+#[test]
 fn lookahead_scores_kinsoku_repairs_with_unbreakable_ranges() {
     let mut clusters: Vec<_> = (0..8).map(|index| cluster(index, "中", 16.0)).collect();
     clusters.push(cluster(8, "。", 16.0));
     let mut config = LineBreakerConfig::default();
-    config.unbreakable_ranges = vec![IntRange::new(6, 7)];
+    config.unbreakable_ranges = UnbreakableRanges::new(vec![IntRange::new(6, 7)]);
     config.forbidden_line_start_clusters = Some(HashSet::from([8]));
     let breaker = LookaheadLineBreaker::new(
         Box::new(tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default()),

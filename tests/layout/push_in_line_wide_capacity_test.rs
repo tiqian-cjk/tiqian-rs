@@ -4,7 +4,9 @@ use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
 use tiqian::layout::line_optimization::RepairOption;
-use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::progressive_break_decisions::{
+    ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
+};
 
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
@@ -215,7 +217,7 @@ fn carry_previous_refuses_to_split_an_unbreakable_span() {
         8.0,
         ShrinkChannel::TrailingGlue,
     )];
-    config.unbreakable_ranges = vec![IntRange::new(2, 4)];
+    config.unbreakable_ranges = UnbreakableRanges::new(vec![IntRange::new(2, 4)]);
     let solution = GreedyLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
 
     assert_eq!(2, solution.lines.len());

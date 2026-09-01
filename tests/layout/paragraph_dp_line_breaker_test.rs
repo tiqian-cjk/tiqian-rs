@@ -7,7 +7,10 @@ use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{LineBreaker, LineBreakerConfig};
 use tiqian::layout::line_optimization::RepairOption;
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::progressive_break_decisions::{
+    ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
+    UnbreakableRanges,
+};
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -25,8 +28,10 @@ fn han_clusters(count: i32) -> Vec<Cluster> {
 fn break_lines(
     clusters: &[Cluster],
     max_width: f32,
-    config: LineBreakerConfig,
+    mut config: LineBreakerConfig,
 ) -> tiqian::layout::line_optimization::LineSolution {
+    config.cjk_inter_char_boundaries = (1..clusters.len() as i32).collect();
+    config.max_cjk_stretch_per_gap = 8.0;
     ParagraphDpLineBreaker::default().break_lines(clusters, clusters, max_width, &config)
 }
 
@@ -103,7 +108,7 @@ fn trailing_mandatory_break_emits_paragraph_end_line() {
 fn never_breaks_inside_unbreakable_range() {
     let clusters = han_clusters(10);
     let mut config = LineBreakerConfig::default();
-    config.unbreakable_ranges = vec![IntRange::new(3, 6)];
+    config.unbreakable_ranges = UnbreakableRanges::new(vec![IntRange::new(3, 6)]);
     let solution = break_lines(&clusters, 64.0, config);
 
     assert_tiles(&solution, 10);
@@ -134,7 +139,43 @@ fn kinsoku_avoidance_routes_around_forbidden_line_start() {
 }
 
 #[test]
-fn compression_edge_records_push_in_repair_only_when_enabled() {
+fn compressed_same_tier_boundary_is_not_reported_as_promotion() {
+    let clusters = vec![
+        cluster(0, "a", 30.0),
+        cluster(1, "/", 30.0),
+        cluster(2, "b", 25.0),
+        cluster(3, "c", 30.0),
+        cluster(4, "d", 30.0),
+    ];
+    let span = TextRange::new(0, clusters.len() as i32);
+    let mut config = LineBreakerConfig::default();
+    config.shrink_opportunities =
+        vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
+    config.line_adjustment_push_in = true;
+    config.progressive_break_opportunities = tiqian::common::HashMap::from([
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+    ]);
+    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
+
+    assert_eq!(IntRange::new(0, 2), solution.lines[0].cluster_range);
+    assert!(
+        matches!(
+            &solution.lines[0].repair,
+            Some(RepairOption::PushIn { reason, .. })
+                if reason.starts_with("LineAdjustmentPushIn")
+        )
+    );
+}
+
+#[test]
+fn compression_edge_records_push_in_repair() {
     let clusters = vec![
         cluster(0, "中", 16.0),
         cluster(1, "中", 16.0),
@@ -161,11 +202,32 @@ fn compression_edge_records_push_in_repair_only_when_enabled() {
         unreachable!()
     };
     assert!(reason.starts_with("LineAdjustmentPushIn"));
+}
 
+#[test]
+fn compression_disabled_without_push_in_flag() {
+    let clusters = vec![
+        cluster(0, "中", 16.0),
+        cluster(1, "中", 16.0),
+        cluster(2, "中", 16.0),
+        cluster(3, "，", 16.0),
+        cluster(4, "中", 16.0),
+    ];
+    let opportunity = ShrinkOpportunity::new(3, 5, 8.0, ShrinkChannel::TrailingGlue);
     let mut disabled = LineBreakerConfig::default();
     disabled.shrink_opportunities = vec![opportunity];
-    let without_compression = break_lines(&clusters, 56.0, disabled);
-    assert!(without_compression.lines.iter().all(|line| !matches!(&line.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn"))));
+    let solution = break_lines(&clusters, 56.0, disabled);
+
+    assert_tiles(&solution, 5);
+    assert!(
+        solution.lines.iter().all(
+            |line| !matches!(
+                &line.repair,
+                Some(RepairOption::PushIn { reason, .. })
+                    if reason.starts_with("LineAdjustmentPushIn")
+            )
+        )
+    );
 }
 
 #[test]

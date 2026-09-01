@@ -2,6 +2,7 @@ use tiqian::common::HashSet;
 
 use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LineEndReason};
+use tiqian::core::source_interaction_boundaries::source_grapheme_boundaries;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
@@ -11,6 +12,7 @@ use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
+use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, TextShaper};
 
 fn input(text: &str) -> LayoutInput {
@@ -27,13 +29,16 @@ fn input(text: &str) -> LayoutInput {
 }
 
 #[test]
-fn paragraph_entry_returns_single_line_and_records_selected_breaker() {
+fn returns_debuggable_single_line_result() {
     let mut greedy = ExplainableStubParagraphLayoutEngine::default();
     let result = greedy.layout(input("提椠"));
     assert_eq!(2, result.clusters.len());
     assert_eq!(1, result.lines.len());
     assert_eq!("greedy", result.debug.line_decisions[0].kind);
+}
 
+#[test]
+fn records_injected_line_breaker_strategy_in_debug_decisions() {
     let mut lookahead = ExplainableStubParagraphLayoutEngine::default();
     lookahead.line_breaker = Box::new(LookaheadLineBreaker::default());
     let result = lookahead.layout(input("提椠"));
@@ -41,30 +46,142 @@ fn paragraph_entry_returns_single_line_and_records_selected_breaker() {
 }
 
 #[test]
-fn mandatory_break_controls_are_unshaped_and_preserve_crlf_and_trailing_blank_line() {
+fn mandatory_line_break_clusters_are_zero_width_and_not_shaped() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    let result = engine.layout(input("甲\r\n乙\n"));
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let result = engine.layout(input("第一行\n第二行"));
 
-    assert_eq!(3, result.lines.len());
+    assert_eq!(2, result.lines.len());
     assert_eq!(LineEndReason::MandatoryBreak, result.lines[0].end_reason);
-    assert_eq!(LineEndReason::MandatoryBreak, result.lines[1].end_reason);
-    assert_eq!(LineEndReason::ParagraphEnd, result.lines[2].end_reason);
-    let crlf = result
+    assert_eq!(LineEndReason::ParagraphEnd, result.lines[1].end_reason);
+    let break_cluster = result
         .clusters
         .iter()
-        .find(|cluster| cluster.text == "\r\n")
+        .find(|cluster| cluster.text == "\n")
         .unwrap();
-    assert_eq!(TextRange::new(1, 3), crlf.range);
-    assert_eq!("", crlf.display_text);
-    assert_eq!(0.0, crlf.advance);
+    assert_eq!("", break_cluster.display_text);
+    assert_eq!(0.0, break_cluster.advance);
     assert!(
         result
             .glyph_runs
             .iter()
             .flat_map(|run| &run.glyphs)
-            .all(|glyph| glyph.cluster_range != crlf.range)
+            .all(|glyph| glyph.cluster_range != break_cluster.range)
     );
-    assert_eq!(TextRange::new(5, 5), result.lines[2].range);
+    assert_eq!(
+        vec![TextRange::new(0, 3), TextRange::new(4, 7)],
+        result.glyph_runs.iter().map(|run| run.range).collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        break_cluster.range,
+        result.debug.mandatory_break_decisions[0].range
+    );
+}
+
+#[test]
+fn consecutive_mandatory_line_breaks_create_one_empty_line_box() {
+    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("第一行\n\n第二行"));
+
+    assert_eq!(3, result.lines.len());
+    assert_eq!(LineEndReason::MandatoryBreak, result.lines[0].end_reason);
+    assert_eq!(LineEndReason::MandatoryBreak, result.lines[1].end_reason);
+    assert_eq!(LineEndReason::ParagraphEnd, result.lines[2].end_reason);
+    let empty_line_cluster = &result.clusters[result.lines[1].cluster_range.first() as usize];
+    assert_eq!("\n", empty_line_cluster.text);
+    assert_eq!("", empty_line_cluster.display_text);
+    assert_eq!(0.0, empty_line_cluster.advance);
+    let line_height = result.debug.line_spacing_decision.as_ref().unwrap().resolved_height;
+    assert!((result.lines[1].bottom - result.lines[1].top - line_height).abs() < 0.001);
+    assert!((result.lines[1].baseline - result.lines[0].baseline - line_height).abs() < 0.001);
+    assert!((result.lines[2].baseline - result.lines[1].baseline - line_height).abs() < 0.001);
+}
+
+#[test]
+fn single_mandatory_break_after_wrapped_line_does_not_create_empty_line() {
+    let text = "很久以前，曾经有一个名叫小红帽的孩子，生活在大森林的边上，大森林里充满了濒临灭绝的猫头鹰和珍稀植物，如果有人愿意花时间研究它们，就会发现癌症的治疗方法。\n小红帽和一位称为母亲的养育者一起生活";
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from(text)),
+            LayoutConstraints::with_defaults(1200.0),
+        )
+        .text_style(TextStyle::builder().font_size(48.0).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
+        .build(),
+    );
+
+    assert!(result.lines.len() >= 4, "{:?}", result.lines);
+    assert!(result
+        .lines
+        .iter()
+        .all(|line| Text::from(text).slice_text(line.range) != "\n"));
+    let mandatory_end = text[..text.find('\n').unwrap()].encode_utf16().count() as i32 + 1;
+    assert_eq!(
+        LineEndReason::MandatoryBreak,
+        result
+            .lines
+            .iter()
+            .find(|line| line.range.end() == mandatory_end)
+            .unwrap()
+            .end_reason
+    );
+    let line_height = result.debug.line_spacing_decision.as_ref().unwrap().resolved_height;
+    for lines in result.lines.windows(2) {
+        assert!((lines[1].baseline - lines[0].baseline - line_height).abs() < 0.001);
+    }
+}
+
+#[test]
+fn crlf_is_one_mandatory_break_cluster() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let result = engine.layout(input("甲\r\n乙"));
+
+    assert_eq!(2, result.lines.len());
+    let break_cluster = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.text == "\r\n")
+        .unwrap();
+    assert_eq!(1, result.debug.mandatory_break_decisions.len());
+    assert_eq!(1, break_cluster.range.start());
+    assert_eq!(3, break_cluster.range.end());
+}
+
+#[test]
+fn consecutive_and_trailing_mandatory_breaks_preserve_blank_lines() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let result = engine.layout(input("甲\n\n乙\n"));
+
+    assert_eq!(4, result.lines.len());
+    assert_eq!(LineEndReason::MandatoryBreak, result.lines[0].end_reason);
+    assert_eq!(LineEndReason::MandatoryBreak, result.lines[1].end_reason);
+    assert_eq!(LineEndReason::MandatoryBreak, result.lines[2].end_reason);
+    assert_eq!(LineEndReason::ParagraphEnd, result.lines[3].end_reason);
+    assert_eq!(0.0, result.lines[1].visual_width);
+    assert_eq!(TextRange::new(5, 5), result.lines[3].range);
+}
+
+#[test]
+fn mandatory_break_line_is_not_justified() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let result = engine.layout(input("短\n中文中文中文中文中文"));
+
+    let mandatory_line = &result.lines[0];
+    assert_eq!(LineEndReason::MandatoryBreak, mandatory_line.end_reason);
+    assert_eq!(mandatory_line.natural_width, mandatory_line.adjusted_width);
+    assert!(result
+        .debug
+        .justification_decisions
+        .iter()
+        .all(|decision| decision.line_range != mandatory_line.range));
 }
 
 struct BoundsTextShaper;
@@ -100,7 +217,23 @@ impl TextShaper for BoundsTextShaper {
 }
 
 #[test]
-fn paragraph_entry_preserves_shaper_glyph_bounds() {
+#[should_panic(expected = "TextShaper must return clusters covering")]
+fn rejects_shaper_clusters_that_do_not_cover_font_decision_range() {
+    struct EmptyTextShaper;
+
+    impl TextShaper for EmptyTextShaper {
+        fn shape(&self, _: &ShapingInput) -> ShapingResult {
+            ShapingResult::new(Vec::new(), Vec::new())
+        }
+    }
+
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.text_shaper = Box::new(EmptyTextShaper);
+    engine.layout(input("提椠"));
+}
+
+#[test]
+fn preserves_shaper_glyph_bounds_in_layout_glyph_runs() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.text_shaper = Box::new(BoundsTextShaper);
     let result = engine.layout(input("A"));
@@ -120,8 +253,9 @@ fn paragraph_entry_preserves_shaper_glyph_bounds() {
 }
 
 #[test]
-fn paragraph_entry_records_fallback_and_substituted_shaping_ranges() {
+fn records_fallback_decisions_per_cluster() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.hyphenator = &NoHyphenator;
     let result = engine.layout(input("提椠……English——世界。"));
 
     assert!(result.debug.font_decisions.iter().any(|decision| {
@@ -141,11 +275,26 @@ fn paragraph_entry_records_fallback_and_substituted_shaping_ranges() {
             && decision.advance == 32.0
             && decision.source == "Stub"
     }));
+    assert!(result.debug.font_decisions.iter().any(|decision| {
+        decision.source_text == "English"
+            && decision.role == "LatinText"
+            && decision.font_key == "latin-primary"
+    }));
+    assert_eq!(
+        "English",
+        result
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "English")
+            .unwrap()
+            .text
+    );
 }
 
 #[test]
-fn combining_marks_remain_in_their_base_shaping_runs() {
+fn combining_marks_stay_in_their_base_shaping_runs() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.hyphenator = &NoHyphenator;
     let result = engine.layout(input("༎ຶ Ỏ̷"));
 
     assert!(
@@ -172,7 +321,7 @@ fn combining_marks_remain_in_their_base_shaping_runs() {
 }
 
 #[test]
-fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
+fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
     let text = "👩🏽‍💻";
     let length = text.encode_utf16().count() as i32;
     let atomic_content = TiqianTextContent::builder(Text::from(text))
@@ -192,12 +341,54 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
         vec![TextRange::new(0, length)],
         atomic
             .debug
+            .font_decisions
+            .iter()
+            .filter(|decision| decision.role == "Emoji")
+            .map(|decision| decision.range)
+            .collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec![text],
+        atomic
+            .debug
             .shaping_decisions
             .iter()
-            .map(|decision| decision.range)
+            .map(|decision| decision.source_text.as_str())
             .collect::<Vec<_>>()
     );
+}
 
+#[test]
+fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
+    let text = "前👩🏽‍💻后🇨🇳与1️⃣和❤️。";
+    let result = ExplainableStubParagraphLayoutEngine::default().layout(input(text));
+
+    assert_eq!(
+        vec!["👩🏽‍💻", "🇨🇳", "1️⃣", "❤️"],
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .filter(|decision| decision.role == "Emoji")
+            .map(|decision| decision.source_text.as_str())
+            .collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec!["👩🏽‍💻", "🇨🇳", "1️⃣", "❤️"],
+        result
+            .debug
+            .shaping_decisions
+            .iter()
+            .filter(|decision| decision.font_key == "symbol-fallback")
+            .map(|decision| decision.source_text.as_str())
+            .collect::<Vec<_>>(),
+    );
+}
+
+#[test]
+fn complex_emoji_graphemes_honor_text_span_style_boundaries() {
+    let text = "👩🏽‍💻";
+    let length = text.encode_utf16().count() as i32;
     let styled_content = TiqianTextContent::builder(Text::from(text))
         .spans(vec![TextSpan {
             range: TextRange::new(2, length),
@@ -205,6 +396,7 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
         }])
         .source_boundaries(HashSet::from([2]))
         .build();
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let styled = engine.layout(
         LayoutInput::builder(styled_content, LayoutConstraints::with_defaults(320.0))
             .paragraph_style(
@@ -226,7 +418,21 @@ fn complex_emoji_remains_atomic_until_style_boundary_requires_a_split() {
 }
 
 #[test]
-fn emoji_sequence_role_promotions_are_explainable() {
+fn source_grapheme_boundaries_do_not_join_zwj_with_ordinary_text() {
+    let left = Text::from("👩‍中");
+    assert_eq!(
+        vec![0, 3, 4],
+        source_grapheme_boundaries(&left, TextRange::new(0, left.utf16_len()))
+    );
+    let right = Text::from("中‍👩");
+    assert_eq!(
+        vec![0, 2, 4],
+        source_grapheme_boundaries(&right, TextRange::new(0, right.utf16_len()))
+    );
+}
+
+#[test]
+fn records_unicode_emoji_sequence_role_promotions() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let result = engine.layout(input("❤️与1️⃣"));
 

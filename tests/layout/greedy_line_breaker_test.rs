@@ -4,6 +4,7 @@ use tiqian::core::geometry::TextRange;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
+use tiqian::layout::kinsoku_rule::KinsokuRule;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
 use tiqian::layout::line_optimization::RepairOption;
 use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
@@ -29,6 +30,19 @@ fn break_lines(
 fn empty_input_produces_no_lines() {
     let solution = break_lines(&[], 100.0, LineBreakerConfig::default());
     assert!(solution.lines.is_empty());
+}
+
+#[test]
+fn single_cluster_fits_on_one_line() {
+    let clusters = vec![cluster(0, 1, "中", 16.0)];
+    let solution = break_lines(&clusters, 64.0, LineBreakerConfig::default());
+
+    assert_eq!(1, solution.lines.len());
+    let line = &solution.lines[0];
+    assert_eq!(IntRange::new(0, 0), line.cluster_range);
+    assert_eq!(TextRange::new(0, 1), line.source_range);
+    assert_eq!(16.0, line.natural_width);
+    assert_eq!(16.0, line.adjusted_width);
 }
 
 #[test]
@@ -179,6 +193,63 @@ fn leave_ragged_when_carry_previous_would_overflow() {
 }
 
 #[test]
+fn kinsoku_leave_ragged_when_prev_line_is_single_cluster() {
+    let clusters = vec![
+        cluster(0, 7, "English", 112.0),
+        cluster(7, 8, "。", 16.0),
+    ];
+    let solution = break_lines(&clusters, 64.0, LineBreakerConfig::default());
+
+    assert_eq!(2, solution.lines.len());
+    assert!(matches!(
+        solution.lines[1].repair,
+        Some(RepairOption::LeaveRagged { .. })
+    ));
+    assert_eq!(20.0, solution.total_badness);
+}
+
+struct NeverForbiddenKinsoku;
+
+impl KinsokuRule for NeverForbiddenKinsoku {
+    fn forbidden_at_line_start(&self, _: &Cluster) -> bool {
+        false
+    }
+
+    fn forbidden_at_line_end(&self, _: &Cluster) -> bool {
+        false
+    }
+}
+
+#[test]
+fn custom_kinsoku_rule_overrides_default() {
+    let breaker = GreedyLineBreaker::new(Box::new(NeverForbiddenKinsoku), 2, 10, 20);
+    let clusters = vec![
+        cluster(0, 1, "a", 16.0),
+        cluster(1, 2, "b", 16.0),
+        cluster(2, 3, "c", 16.0),
+        cluster(3, 4, "。", 16.0),
+    ];
+    let solution = breaker.break_lines(&clusters, &clusters, 48.0, &LineBreakerConfig::default());
+
+    assert_eq!(2, solution.lines.len());
+    assert_eq!(None, solution.lines[1].repair);
+    assert_eq!(0.0, solution.total_badness);
+}
+
+#[test]
+#[should_panic(expected = "naturalClusters and adjustedClusters must align cluster-for-cluster")]
+fn misaligned_cluster_lists_throw() {
+    let natural = vec![cluster(0, 1, "中", 16.0), cluster(1, 2, "文", 16.0)];
+    let adjusted = vec![cluster(0, 1, "中", 16.0)];
+    GreedyLineBreaker::default().break_lines(
+        &natural,
+        &adjusted,
+        100.0,
+        &LineBreakerConfig::default(),
+    );
+}
+
+#[test]
 fn hangs_pause_stop_past_measure_when_enabled_and_push_in_cannot_fit() {
     let clusters = vec![
         cluster(0, 1, "a", 16.0),
@@ -198,6 +269,51 @@ fn hangs_pause_stop_past_measure_when_enabled_and_push_in_cannot_fit() {
     assert!(matches!(
         solution.lines[0].repair,
         Some(RepairOption::Hang { .. })
+    ));
+}
+
+#[test]
+fn does_not_hang_when_disabled() {
+    let clusters = vec![
+        cluster(0, 1, "a", 16.0),
+        cluster(1, 2, "b", 16.0),
+        cluster(2, 3, "c", 16.0),
+        cluster(3, 4, "d", 16.0),
+        cluster(4, 5, "。", 16.0),
+    ];
+    let solution = break_lines(&clusters, 64.0, LineBreakerConfig::default());
+
+    assert_eq!(2, solution.lines.len());
+    assert_eq!(None, solution.lines[0].hanging_cluster_index());
+    assert!(matches!(
+        solution.lines[1].repair,
+        Some(RepairOption::CarryPrevious { .. })
+    ));
+}
+
+#[test]
+fn push_in_still_preferred_over_hang_when_glue_covers() {
+    let clusters = vec![
+        cluster(0, 1, "a", 16.0),
+        cluster(1, 2, "b", 16.0),
+        cluster(2, 3, "c", 16.0),
+        cluster(3, 4, "。", 16.0),
+    ];
+    let mut config = LineBreakerConfig::default();
+    config.shrink_opportunities = vec![ShrinkOpportunity::new(
+        3,
+        6,
+        8.0,
+        ShrinkChannel::TrailingGlue,
+    )];
+    config.hangable_clusters = HashSet::from([3]);
+    let solution = break_lines(&clusters, 60.0, config);
+
+    assert_eq!(1, solution.lines.len());
+    assert_eq!(None, solution.lines[0].hanging_cluster_index());
+    assert!(matches!(
+        solution.lines[0].repair,
+        Some(RepairOption::PushIn { .. })
     ));
 }
 
@@ -223,6 +339,21 @@ fn retreats_break_so_line_does_not_end_on_opening_mark() {
             ..
         })
     ));
+}
+
+#[test]
+fn keeps_opener_at_line_end_when_it_is_the_line_sole_cluster() {
+    let clusters = vec![
+        cluster(0, 1, "（", 16.0),
+        cluster(1, 2, "中", 16.0),
+        cluster(2, 3, "中", 16.0),
+    ];
+    let mut config = LineBreakerConfig::default();
+    config.forbidden_line_end_clusters = HashSet::from([0]);
+    let solution = break_lines(&clusters, 16.0, config);
+
+    assert_eq!(IntRange::new(0, 0), solution.lines[0].cluster_range);
+    assert_eq!(None, solution.lines[0].repair);
 }
 
 #[test]
@@ -257,7 +388,16 @@ fn push_in_consumes_word_space_before_mid_line_punct_glue() {
 
 #[test]
 fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
-    let clusters = vec![cluster(0, 1, "中", 16.0), cluster(1, 2, "\n", 0.0)];
+    let clusters = vec![
+        cluster(0, 1, "中", 16.0),
+        Cluster::with_display_text(
+            TextRange::new(1, 2),
+            Text::from("\n"),
+            Text::new(),
+            "test".to_owned(),
+            0.0,
+        ),
+    ];
     let mut config = LineBreakerConfig::default();
     config.hard_break_after_clusters = HashSet::from([1]);
     let solution = break_lines(&clusters, 160.0, config);
@@ -267,4 +407,27 @@ fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
     assert_eq!(LineEndReason::MandatoryBreak, solution.lines[0].end_reason);
     assert_eq!(TextRange::new(2, 2), solution.lines[1].source_range);
     assert_eq!(LineEndReason::ParagraphEnd, solution.lines[1].end_reason);
+}
+
+#[test]
+fn mandatory_break_blocks_kinsoku_repair_across_boundary() {
+    let clusters = vec![
+        cluster(0, 1, "中", 16.0),
+        Cluster::with_display_text(
+            TextRange::new(1, 2),
+            Text::from("\n"),
+            Text::new(),
+            "test".to_owned(),
+            0.0,
+        ),
+        cluster(2, 3, "。", 16.0),
+    ];
+    let mut config = LineBreakerConfig::default();
+    config.hard_break_after_clusters = HashSet::from([1]);
+    let solution = break_lines(&clusters, 160.0, config);
+
+    assert_eq!(2, solution.lines.len());
+    assert_eq!(IntRange::new(0, 1), solution.lines[0].cluster_range);
+    assert_eq!(IntRange::new(2, 2), solution.lines[1].cluster_range);
+    assert_eq!(None, solution.lines[1].repair);
 }

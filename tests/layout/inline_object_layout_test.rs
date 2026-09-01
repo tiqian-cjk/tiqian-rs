@@ -1,5 +1,6 @@
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
 use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::int_range::IntRange;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch,
@@ -13,7 +14,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::layout::line_geometry_stage::resolve_inline_object_line_boundary_extent;
-use tiqian::layout::progressive_break_decisions::adjust_break_for_unbreakables;
+use tiqian::layout::progressive_break_decisions::{
+    UnbreakableRanges, adjust_break_for_unbreakables,
+};
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 struct FixedBasicProfile;
@@ -240,12 +243,23 @@ fn inline_object_keeps_alternate_source_text_while_skipping_its_glyph_shaping() 
 
 #[test]
 fn adjust_break_for_unbreakables_retreats_past_the_whole_contiguous_run() {
-    let chain = [(1, 2), (2, 3), (3, 4)];
+    let chain = UnbreakableRanges::new(vec![
+        IntRange::new(1, 2),
+        IntRange::new(2, 3),
+        IntRange::new(3, 4),
+    ]);
     assert_eq!(1, adjust_break_for_unbreakables(4, 0, &chain));
     assert_eq!(1, adjust_break_for_unbreakables(3, 0, &chain));
     assert_eq!(1, adjust_break_for_unbreakables(2, 0, &chain));
     assert_eq!(5, adjust_break_for_unbreakables(5, 0, &chain));
-    assert_eq!(3, adjust_break_for_unbreakables(5, 2, &[(3, 4), (4, 5)]));
+    assert_eq!(
+        3,
+        adjust_break_for_unbreakables(
+            5,
+            2,
+            &UnbreakableRanges::new(vec![IntRange::new(3, 4), IntRange::new(4, 5)]),
+        )
+    );
     assert_eq!(4, adjust_break_for_unbreakables(4, 1, &chain));
 }
 

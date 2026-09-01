@@ -15,6 +15,7 @@ use tiqian::layout::paragraph_layout_engine::{
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
+    UnbreakableRanges,
 };
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
@@ -62,7 +63,7 @@ fn fill(
         1_000_000.0,
         forbidden_start,
         forbidden_end,
-        &[],
+        &UnbreakableRanges::default(),
         2,
         &HashSet::from([0, 1, 2, 3, 4]),
         progressive,
