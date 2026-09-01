@@ -57,9 +57,23 @@ fn attached_run_exposes_only_its_prose_neighbors() {
 }
 
 #[test]
-fn virtual_punctuation_boundary_compresses_only_when_followed_by_punctuation() {
-    let compressed = layout_reference("正文：“内容。”[1]，后文");
-    let decision = compressed
+fn attached_run_at_paragraph_end_has_no_virtual_right_neighbor() {
+    let result = resolve_attached_inline_virtual_boundaries(&[
+        InlineAttachment::None,
+        InlineAttachment::None,
+        InlineAttachment::Previous,
+        InlineAttachment::Previous,
+        InlineAttachment::Previous,
+    ]);
+
+    assert_eq!(1, result.len());
+    assert_eq!(None, result[0].next_cluster_index);
+}
+
+#[test]
+fn punctuation_after_footnote_is_judged_against_the_preceding_punctuation() {
+    let result = layout_reference("正文：“内容。”[1]，后文");
+    let decision = result
         .debug
         .spacing_decisions
         .iter()
@@ -76,9 +90,12 @@ fn virtual_punctuation_boundary_compresses_only_when_followed_by_punctuation() {
     );
     assert!(decision.natural_inner_glue > 0.0);
     assert_eq!(0.0, decision.adjusted_inner_glue);
+}
 
-    let natural = layout_reference("正文：“内容。”[1]后文");
-    let decision = natural
+#[test]
+fn closing_quote_before_footnote_and_body_keeps_its_natural_trailing_glue() {
+    let result = layout_reference("正文：“内容。”[1]后文");
+    let decision = result
         .debug
         .spacing_decisions
         .iter()
@@ -94,6 +111,25 @@ fn virtual_punctuation_boundary_compresses_only_when_followed_by_punctuation() {
         decision.reason
     );
     assert_eq!(decision.natural_inner_glue, decision.adjusted_inner_glue);
+    assert!(decision.adjusted_inner_glue > 0.0);
+}
+
+#[test]
+fn closing_quote_before_paragraph_end_footnote_has_no_trailing_glue() {
+    let result = layout_reference("正文：“内容。”[1]");
+    let decision = result
+        .debug
+        .spacing_decisions
+        .iter()
+        .find(|decision| {
+            decision
+                .reason
+                .as_str()
+                .starts_with("AttachedInlineVirtualPunctuationBoundary")
+        })
+        .unwrap();
+    assert_eq!("AttachedInlineVirtualPunctuationBoundary:line-end", decision.reason);
+    assert_eq!(0.0, decision.adjusted_inner_glue);
 }
 
 #[test]

@@ -53,8 +53,12 @@ fn pause_stop_plus_opening_collapses_by_half_em() {
 }
 
 #[test]
-fn consecutive_pause_stop_and_closing_pause_stop_pairs_compress() {
+fn consecutive_pause_or_stop_marks_compress_like_any_adjacent_pair() {
     assert_compression('！', '！', 8.0, 0.0);
+}
+
+#[test]
+fn closing_plus_pause_or_stop_still_compresses() {
     assert_compression('”', '！', 8.0, 0.0);
 }
 

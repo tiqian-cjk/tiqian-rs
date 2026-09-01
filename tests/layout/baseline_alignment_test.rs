@@ -59,6 +59,21 @@ fn explicit_baseline_shift_reaches_latin_cluster() {
 }
 
 #[test]
+fn cjk_punctuation_provides_ideographic_reference_without_han_body() {
+    let result = layout(TiqianTextContent::new(Text::from("MacBook。")));
+
+    assert_eq!(
+        0.0,
+        result
+            .clusters
+            .iter()
+            .find(|cluster| cluster.text == "。")
+            .unwrap()
+            .baseline_shift
+    );
+}
+
+#[test]
 fn cjk_mixed_sizes_align_by_ideographic_box_bottom() {
     let content = TiqianTextContent::builder(Text::from("中小大"))
         .spans(vec![

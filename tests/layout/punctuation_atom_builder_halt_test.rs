@@ -152,3 +152,117 @@ fn fixed_half_width_consumes_measured_sidebearing() {
         result.geometry_source
     );
 }
+
+#[test]
+fn halt_placement_overrides_regional_profile_direction() {
+    let result = atom(
+        '。',
+        PunctuationInkInput::builder(16.0)
+            .ink_bounds(Some(Rect {
+                left: 1.0,
+                top: -4.0,
+                right: 7.0,
+                bottom: 1.0,
+            }))
+            .halt_advance(Some(8.0))
+            .halt_placement_x(Some(0.0))
+            .build(),
+        PunctuationGluePlacement::Traditional,
+        PunctuationWidthPolicy::default(),
+    );
+    assert_eq!(0.0, result.leading_glue.natural);
+    assert_eq!(8.0, result.trailing_glue.natural);
+    assert_eq!(None, result.halt_validation);
+}
+
+#[test]
+fn equal_halt_advance_falls_through_to_ink_bounds() {
+    let result = atom(
+        '，',
+        PunctuationInkInput::builder(16.0)
+            .ink_bounds(Some(Rect {
+                left: 6.0,
+                top: -4.0,
+                right: 10.0,
+                bottom: 1.0,
+            }))
+            .halt_advance(Some(16.0))
+            .build(),
+        PunctuationGluePlacement::MainlandSimplified,
+        PunctuationWidthPolicy::default(),
+    );
+    assert_eq!(None, result.halt_advance);
+    assert_eq!(4.0, result.leading_glue.natural);
+    assert_eq!(4.0, result.trailing_glue.natural);
+    assert_eq!("InkBoundsFittedBodyCompression", result.geometry_source);
+}
+
+fn font_unit_atom(character: char, units_per_em: f32, left: f32, right: f32) -> tiqian::layout::punctuation_model::PunctuationAtom {
+    atom(
+        character,
+        PunctuationInkInput::builder(16.0)
+            .ink_bounds(Some(Rect {
+                left: left / units_per_em * 16.0,
+                top: -12.0,
+                right: right / units_per_em * 16.0,
+                bottom: 2.0,
+            }))
+            .build(),
+        PunctuationGluePlacement::MainlandSimplified,
+        PunctuationWidthPolicy::default(),
+    )
+}
+
+#[test]
+fn microsoft_yahei_centred_comma_compresses_from_both_sides() {
+    let result = font_unit_atom('，', 2048.0, 821.0, 1130.0);
+    assert!((result.body_width - 8.0).abs() < 0.001);
+    assert!((result.leading_glue.natural - 4.0).abs() < 0.01);
+    assert!((result.trailing_glue.natural - 4.0).abs() < 0.01);
+    assert_eq!(PunctuationAnchor::Center, result.anchor);
+    assert_eq!(0.0, result.glyph_inline_shift);
+}
+
+#[test]
+fn microsoft_yahei_bottom_left_stop_keeps_its_leading_safety_margin() {
+    let result = font_unit_atom('。', 2048.0, 131.0, 632.0);
+    assert_eq!(8.0, result.body_width);
+    assert_eq!(0.0, result.leading_glue.natural);
+    assert_eq!(8.0, result.trailing_glue.natural);
+    assert_eq!(PunctuationAnchor::Leading, result.anchor);
+    assert_eq!(0.0, result.glyph_inline_shift);
+}
+
+#[test]
+fn founder_heiti_centred_parentheses_stay_mirror_images() {
+    let opening = font_unit_atom('（', 1000.0, 456.0, 647.0);
+    let closing = font_unit_atom('）', 1000.0, 353.0, 544.0);
+    assert!((opening.leading_glue.natural - closing.trailing_glue.natural).abs() < 0.001);
+    assert!((opening.trailing_glue.natural - closing.leading_glue.natural).abs() < 0.001);
+    assert!(opening.leading_glue.natural > 0.0 && opening.trailing_glue.natural > 0.0);
+    assert_eq!(0.0, opening.glyph_inline_shift);
+    assert_eq!(0.0, closing.glyph_inline_shift);
+}
+
+#[test]
+fn overhang_reduces_compression_capacity_without_moving_ink() {
+    let result = atom(
+        '《',
+        PunctuationInkInput::builder(16.0)
+            .ink_bounds(Some(Rect {
+                left: 6.5,
+                top: -12.0,
+                right: 17.0,
+                bottom: 2.0,
+            }))
+            .build(),
+        PunctuationGluePlacement::MainlandSimplified,
+        PunctuationWidthPolicy::default(),
+    );
+    assert_eq!(17.0, result.advance);
+    assert_eq!(10.5, result.body_width);
+    assert_eq!(6.5, result.leading_glue.natural);
+    assert_eq!(0.0, result.trailing_glue.natural);
+    assert_eq!(0.0, result.glyph_inline_shift);
+    assert!(result.ink_containment_applied);
+}

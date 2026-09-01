@@ -1,4 +1,6 @@
-use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
+use tiqian::clreq::clreq_profile::{
+    AdjustmentStylePolicy, ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
+};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -8,6 +10,7 @@ use tiqian::core::units::Ic;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
+use tiqian::linebreak::hyphenation::NoHyphenator;
 
 struct PushOutOnlyProfile;
 
@@ -15,6 +18,18 @@ impl ClreqProfileResolver for PushOutOnlyProfile {
     fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
         let mut profile = ClreqProfile::mainland_horizontal();
         profile.adjustment.line_adjustment = LineAdjustmentStrategy::PushOutOnly;
+        profile
+    }
+}
+
+struct FixedSinoWesternGapProfile;
+
+impl ClreqProfileResolver for FixedSinoWesternGapProfile {
+    fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
+        let mut profile = ClreqProfile::mainland_horizontal();
+        profile.adjustment = AdjustmentStylePolicy::builder()
+            .allow_sino_western_gap_adjustment(false)
+            .build();
         profile
     }
 }
@@ -138,4 +153,73 @@ fn mandatory_and_paragraph_end_lines_take_last_line_alignment() {
     assert_eq!(26.0, result.lines[0].indent);
     assert_eq!(0.0, result.lines[1].indent);
     assert_eq!(42.0, result.lines[2].indent);
+}
+
+#[test]
+fn sino_western_gap_knob_disables_stretch_and_shrink() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.clreq_profile_resolver = Box::new(FixedSinoWesternGapProfile);
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中文Hello文中文中文中文中")),
+            LayoutConstraints::with_defaults(160.0),
+        )
+        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .build(),
+    );
+
+    assert!(!result.debug.justification_decisions.is_empty());
+    assert!(result
+        .debug
+        .justification_decisions
+        .iter()
+        .flat_map(|decision| &decision.allocations)
+        .all(|allocation| allocation.kind != "CjkLatinSpace"));
+}
+
+#[test]
+fn half_em_word_spaces_do_not_stretch_under_justification() {
+    let result = layout(
+        "AB CD EF中文中文中",
+        160.0,
+        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+    );
+
+    assert!(result.lines.len() >= 2);
+    let decision = &result.debug.justification_decisions[0];
+    assert_eq!(0.0, decision.deficit_after);
+    assert!(decision.allocations.iter().all(|allocation| allocation.kind != "WordSpace"));
+    assert!(!decision.allocations.is_empty());
+    assert_eq!(160.0, result.lines[0].visual_width);
+}
+
+#[test]
+fn justify_fills_saturated_line_with_uncapped_even_share() {
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.hyphenator = &NoHyphenator;
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中文中文Network中文")),
+            LayoutConstraints::with_defaults(160.0),
+        )
+        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .build(),
+    );
+
+    let decision = result
+        .debug
+        .justification_decisions
+        .iter()
+        .find(|decision| decision.line_range.start() == 0)
+        .unwrap();
+    assert_eq!(0.0, decision.deficit_after);
+    assert_eq!(160.0, result.lines[0].visual_width);
+    let deltas: Vec<_> = decision
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == "CjkInterChar")
+        .map(|allocation| allocation.delta)
+        .collect();
+    assert_eq!(3, deltas.len());
+    assert!(deltas.iter().all(|delta| (*delta - 32.0).abs() < 0.01));
 }

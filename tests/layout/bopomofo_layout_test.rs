@@ -110,7 +110,7 @@ fn bopomofo_reserves_annotated_base_without_changing_unannotated_neighbor() {
 }
 
 #[test]
-fn bopomofo_weight_clamps_and_annotation_keeps_reading_locale_and_neutral_tone() {
+fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
     let weighted = layout(
         vec![
             RubySpan::with_kind(
@@ -155,7 +155,10 @@ fn bopomofo_weight_clamps_and_annotation_keeps_reading_locale_and_neutral_tone()
             .unwrap()
             .font_weight
     );
+}
 
+#[test]
+fn bopomofo_decision_keeps_source_reading_for_copy() {
     let neutral = layout(
         vec![RubySpan::with_kind(
             TextRange::new(0, 1),
@@ -166,7 +169,28 @@ fn bopomofo_weight_clamps_and_annotation_keeps_reading_locale_and_neutral_tone()
     );
     let decision = &neutral.debug.bopomofo_decisions[0];
     assert_eq!("˙ㄉㄜ", decision.text);
+    assert_eq!(
+        vec!["˙", "ㄉ", "ㄜ"],
+        decision
+            .placements
+            .iter()
+            .map(|placement| placement.text.as_str())
+            .collect::<Vec<_>>()
+    );
     assert_eq!(BopomofoGlyphRole::Neutral, decision.placements[0].role);
+}
+
+#[test]
+fn bopomofo_annotation_locale_does_not_replace_simplified_base_locale() {
+    let neutral = layout(
+        vec![RubySpan::with_kind(
+            TextRange::new(0, 1),
+            Text::from("˙ㄉㄜ"),
+            RubyKind::Bopomofo,
+        )],
+        Vec::new(),
+    );
+    let decision = &neutral.debug.bopomofo_decisions[0];
     assert_eq!("zh-Hans", neutral.input.text_style.locale);
     assert_eq!("zh-TW", decision.locale);
 }

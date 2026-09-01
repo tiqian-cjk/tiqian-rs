@@ -226,6 +226,36 @@ fn retreats_break_so_line_does_not_end_on_opening_mark() {
 }
 
 #[test]
+fn push_in_consumes_word_space_before_mid_line_punct_glue() {
+    let clusters = vec![
+        cluster(0, 1, "A", 32.0),
+        cluster(1, 2, " ", 16.0),
+        cluster(2, 3, "B", 32.0),
+        cluster(3, 4, "、", 16.0),
+        cluster(4, 5, "中", 16.0),
+        cluster(5, 6, "。", 16.0),
+    ];
+    let mut config = LineBreakerConfig::default();
+    config.shrink_opportunities = vec![
+        ShrinkOpportunity::new(1, 2, 12.0, ShrinkChannel::RawAdvance),
+        ShrinkOpportunity::new(3, 6, 8.0, ShrinkChannel::TrailingGlue),
+        ShrinkOpportunity::new(5, 4, 8.0, ShrinkChannel::TrailingGlue),
+    ];
+    let solution = break_lines(&clusters, 112.0, config);
+
+    assert_eq!(1, solution.lines.len());
+    let Some(RepairOption::PushIn { total_shrink, allocations, .. }) = &solution.lines[0].repair else {
+        panic!("expected PushIn repair")
+    };
+    assert_eq!(16.0, *total_shrink);
+    assert_eq!(vec![5, 1], allocations.iter().map(|allocation| allocation.cluster_index).collect::<Vec<_>>());
+    assert_eq!(8.0, allocations[0].shrink);
+    assert_eq!(8.0, allocations[1].shrink);
+    assert_eq!(ShrinkChannel::RawAdvance, allocations[1].channel);
+    assert!(allocations.iter().all(|allocation| allocation.cluster_index != 3));
+}
+
+#[test]
 fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
     let clusters = vec![cluster(0, 1, "中", 16.0), cluster(1, 2, "\n", 0.0)];
     let mut config = LineBreakerConfig::default();
