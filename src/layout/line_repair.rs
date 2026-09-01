@@ -77,7 +77,7 @@ pub fn apply_kinsoku_repairs(
             lines[i - 1] = pushed.previous;
             if let Some(current) = pushed.current {
                 lines[i] = current;
-                i += 1
+                continue;
             } else {
                 lines.remove(i);
             }
