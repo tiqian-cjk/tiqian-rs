@@ -184,6 +184,7 @@ pub fn attached_ascii_point_mark_kinsoku(
                 .next()
                 .is_some_and(clreq_punctuation_policies::is_ascii_point_mark)
             && !p.display_text.is_empty()
+            && !p.text.is_empty()
             && !p.text.chars().next_back().is_some_and(char::is_whitespace)
             && p.range.end() == c.range.start();
         if !begins {
@@ -515,6 +516,7 @@ pub fn is_attached_ascii_point_mark_at(clusters: &[Cluster], index: usize) -> bo
             .next()
             .is_some_and(clreq_punctuation_policies::is_ascii_point_mark)
         && !clusters[index - 1].display_text.is_empty()
+        && !clusters[index - 1].text.is_empty()
         && !clusters[index - 1]
             .text
             .chars()
@@ -663,5 +665,81 @@ fn auto_decision(
         reduction_per_char: 0.,
         total_reduction: total,
         reason: reason.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::text::Text;
+
+    fn textless_display_cluster(display_text: &str, range: TextRange) -> Cluster {
+        Cluster::with_display_text(
+            range,
+            Text::from(""),
+            Text::from(display_text),
+            "latin".to_owned(),
+            16.0,
+        )
+    }
+
+    #[test]
+    fn source_empty_display_nonempty_defensive_paths_keep_non_punctuation_safe() {
+        let empty = textless_display_cluster("x", TextRange::new(0, 0));
+        assert!(!is_space_run(&empty));
+        let atoms = punctuation_atoms(
+            &empty,
+            16.0,
+            &PunctuationAtomBuilder::default(),
+            &[],
+            PunctuationGluePlacement::MainlandSimplified,
+            PunctuationWidthPolicy::default(),
+        );
+        assert!(atoms.is_empty());
+    }
+
+    #[test]
+    fn source_empty_display_punctuation_uses_cluster_range_for_atom() {
+        let mark = textless_display_cluster("，", TextRange::new(4, 4));
+        let atoms = punctuation_atoms(
+            &mark,
+            16.0,
+            &PunctuationAtomBuilder::default(),
+            &[],
+            PunctuationGluePlacement::MainlandSimplified,
+            PunctuationWidthPolicy::default(),
+        );
+        assert_eq!(1, atoms.len());
+        assert_eq!(TextRange::new(4, 4), atoms[0].range);
+    }
+
+    #[test]
+    fn space_run_requires_non_empty_all_space_text() {
+        assert!(is_space_run(&Cluster::new(
+            TextRange::new(0, 1),
+            Text::from(" "),
+            "latin".to_owned(),
+            16.0,
+        )));
+        assert!(is_space_run(&Cluster::new(
+            TextRange::new(0, 2),
+            Text::from("  "),
+            "latin".to_owned(),
+            16.0,
+        )));
+        assert!(!is_space_run(&textless_display_cluster(" ", TextRange::new(0, 0))));
+        assert!(!is_space_run(&Cluster::new(
+            TextRange::new(0, 3),
+            Text::from("a b"),
+            "latin".to_owned(),
+            16.0,
+        )));
+        assert!(!is_space_run(&Cluster::new(
+            TextRange::new(0, 1),
+            Text::from("中"),
+            "cjk".to_owned(),
+            16.0,
+        )));
     }
 }

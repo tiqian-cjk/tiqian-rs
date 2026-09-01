@@ -610,3 +610,124 @@ fn consume_by_range(
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::text::Text;
+    use crate::layout::punctuation_geometry_stage::punctuation_atoms;
+    use crate::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressionResult};
+
+    #[test]
+    fn geometry_without_budget_falls_back_to_body_width() {
+        let clusters = vec![
+            Cluster::new(TextRange::new(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
+            Cluster::new(TextRange::new(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
+        ];
+        let builder = PunctuationAtomBuilder::default();
+        let atoms = punctuation_atoms(
+            &clusters[0],
+            16.0,
+            &builder,
+            &[],
+            PunctuationGluePlacement::MainlandSimplified,
+            PunctuationWidthPolicy::default(),
+        );
+        let mut ledger = PunctuationGeometryLedger::from(
+            clusters,
+            &atoms,
+            &PunctuationSpacingCompressionResult::new(Vec::new()),
+        );
+        ledger.budgets.clear();
+        assert_eq!(8.0, ledger.resolve_clusters()[0].advance);
+
+        let decorated = ledger
+            .add_justification_deltas(&HashMap::from([(0, 1.0)]))
+            .with_ruby_spread(&HashMap::from([(0, 2.0)]))
+            .with_raw_edge_trims(&HashMap::from([(0, 1.0)]));
+        assert_eq!(10.0, decorated.resolve_clusters()[0].advance);
+    }
+
+    #[test]
+    fn attached_boundary_records_null_characters_for_empty_text_clusters() {
+        let textless_next = vec![
+            Cluster::new(TextRange::new(0, 1), Text::from("」"), "cjk".to_owned(), 16.0),
+            Cluster::new(TextRange::new(1, 2), Text::from("r"), "latin".to_owned(), 16.0),
+            Cluster::with_display_text(
+                TextRange::new(2, 2),
+                Text::from(""),
+                Text::from("a"),
+                "latin".to_owned(),
+                16.0,
+            ),
+        ];
+        let builder = PunctuationAtomBuilder::default();
+        let atoms = punctuation_atoms(
+            &textless_next[0],
+            16.0,
+            &builder,
+            &[],
+            PunctuationGluePlacement::MainlandSimplified,
+            PunctuationWidthPolicy::default(),
+        );
+        let ledger = PunctuationGeometryLedger::from(
+            textless_next,
+            &atoms,
+            &PunctuationSpacingCompressionResult::new(Vec::new()),
+        );
+        let result = ledger.resolve_attached_inline_punctuation_boundaries(
+            &[
+                InlineAttachment::None,
+                InlineAttachment::Previous,
+                InlineAttachment::None,
+            ],
+            &atoms,
+            16.0,
+        );
+        assert_eq!('\0', result.decisions[0].right_char);
+        assert_eq!("AttachedInlineVirtualPunctuationBoundary:natural", result.decisions[0].reason);
+        assert_eq!(8.0, result.trailing_glue_by_cluster[&1]);
+
+        let textless_previous = vec![
+            Cluster::with_display_text(
+                TextRange::new(0, 0),
+                Text::from(""),
+                Text::from("」"),
+                "cjk".to_owned(),
+                16.0,
+            ),
+            Cluster::new(TextRange::new(0, 1), Text::from("r"), "latin".to_owned(), 16.0),
+            Cluster::new(TextRange::new(1, 2), Text::from("「"), "cjk".to_owned(), 16.0),
+        ];
+        let previous_atoms: Vec<_> = textless_previous
+            .iter()
+            .flat_map(|cluster| {
+                punctuation_atoms(
+                    cluster,
+                    16.0,
+                    &builder,
+                    &[],
+                    PunctuationGluePlacement::MainlandSimplified,
+                    PunctuationWidthPolicy::default(),
+                )
+            })
+            .collect();
+        let ledger = PunctuationGeometryLedger::from(
+            textless_previous,
+            &previous_atoms,
+            &PunctuationSpacingCompressionResult::new(Vec::new()),
+        );
+        let result = ledger.resolve_attached_inline_punctuation_boundaries(
+            &[
+                InlineAttachment::None,
+                InlineAttachment::Previous,
+                InlineAttachment::None,
+            ],
+            &previous_atoms,
+            16.0,
+        );
+        assert_eq!('\0', result.decisions[0].left_char);
+        assert_eq!("AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation", result.decisions[0].reason);
+    }
+}
