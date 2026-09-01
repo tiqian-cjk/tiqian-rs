@@ -844,6 +844,8 @@ fn opaque_hard_cuts(
     let mut bounds = vec![range.start()];
     bounds.extend_from_slice(clean);
     bounds.push(range.end());
+    bounds.sort();
+    bounds.dedup();
     let mut out = Vec::new();
     for pair in bounds.windows(2) {
         let piece = TextRange::new(pair[0], pair[1]);

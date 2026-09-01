@@ -183,6 +183,37 @@ fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
 }
 
 #[test]
+fn lru_cache_evicts_oldest_entries_when_capacity_exceeded() {
+    let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(2)));
+    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    engine.annotation_cache = Box::new(SharedLruCache {
+        entries: entries.clone(),
+    });
+    let first = input("段落一文本内容", 300.0);
+    let second = input("段落二文本内容", 300.0);
+    let third = input("段落三文本内容", 300.0);
+    let first_key = to_width_independent_annotation_key(&first, HashMap::new());
+    let second_key = to_width_independent_annotation_key(&second, HashMap::new());
+    let third_key = to_width_independent_annotation_key(&third, HashMap::new());
+
+    engine.layout(first);
+    engine.layout(second);
+    {
+        let mut cache = entries.lock().unwrap();
+        assert_eq!(2, cache.size());
+        assert!(cache.get(&first_key).is_some());
+        assert!(cache.get(&second_key).is_some());
+    }
+
+    engine.layout(third);
+    let mut cache = entries.lock().unwrap();
+    assert_eq!(2, cache.size());
+    assert!(cache.get(&third_key).is_some());
+    assert!(cache.get(&second_key).is_some());
+    assert!(cache.get(&first_key).is_none());
+}
+
+#[test]
 fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
     let text =
         "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。";

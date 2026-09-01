@@ -4,8 +4,14 @@ use tiqian::core::geometry::{LayoutConstraints, TextRange};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::font::font_policy::{FontRole, FontRoleContext};
-use tiqian::layout::contextual_dash_ellipsis_role_resolver::ContextualDashEllipsisRoleResolver;
+use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole, FontRoleClassifier, FontRoleContext};
+use tiqian::layout::contextual_dash_ellipsis_role_resolver::{
+    with_contextual_dash_ellipsis_roles, ContextualDashEllipsisFontRoleClassifier,
+    ContextualDashEllipsisRoleResolver,
+};
+use tiqian::layout::quote_pair_analyzer::{
+    with_contextual_quote_roles, ContextualQuoteFontRoleClassifier,
+};
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
@@ -129,6 +135,92 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
 }
 
 #[test]
+fn parenthetical_pair_with_only_left_outer_script_takes_the_left_role() {
+    let decisions = ContextualDashEllipsisRoleResolver.resolve(
+        &Text::from("中文——word——"),
+        &FontRoleContext::with_locale("zh-Hans".to_owned()),
+    );
+    assert_eq!(2, decisions.len());
+    assert!(decisions.iter().all(|decision| {
+        decision.role == FontRole::CjkPunctuation
+            && decision.source == "ParentheticalDashPairContext"
+            && decision.reason.starts_with("only-left-outer-script")
+    }));
+}
+
+#[test]
+fn parenthetical_pair_with_only_right_outer_script_takes_the_right_role() {
+    let decisions = ContextualDashEllipsisRoleResolver.resolve(
+        &Text::from("——word——中文"),
+        &FontRoleContext::with_locale("zh-Hans".to_owned()),
+    );
+    assert_eq!(2, decisions.len());
+    assert!(decisions.iter().all(|decision| {
+        decision.role == FontRole::CjkPunctuation
+            && decision.source == "ParentheticalDashPairContext"
+            && decision.reason.starts_with("only-right-outer-script")
+    }));
+}
+
+#[test]
+fn parenthetical_pair_without_outer_script_falls_back_to_paragraph_language() {
+    let decisions = ContextualDashEllipsisRoleResolver.resolve(
+        &Text::from("——word——"),
+        &FontRoleContext::with_locale("zh-Hans".to_owned()),
+    );
+    assert_eq!(2, decisions.len());
+    assert!(decisions.iter().all(|decision| {
+        decision.role == FontRole::CjkPunctuation
+            && decision.source == "ParagraphLanguageDashEllipsisContext"
+            && decision
+                .reason
+                .starts_with("parenthetical-pair-no-outer-context")
+    }));
+}
+
+#[test]
+fn contextual_role_extensions_wrap_outside_the_pipeline() {
+    let base = CjkFontRoleClassifier;
+    let context = FontRoleContext::with_locale("zh-Hans".to_owned());
+    let plain = Text::from("中文");
+
+    assert!(matches!(
+        with_contextual_dash_ellipsis_roles(&base, &plain, &context),
+        ContextualDashEllipsisFontRoleClassifier::Passthrough(_)
+    ));
+    assert!(matches!(
+        with_contextual_quote_roles(&base, &plain, &context),
+        ContextualQuoteFontRoleClassifier::Passthrough(_)
+    ));
+    assert!(matches!(
+        with_contextual_dash_ellipsis_roles(&base, &plain, &FontRoleContext::default()),
+        ContextualDashEllipsisFontRoleClassifier::Passthrough(_)
+    ));
+    assert!(matches!(
+        with_contextual_quote_roles(&base, &plain, &FontRoleContext::default()),
+        ContextualQuoteFontRoleClassifier::Passthrough(_)
+    ));
+
+    let dash_text = Text::from("中文—English");
+    let dash_aware = with_contextual_dash_ellipsis_roles(&base, &dash_text, &context);
+    assert_eq!(
+        FontRole::CjkPunctuation,
+        dash_aware.classify(&dash_text, TextRange::new(2, 3), &context)
+    );
+    assert_eq!(
+        base.classify(&dash_text, TextRange::new(0, 1), &context),
+        dash_aware.classify(&dash_text, TextRange::new(0, 1), &context)
+    );
+
+    let quote_text = Text::from("中a“b”c文");
+    let quote_aware = with_contextual_quote_roles(&base, &quote_text, &context);
+    assert_eq!(
+        FontRole::LatinText,
+        quote_aware.classify(&quote_text, TextRange::new(2, 3), &context)
+    );
+}
+
+#[test]
 fn layout_uses_final_role_for_cluster_display_and_debug() {
     let western = layout("English — next; A——B; Wait……what?", "zh-Hans");
     let western_marks: Vec<_> = western
@@ -184,6 +276,51 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
     assert_eq!("⋯", display_at("…"));
     assert_eq!("⸺", display_at("——"));
     assert_eq!("⋯⋯", display_at("……"));
+}
+
+#[test]
+fn latin_dash_run_at_paragraph_end_stays_one_cluster() {
+    let result = layout("End——", "zh-Hans");
+    let decision = result
+        .debug
+        .font_decisions
+        .iter()
+        .find(|decision| decision.source_text.contains('—'))
+        .unwrap();
+    assert_eq!("——", decision.source_text);
+    assert_eq!("LatinText", decision.role);
+}
+
+#[test]
+fn style_span_inside_latin_dash_run_splits_the_cluster() {
+    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+        LayoutInput::builder(
+            TiqianTextContent::builder(Text::from("A——B"))
+                .spans(vec![TextSpan {
+                    range: TextRange::new(2, 3),
+                    style: TextStyle::builder().font_weight(700).build(),
+                }])
+                .build(),
+            LayoutConstraints::with_defaults(1_000.0),
+        )
+        .text_style(TextStyle::builder().locale("zh-Hans".to_owned()).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
+        .build(),
+    );
+    let dash_decisions: Vec<_> = result
+        .debug
+        .font_decisions
+        .iter()
+        .filter(|decision| decision.source_text == "—")
+        .collect();
+    assert_eq!(2, dash_decisions.len());
+    assert!(dash_decisions
+        .iter()
+        .all(|decision| decision.role == "LatinText"));
 }
 
 #[test]

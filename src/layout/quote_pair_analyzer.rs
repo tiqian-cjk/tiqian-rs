@@ -229,3 +229,50 @@ impl FontRoleClassifier for QuotePairAwareFontRoleClassifier<'_> {
             .unwrap_or_else(|| self.delegate.classify(text, range, context))
     }
 }
+
+/// Resolves contextual curly-quote roles for callers classifying ranges from one complete
+/// paragraph outside the layout pipeline. `Passthrough` preserves the supplied classifier when
+/// the paragraph has no quote role decisions.
+pub enum ContextualQuoteFontRoleClassifier<'a> {
+    Passthrough(&'a dyn FontRoleClassifier),
+    Overrides {
+        delegate: &'a dyn FontRoleClassifier,
+        quote_roles: HashMap<i32, FontRole>,
+    },
+}
+
+impl FontRoleClassifier for ContextualQuoteFontRoleClassifier<'_> {
+    fn classify(&self, text: &Text, range: TextRange, context: &FontRoleContext) -> FontRole {
+        match self {
+            Self::Passthrough(delegate) => delegate.classify(text, range, context),
+            Self::Overrides {
+                delegate,
+                quote_roles,
+            } => quote_roles
+                .get(&range.start())
+                .copied()
+                .unwrap_or_else(|| delegate.classify(text, range, context)),
+        }
+    }
+}
+
+/// Creates a contextual quote classifier for one complete paragraph.
+pub fn with_contextual_quote_roles<'a>(
+    delegate: &'a dyn FontRoleClassifier,
+    text: &Text,
+    context: &FontRoleContext,
+) -> ContextualQuoteFontRoleClassifier<'a> {
+    let analyzer = QuotePairAnalyzer;
+    let decisions = analyzer.classify_quote_roles(text, &analyzer.analyze(text), context);
+    if decisions.is_empty() {
+        ContextualQuoteFontRoleClassifier::Passthrough(delegate)
+    } else {
+        ContextualQuoteFontRoleClassifier::Overrides {
+            delegate,
+            quote_roles: decisions
+                .into_iter()
+                .map(|decision| (decision.index, decision.role))
+                .collect(),
+        }
+    }
+}

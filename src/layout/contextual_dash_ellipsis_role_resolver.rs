@@ -95,6 +95,55 @@ impl FontRoleClassifier for ContextualDashEllipsisAwareFontRoleClassifier<'_> {
     }
 }
 
+/// Resolves contextual U+2014 and U+2026 roles for callers classifying ranges from one complete
+/// paragraph outside the layout pipeline. `Passthrough` preserves the supplied classifier when
+/// the paragraph has no contextual dash or ellipsis decisions.
+pub enum ContextualDashEllipsisFontRoleClassifier<'a> {
+    Passthrough(&'a dyn FontRoleClassifier),
+    Overrides {
+        delegate: &'a dyn FontRoleClassifier,
+        roles_by_index: HashMap<i32, FontRole>,
+    },
+}
+
+impl FontRoleClassifier for ContextualDashEllipsisFontRoleClassifier<'_> {
+    fn classify(&self, text: &Text, range: TextRange, context: &FontRoleContext) -> FontRole {
+        match self {
+            Self::Passthrough(delegate) => delegate.classify(text, range, context),
+            Self::Overrides {
+                delegate,
+                roles_by_index,
+            } => roles_by_index
+                .get(&range.start())
+                .copied()
+                .unwrap_or_else(|| delegate.classify(text, range, context)),
+        }
+    }
+}
+
+/// Creates a contextual dash/ellipsis classifier for one complete paragraph.
+pub fn with_contextual_dash_ellipsis_roles<'a>(
+    delegate: &'a dyn FontRoleClassifier,
+    text: &Text,
+    context: &FontRoleContext,
+) -> ContextualDashEllipsisFontRoleClassifier<'a> {
+    let decisions = ContextualDashEllipsisRoleResolver.resolve(text, context);
+    if decisions.is_empty() {
+        ContextualDashEllipsisFontRoleClassifier::Passthrough(delegate)
+    } else {
+        let mut roles_by_index = HashMap::new();
+        for decision in decisions {
+            for index in decision.range.start()..decision.range.end() {
+                roles_by_index.insert(index, decision.role);
+            }
+        }
+        ContextualDashEllipsisFontRoleClassifier::Overrides {
+            delegate,
+            roles_by_index,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Resolution {
     role: FontRole,

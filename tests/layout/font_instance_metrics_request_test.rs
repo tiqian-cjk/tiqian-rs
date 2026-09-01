@@ -79,12 +79,38 @@ fn per_span_weight_and_italic_reach_metrics_resolver() {
 }
 
 #[test]
-fn display_substitution_and_ruby_use_the_actual_metric_face_instance() {
+fn face_selection_uses_the_display_text_that_was_actually_shaped() {
     let requests = Arc::new(Mutex::new(Vec::new()));
     let mut engine = engine_with_requests(requests.clone());
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::new(Text::from("——中")),
+            TiqianTextContent::new(Text::from("——")),
+            LayoutConstraints::with_defaults(180.0),
+        )
+        .text_style(
+            TextStyle::builder()
+                .font_families(vec!["Fixture Sans".to_owned()])
+                .font_size(18.0)
+                .build(),
+        )
+        .build(),
+    );
+
+    let requests = requests.lock().unwrap();
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.face_selection_text == "⸺")
+    );
+}
+
+#[test]
+fn ruby_metrics_use_the_same_italic_instance_as_ruby_shaping() {
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let mut engine = engine_with_requests(requests.clone());
+    engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中")),
             LayoutConstraints::with_defaults(180.0),
         )
         .text_style(
@@ -95,18 +121,13 @@ fn display_substitution_and_ruby_use_the_actual_metric_face_instance() {
                 .build(),
         )
         .ruby_spans(vec![RubySpan::new(
-            TextRange::new(2, 3),
+            TextRange::new(0, 1),
             Text::from("zhōng"),
         )])
         .build(),
     );
 
     let requests = requests.lock().unwrap();
-    assert!(
-        requests
-            .iter()
-            .any(|request| request.face_selection_text == "⸺")
-    );
     assert!(
         requests
             .iter()
