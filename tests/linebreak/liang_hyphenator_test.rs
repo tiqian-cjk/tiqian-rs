@@ -74,3 +74,51 @@ fn parses_patterns_and_exception_blocks_stripping_comments() {
     assert_eq!(Some(&vec![2]), exceptions.get("table"));
     assert_eq!(Some(&Vec::new()), exceptions.get("present"));
 }
+
+#[test]
+fn test_hyphenation_components() {
+    assert!(NoHyphenator.hyphenate(&Text::from("word")).is_empty());
+
+    let hyphenator = LiangHyphenator::with_options(
+        HashMap::from([
+            ("hyp".into(), vec![0, 0, 1, 0]),
+            ("phen".into(), vec![0, 0, 2, 0, 0]),
+        ]),
+        HashMap::from([("specialword".into(), vec![1, 4, 10])]),
+        2,
+        3,
+    );
+    assert!(hyphenator.hyphenate(&Text::from("test")).is_empty());
+    assert_eq!(vec![4], hyphenator.hyphenate(&Text::from("SpecialWord")));
+    assert!(hyphenator.hyphenate(&Text::from("zzzzzz")).is_empty());
+
+    assert_eq!(
+        (HashMap::new(), HashMap::new()),
+        parse_tex_hyphenation_patterns("% only comments\n   ")
+    );
+    assert_eq!(
+        (HashMap::new(), HashMap::new()),
+        parse_tex_hyphenation_patterns("\\patterns no braces \\hyphenation no braces")
+    );
+    assert_eq!(
+        (HashMap::new(), HashMap::new()),
+        parse_tex_hyphenation_patterns("\\patterns { abc \n\\hyphenation { def")
+    );
+
+    let (patterns, exceptions) = parse_tex_hyphenation_patterns(
+        r#"
+        % Comment line
+        \patterns{
+            .ab3cd.
+            e1f
+        }
+        \hyphenation{
+            as-so-ciate
+            dis-allow-
+        }
+        "#,
+    );
+    assert!(patterns.contains_key(".abcd."));
+    assert!(exceptions.contains_key("associate"));
+    assert_eq!(Some(&vec![2, 4]), exceptions.get("associate"));
+}

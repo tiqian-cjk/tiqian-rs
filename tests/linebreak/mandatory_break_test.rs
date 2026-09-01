@@ -93,3 +93,44 @@ fn preserves_each_blank_line_break() {
             .kind
     );
 }
+
+#[test]
+fn test_simple_character_line_break_analyzer() {
+    let analyzer = SimpleCharacterLineBreakAnalyzer;
+
+    assert!(analyzer.analyze(&Text::new()).is_empty());
+
+    let single = analyzer.analyze(&Text::from("A"));
+    assert_eq!(1, single.len());
+    assert_eq!(1, single[0].index);
+    assert_eq!(BreakKind::Required, single[0].kind);
+    assert_eq!("SimpleCharacterLineBreakAnalyzer", single[0].reason);
+
+    let multiple = analyzer.analyze(&Text::from("abc"));
+    assert_eq!(3, multiple.len());
+    assert_eq!(BreakKind::Allowed, multiple[0].kind);
+    assert_eq!(BreakKind::Allowed, multiple[1].kind);
+    assert_eq!(BreakKind::Required, multiple[2].kind);
+
+    let with_lf = analyzer.analyze(&Text::from("a\nb"));
+    assert_eq!(BreakKind::Allowed, with_lf[0].kind);
+    assert_eq!(BreakKind::Required, with_lf[1].kind);
+    assert_eq!("MandatoryBreak", with_lf[1].reason);
+    assert_eq!(BreakKind::Required, with_lf[2].kind);
+
+    let with_crlf = analyzer.analyze(&Text::from("a\r\nb"));
+    assert_eq!(BreakKind::Allowed, with_crlf[0].kind);
+    assert_eq!(BreakKind::Allowed, with_crlf[1].kind);
+    assert_eq!("SimpleCharacterLineBreakAnalyzer", with_crlf[1].reason);
+    assert_eq!(BreakKind::Required, with_crlf[2].kind);
+    assert_eq!("MandatoryBreak", with_crlf[2].reason);
+    assert_eq!(BreakKind::Required, with_crlf[3].kind);
+
+    let with_cr_before_other = analyzer.analyze(&Text::from("a\rb"));
+    assert_eq!(BreakKind::Required, with_cr_before_other[1].kind);
+    assert_eq!("MandatoryBreak", with_cr_before_other[1].reason);
+
+    let with_final_cr = analyzer.analyze(&Text::from("a\r"));
+    assert_eq!(BreakKind::Required, with_final_cr[1].kind);
+    assert_eq!("MandatoryBreak", with_final_cr[1].reason);
+}

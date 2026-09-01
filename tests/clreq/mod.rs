@@ -1,5 +1,7 @@
 mod bopomofo_parser_test;
+mod clreq_policy_tail_coverage_test;
 mod clreq_punctuation_glyph_substitutor_test;
+mod clreq_profile_coverage_test;
 mod kinsoku_level_test;
 mod number_symbol_cohesion_test;
 mod punctuation_glue_placement_test;

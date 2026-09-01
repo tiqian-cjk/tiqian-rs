@@ -1,3 +1,5 @@
 mod cjk_font_role_classifier_test;
+mod font_policy_coverage_test;
+mod font_role_tail_coverage_test;
 mod script_aware_font_metrics_normalizer_test;
 mod uses_latin_face_test;

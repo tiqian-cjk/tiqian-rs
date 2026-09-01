@@ -13,6 +13,12 @@ fn classifies_cjk_text() {
 }
 
 #[test]
+fn classifies_only_the_kotlin_cjk_code_point_ranges() {
+    assert_eq!(FontRole::CjkText, classify("𰀀", 0, 2));
+    assert_eq!(FontRole::Unknown, classify("𲀀", 0, 2));
+}
+
+#[test]
 fn classifies_cjk_punctuation() {
     for text in ["……", "⋯⋯", "——", "⸺", "。", "・", "‧", "～", "／"] {
         assert_eq!(FontRole::CjkPunctuation, classify(text, 0, 1), "{text}");
@@ -42,6 +48,13 @@ fn classifies_unicode_emoji_presentation_without_reclassifying_plain_keycap_base
     }
     assert_eq!(FontRole::LatinText, classify("1", 0, 1));
     assert_eq!(FontRole::Symbol, classify("❤", 0, 1));
+}
+
+#[test]
+fn leaves_supplementary_symbols_unknown() {
+    assert_eq!(FontRole::Unknown, classify("𝐀", 0, 2));
+    assert_eq!(FontRole::Symbol, classify("±", 0, 1));
+    assert_eq!(FontRole::Symbol, classify("€", 0, 1));
 }
 
 #[test]

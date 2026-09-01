@@ -1,9 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
-use icu_properties::{
-    CodePointMapData, CodePointSetData,
-    props::{EmojiPresentation, GeneralCategory, Script},
-};
+use icu_properties::{CodePointMapData, CodePointSetData, props::{EmojiPresentation, GeneralCategory}};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::text::Text;
@@ -147,10 +144,16 @@ impl FontRoleClassifier for CjkFontRoleClassifier {
 }
 
 fn is_cjk_code_point(code_point: i32) -> bool {
-    matches!(
-        CodePointMapData::<Script>::new().get32(code_point as u32),
-        Script::Bopomofo | Script::Han
-    )
+    (0x3105..=0x312F).contains(&code_point)
+        || (0x31A0..=0x31BF).contains(&code_point)
+        || (0x3400..=0x4DBF).contains(&code_point)
+        || (0x4E00..=0x9FFF).contains(&code_point)
+        || (0xF900..=0xFAFF).contains(&code_point)
+        || (0x20000..=0x2A6DF).contains(&code_point)
+        || (0x2A700..=0x2B73F).contains(&code_point)
+        || (0x2B740..=0x2B81F).contains(&code_point)
+        || (0x2B820..=0x2CEAF).contains(&code_point)
+        || (0x30000..=0x3134F).contains(&code_point)
 }
 
 fn is_cjk_punctuation_code_point(code_point: i32) -> bool {
@@ -223,6 +226,9 @@ pub(crate) fn is_emoji_code_point(code_point: i32) -> bool {
 }
 
 fn is_symbol_code_point(code_point: i32) -> bool {
+    if !(0..=0xFFFF).contains(&code_point) {
+        return false;
+    }
     matches!(
         CodePointMapData::<GeneralCategory>::new().get32(code_point as u32),
         GeneralCategory::MathSymbol
