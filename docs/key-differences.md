@@ -18,3 +18,11 @@
 ## 关键差异列表（实现差异）
 
 暂无
+
+## 关键差异列表（其他）
+
+### Kotlin Paragraph-DP 实验与调优探针
+
+Kotlin `ParagraphDpReferenceExperiment.kt` 保留为上游的算法实验，不迁移到 tiqian-rs。它包含 reference DP、fixture 扫描和基准输出，不属于 Rust 排版引擎的生产行为或默认回归测试。Rust 的 Paragraph-DP 正确性由独立的line-breaker、coverage 与 tier-pool 测试覆盖。
+
+Kotlin `ParagraphDpTuningProbe.kt` 的两个函数使用 JVM `AwtTextShaper` 和宿主字体 advance 评估中文正文的拉伸与压缩观感。tiqian-rs 没有同源 AWT 字体 shaping 后端，stub 的测量值不等价，因此这两个 AWT 调优 probe 不适用。
