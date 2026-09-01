@@ -31,7 +31,7 @@ bash tools/verify-fixture.sh basic-pause-stop
 fixture basic-pause-stop: golden matched
 ```
 
-运行全部 49 个 fixture：
+运行全部 52 个 fixture：
 
 ```shell
 bash tools/verify-all-fixtures.sh
@@ -48,6 +48,19 @@ TIQIAN_ROOT=/absolute/path/to/tiqian \
 ```
 
 失败时脚本保留 unified diff，并在标准错误中输出第一处不同的 dump 行。先核对 fixture 输入、breaker 与 stub 参数，再回到对应 Kotlin/Rust 镜像文件定位；不要复制 fixture/golden，也不要修改 Tiqian golden 来掩盖差异。
+
+## Recorded Shaping Evidence
+
+Kotlin 的 Skia/HarfBuzz recorded shaping evidence 也可以按同一跨仓库模式回放。脚本从 Tiqian checkout
+读取 `shaping-evidence.json` 和 `layout-dumps-recorded/`，并为每份 fixture 严格查找完整 shaping / metrics
+请求键；请求不在 evidence 中时 runner 会失败。它不复制 evidence 或 golden 到 Rust 仓库。
+
+```shell
+bash tools/verify-recorded-fixtures.sh
+```
+
+该脚本同样继承 `TIQIAN_ROOT`。与普通 fixture 不同，recorded corpus 用真实字体的 glyph、ink bounds、
+HALT 和 metrics 验证 Rust layout；其中的 dump 差异表示待同步的算法行为，不应更新 Kotlin golden。
 
 ## 本地检查
 
