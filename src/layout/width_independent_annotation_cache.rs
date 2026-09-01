@@ -1064,77 +1064,6 @@ pub fn build_paragraph_layout_prep(
             .compress_cjk_closing_before_ascii_point_mark(&atoms, text, font_size)
             .adjustments,
     );
-    let _spacing_plan = PunctuationSpacingCompressionResult::new(adjustments);
-    let mut ruby_spread = HashMap::new();
-    if !annotation.pinyin_spans.is_empty() {
-        let word_space = annotation.ruby_font_size * RUBY_MIN_GAP_EM_OF_RUBY;
-        let mut left = Vec::with_capacity(natural.len());
-        let mut position = 0.;
-        for cluster in &natural {
-            left.push(position);
-            position += cluster.advance
-        }
-        let mut measures: Vec<_> = annotation
-            .pinyin_spans
-            .iter()
-            .filter_map(|ruby| {
-                cluster_index_range_for(&natural, ruby.base_range).and_then(|(first, last)| {
-                    annotation
-                        .ruby_font_geometry_by_span
-                        .get(ruby)
-                        .map(|geometry| {
-                            (
-                                first,
-                                (left[first as usize]
-                                    + left[last as usize]
-                                    + natural[last as usize].advance)
-                                    / 2.,
-                                geometry.width,
-                            )
-                        })
-                })
-            })
-            .collect();
-        measures.sort_by_key(|entry| entry.0);
-        let mut shift = 0.;
-        let mut previous_right = f32::NEG_INFINITY;
-        for (first, center_natural, width) in measures {
-            let mut center = center_natural + shift;
-            let needed = previous_right + word_space - (center - width / 2.);
-            if needed > 0. && first > 0 {
-                *ruby_spread.entry(first - 1).or_insert(0.) += needed;
-                shift += needed;
-                center += needed
-            }
-            previous_right = center + width / 2.;
-        }
-    }
-    let atoms: Vec<_> = natural
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| cluster_roles[*index] != FontRole::LatinText)
-        .flat_map(|(_, cluster)| {
-            punctuation_atoms(
-                cluster,
-                font_size,
-                punctuation_atom_builder,
-                shaped_glyphs
-                    .get(&cluster.range)
-                    .map(Vec::as_slice)
-                    .unwrap_or(&[]),
-                annotation.clreq_profile.glue_placement,
-                annotation.clreq_profile.punctuation_width,
-            )
-        })
-        .collect();
-    let mut adjustments = punctuation_spacing_compressor
-        .compress(&atoms, font_size)
-        .adjustments;
-    adjustments.extend(
-        punctuation_spacing_compressor
-            .compress_cjk_closing_before_ascii_point_mark(&atoms, text, font_size)
-            .adjustments,
-    );
     let spacing_plan = PunctuationSpacingCompressionResult::new(adjustments);
     let mut ruby_spread = HashMap::new();
     if !annotation.pinyin_spans.is_empty() {
@@ -1295,19 +1224,15 @@ pub fn build_paragraph_layout_prep(
                 }
             }
         }
-        for (index, _) in natural.iter().enumerate() {
-            let index = index as i32;
-            let Some(object) = inline_object_by_cluster_index.get(&index) else {
-                continue;
-            };
-            if object.trailing_boundary.shrink_capacity > 0. {
-                shrink.push(ShrinkOpportunity::new(
-                    index,
-                    8,
-                    object.trailing_boundary.shrink_capacity,
-                    ShrinkChannel::RawAdvance,
-                ))
-            }
+    }
+    for (index, object) in &inline_object_by_cluster_index {
+        if object.trailing_boundary.shrink_capacity > 0. {
+            shrink.push(ShrinkOpportunity::new(
+                *index,
+                8,
+                object.trailing_boundary.shrink_capacity,
+                ShrinkChannel::RawAdvance,
+            ))
         }
     }
     ParagraphLayoutPrep {
