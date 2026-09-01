@@ -12,6 +12,8 @@ Kotlin 仓库的 ADR 是算法与架构取舍的唯一来源。Rust 只记录实
 语言实现差异，例如 Rust 的 UTF-16 `Text` 表示、所有权模型、缓存 API，或以固定版本 ICU4X
 属性数据替代 Kotlin 仓库内的标准 Unicode 属性表。
 
+每次对照前，必须先阅读 `docs/key-differences.md`，了解已知的关键差异、分类和处理策略。
+
 每次对照默认关注：
 
 - `docs/` 中与 engine 取舍直接相关的 ADR、规则审计和路线记录；
