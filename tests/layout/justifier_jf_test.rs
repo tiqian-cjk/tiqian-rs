@@ -12,6 +12,44 @@ use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportuni
 
 const EM: f32 = 16.0;
 
+struct JustificationRequestConfig {
+    allow_sino_western_gap_stretch: bool,
+    cjk_latin_space_base_em: f32,
+    cjk_latin_space_max_em: f32,
+    no_stretch_boundary_clusters: HashSet<i32>,
+    no_stretch_boundary_after_clusters: HashSet<i32>,
+    western_bracket_cjk_inter_char_boundary_after_clusters: HashSet<i32>,
+    attached_inline_physical_boundary_after_clusters: HashSet<i32>,
+    attached_inline_virtual_boundary_after_clusters: HashMap<i32, i32>,
+    attached_inline_virtual_sino_western_boundary_after_clusters: HashSet<i32>,
+    uniform_inline_object_boundary_after_clusters: HashSet<i32>,
+    preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
+    technical_boundary_after_clusters: HashMap<i32, tiqian::layout::progressive_break_decisions::ProgressiveBreakTier>,
+    emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+}
+
+impl Default for JustificationRequestConfig {
+    fn default() -> Self {
+        Self {
+            allow_sino_western_gap_stretch: true,
+            cjk_latin_space_base_em: 0.25,
+            cjk_latin_space_max_em: 0.5,
+            no_stretch_boundary_clusters: HashSet::new(),
+            no_stretch_boundary_after_clusters: HashSet::new(),
+            western_bracket_cjk_inter_char_boundary_after_clusters: HashSet::new(),
+            attached_inline_physical_boundary_after_clusters: HashSet::new(),
+            attached_inline_virtual_boundary_after_clusters: HashMap::new(),
+            attached_inline_virtual_sino_western_boundary_after_clusters: HashSet::new(),
+            uniform_inline_object_boundary_after_clusters: HashSet::new(),
+            preferred_inline_object_boundary_after_clusters: HashMap::new(),
+            technical_boundary_after_clusters: HashMap::new(),
+            emergency_tracking_boundary_after_clusters: HashMap::new(),
+            preferred_emergency_tracking_boundary_after_clusters: HashMap::new(),
+        }
+    }
+}
+
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
         TextRange::new(index, index + text.encode_utf16().count() as i32),
@@ -39,11 +77,42 @@ fn justify(
     spacing: &[EastAsianSpacingEdges],
     range: IntRange,
     max_width: f32,
-    configure: impl FnOnce(&mut JustificationRequest<'_>),
+    configure: impl FnOnce(&mut JustificationRequestConfig),
 ) -> tiqian::layout::justifier::JustificationPlan {
-    let mut request = JustificationRequest::new(clusters, roles, spacing, range, max_width, EM, 0.25, 0.5);
-    configure(&mut request);
-    Justifier::default().justify(request)
+    let mut config = JustificationRequestConfig::default();
+    configure(&mut config);
+    Justifier::default().justify(JustificationRequest {
+        adjusted_clusters: clusters,
+        cluster_roles: roles,
+        east_asian_spacing_edges: spacing,
+        line_cluster_range: range,
+        max_width,
+        font_size: EM,
+        skip: false,
+        skip_reason: None,
+        allow_sino_western_gap_stretch: config.allow_sino_western_gap_stretch,
+        cjk_latin_space_base_em: config.cjk_latin_space_base_em,
+        cjk_latin_space_max_em: config.cjk_latin_space_max_em,
+        no_stretch_boundary_clusters: &config.no_stretch_boundary_clusters,
+        no_stretch_boundary_after_clusters: &config.no_stretch_boundary_after_clusters,
+        western_bracket_cjk_inter_char_boundary_after_clusters: &config
+            .western_bracket_cjk_inter_char_boundary_after_clusters,
+        attached_inline_physical_boundary_after_clusters: &config
+            .attached_inline_physical_boundary_after_clusters,
+        attached_inline_virtual_boundary_after_clusters: &config
+            .attached_inline_virtual_boundary_after_clusters,
+        attached_inline_virtual_sino_western_boundary_after_clusters: &config
+            .attached_inline_virtual_sino_western_boundary_after_clusters,
+        uniform_inline_object_boundary_after_clusters: &config
+            .uniform_inline_object_boundary_after_clusters,
+        preferred_inline_object_boundary_after_clusters: &config
+            .preferred_inline_object_boundary_after_clusters,
+        technical_boundary_after_clusters: &config.technical_boundary_after_clusters,
+        emergency_tracking_boundary_after_clusters: &config
+            .emergency_tracking_boundary_after_clusters,
+        preferred_emergency_tracking_boundary_after_clusters: &config
+            .preferred_emergency_tracking_boundary_after_clusters,
+    })
 }
 
 #[test]
@@ -293,7 +362,7 @@ fn cjk_latin_mixed_zero_and_positive_capacity_allocation() {
         edges(EastAsianSpacingValue::Narrow, EastAsianSpacingValue::Narrow, false),
         edges(EastAsianSpacingValue::Narrow, EastAsianSpacingValue::Narrow, false),
     ];
-    let configure = |request: &mut JustificationRequest<'_>| {
+    let configure = |request: &mut JustificationRequestConfig| {
         request.cjk_latin_space_base_em = 0.5;
         request.cjk_latin_space_max_em = 0.5;
         request.attached_inline_virtual_boundary_after_clusters = HashMap::from([(2, 0)]);

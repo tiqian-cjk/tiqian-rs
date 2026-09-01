@@ -26,55 +26,17 @@ pub struct JustificationRequest<'a> {
     pub allow_sino_western_gap_stretch: bool,
     pub cjk_latin_space_base_em: f32,
     pub cjk_latin_space_max_em: f32,
-    pub no_stretch_boundary_clusters: HashSet<i32>,
-    pub no_stretch_boundary_after_clusters: HashSet<i32>,
-    pub western_bracket_cjk_inter_char_boundary_after_clusters: HashSet<i32>,
-    pub attached_inline_physical_boundary_after_clusters: HashSet<i32>,
-    pub attached_inline_virtual_boundary_after_clusters: HashMap<i32, i32>,
-    pub attached_inline_virtual_sino_western_boundary_after_clusters: HashSet<i32>,
-    pub uniform_inline_object_boundary_after_clusters: HashSet<i32>,
-    pub preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
-    pub technical_boundary_after_clusters: HashMap<i32, ProgressiveBreakTier>,
-    pub emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
-    pub preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
-}
-
-impl<'a> JustificationRequest<'a> {
-    pub fn new(
-        adjusted_clusters: &'a [Cluster],
-        cluster_roles: &'a [FontRole],
-        east_asian_spacing_edges: &'a [EastAsianSpacingEdges],
-        line_cluster_range: IntRange,
-        max_width: f32,
-        font_size: f32,
-        cjk_latin_space_base_em: f32,
-        cjk_latin_space_max_em: f32,
-    ) -> Self {
-        Self {
-            adjusted_clusters,
-            cluster_roles,
-            east_asian_spacing_edges,
-            line_cluster_range,
-            max_width,
-            font_size,
-            skip: false,
-            skip_reason: None,
-            allow_sino_western_gap_stretch: true,
-            cjk_latin_space_base_em,
-            cjk_latin_space_max_em,
-            no_stretch_boundary_clusters: HashSet::new(),
-            no_stretch_boundary_after_clusters: HashSet::new(),
-            western_bracket_cjk_inter_char_boundary_after_clusters: HashSet::new(),
-            attached_inline_physical_boundary_after_clusters: HashSet::new(),
-            attached_inline_virtual_boundary_after_clusters: HashMap::new(),
-            attached_inline_virtual_sino_western_boundary_after_clusters: HashSet::new(),
-            uniform_inline_object_boundary_after_clusters: HashSet::new(),
-            preferred_inline_object_boundary_after_clusters: HashMap::new(),
-            technical_boundary_after_clusters: HashMap::new(),
-            emergency_tracking_boundary_after_clusters: HashMap::new(),
-            preferred_emergency_tracking_boundary_after_clusters: HashMap::new(),
-        }
-    }
+    pub no_stretch_boundary_clusters: &'a HashSet<i32>,
+    pub no_stretch_boundary_after_clusters: &'a HashSet<i32>,
+    pub western_bracket_cjk_inter_char_boundary_after_clusters: &'a HashSet<i32>,
+    pub attached_inline_physical_boundary_after_clusters: &'a HashSet<i32>,
+    pub attached_inline_virtual_boundary_after_clusters: &'a HashMap<i32, i32>,
+    pub attached_inline_virtual_sino_western_boundary_after_clusters: &'a HashSet<i32>,
+    pub uniform_inline_object_boundary_after_clusters: &'a HashSet<i32>,
+    pub preferred_inline_object_boundary_after_clusters: &'a HashMap<i32, InlineObjectPreferredStretch>,
+    pub technical_boundary_after_clusters: &'a HashMap<i32, ProgressiveBreakTier>,
+    pub emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
+    pub preferred_emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -170,9 +132,7 @@ impl Justifier {
                 || request.no_stretch_boundary_clusters.contains(&right)
         };
         let space_gap_is_closed = |space: i32| {
-            request
-                .no_stretch_boundary_after_clusters
-                .contains(&(space - 1))
+            request.no_stretch_boundary_after_clusters.contains(&(space - 1))
                 || request.no_stretch_boundary_after_clusters.contains(&space)
                 || request.no_stretch_boundary_clusters.contains(&(space - 1))
                 || request.no_stretch_boundary_clusters.contains(&(space + 1))

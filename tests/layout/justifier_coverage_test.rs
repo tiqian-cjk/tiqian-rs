@@ -15,6 +15,48 @@ use tiqian::layout::punctuation_model::GlueKind;
 
 const EM: f32 = 16.0;
 
+struct JustificationRequestConfig {
+    skip: bool,
+    skip_reason: Option<String>,
+    allow_sino_western_gap_stretch: bool,
+    cjk_latin_space_base_em: f32,
+    cjk_latin_space_max_em: f32,
+    no_stretch_boundary_clusters: HashSet<i32>,
+    no_stretch_boundary_after_clusters: HashSet<i32>,
+    western_bracket_cjk_inter_char_boundary_after_clusters: HashSet<i32>,
+    attached_inline_physical_boundary_after_clusters: HashSet<i32>,
+    attached_inline_virtual_boundary_after_clusters: HashMap<i32, i32>,
+    attached_inline_virtual_sino_western_boundary_after_clusters: HashSet<i32>,
+    uniform_inline_object_boundary_after_clusters: HashSet<i32>,
+    preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
+    technical_boundary_after_clusters: HashMap<i32, ProgressiveBreakTier>,
+    emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+}
+
+impl Default for JustificationRequestConfig {
+    fn default() -> Self {
+        Self {
+            skip: false,
+            skip_reason: None,
+            allow_sino_western_gap_stretch: true,
+            cjk_latin_space_base_em: 0.25,
+            cjk_latin_space_max_em: 0.5,
+            no_stretch_boundary_clusters: HashSet::new(),
+            no_stretch_boundary_after_clusters: HashSet::new(),
+            western_bracket_cjk_inter_char_boundary_after_clusters: HashSet::new(),
+            attached_inline_physical_boundary_after_clusters: HashSet::new(),
+            attached_inline_virtual_boundary_after_clusters: HashMap::new(),
+            attached_inline_virtual_sino_western_boundary_after_clusters: HashSet::new(),
+            uniform_inline_object_boundary_after_clusters: HashSet::new(),
+            preferred_inline_object_boundary_after_clusters: HashMap::new(),
+            technical_boundary_after_clusters: HashMap::new(),
+            emergency_tracking_boundary_after_clusters: HashMap::new(),
+            preferred_emergency_tracking_boundary_after_clusters: HashMap::new(),
+        }
+    }
+}
+
 fn c(text: &str, index: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::new(
         TextRange::new(index, index + text.encode_utf16().count() as i32),
@@ -43,11 +85,42 @@ fn justify(
     range: IntRange,
     max_width: f32,
     justifier: &Justifier,
-    configure: impl FnOnce(&mut JustificationRequest<'_>),
+    configure: impl FnOnce(&mut JustificationRequestConfig),
 ) -> JustificationPlan {
-    let mut request = JustificationRequest::new(clusters, roles, edges, range, max_width, EM, 0.25, 0.5);
-    configure(&mut request);
-    justifier.justify(request)
+    let mut config = JustificationRequestConfig::default();
+    configure(&mut config);
+    justifier.justify(JustificationRequest {
+        adjusted_clusters: clusters,
+        cluster_roles: roles,
+        east_asian_spacing_edges: edges,
+        line_cluster_range: range,
+        max_width,
+        font_size: EM,
+        skip: config.skip,
+        skip_reason: config.skip_reason,
+        allow_sino_western_gap_stretch: config.allow_sino_western_gap_stretch,
+        cjk_latin_space_base_em: config.cjk_latin_space_base_em,
+        cjk_latin_space_max_em: config.cjk_latin_space_max_em,
+        no_stretch_boundary_clusters: &config.no_stretch_boundary_clusters,
+        no_stretch_boundary_after_clusters: &config.no_stretch_boundary_after_clusters,
+        western_bracket_cjk_inter_char_boundary_after_clusters: &config
+            .western_bracket_cjk_inter_char_boundary_after_clusters,
+        attached_inline_physical_boundary_after_clusters: &config
+            .attached_inline_physical_boundary_after_clusters,
+        attached_inline_virtual_boundary_after_clusters: &config
+            .attached_inline_virtual_boundary_after_clusters,
+        attached_inline_virtual_sino_western_boundary_after_clusters: &config
+            .attached_inline_virtual_sino_western_boundary_after_clusters,
+        uniform_inline_object_boundary_after_clusters: &config
+            .uniform_inline_object_boundary_after_clusters,
+        preferred_inline_object_boundary_after_clusters: &config
+            .preferred_inline_object_boundary_after_clusters,
+        technical_boundary_after_clusters: &config.technical_boundary_after_clusters,
+        emergency_tracking_boundary_after_clusters: &config
+            .emergency_tracking_boundary_after_clusters,
+        preferred_emergency_tracking_boundary_after_clusters: &config
+            .preferred_emergency_tracking_boundary_after_clusters,
+    })
 }
 
 fn latin_space_latin(space_advance: f32, a_advance: f32, b_advance: f32) -> (Vec<Cluster>, Vec<FontRole>, Vec<EastAsianSpacingEdges>) {

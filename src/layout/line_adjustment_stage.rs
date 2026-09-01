@@ -303,46 +303,44 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                         })
                         .collect()
                 });
-            let mut justification = JustificationRequest::new(
-                &trimmed_clusters,
-                &prep.cluster_roles,
-                &prep.east_asian_spacing_edges,
-                line.in_measure_cluster_range(),
-                (if line.cluster_range.first() == 0 {
+            let justification = JustificationRequest {
+                adjusted_clusters: &trimmed_clusters,
+                cluster_roles: &prep.cluster_roles,
+                east_asian_spacing_edges: &prep.east_asian_spacing_edges,
+                line_cluster_range: line.in_measure_cluster_range(),
+                max_width: (if line.cluster_range.first() == 0 {
                     prep.measure - plan.first_line_indent
                 } else {
                     prep.measure - plan.block_indent
                 }) - line_hyphen_advance_at(line_index),
-                prep.font_size,
-                prep.clreq_profile.auto_space.gap_em,
-                prep.clreq_profile.auto_space.stretch_max_em,
-            );
-            justification.allow_sino_western_gap_stretch =
-                prep.adjustment_style.allow_sino_western_gap_adjustment;
-            justification.no_stretch_boundary_clusters = plan.no_stretch_boundary_clusters.clone();
-            justification.no_stretch_boundary_after_clusters =
-                plan.no_stretch_boundary_after_clusters.clone();
-            justification.western_bracket_cjk_inter_char_boundary_after_clusters = plan
-                .western_bracket_cjk_inter_char_boundary_after_clusters
-                .clone();
-            justification.attached_inline_physical_boundary_after_clusters = plan
-                .attached_inline_physical_boundary_after_clusters
-                .clone();
-            justification.attached_inline_virtual_boundary_after_clusters =
-                plan.attached_inline_virtual_boundary_after_clusters.clone();
-            justification.attached_inline_virtual_sino_western_boundary_after_clusters = plan
-                .attached_inline_virtual_sino_western_boundary_after_clusters
-                .clone();
-            justification.uniform_inline_object_boundary_after_clusters =
-                prep.uniform_inline_object_boundary_after_clusters.clone();
-            justification.preferred_inline_object_boundary_after_clusters =
-                prep.preferred_inline_object_boundary_after_clusters.clone();
-            justification.technical_boundary_after_clusters =
-                plan.technical_boundary_after_clusters.clone();
-            justification.emergency_tracking_boundary_after_clusters =
-                plan.emergency_tracking_boundary_after_clusters.clone();
-            justification.preferred_emergency_tracking_boundary_after_clusters =
-                preferred_emergency_tracking_boundaries;
+                font_size: prep.font_size,
+                skip: false,
+                skip_reason: None,
+                allow_sino_western_gap_stretch: prep
+                    .adjustment_style
+                    .allow_sino_western_gap_adjustment,
+                cjk_latin_space_base_em: prep.clreq_profile.auto_space.gap_em,
+                cjk_latin_space_max_em: prep.clreq_profile.auto_space.stretch_max_em,
+                no_stretch_boundary_clusters: &plan.no_stretch_boundary_clusters,
+                no_stretch_boundary_after_clusters: &plan.no_stretch_boundary_after_clusters,
+                western_bracket_cjk_inter_char_boundary_after_clusters: &plan
+                    .western_bracket_cjk_inter_char_boundary_after_clusters,
+                attached_inline_physical_boundary_after_clusters: &plan
+                    .attached_inline_physical_boundary_after_clusters,
+                attached_inline_virtual_boundary_after_clusters: &plan
+                    .attached_inline_virtual_boundary_after_clusters,
+                attached_inline_virtual_sino_western_boundary_after_clusters: &plan
+                    .attached_inline_virtual_sino_western_boundary_after_clusters,
+                uniform_inline_object_boundary_after_clusters: &prep
+                    .uniform_inline_object_boundary_after_clusters,
+                preferred_inline_object_boundary_after_clusters: &prep
+                    .preferred_inline_object_boundary_after_clusters,
+                technical_boundary_after_clusters: &plan.technical_boundary_after_clusters,
+                emergency_tracking_boundary_after_clusters: &plan
+                    .emergency_tracking_boundary_after_clusters,
+                preferred_emergency_tracking_boundary_after_clusters:
+                    &preferred_emergency_tracking_boundaries,
+            };
             Some(request.justifier.justify(justification))
         })
         .collect();
