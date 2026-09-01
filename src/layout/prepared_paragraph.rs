@@ -191,6 +191,65 @@ pub fn to_prepared_paragraph_json(
     out
 }
 
+/// Emits the prepared plan plus shaping diagnostics for the host integration.
+/// The plan remains an escaped JSON string so callers receive one document.
+pub fn to_plan_with_diagnostics_json(
+    result: &LayoutResult,
+    render_evidence: bool,
+    zero_advance_epsilon_px: f32,
+) -> String {
+    let mut out = String::from("{\"plan\":");
+    append_json_string(
+        &mut out,
+        &to_prepared_paragraph_json(result, render_evidence),
+    );
+    out.push_str(",\"diagnostics\":{\"capabilityIssues\":[");
+    let mut first_capability_issue = true;
+    for decision in &result.debug.shaping_decisions {
+        let Some(capability_issue) = &decision.capability_issue else {
+            continue;
+        };
+        if !first_capability_issue {
+            out.push(',');
+        }
+        first_capability_issue = false;
+        out.push_str("{\"name\":");
+        append_json_string(&mut out, capability_issue);
+        out.push_str(",\"reason\":");
+        append_json_string(&mut out, &decision.reason);
+        out.push_str(",\"rangeStart\":");
+        out.push_str(&decision.range.start().to_string());
+        out.push_str(",\"rangeEnd\":");
+        out.push_str(&decision.range.end().to_string());
+        out.push('}');
+    }
+    out.push_str("],\"advanceSuspects\":[");
+    let mut first_advance_suspect = true;
+    for decision in &result.debug.shaping_decisions {
+        if decision.advance.is_finite() && decision.advance > zero_advance_epsilon_px {
+            continue;
+        }
+        if !first_advance_suspect {
+            out.push(',');
+        }
+        first_advance_suspect = false;
+        out.push_str("{\"displayText\":");
+        append_json_string(&mut out, &decision.display_text);
+        out.push_str(",\"advance\":");
+        let advance = ecma_json_number(decision.advance);
+        append_json_string(&mut out, &advance);
+        out.push_str(",\"reason\":");
+        append_json_string(&mut out, &decision.reason);
+        out.push_str(",\"rangeStart\":");
+        out.push_str(&decision.range.start().to_string());
+        out.push_str(",\"rangeEnd\":");
+        out.push_str(&decision.range.end().to_string());
+        out.push('}');
+    }
+    out.push_str("]}}");
+    out
+}
+
 #[allow(clippy::too_many_arguments)]
 fn append_cell_render_evidence(
     out: &mut String,
