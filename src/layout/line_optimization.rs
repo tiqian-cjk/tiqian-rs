@@ -129,14 +129,24 @@ impl LineCandidate {
                         == Some(self.cluster_range.last()),
                 "Hanging clusters must be a trailing line suffix: line={:?} hanging={:?}",
                 self.cluster_range,
-                self.hanging_cluster_indices
+                {
+                    self.hanging_cluster_indices
+                        .iter()
+                        .copied()
+                        .collect::<std::collections::BTreeSet<_>>()
+                }
             );
             assert_eq!(
                 self.hanging_cluster_indices.len() as i32,
                 self.cluster_range.last() - first + 1,
                 "Hanging clusters must be contiguous: line={:?} hanging={:?}",
                 self.cluster_range,
-                self.hanging_cluster_indices
+                {
+                    self.hanging_cluster_indices
+                        .iter()
+                        .copied()
+                        .collect::<std::collections::BTreeSet<_>>()
+                }
             )
         }
     }
