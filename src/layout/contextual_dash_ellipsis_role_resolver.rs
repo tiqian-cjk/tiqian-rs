@@ -3,7 +3,7 @@
 use crate::common::HashMap;
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::text::Text;
 use super::super::core::unicode_script_evidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
@@ -47,9 +47,9 @@ impl ContextualDashEllipsisRoleResolver {
         }
         let strong_script_context = StrongScriptContextIndex::new(text);
         let runs = collect_runs(text);
-        let pair_resolutions = resolve_parenthetical_pairs(text, &runs, &strong_script_context, context);
-        runs
-            .into_iter()
+        let pair_resolutions =
+            resolve_parenthetical_pairs(text, &runs, &strong_script_context, context);
+        runs.into_iter()
             .map(|range| {
                 let resolution = pair_resolutions
                     .get(&range)
@@ -68,15 +68,20 @@ impl ContextualDashEllipsisRoleResolver {
 
 pub struct ContextualDashEllipsisAwareFontRoleClassifier<'a> {
     delegate: &'a dyn FontRoleClassifier,
-    roles_by_index: HashMap<i32, FontRole>,
+    roles_by_index: HashMap<ScalarOffset, FontRole>,
 }
 
 impl<'a> ContextualDashEllipsisAwareFontRoleClassifier<'a> {
-    pub fn new(delegate: &'a dyn FontRoleClassifier, decisions: &[DashEllipsisRoleDecision]) -> Self {
+    pub fn new(
+        delegate: &'a dyn FontRoleClassifier,
+        decisions: &[DashEllipsisRoleDecision],
+    ) -> Self {
         let mut roles_by_index = HashMap::new();
         for decision in decisions {
-            for index in decision.range.start()..decision.range.end() {
+            let mut index = decision.range.start();
+            while index < decision.range.end() {
                 roles_by_index.insert(index, decision.role);
+                index += 1;
             }
         }
         Self {
@@ -102,7 +107,7 @@ pub enum ContextualDashEllipsisFontRoleClassifier<'a> {
     Passthrough(&'a dyn FontRoleClassifier),
     Overrides {
         delegate: &'a dyn FontRoleClassifier,
-        roles_by_index: HashMap<i32, FontRole>,
+        roles_by_index: HashMap<ScalarOffset, FontRole>,
     },
 }
 
@@ -133,8 +138,10 @@ pub fn with_contextual_dash_ellipsis_roles<'a>(
     } else {
         let mut roles_by_index = HashMap::new();
         for decision in decisions {
-            for index in decision.range.start()..decision.range.end() {
+            let mut index = decision.range.start();
+            while index < decision.range.end() {
                 roles_by_index.insert(index, decision.role);
+                index += 1;
             }
         }
         ContextualDashEllipsisFontRoleClassifier::Overrides {
@@ -163,18 +170,16 @@ impl Resolution {
 
 fn collect_runs(text: &Text) -> Vec<TextRange> {
     let mut runs = Vec::new();
-    let mut index = 0;
-    let text_length = text.utf16_len();
-    while index < text_length {
-        if !is_contextual_dash_or_ellipsis(text.code_point_at_compat(index, text_length)) {
-            index += code_point_length_at(text, index, text_length);
-            continue;
+    let mut start = None;
+    for (offset, character) in text.scalar_indices() {
+        if matches!(character, '\u{2014}' | '\u{2026}') {
+            start.get_or_insert(offset);
+        } else if let Some(start) = start.take() {
+            runs.push(TextRange::new(start, offset));
         }
-        let start = index;
-        while index < text_length && is_contextual_dash_or_ellipsis(text.code_point_at_compat(index, text_length)) {
-            index += 1;
-        }
-        runs.push(TextRange::new(start, index));
+    }
+    if let Some(start) = start {
+        runs.push(TextRange::new(start, text.scalar_len()));
     }
     runs
 }
@@ -282,19 +287,13 @@ fn is_parenthetical_dash_pair(text: &Text, first: TextRange, second: TextRange) 
     {
         return false;
     }
-    let mut index = first.end();
-    while index < second.start() {
-        let code_point = text.code_point_at_compat(index, second.start());
-        if code_point != 0x20 && !unicode_word_character::contains(code_point) {
-            return false;
-        }
-        index += code_point_length_at(text, index, second.start());
-    }
-    true
+    text.slice_text(TextRange::new(first.end(), second.start()))
+        .chars()
+        .all(|character| character == ' ' || unicode_word_character::contains(character as i32))
 }
 
 fn is_pure_dash_run(text: &Text, range: TextRange) -> bool {
-    (range.start()..range.end()).all(|index| text.utf16_code_unit_at(index) == 0x2014)
+    text.slice_text(range).chars().all(|character| character == '\u{2014}')
 }
 
 struct StrongScriptContextIndex {
@@ -304,32 +303,25 @@ struct StrongScriptContextIndex {
 
 impl StrongScriptContextIndex {
     fn new(text: &Text) -> Self {
-        let text_length = text.utf16_len();
-        let mut left_role_before_boundary = vec![None; text_length as usize + 1];
+        let text_length = text.scalar_len();
+        let mut left_role_before_boundary = vec![None; text_length.value() as usize + 1];
         let mut current_role = None;
-        let mut scalar_start = 0;
-        while scalar_start < text_length {
-            let scalar_end = scalar_start + code_point_length_at(text, scalar_start, text_length);
-            current_role = next_strong_script_role(
-                text.code_point_at_compat(scalar_start, text_length),
-                current_role,
-            );
-            for boundary in scalar_start + 1..=scalar_end {
-                left_role_before_boundary[boundary as usize] = current_role;
-            }
-            scalar_start = scalar_end;
+        for (offset, character) in text.scalar_indices() {
+            let scalar_end = offset + 1;
+            current_role = next_strong_script_role(character as i32, current_role);
+            left_role_before_boundary[scalar_end.value() as usize] = current_role;
         }
 
-        let mut right_role_from_boundary = vec![None; text_length as usize + 1];
+        let mut right_role_from_boundary = vec![None; text_length.value() as usize + 1];
         current_role = None;
         let mut scalar_end = text_length;
-        while scalar_end > 0 {
-            scalar_start = scalar_start_before(text, scalar_end);
-            let code_point = text.code_point_at_compat(scalar_start, scalar_end);
+        while scalar_end > ScalarOffset::ZERO {
+            let scalar_start = scalar_end - 1;
+            let code_point = text
+                .code_point_at_or_none(scalar_start)
+                .expect("scalar offset must be valid");
             current_role = next_strong_script_role(code_point, current_role);
-            for boundary in scalar_start..scalar_end {
-                right_role_from_boundary[boundary as usize] = current_role;
-            }
+            right_role_from_boundary[scalar_start.value() as usize] = current_role;
             scalar_end = scalar_start;
         }
         Self {
@@ -338,12 +330,12 @@ impl StrongScriptContextIndex {
         }
     }
 
-    fn left_of(&self, boundary: i32) -> Option<FontRole> {
-        self.left_role_before_boundary[boundary as usize]
+    fn left_of(&self, boundary: ScalarOffset) -> Option<FontRole> {
+        self.left_role_before_boundary[boundary.value() as usize]
     }
 
-    fn right_of(&self, boundary: i32) -> Option<FontRole> {
-        self.right_role_from_boundary[boundary as usize]
+    fn right_of(&self, boundary: ScalarOffset) -> Option<FontRole> {
+        self.right_role_from_boundary[boundary.value() as usize]
     }
 }
 
@@ -358,26 +350,3 @@ fn next_strong_script_role(code_point: i32, current_role: Option<FontRole>) -> O
     }
 }
 
-fn scalar_start_before(text: &Text, end_exclusive: i32) -> i32 {
-    let last_index = end_exclusive - 1;
-    if (0xDC00..=0xDFFF).contains(&text.utf16_code_unit_at(last_index))
-        && last_index > 0
-        && (0xD800..=0xDBFF).contains(&text.utf16_code_unit_at(last_index - 1))
-    {
-        last_index - 1
-    } else {
-        last_index
-    }
-}
-
-fn is_contextual_dash_or_ellipsis(code_point: i32) -> bool {
-    matches!(code_point, 0x2014 | 0x2026)
-}
-
-fn code_point_length_at(text: &Text, index: i32, end: i32) -> i32 {
-    if text.code_point_at_compat(index, end) > 0xFFFF {
-        2
-    } else {
-        1
-    }
-}

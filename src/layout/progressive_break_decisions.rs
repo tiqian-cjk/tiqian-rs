@@ -255,11 +255,11 @@ fn progressive_candidate_stretch_density(
                     && cluster.range.end() <= span.end()
                     && !cluster.text.chars().any(char::is_whitespace)
             })
-            .map(|cluster| cluster.text.utf16_len())
+                .map(|cluster| cluster.text.scalar_len().value())
             .sum()
     });
     // `TerminalTechnicalTrackingDensityEstimate`：技术 prefix 到达行末时，最终可用的 tracking 是其自身
-    // source-unit gap，而不是无关的 CJK body gap。当前技术分段面向 Latin/ASCII，UTF-16 unit 与其 grapheme cut 一致。
+            // scalar source-unit gap，而不是无关的 CJK body gap。当前技术分段面向 Latin/ASCII，scalar 与其 grapheme cut 一致。
     let terminal_technical_gap_count = (terminal_technical_source_units - 1).max(0);
     if terminal_technical_gap_count > 0 {
         return cjk_deficit / terminal_technical_gap_count as f32;

@@ -220,9 +220,13 @@ impl Justifier {
                             .attached_inline_physical_boundary_after_clusters
                             .contains(&left)
                         && !boundary_is_closed(left, right)
-                        && !request.adjusted_clusters[left as usize].text.ends_with(' ')
+                        && !request.adjusted_clusters[left as usize]
+                            .text
+                            .as_str()
+                            .ends_with(' ')
                         && !request.adjusted_clusters[right as usize]
                             .text
+                            .as_str()
                             .starts_with(' ')
                 },
             );

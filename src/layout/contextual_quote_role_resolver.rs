@@ -3,6 +3,7 @@
 use crate::common::{HashMap, HashSet};
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;
+use super::super::core::geometry::{ScalarOffset, scalar_offset};
 use super::super::core::text::Text;
 use super::super::core::unicode_script_evidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
@@ -31,8 +32,8 @@ pub struct ContextualQuoteRoleResolver<'a> {
     text: &'a Text,
     pairs: &'a [QuotePair],
     context: &'a FontRoleContext,
-    pair_by_open: HashMap<i32, QuotePair>,
-    pair_by_close: HashMap<i32, QuotePair>,
+    pair_by_open: HashMap<ScalarOffset, QuotePair>,
+    pair_by_close: HashMap<ScalarOffset, QuotePair>,
     parent_by_pair: HashMap<QuotePair, Option<QuotePair>>,
 }
 
@@ -90,15 +91,16 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             ));
         }
 
-        let paired_indices: HashSet<i32> = self
+        let paired_indices: HashSet<ScalarOffset> = self
             .pairs
             .iter()
             .flat_map(|pair| [pair.open_index, pair.close_index])
             .collect();
-        let text_length = self.text.utf16_len();
-        for index in 0..text_length {
+        let text_length = self.text.scalar_len();
+        for raw_index in 0..text_length.value() {
+            let index = scalar_offset(raw_index);
             if paired_indices.contains(&index)
-                || !is_ambiguous_curly_quote(self.text.utf16_code_unit_at(index))
+                || !is_ambiguous_curly_quote(self.text.code_point_at_or_none(index))
             {
                 continue;
             }
@@ -121,9 +123,9 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         resolved_pairs: &HashMap<QuotePair, FontRole>,
     ) -> Resolution {
         let parent = self.parent_by_pair[&pair];
-        let enclosing_start = parent.map_or(0, |parent_pair| parent_pair.open_index + 1);
+        let enclosing_start = parent.map_or(ScalarOffset::ZERO, |parent_pair| parent_pair.open_index + 1);
         let enclosing_end =
-            parent.map_or(self.text.utf16_len(), |parent_pair| parent_pair.close_index);
+            parent.map_or(self.text.scalar_len(), |parent_pair| parent_pair.close_index);
         let mut outer_evidence = ScriptEvidence::default();
         self.add_script_evidence_range(&mut outer_evidence, enclosing_start, pair.open_index);
         self.add_script_evidence_range(&mut outer_evidence, pair.close_index + 1, enclosing_end);
@@ -136,7 +138,7 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
 
         if self
             .text
-            .utf16_code_unit_at_or_none(pair.open_index - 1)
+            .code_point_before(pair.open_index)
             .is_some_and(is_ascii_space_or_tab)
             && content_evidence.has_western
             && !content_evidence.has_cjk
@@ -193,8 +195,8 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         })
     }
 
-    fn resolve_unmatched(&self, index: i32) -> Resolution {
-        if self.text.utf16_code_unit_at(index) == 0x2019
+    fn resolve_unmatched(&self, index: ScalarOffset) -> Resolution {
+        if self.text.code_point_at_or_none(index) == Some(0x2019)
             && is_non_cjk_in_word_apostrophe(self.text, index)
         {
             return Resolution::new(
@@ -216,11 +218,13 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             );
         }
 
-        let left_role = self.nearest_strong_script_role(index - 1, -1);
+        let left_role = index
+            .checked_sub(1)
+            .and_then(|start| self.nearest_strong_script_role(start, -1));
         let right_role = self.nearest_strong_script_role(index + 1, 1);
         if self
             .text
-            .utf16_code_unit_at_or_none(index - 1)
+            .code_point_before(index)
             .is_some_and(is_ascii_space_or_tab)
             && right_role == Some(FontRole::LatinText)
         {
@@ -256,13 +260,20 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         })
     }
 
-    fn nearest_strong_script_role(&self, start_index: i32, direction: i32) -> Option<FontRole> {
+    fn nearest_strong_script_role(
+        &self,
+        start_index: ScalarOffset,
+        direction: i32,
+    ) -> Option<FontRole> {
         let mut index = start_index;
-        let text_length = self.text.utf16_len();
-        while (0..text_length).contains(&index) {
+        let text_length = self.text.scalar_len();
+        while index < text_length {
             if direction < 0 {
                 if let Some(pair) = self.pair_by_close.get(&index) {
-                    index = pair.open_index - 1;
+                    let Some(before_open) = pair.open_index.checked_sub(1) else {
+                        break;
+                    };
+                    index = before_open;
                     continue;
                 }
             } else if let Some(pair) = self.pair_by_open.get(&index) {
@@ -270,23 +281,16 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
                 continue;
             }
 
-            let scalar_start = if direction < 0
-                && (0xDC00..=0xDFFF).contains(&self.text.utf16_code_unit_at(index))
-                && index > 0
-                && (0xD800..=0xDBFF).contains(&self.text.utf16_code_unit_at(index - 1))
-            {
-                index - 1
-            } else {
-                index
-            };
-            let scalar_length = code_point_length_at(self.text, scalar_start, text_length);
-            if let Some(role) = self.strong_script_role(scalar_start, scalar_length) {
+            if let Some(role) = self.strong_script_role(index) {
                 return Some(role);
             }
             index = if direction < 0 {
-                scalar_start - 1
+                let Some(previous) = index.checked_sub(1) else {
+                    break;
+                };
+                previous
             } else {
-                scalar_start + scalar_length
+                index + 1
             };
         }
         None
@@ -318,7 +322,12 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             .min_by_key(|candidate| candidate.close_index - candidate.open_index)
     }
 
-    fn add_script_evidence_range(&self, evidence: &mut ScriptEvidence, start: i32, end: i32) {
+    fn add_script_evidence_range(
+        &self,
+        evidence: &mut ScriptEvidence,
+        start: ScalarOffset,
+        end: ScalarOffset,
+    ) {
         let mut index = start;
         while index < end {
             if let Some(nested_pair) = self.pair_by_open.get(&index)
@@ -328,20 +337,17 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
                 continue;
             }
 
-            let code_point_length = code_point_length_at(self.text, index, end);
-            match self.strong_script_role(index, code_point_length) {
+            match self.strong_script_role(index) {
                 Some(FontRole::CjkPunctuation) => evidence.has_cjk = true,
                 Some(FontRole::LatinText) => evidence.has_western = true,
                 _ => {}
             }
-            index += code_point_length;
+            index += 1;
         }
     }
 
-    fn strong_script_role(&self, index: i32, code_point_length: i32) -> Option<FontRole> {
-        let code_point = self
-            .text
-            .code_point_at_compat(index, index + code_point_length);
+    fn strong_script_role(&self, index: ScalarOffset) -> Option<FontRole> {
+        let code_point = self.text.code_point_at_or_none(index)?;
         match unicode_script_evidence_classifier::classify(code_point) {
             UnicodeScriptEvidence::Neutral => None,
             UnicodeScriptEvidence::EastAsian => Some(FontRole::CjkPunctuation),
@@ -387,18 +393,10 @@ impl Resolution {
     }
 }
 
-fn code_point_length_at(text: &Text, index: i32, end: i32) -> i32 {
-    if text.code_point_at_compat(index, end) > 0xFFFF {
-        2
-    } else {
-        1
-    }
+fn is_ambiguous_curly_quote(code_point: Option<i32>) -> bool {
+    matches!(code_point, Some(0x2018 | 0x2019 | 0x201C | 0x201D))
 }
 
-fn is_ambiguous_curly_quote(code_unit: i32) -> bool {
-    matches!(code_unit, 0x2018 | 0x2019 | 0x201C | 0x201D)
-}
-
-fn is_ascii_space_or_tab(code_unit: i32) -> bool {
-    matches!(code_unit, 0x0020 | 0x0009)
+fn is_ascii_space_or_tab(code_point: i32) -> bool {
+    matches!(code_point, 0x0020 | 0x0009)
 }

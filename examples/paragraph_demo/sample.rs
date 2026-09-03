@@ -1011,13 +1011,17 @@ fn range_of(text: &str, needle: &str) -> TextRange {
 }
 
 fn range_occurrence(text: &str, needle: &str, occurrence: usize) -> TextRange {
-    let start = text
+    let byte_start = text
         .match_indices(needle)
         .nth(occurrence)
         .map(|(start, _)| start)
         .unwrap_or_else(|| {
             panic!("paragraph-demo sample is missing occurrence {occurrence} of {needle}")
         });
-    let start = text[..start].encode_utf16().count() as i32;
-    TextRange::new(start, start + needle.encode_utf16().count() as i32)
+    let text = Text::from(text);
+    let start = text
+        .scalar_offset_at(byte_start)
+        .expect("match_indices must return a UTF-8 character boundary");
+    let end = start + Text::from(needle).scalar_len().value();
+    TextRange::new(start, end)
 }

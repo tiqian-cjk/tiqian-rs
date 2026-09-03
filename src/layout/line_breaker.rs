@@ -2,6 +2,7 @@
 
 use crate::common::{HashMap, HashSet};
 
+use super::super::core::geometry::ScalarOffset;
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
@@ -428,7 +429,7 @@ pub fn rebuild_line(
     candidate
 }
 
-pub fn empty_line_candidate(source_offset: i32, end_reason: LineEndReason) -> LineCandidate {
+pub fn empty_line_candidate(source_offset: ScalarOffset, end_reason: LineEndReason) -> LineCandidate {
     let mut line = LineCandidate::new(
         IntRange::EMPTY,
         super::super::core::geometry::TextRange::new(source_offset, source_offset),

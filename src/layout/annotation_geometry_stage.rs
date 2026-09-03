@@ -4,7 +4,7 @@ use crate::common::HashMap;
 
 use super::super::clreq::bopomofo_reading::{BopomofoTone, bopomofo_parser};
 use super::super::clreq::clreq_profile::ClreqProfile;
-use super::super::core::geometry::{Rect, TextRange};
+use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, BopomofoDecisionInfo, BopomofoGlyphPlacement, BopomofoGlyphRole,
@@ -63,7 +63,7 @@ pub struct AnnotationGeometryRequest<'a> {
     pub ruby_font_size: f32,
     pub ruby_font_weight: i32,
     pub base_descent: f32,
-    pub bopomofo_font_weight_at: &'a dyn Fn(i32) -> i32,
+    pub bopomofo_font_weight_at: &'a dyn Fn(ScalarOffset) -> i32,
     pub fallback_resolver: &'a dyn FallbackResolver,
     pub text_shaper: &'a dyn TextShaper,
 }
@@ -327,8 +327,8 @@ fn compute_decoration_segments(
             let mut x = lines[line_index].indent;
             let mut left = None;
             let mut right = 0.0;
-            let mut segment_start = -1;
-            let mut segment_end = -1;
+            let mut segment_start = None;
+            let mut segment_end = None;
             for index in *cluster_range {
                 let cluster = &final_clusters[index as usize];
                 if contains_range(span.range, cluster.range) {
@@ -344,7 +344,7 @@ fn compute_decoration_segments(
                             0.0
                         };
                         left = Some(x + blank);
-                        segment_start = cluster.range.start();
+                        segment_start = Some(cluster.range.start());
                     }
                     let geometry = geometry_by_range.get(&cluster.range).copied();
                     let blank = geometry.map_or(0.0, |geometry| {
@@ -359,11 +359,13 @@ fn compute_decoration_segments(
                     right = x + cluster.advance
                         - justify_delta_by_cluster.get(&index).copied().unwrap_or(0.0)
                         - blank;
-                    segment_end = cluster.range.end();
+                    segment_end = Some(cluster.range.end());
                 }
                 x += cluster.advance;
             }
-            let Some(left) = left else {
+            let (Some(left), Some(segment_start), Some(segment_end)) =
+                (left, segment_start, segment_end)
+            else {
                 continue;
             };
             let line = &lines[line_index];
@@ -527,7 +529,7 @@ fn compute_bopomofo_decisions(
     base_ascent: f32,
     base_descent: f32,
     font_size: f32,
-    bopomofo_font_weight_at: &dyn Fn(i32) -> i32,
+    bopomofo_font_weight_at: &dyn Fn(ScalarOffset) -> i32,
     base_text_style: &TextStyle,
     fallback_resolver: &dyn FallbackResolver,
     text_shaper: &dyn TextShaper,
@@ -678,7 +680,7 @@ fn replay_bopomofo_placement(
     } else {
         font_size * BOPOMOFO_ANNOTATION_FONT_EM
     };
-    let range = TextRange::new(0, placement.text.utf16_len());
+    let range = TextRange::new(ScalarOffset::ZERO, placement.text.scalar_len());
     let decision = fallback_resolver.resolve(
         &placement.text,
         range,

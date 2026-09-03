@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
-use super::geometry::{Rect, TextRange};
+use super::geometry::{Rect, ScalarOffset, TextRange};
 use super::layout_model::{LayoutResult, LineBox, MetricDecisionInfo};
 use super::source_interaction_boundaries::{
     SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
@@ -240,14 +240,14 @@ pub fn resolved_background_corner_radii(
 /// base. A partial selection of a multi-character base does not invent a detached reading.
 pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> Text {
     let source = &result.input.content.text;
-    let text_length = source.utf16_len();
-    let start = range.start().clamp(0, text_length);
-    let end = range.end().clamp(start, text_length);
+    let text_length = source.scalar_len();
+    let start = range.start().min(text_length);
+    let end = range.end().min(text_length).max(start);
     if start == end {
         return Text::new();
     }
 
-    let mut annotations_by_end: Vec<(i32, Vec<Text>)> = Vec::new();
+    let mut annotations_by_end: Vec<(ScalarOffset, Vec<Text>)> = Vec::new();
     let mut add_annotation = |base_range: TextRange, text: &Text| {
         if base_range.start() < start || base_range.end() > end {
             return;
@@ -354,12 +354,12 @@ pub fn glyph_ink_bounds(result: &LayoutResult) -> Option<Rect> {
 
 /// Compose-like line lookup backed by Tiqian line boxes. End offsets attach to the previous line so
 /// a caret at paragraph end stays on the final visible line.
-pub fn get_line_for_offset(result: &LayoutResult, offset: i32) -> i32 {
+pub fn get_line_for_offset(result: &LayoutResult, offset: ScalarOffset) -> i32 {
     if result.lines.is_empty() {
         return -1;
     }
-    let text_length = result.input.content.text.utf16_len();
-    let clamped = offset.clamp(0, text_length);
+    let text_length = result.input.content.text.scalar_len();
+    let clamped = nearest_interaction_offset(result, offset.min(text_length));
     if clamped == text_length {
         return result.lines.len() as i32 - 1;
     }
@@ -373,7 +373,7 @@ pub fn get_line_for_offset(result: &LayoutResult, offset: i32) -> i32 {
 
 /// Returns the occupied cluster box containing `offset`. A paragraph-end offset returns the final
 /// caret rectangle so accessibility callers still get a concrete position.
-pub fn get_bounding_box(result: &LayoutResult, offset: i32) -> Rect {
+pub fn get_bounding_box(result: &LayoutResult, offset: ScalarOffset) -> Rect {
     if result.lines.is_empty() {
         return Rect {
             left: 0.0,
@@ -382,8 +382,8 @@ pub fn get_bounding_box(result: &LayoutResult, offset: i32) -> Rect {
             bottom: 0.0,
         };
     }
-    let text_length = result.input.content.text.utf16_len();
-    let clamped = offset.clamp(0, text_length);
+    let text_length = result.input.content.text.scalar_len();
+    let clamped = nearest_interaction_offset(result, offset.min(text_length));
     if clamped == text_length {
         return get_cursor_rect(result, clamped);
     }
@@ -401,9 +401,9 @@ pub fn get_bounding_boxes(result: &LayoutResult, range: TextRange) -> Vec<Rect> 
     if range.is_empty() || result.lines.is_empty() {
         return Vec::new();
     }
-    let text_length = result.input.content.text.utf16_len();
-    let start = range.start().clamp(0, text_length);
-    let end = range.end().clamp(start, text_length);
+    let text_length = result.input.content.text.scalar_len();
+    let start = range.start().min(text_length);
+    let end = range.end().min(text_length).max(start);
     if start == end {
         return Vec::new();
     }
@@ -417,7 +417,11 @@ pub fn get_bounding_boxes(result: &LayoutResult, range: TextRange) -> Vec<Rect> 
         .collect()
 }
 
-pub fn get_bounding_boxes_from_offsets(result: &LayoutResult, start: i32, end: i32) -> Vec<Rect> {
+pub fn get_bounding_boxes_from_offsets(
+    result: &LayoutResult,
+    start: ScalarOffset,
+    end: ScalarOffset,
+) -> Vec<Rect> {
     get_bounding_boxes(result, TextRange::new(start, end))
 }
 
@@ -432,11 +436,11 @@ pub fn positioned_rich_text_segments(
         return Vec::new();
     }
     let clusters = positioned_clusters(result);
-    let text_length = result.input.content.text.utf16_len();
+    let text_length = result.input.content.text.scalar_len();
     let mut out = Vec::new();
     for span in spans {
-        let start = span.range.start().clamp(0, text_length);
-        let end = span.range.end().clamp(start, text_length);
+        let start = span.range.start().min(text_length);
+        let end = span.range.end().min(text_length).max(start);
         if start == end {
             continue;
         }
@@ -764,7 +768,7 @@ fn uniform_text_style_vertical_bounds(
     (segment.baseline - ascent, segment.baseline + descent)
 }
 
-fn resolved_text_style_at(result: &LayoutResult, offset: i32) -> TextStyle {
+fn resolved_text_style_at(result: &LayoutResult, offset: ScalarOffset) -> TextStyle {
     result
         .input
         .content
@@ -887,7 +891,7 @@ pub fn rich_text_decoration_line_y(
 
 /// Returns a caret rectangle for `offset`. The x position is derived from Tiqian's cluster advances;
 /// inside a multi-code-unit cluster, `SourceRangeLinearClusterSplit` places the caret proportionally.
-pub fn get_cursor_rect(result: &LayoutResult, offset: i32) -> Rect {
+pub fn get_cursor_rect(result: &LayoutResult, offset: ScalarOffset) -> Rect {
     if result.lines.is_empty() {
         return Rect {
             left: 0.0,
@@ -896,8 +900,8 @@ pub fn get_cursor_rect(result: &LayoutResult, offset: i32) -> Rect {
             bottom: 0.0,
         };
     }
-    let text_length = result.input.content.text.utf16_len();
-    let clamped = offset.clamp(0, text_length);
+    let text_length = result.input.content.text.scalar_len();
+    let clamped = nearest_interaction_offset(result, offset.min(text_length));
     let line_index = get_line_for_offset(result, clamped).max(0) as usize;
     let line = &result.lines[line_index];
     let clusters = positioned_clusters_for_line(result, line_index as i32, line);
@@ -928,9 +932,9 @@ pub fn get_cursor_rect(result: &LayoutResult, offset: i32) -> Rect {
 /// Hit-tests a point against Tiqian line/cluster geometry. `ClusterAdvanceLinearHitTest` chooses the
 /// nearest source offset inside a cluster using its occupied advance until glyph-level source maps
 /// are available.
-pub fn get_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> i32 {
+pub fn get_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> ScalarOffset {
     if result.lines.is_empty() {
-        return 0;
+        return ScalarOffset::ZERO;
     }
     let line_index = nearest_line_for_position(result, y);
     let clusters =
@@ -958,15 +962,19 @@ pub fn get_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> i32 {
                 })
                 .expect("non-empty positioned clusters")
         });
-    offset_for_x(cluster, x)
+    coerce_selection_offset(
+        result,
+        offset_for_x(cluster, x),
+        SourceBoundaryBias::Nearest,
+    )
 }
 
 /// Hit-tests a static-text selection endpoint and snaps it to a safe source interaction boundary.
 /// This retains per-code-point Latin selection inside word layout atoms without ever returning the
 /// middle of a surrogate, combining sequence, emoji ZWJ sequence, or other grouped source unit.
-pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> i32 {
+pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> ScalarOffset {
     if result.lines.is_empty() {
-        return 0;
+        return ScalarOffset::ZERO;
     }
     let line_index = nearest_line_for_position(result, y);
     let positioned =
@@ -1021,15 +1029,15 @@ pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) 
     }
 }
 
-/// Coerces an external UTF-16 offset to a safe selection/caret boundary.
+/// Coerces an external scalar offset to a safe selection/caret boundary.
 pub fn coerce_selection_offset(
     result: &LayoutResult,
-    offset: i32,
+    offset: ScalarOffset,
     bias: SourceBoundaryBias,
-) -> i32 {
+) -> ScalarOffset {
     let text = &result.input.content.text;
-    let text_length = text.utf16_len();
-    let clamped = offset.clamp(0, text_length);
+    let text_length = text.scalar_len();
+    let clamped = offset.min(text_length);
     if let Some(inline_object) = result.input.inline_objects.iter().find(|inline_object| {
         clamped > inline_object.range.start() && clamped < inline_object.range.end()
     }) {
@@ -1045,26 +1053,32 @@ pub fn coerce_selection_offset(
             }
         };
     }
-    coerce_to_interaction_boundary(text, clamped, TextRange::new(0, text_length), bias)
+    coerce_to_interaction_boundary(
+        text,
+        clamped,
+        TextRange::new(ScalarOffset::ZERO, text_length),
+        bias,
+    )
 }
 
 /// Expands a safe source offset to the word selected by a static-text double click.
 /// `SourceInteractionWordExpansion` joins adjacent letter/digit/connector graphemes, keeps Han
 /// ideographs individually selectable, groups adjacent whitespace, and otherwise returns exactly
 /// one source interaction unit. It does not depend on shaping-cluster width or line-break atoms.
-pub fn get_selection_word_boundary(result: &LayoutResult, offset: i32) -> TextRange {
+pub fn get_selection_word_boundary(result: &LayoutResult, offset: ScalarOffset) -> TextRange {
     let text = &result.input.content.text;
     if text.is_empty() {
-        return TextRange::new(0, 0);
+        return TextRange::new(ScalarOffset::ZERO, ScalarOffset::ZERO);
     }
-    let text_length = text.utf16_len();
-    let clamped = offset.clamp(0, text_length);
+    let text_length = text.scalar_len();
+    let clamped =
+        coerce_selection_offset(result, offset.min(text_length), SourceBoundaryBias::Nearest);
     if let Some(inline_object) = result.input.inline_objects.iter().find(|inline_object| {
         clamped >= inline_object.range.start() && clamped < inline_object.range.end()
     }) {
         return inline_object.range;
     }
-    let boundaries = interaction_boundaries(text, TextRange::new(0, text_length));
+    let boundaries = interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
     let exact_index = boundaries.binary_search(&clamped);
     let unit_index = if clamped == text_length {
         boundaries.len() - 2
@@ -1137,8 +1151,10 @@ enum SelectionWordKind {
     Single,
 }
 
-fn selection_word_kind(text: &Text, start: i32, end: i32) -> SelectionWordKind {
-    let code_point = text.code_point_at_compat(start, end);
+fn selection_word_kind(text: &Text, start: ScalarOffset, _end: ScalarOffset) -> SelectionWordKind {
+    let Some(code_point) = text.code_point_at_or_none(start) else {
+        return SelectionWordKind::Single;
+    };
     if SELECTION_MANDATORY_BREAKS.contains(&code_point) {
         return SelectionWordKind::Single;
     }
@@ -1248,7 +1264,11 @@ fn positioned_clusters_for_line(
     with_ruby_selection_geometry(result, positioned, line_index)
 }
 
-fn nearest_line_for_offset(result: &LayoutResult, offset: i32) -> i32 {
+fn nearest_interaction_offset(result: &LayoutResult, offset: ScalarOffset) -> ScalarOffset {
+    coerce_selection_offset(result, offset, SourceBoundaryBias::Nearest)
+}
+
+fn nearest_line_for_offset(result: &LayoutResult, offset: ScalarOffset) -> i32 {
     result
         .lines
         .iter()
@@ -1287,7 +1307,7 @@ fn nearest_line_for_position(result: &LayoutResult, y: f32) -> usize {
         .expect("nearest line requires a non-empty LayoutResult")
 }
 
-fn x_for_offset(cluster: &PositionedCluster, offset: i32) -> f32 {
+fn x_for_offset(cluster: &PositionedCluster, offset: ScalarOffset) -> f32 {
     if cluster.range.length() <= 0 {
         return cluster.left;
     }
@@ -1298,7 +1318,7 @@ fn x_for_offset(cluster: &PositionedCluster, offset: i32) -> f32 {
     cluster.left + cluster.width() * index as f32 / cluster.range.length() as f32
 }
 
-fn offset_for_x(cluster: &PositionedCluster, x: f32) -> i32 {
+fn offset_for_x(cluster: &PositionedCluster, x: f32) -> ScalarOffset {
     if cluster.range.length() <= 0 {
         return cluster.range.start();
     }
@@ -1319,7 +1339,7 @@ fn offset_for_x(cluster: &PositionedCluster, x: f32) -> i32 {
         .clamp(cluster.range.start(), cluster.range.end())
 }
 
-fn slice_rect(cluster: &PositionedCluster, start: i32, end: i32) -> Rect {
+fn slice_rect(cluster: &PositionedCluster, start: ScalarOffset, end: ScalarOffset) -> Rect {
     if cluster.range.length() <= 0 || cluster.width() <= 0.0 {
         return cluster.rect();
     }

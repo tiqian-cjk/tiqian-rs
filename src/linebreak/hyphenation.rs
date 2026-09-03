@@ -86,7 +86,7 @@ impl Hyphenator for LiangHyphenator {
         if word_length < self.left_min + self.right_min {
             return Vec::new();
         }
-        let lower = word.to_lowercase();
+        let lower = word.as_str().to_lowercase();
         if let Some(explicit) = self.exceptions.get(&lower) {
             return explicit
                 .iter()

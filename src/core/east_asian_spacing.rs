@@ -3,7 +3,7 @@
 use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 use super::east_asian_spacing_data::lookup;
-use super::geometry::TextRange;
+use super::geometry::{ScalarOffset, TextRange};
 use super::source_interaction_boundaries::interaction_boundaries;
 use super::text::Text;
 
@@ -84,8 +84,11 @@ pub mod unicode_east_asian_spacing {
         }) {
             return EastAsianSpacingValue::Other;
         }
-        let property =
-            property_of(grapheme_cluster.code_point_at_compat(0, grapheme_cluster.utf16_len()));
+        let property = property_of(
+            grapheme_cluster
+                .code_point_at_or_none(ScalarOffset::ZERO)
+                .expect("非空字素簇必须包含 scalar"),
+        );
         match property {
             EastAsianSpacingValue::Conditional => {
                 if super::is_chinese_language_context(locale) {
@@ -112,8 +115,8 @@ pub mod unicode_east_asian_spacing {
                 contains_wide: false,
             };
         }
-        let text_length = text.utf16_len();
-        let boundaries = interaction_boundaries(text, TextRange::new(0, text_length));
+        let text_length = text.scalar_len();
+        let boundaries = interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
         let values: Vec<EastAsianSpacingValue> = boundaries
             .windows(2)
             .map(|boundary| {

@@ -1,18 +1,18 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/LineBreak.kt
 
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::text::Text;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BreakOpportunity {
-    pub index: i32,
+    pub index: ScalarOffset,
     pub kind: BreakKind,
     pub penalty: i32,
     pub reason: String,
 }
 
 impl BreakOpportunity {
-    pub fn new(index: i32, kind: BreakKind, reason: String) -> Self {
+    pub fn new(index: ScalarOffset, kind: BreakKind, reason: String) -> Self {
         Self {
             index,
             kind,
@@ -21,7 +21,12 @@ impl BreakOpportunity {
         }
     }
 
-    pub fn with_penalty(index: i32, kind: BreakKind, penalty: i32, reason: String) -> Self {
+    pub fn with_penalty(
+        index: ScalarOffset,
+        kind: BreakKind,
+        penalty: i32,
+        reason: String,
+    ) -> Self {
         Self {
             index,
             kind,
@@ -74,20 +79,20 @@ pub struct SimpleCharacterLineBreakAnalyzer;
 
 impl LineBreakAnalyzer for SimpleCharacterLineBreakAnalyzer {
     fn analyze(&self, text: &Text) -> Vec<BreakOpportunity> {
-        let length = text.utf16_len();
-        if length == 0 {
+        let length = text.scalar_len();
+        if length == ScalarOffset::ZERO {
             return Vec::new();
         }
 
-        let mut opportunities = Vec::with_capacity(length as usize);
-        for index in 1..=length {
-            let previous = text.utf16_code_unit_at(index - 1);
+        let mut opportunities = Vec::with_capacity(length.value() as usize);
+        let mut scalars = text.scalar_indices().peekable();
+        while let Some((offset, character)) = scalars.next() {
+            let index = offset + 1;
+            let previous = character as i32;
             // mandatory-break 字符强制其后的 Required break；但 CRLF 中的 CR 例外，
             // 换行属于紧随其后的 LF。
             let mandatory = is_mandatory_break_code_point(previous)
-                && !(previous == 0x000D
-                    && index < length
-                    && text.utf16_code_unit_at(index) == 0x000A);
+                && !(previous == 0x000D && scalars.peek().is_some_and(|(_, next)| *next == '\n'));
             opportunities.push(BreakOpportunity::new(
                 index,
                 if index == length || mandatory {

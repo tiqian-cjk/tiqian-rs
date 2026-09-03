@@ -2,7 +2,7 @@
 
 use crate::common::{HashMap, HashSet};
 
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::layout_model::LayoutResult;
 use super::super::core::layout_queries::positioned_clusters;
 use super::super::core::text_model::{DecorationKind, TextStyle};
@@ -58,8 +58,8 @@ pub fn to_prepared_paragraph_json(
         .iter()
         .map(|decision| (decision.range, decision))
         .collect();
-    let mut inline_start_by_offset: HashMap<i32, f32> = HashMap::new();
-    let mut inline_end_by_offset: HashMap<i32, f32> = HashMap::new();
+    let mut inline_start_by_offset: HashMap<ScalarOffset, f32> = HashMap::new();
+    let mut inline_end_by_offset: HashMap<ScalarOffset, f32> = HashMap::new();
     for inline_box in &result.input.inline_boxes {
         if inline_box.inline_start != 0.0 {
             *inline_start_by_offset
@@ -129,9 +129,9 @@ pub fn to_prepared_paragraph_json(
             out.push_str(",\"rangeEnd\":");
             out.push_str(&cluster.range.end().to_string());
             out.push_str(",\"source\":");
-            append_json_string(&mut out, &cluster.text);
+            append_json_string(&mut out, cluster.text.as_str());
             out.push_str(",\"display\":");
-            append_json_string(&mut out, &cluster.display_text);
+            append_json_string(&mut out, cluster.display_text.as_str());
             out.push_str(",\"drawX\":");
             append_json_number(&mut out, position.draw_x);
             out.push_str(",\"naturalWidth\":");
@@ -234,7 +234,7 @@ pub fn to_plan_with_diagnostics_json(
         }
         first_advance_suspect = false;
         out.push_str("{\"displayText\":");
-        append_json_string(&mut out, &decision.display_text);
+        append_json_string(&mut out, decision.display_text.as_str());
         out.push_str(",\"advance\":");
         let advance = ecma_json_number(decision.advance);
         append_json_string(&mut out, &advance);
@@ -338,7 +338,7 @@ fn append_cell_render_evidence(
     }
 }
 
-fn style_at(result: &LayoutResult, offset: i32) -> &TextStyle {
+fn style_at(result: &LayoutResult, offset: ScalarOffset) -> &TextStyle {
     result
         .input
         .content
@@ -352,8 +352,8 @@ fn style_at(result: &LayoutResult, offset: i32) -> &TextStyle {
 fn append_paragraph_render_evidence(
     out: &mut String,
     result: &LayoutResult,
-    inline_start_by_offset: &HashMap<i32, f32>,
-    inline_end_by_offset: &HashMap<i32, f32>,
+    inline_start_by_offset: &HashMap<ScalarOffset, f32>,
+    inline_end_by_offset: &HashMap<ScalarOffset, f32>,
 ) {
     out.push_str(",\"fontSize\":");
     append_json_number(out, result.input.text_style.font_size);
@@ -417,7 +417,7 @@ fn append_paragraph_render_evidence(
             out.push_str(",\"baseRangeEnd\":");
             out.push_str(&ruby.base_range.end().to_string());
             out.push_str(",\"text\":");
-            append_json_string(out, &ruby.text);
+            append_json_string(out, ruby.text.as_str());
             out.push_str(",\"centerX\":");
             append_json_number(out, ruby.center_x);
             out.push_str(",\"baselineY\":");
@@ -444,7 +444,7 @@ fn append_paragraph_render_evidence(
             out.push_str(",\"baseRangeEnd\":");
             out.push_str(&bopomofo.base_range.end().to_string());
             out.push_str(",\"text\":");
-            append_json_string(out, &bopomofo.text);
+            append_json_string(out, bopomofo.text.as_str());
             out.push_str(",\"fontWeight\":");
             out.push_str(&bopomofo.font_weight.to_string());
             append_json_string_array(out, "fontFamilies", &bopomofo.font_families);
@@ -454,7 +454,7 @@ fn append_paragraph_render_evidence(
                     out.push(',');
                 }
                 out.push_str("{\"text\":");
-                append_json_string(out, &placement.text);
+                append_json_string(out, placement.text.as_str());
                 out.push_str(",\"left\":");
                 append_json_number(out, placement.left);
                 out.push_str(",\"top\":");

@@ -118,7 +118,9 @@ impl CjkFontRoleClassifier {
 
 impl FontRoleClassifier for CjkFontRoleClassifier {
     fn classify(&self, text: &Text, range: TextRange, _context: &FontRoleContext) -> FontRole {
-        let first_code_point = text.code_point_at_compat(range.start(), text.utf16_len());
+        let Some(first_code_point) = text.code_point_at_or_none(range.start()) else {
+            return FontRole::Unknown;
+        };
         // Printable ASCII can never reach the CJK or curly-quote branches below,
         // so resolve it without touching the Unicode property tries.
         if is_typed_ascii_latin(first_code_point) {

@@ -1,6 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutModel.kt
 
-use super::geometry::{Rect, Size, TextRange};
+use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;
 use super::text::Text;
 use super::text_model::LayoutInput;
@@ -573,12 +573,12 @@ impl LayoutDebugInfoBuilder {
 }
 
 /// 在原本不可分割的 shaping segment 内暴露干净 line-break offset 的具名 source-level policy。
-/// offset 是绝对 UTF-16 source offset；不插入 source character 或 synthetic glyph。
+/// offset 是绝对 scalar source offset；不插入 source character 或 synthetic glyph。
 #[derive(Clone, Debug, PartialEq)]
 pub struct BreakOpportunityDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
-    pub break_offsets: Vec<i32>,
+    pub break_offsets: Vec<ScalarOffset>,
     pub reason: String,
     /// 当此 decision 属于 progressive break span 时的有序 policy tier。
     pub tier: Option<String>,
@@ -587,7 +587,7 @@ impl BreakOpportunityDecisionInfo {
     pub fn new(
         range: TextRange,
         source_text: Text,
-        break_offsets: Vec<i32>,
+        break_offsets: Vec<ScalarOffset>,
         reason: String,
     ) -> Self {
         Self {
@@ -601,7 +601,7 @@ impl BreakOpportunityDecisionInfo {
     pub fn with_tier(
         range: TextRange,
         source_text: Text,
-        break_offsets: Vec<i32>,
+        break_offsets: Vec<ScalarOffset>,
         reason: String,
         tier: Option<String>,
     ) -> Self {

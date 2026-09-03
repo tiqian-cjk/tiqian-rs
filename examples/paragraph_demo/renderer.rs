@@ -1,6 +1,6 @@
 use tiqian::common::HashMap;
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{ScalarOffset, TextRange};
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::{
     positioned_clusters, positioned_rich_text_segments, resolved_background_corner_radii,
@@ -836,7 +836,7 @@ fn curve_corner(
     }
 }
 
-fn text_style_at(spans: &[TextSpan], base: &TextStyle, offset: i32) -> TextStyle {
+fn text_style_at(spans: &[TextSpan], base: &TextStyle, offset: ScalarOffset) -> TextStyle {
     spans
         .iter()
         .rev()
@@ -856,7 +856,7 @@ fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srg
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tiqian::core::geometry::{LayoutConstraints, TextRange};
+    use tiqian::core::geometry::{LayoutConstraints, text_range};
     use tiqian::core::text::Text;
     use tiqian::core::text_model::{
         DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle,
@@ -909,8 +909,8 @@ mod tests {
                 LayoutConstraints::with_defaults(160.0),
             )
             .ruby_spans(vec![
-                RubySpan::new(TextRange::new(0, 1), Text::from("zhōng")),
-                RubySpan::builder(TextRange::new(1, 2), Text::from("ㄨㄣˊ"))
+                RubySpan::new(text_range(0, 1), Text::from("zhōng")),
+                RubySpan::builder(text_range(1, 2), Text::from("ㄨㄣˊ"))
                     .kind(RubyKind::Bopomofo)
                     .build(),
             ])
@@ -1056,19 +1056,19 @@ mod tests {
             )
             .decorations(vec![
                 DecorationSpan {
-                    range: TextRange::new(0, 1),
+                    range: text_range(0, 1),
                     kind: DecorationKind::Emphasis,
                 },
                 DecorationSpan {
-                    range: TextRange::new(0, 2),
+                    range: text_range(0, 2),
                     kind: DecorationKind::Mourning,
                 },
                 DecorationSpan {
-                    range: TextRange::new(2, 3),
+                    range: text_range(2, 3),
                     kind: DecorationKind::ProperNoun,
                 },
                 DecorationSpan {
-                    range: TextRange::new(3, 4),
+                    range: text_range(3, 4),
                     kind: DecorationKind::BookTitle,
                 },
             ])
@@ -1076,7 +1076,7 @@ mod tests {
         );
         let rich_text = vec![
             RichTextSpan::with_paint(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 RichTextRole::Background,
                 RichTextPaint::builder()
                     .argb(0xFFE0F2FE_u32 as i32)
@@ -1090,7 +1090,7 @@ mod tests {
                     .build(),
             ),
             RichTextSpan::with_paint(
-                TextRange::new(1, 2),
+                text_range(1, 2),
                 RichTextRole::Underline,
                 RichTextPaint::builder()
                     .argb(0xFF2563EB_u32 as i32)
@@ -1098,7 +1098,7 @@ mod tests {
                     .build(),
             ),
             RichTextSpan::with_paint(
-                TextRange::new(2, 3),
+                text_range(2, 3),
                 RichTextRole::Underline,
                 RichTextPaint::builder()
                     .argb(0xFF7C3AED_u32 as i32)
@@ -1106,7 +1106,7 @@ mod tests {
                     .build(),
             ),
             RichTextSpan::with_paint(
-                TextRange::new(3, 4),
+                text_range(3, 4),
                 RichTextRole::LineThrough,
                 RichTextPaint::builder()
                     .argb(0xFFDC2626_u32 as i32)

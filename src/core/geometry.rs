@@ -1,30 +1,107 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/Geometry.kt
 
-/// FIXME(UTF-16)：Kotlin 的 source range 以 UTF-16 code unit 计数。`start` 与 `end`
-/// 必须保持该语义，不能直接用作 Rust UTF-8 byte index；实际索引转换使用 Rust 原生
-/// `Text` (UTF-16 优化)。
+use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::fmt;
+
+/// 从 source text 起点开始的 Unicode scalar 数量。
+///
+/// 此类型不表示 UTF-8 byte offset 或容器下标。转换到 Rust 容器边界时应显式使用
+/// [`Self::value`] 并转换为 `usize`。
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ScalarOffset(i32);
+
+impl ScalarOffset {
+    pub const ZERO: Self = Self(0);
+
+    pub const fn new(value: i32) -> Self {
+        assert!(value >= 0, "ScalarOffset must be non-negative.");
+        Self(value)
+    }
+
+    pub const fn value(self) -> i32 {
+        self.0
+    }
+
+    pub const fn checked_sub(self, amount: i32) -> Option<Self> {
+        if amount < 0 || self.0 < amount {
+            None
+        } else {
+            Some(Self(self.0 - amount))
+        }
+    }
+}
+
+/// 从裸整数构造 Unicode scalar source offset。
+#[inline]
+pub const fn scalar_offset(value: i32) -> ScalarOffset {
+    ScalarOffset::new(value)
+}
+
+impl fmt::Display for ScalarOffset {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl Add<i32> for ScalarOffset {
+    type Output = Self;
+
+    fn add(self, right: i32) -> Self::Output {
+        Self::new(self.0 + right)
+    }
+}
+
+impl AddAssign<i32> for ScalarOffset {
+    fn add_assign(&mut self, right: i32) {
+        *self = *self + right;
+    }
+}
+
+impl Sub<i32> for ScalarOffset {
+    type Output = Self;
+
+    fn sub(self, right: i32) -> Self::Output {
+        Self::new(self.0 - right)
+    }
+}
+
+impl SubAssign<i32> for ScalarOffset {
+    fn sub_assign(&mut self, right: i32) {
+        *self = *self - right;
+    }
+}
+
+impl Sub for ScalarOffset {
+    type Output = i32;
+
+    fn sub(self, right: Self) -> Self::Output {
+        self.0 - right.0
+    }
+}
+
+/// Source text 的半开 scalar 区间 `[start, end)`。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TextRange {
-    start: i32,
-    end: i32,
+    start: ScalarOffset,
+    end: ScalarOffset,
 }
 
 impl TextRange {
-    pub fn new(start: i32, end: i32) -> Self {
+    pub fn new(start: ScalarOffset, end: ScalarOffset) -> Self {
         assert!(
             start <= end,
             "TextRange start must not be greater than end."
         );
-        assert!(start >= 0, "TextRange start must be non-negative.");
 
         Self { start, end }
     }
 
-    pub fn start(self) -> i32 {
+    pub fn start(self) -> ScalarOffset {
         self.start
     }
 
-    pub fn end(self) -> i32 {
+    pub fn end(self) -> ScalarOffset {
         self.end
     }
 
@@ -35,6 +112,12 @@ impl TextRange {
     pub fn is_empty(self) -> bool {
         self.length() == 0
     }
+}
+
+/// 从裸整数构造半开 scalar source range `[start, end)`。
+#[inline]
+pub fn text_range(start: i32, end: i32) -> TextRange {
+    TextRange::new(scalar_offset(start), scalar_offset(end))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

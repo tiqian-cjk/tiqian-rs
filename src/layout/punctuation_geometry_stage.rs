@@ -413,8 +413,8 @@ pub fn apply_auto_space_policy(
                     side: "gap".to_owned(),
                     boundary_role: "EastAsianSpacing.Wide".to_owned(),
                     mode: "Replace".to_owned(),
-                    characters_affected: c.text.utf16_len(),
-                    reduction_per_char: reduction / c.text.utf16_len() as f32,
+                    characters_affected: c.text.scalar_len().value(),
+                    reduction_per_char: reduction / c.text.scalar_len().value() as f32,
                     total_reduction: reduction,
                     reason: "TextAutoSpaceReplace:east-asian-spacing-W-space-N".to_owned(),
                 });
@@ -616,18 +616,9 @@ fn is_mandatory_break_cluster(c: &Cluster) -> bool {
     c.font_key == "mandatory-break" && c.display_text.is_empty()
 }
 fn display_char_source_range(c: &Cluster, i: usize) -> TextRange {
-    if c.display_text.utf16_len() == c.text.utf16_len() {
-        let start: i32 = c
-            .display_text
-            .chars()
-            .take(i)
-            .map(|character| character.len_utf16() as i32)
-            .sum();
-        let end = start
-            + c.display_text
-                .chars()
-                .nth(i)
-                .map_or(0, |character| character.len_utf16() as i32);
+    if c.display_text.scalar_len() == c.text.scalar_len() {
+        let start = i as i32;
+        let end = start + c.display_text.chars().nth(i).map_or(0, |_| 1);
         TextRange::new(c.range.start() + start, c.range.start() + end)
     } else {
         c.range
@@ -672,6 +663,7 @@ fn auto_decision(
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::geometry::text_range;
     use crate::core::text::Text;
 
     fn textless_display_cluster(display_text: &str, range: TextRange) -> Cluster {
@@ -686,7 +678,7 @@ mod tests {
 
     #[test]
     fn source_empty_display_nonempty_defensive_paths_keep_non_punctuation_safe() {
-        let empty = textless_display_cluster("x", TextRange::new(0, 0));
+        let empty = textless_display_cluster("x", text_range(0, 0));
         assert!(!is_space_run(&empty));
         let atoms = punctuation_atoms(
             &empty,
@@ -701,7 +693,7 @@ mod tests {
 
     #[test]
     fn source_empty_display_punctuation_uses_cluster_range_for_atom() {
-        let mark = textless_display_cluster("，", TextRange::new(4, 4));
+        let mark = textless_display_cluster("，", text_range(4, 4));
         let atoms = punctuation_atoms(
             &mark,
             16.0,
@@ -711,32 +703,35 @@ mod tests {
             PunctuationWidthPolicy::default(),
         );
         assert_eq!(1, atoms.len());
-        assert_eq!(TextRange::new(4, 4), atoms[0].range);
+        assert_eq!(text_range(4, 4), atoms[0].range);
     }
 
     #[test]
     fn space_run_requires_non_empty_all_space_text() {
         assert!(is_space_run(&Cluster::new(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from(" "),
             "latin".to_owned(),
             16.0,
         )));
         assert!(is_space_run(&Cluster::new(
-            TextRange::new(0, 2),
+            text_range(0, 2),
             Text::from("  "),
             "latin".to_owned(),
             16.0,
         )));
-        assert!(!is_space_run(&textless_display_cluster(" ", TextRange::new(0, 0))));
+        assert!(!is_space_run(&textless_display_cluster(
+            " ",
+            text_range(0, 0)
+        )));
         assert!(!is_space_run(&Cluster::new(
-            TextRange::new(0, 3),
+            text_range(0, 3),
             Text::from("a b"),
             "latin".to_owned(),
             16.0,
         )));
         assert!(!is_space_run(&Cluster::new(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("中"),
             "cjk".to_owned(),
             16.0,

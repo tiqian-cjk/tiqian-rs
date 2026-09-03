@@ -9,7 +9,7 @@ use super::super::clreq::clreq_profile::{
 };
 use super::super::clreq::number_symbol_cohesion::number_symbol_cohesion;
 use super::super::core::east_asian_spacing::EastAsianSpacingEdges;
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
@@ -57,9 +57,9 @@ pub struct ParagraphLayoutPrep {
     pub rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     pub text: Text,
     pub font_size: f32,
-    pub style_at: Arc<dyn Fn(i32) -> TextStyle + Send + Sync>,
-    pub font_size_at: Arc<dyn Fn(i32) -> f32 + Send + Sync>,
-    pub bopomofo_font_weight_at: Arc<dyn Fn(i32) -> i32 + Send + Sync>,
+    pub style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync>,
+    pub font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync>,
+    pub bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync>,
     pub ruby_font_size: f32,
     pub ruby_stack_gap: f32,
     pub ruby_font_weight: i32,
@@ -73,13 +73,13 @@ pub struct ParagraphLayoutPrep {
     pub quote_pairs: Vec<QuotePair>,
     pub role_override_infos: Vec<RoleOverrideInfo>,
     pub font_decisions: Vec<FontDecision>,
-    pub hyphen_offsets: HashSet<i32>,
+    pub hyphen_offsets: HashSet<ScalarOffset>,
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
     pub substitution_rollbacks: HashMap<TextRange, String>,
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
-    pub progressive_break_offsets: HashMap<i32, ProgressiveBreakOpportunity>,
+    pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
     pub shaped_glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>>,
     pub open_type_features_by_cluster_range: HashMap<TextRange, Vec<String>>,
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
@@ -198,7 +198,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                     cluster.range,
                     decision.range
                 );
-                displayed_face_selection_text.push_str(&cluster.display_text);
+                displayed_face_selection_text.push_str(cluster.display_text.as_str());
                 metric_cluster_index += 1;
             }
             if displayed_face_selection_text.is_empty() {
@@ -511,13 +511,10 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             .into_iter()
             .filter(|source_range| {
                 !progressive_technical_overlap
-                    .overlaps(source_range.first(), source_range.last() + 1)
+                    .overlaps(source_range.start(), source_range.end())
             })
             .filter_map(|source_range| {
-                cluster_index_range_for_source_range(
-                    &prep.natural_clusters,
-                    TextRange::new(source_range.first(), source_range.last() + 1),
-                )
+                cluster_index_range_for_source_range(&prep.natural_clusters, source_range)
             })
             .collect();
     let number_symbol_unbreakable_ranges: Vec<_> = number_symbol_cluster_ranges
@@ -779,8 +776,8 @@ fn cluster_index_range_for_source_range(
 }
 
 struct IntervalOverlapIndex {
-    starts_sorted: Vec<i32>,
-    prefix_max_end: Vec<i32>,
+    starts_sorted: Vec<ScalarOffset>,
+    prefix_max_end: Vec<ScalarOffset>,
 }
 
 impl IntervalOverlapIndex {
@@ -788,7 +785,7 @@ impl IntervalOverlapIndex {
         let mut by_start = ranges;
         by_start.sort_by_key(|range| range.start());
         let starts_sorted = by_start.iter().map(|range| range.start()).collect();
-        let mut running = i32::MIN;
+        let mut running = ScalarOffset::ZERO;
         let prefix_max_end = by_start
             .iter()
             .map(|range| {
@@ -802,7 +799,7 @@ impl IntervalOverlapIndex {
         }
     }
 
-    fn overlaps(&self, start: i32, end_exclusive: i32) -> bool {
+    fn overlaps(&self, start: ScalarOffset, end_exclusive: ScalarOffset) -> bool {
         let index = self
             .starts_sorted
             .partition_point(|range_start| *range_start < end_exclusive);

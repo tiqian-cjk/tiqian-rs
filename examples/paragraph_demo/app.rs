@@ -662,9 +662,10 @@ impl ApplicationHandler for DesktopParagraphDemo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tiqian::core::geometry::ScalarOffset;
     use crate::sample::build_document;
 
-    fn layout_signature(result: &LayoutResult) -> Vec<(i32, i32, String)> {
+    fn layout_signature(result: &LayoutResult) -> Vec<(ScalarOffset, ScalarOffset, String)> {
         result
             .lines
             .iter()
@@ -814,15 +815,19 @@ mod tests {
                         .input
                         .content
                         .text
+                        .as_str()
                         .match_indices(text)
                         .nth(*occurrence)
                     else {
                         return true;
                     };
-                    let range_start = layout.input.content.text[..byte_start]
-                        .encode_utf16()
-                        .count() as i32;
-                    let range_end = range_start + text.encode_utf16().count() as i32;
+                    let range_start = layout
+                        .input
+                        .content
+                        .text
+                        .scalar_offset_at(byte_start)
+                        .expect("match start must be a Unicode scalar boundary");
+                    let range_end = range_start + text.chars().count() as i32;
                     let decisions: Vec<_> = layout
                         .debug
                         .shaping_decisions
@@ -861,8 +866,12 @@ mod tests {
         for block in document.blocks {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
-                    let is_mixed_sample =
-                        document.input.content.text.starts_with("中文书刊经常夹用");
+                    let is_mixed_sample = document
+                        .input
+                        .content
+                        .text
+                        .as_str()
+                        .starts_with("中文书刊经常夹用");
                     let layout = engine.layout(document.input);
                     if is_mixed_sample {
                         hyphenation_was_seen = layout
@@ -881,6 +890,7 @@ mod tests {
                         .input
                         .content
                         .text
+                        .as_str()
                         .starts_with("术语 internationalization");
                     let mut input = document.input;
                     input.constraints = LayoutConstraints::with_defaults(max_width);
@@ -929,6 +939,7 @@ mod tests {
                         .input
                         .content
                         .text
+                        .as_str()
                         .starts_with("术语 internationalization") =>
                 {
                     Some(document.input)

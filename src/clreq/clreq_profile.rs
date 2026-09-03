@@ -922,10 +922,9 @@ impl ClreqPunctuationGlyphSubstitutor {
 }
 
 fn to_clreq_recommended_display_text(source_text: &Text) -> Text {
-    if (0..source_text.utf16_len())
-        .all(|offset| source_text.utf16_code_unit_at(offset) == '…' as i32)
+    if source_text.chars().all(|character| character == '…')
     {
-        Text::from("⋯".repeat(source_text.utf16_len() as usize))
+        Text::from("⋯".repeat(source_text.scalar_len().value() as usize))
     } else if source_text == "——" {
         Text::from("⸺")
     } else if matches!(source_text.as_str(), "・" | "‧" | "•") {
@@ -936,8 +935,8 @@ fn to_clreq_recommended_display_text(source_text: &Text) -> Text {
 }
 
 fn to_code_point_labels(text: &Text) -> String {
-    text.encode_utf16()
-        .map(|unit| format!("U+{unit:04X}"))
+    text.chars()
+        .map(|character| format!("U+{:04X}", character as u32))
         .collect::<Vec<_>>()
         .join("+")
 }
