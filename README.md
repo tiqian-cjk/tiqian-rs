@@ -37,7 +37,7 @@ fixture basic-pause-stop: golden matched
 bash tools/verify-all-fixtures.sh
 ```
 
-成功时末行输出 `all 49 fixtures: golden matched`。该脚本逐个调用
+成功时末行输出 `all 52 fixtures: golden matched`。该脚本逐个调用
 `verify-fixture.sh`，因此也继承 `TIQIAN_ROOT`。
 
 Tiqian 不在默认相邻路径时，显式指定其根目录：
@@ -70,6 +70,15 @@ Rust 侧常规编译与测试：
 cargo check
 cargo test
 ```
+
+运行全部 Rust target、普通 fixture 与 recorded shaping fixture，并生成 HTML 覆盖率报告：
+
+```shell
+bash tools/coverage.sh
+```
+
+报告入口位于 `target/llvm-cov/html/index.html`。该脚本继承 `TIQIAN_ROOT`，可用于指定
+非默认位置的 Tiqian checkout。
 
 Tiqian 侧的原始 golden 基线可在 Tiqian checkout 中检查：
 

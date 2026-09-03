@@ -23,7 +23,7 @@ for golden in "$golden_dir"/*.txt; do
         ./gradlew -q :engine:exportLayoutFixture -PfixtureId="$fixture_id"
     ) | (
         cd "$tiqian_rs_root"
-        TIQIAN_SHAPING_EVIDENCE="$evidence" RUSTFLAGS="-A warnings" cargo run --quiet --example fixture-layout-dump
+        TIQIAN_SHAPING_EVIDENCE="$evidence" RUSTFLAGS="${RUSTFLAGS:-"-A warnings"}" cargo run --quiet --example fixture-layout-dump
     ) > "$actual"
 
     if diff -u "$golden" "$actual"; then
