@@ -139,6 +139,37 @@ fn kinsoku_avoidance_routes_around_forbidden_line_start() {
 }
 
 #[test]
+fn consecutive_synthetic_hyphen_penalty_avoids_second_hyphenated_line() {
+    let clusters: Vec<_> = (0..8).map(|index| cluster(index, "x", 10.0)).collect();
+    let mut config = LineBreakerConfig::default();
+    config.hyphen_break_clusters = HashSet::from([3, 6]);
+
+    let mut no_consecutive_penalty = ParagraphDpLineBreaker::default();
+    no_consecutive_penalty.synthetic_hyphen_break_penalty = 0.0;
+    no_consecutive_penalty.consecutive_synthetic_hyphen_penalty = 0.0;
+    let without_penalty =
+        no_consecutive_penalty.break_lines(&clusters, &clusters, 30.0, &config);
+    let with_penalty = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
+
+    assert_eq!(
+        vec![IntRange::new(0, 2), IntRange::new(3, 5), IntRange::new(6, 7)],
+        without_penalty
+            .lines
+            .iter()
+            .map(|line| line.cluster_range)
+            .collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec![IntRange::new(0, 1), IntRange::new(2, 4), IntRange::new(5, 7)],
+        with_penalty
+            .lines
+            .iter()
+            .map(|line| line.cluster_range)
+            .collect::<Vec<_>>(),
+    );
+}
+
+#[test]
 fn compressed_same_tier_boundary_is_not_reported_as_promotion() {
     let clusters = vec![
         cluster(0, "a", 30.0),

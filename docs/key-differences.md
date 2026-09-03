@@ -21,6 +21,12 @@
 
 ## 关键差异列表（其他）
 
+### Fixture 额外覆盖已转为常规回归测试
+
+2026-09-03 的 LLVM 覆盖率对照显示，`cargo test --all-targets` 后再运行全部普通与 recorded fixture，仅额外覆盖两个 Rust 源文件中的七行。该增量不表示 Kotlin 与 Rust 的排版行为差异：普通 fixture 继续用于跨仓库 layout dump 对照，recorded fixture 继续验证 shaping evidence 回放。
+
+其中 `ShapingDecisionInfoBuilder::script` 的 recorded shaping script 元数据，以及 `ParagraphDpLineBreaker` 对连续合成连字符的固定和连续惩罚，均已由 Rust 常规回归测试覆盖。后续日常 `cargo test --all-targets` 无需依赖 fixture 流程即可验证这两项局部行为。
+
 ### Kotlin Paragraph-DP 实验与调优探针
 
 Kotlin `ParagraphDpReferenceExperiment.kt` 保留为上游的算法实验，不迁移到 tiqian-rs。它包含 reference DP、fixture 扫描和基准输出，不属于 Rust 排版引擎的生产行为或默认回归测试。Rust 的 Paragraph-DP 正确性由独立的line-breaker、coverage 与 tier-pool 测试覆盖。

@@ -112,6 +112,24 @@ fn dash_cluster_emits_shaping_evidence_block() {
 }
 
 #[test]
+fn shaping_decision_preserves_recorded_script_metadata() {
+    let decision = ShapingDecisionInfo::builder(
+        TextRange::new(0, 1),
+        Text::from("A"),
+        Text::from("A"),
+        "latin".into(),
+        1,
+        8.0,
+        "RecordedShapingEvidence".into(),
+        "recorded".into(),
+    )
+    .script(Some("Latn".into()))
+    .build();
+
+    assert_eq!(Some("Latn".into()), decision.script);
+}
+
+#[test]
 fn punctuation_ink_floor_and_latin_role_mark_cells() {
     let input = LayoutInput::builder(TiqianTextContent::new(Text::from("。A中")), LayoutConstraints::with_defaults(480.0)).build();
     let clusters = vec![Cluster::new(TextRange::new(0, 1), Text::from("。"), "cjk".into(), 16.0), Cluster::new(TextRange::new(1, 2), Text::from("A"), "latin".into(), 10.0), Cluster::new(TextRange::new(2, 3), Text::from("中"), "cjk".into(), 16.0)];
