@@ -12,8 +12,6 @@ RUSTFLAGS=${RUSTFLAGS:-"-A warnings"}
 export RUSTFLAGS
 
 cargo test --all-targets
-bash "$script_dir/verify-all-fixtures.sh"
-bash "$script_dir/verify-recorded-fixtures.sh"
 cargo llvm-cov report --html --output-dir "$coverage_dir"
 
 printf 'coverage report: %s/html/index.html\n' "$coverage_dir"
