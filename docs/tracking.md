@@ -18,7 +18,7 @@ Kotlin 仓库的 ADR 是算法与架构取舍的唯一来源。Rust 只记录实
 
 - `docs/` 中与 engine 取舍直接相关的 ADR、规则审计和路线记录；
 - `engine/src/` 中 `commonMain` 的排版核心、`commonTest` 的行为测试，以及支撑 fixture parity 的 JVM 测试工具；
-- 对应的 Rust `src/`、`tests/`、`examples/fixture-layout-dump.rs` 与 `tools/`。
+- 对应的 Rust `src/`、`tests/fixture_layout/` 与 `tools/`。
 
 默认不把前端、demo、平台 adapter、发布脚本和无关文档带入 Rust 核心同步。上游变动如果影响
 输入 wire、fixture、shaping 约定或 renderer 可重放证据，则在对应日期归档中记录扩大后的范围。
@@ -61,13 +61,11 @@ git -C <tiqian-kotlin-repository> diff --name-status <已审计终点> UPSTREAM_
 
 ```shell
 cargo test
-bash tools/verify-all-fixtures.sh
+cargo test --test tiqian layout_fixture_golden_test
 git diff --check
 ```
 
-`tools/verify-all-fixtures.sh` 逐个调用 Kotlin fixture JSON exporter，并将 Rust dump 与 Kotlin
-已检查入库的 layout golden 直接比较。它当前列出 49 个 fixture；新增或移植 fixture 时同步
-更新脚本或改用受测试约束的注册表，避免清单漂移。
+`tests/fixture_layout/` 保存 Rust 本地 52 项 deterministic stub fixture 与每项完整 dump golden。测试入口同时检查 fixture ID 与 golden 文件名集合，新增或移植 fixture 时必须同步更新两者，避免清单漂移。
 
 涉及 Unicode 属性源时，标准 Unicode 属性固定使用 `icu_properties` 2.3.x 的编译期 Unicode 17
 数据；emoji style variation base 集合和 UTR #59 `East_Asian_Spacing` 仍是 Rust 本地数据。
@@ -120,12 +118,11 @@ Kotlin 审计区间的两端。文件记录审计范围、上游依据、映射�
 | Rust 仓库 | 本仓库 |
 | 最近审计区间 | `eb26f889c57d50e52e41d3a76185cdb6a3bdba45..2fae0df461819932dc9ef0153b79be9ad0038959` |
 | Rust 基线 | `b8ed5d75c646053f7aad0fdf3ca2af4c96586736` |
-| 同步状态 | 已完成选定的五项回归测试同步；Rust commit 待创建 |
-| 已跟进终点 | 尚未建立连续的已实施并验证终点 |
-
-本轮 `cargo test` 已通过。全量 fixture parity 目前在 `ellipsis-and-dash` 停止：Kotlin
-`079628ad` 在本轮审计终点后新增 contextual dash/ellipsis role override，尚未同步。
+| 同步状态 | 同步完成 |
+| 已跟进终点 |  |
 
 ## 日志摘要
+
+- [2026-08-31 `2fae0df..59fca35`](tracking/2026-08-31-2fae0df-59fca35.md)：同步算法改动和大量测试用例。
 
 - [2026-08-31 `eb26f889..2fae0df`](tracking/2026-08-31-eb26f889-2fae0df.md)：同步五项回归测试并修正 NaN 压缩行为；记录后续上游造成的 fixture parity 差异。
