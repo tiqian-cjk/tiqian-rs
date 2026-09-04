@@ -10,9 +10,9 @@
 
 ## 当前状态
 
-截至 2026-09-03，Phase 1 至 Phase 4 已完成，Phase 5 尚未开始，当前准备迁移独立测试、fixture
-和 golden。核心生产代码、demo 以及 `src/**` 内嵌单元测试已经切换到 Unicode scalar source
-coordinate；`tests/**` 和 fixture/golden 仍保留待迁移的旧坐标用法。
+截至 2026-09-04，Phase 1 至 Phase 6 已完成。核心生产代码、
+demo、`src/**` 内嵌单元测试、`tests/**` 独立测试和本地 fixture/golden 均已切换到 Unicode scalar
+source coordinate。
 
 ## 范围
 
@@ -169,14 +169,14 @@ Phase 1 至 Phase 3 不要求编译或运行测试。`TextRange`、`Text` 与 pi
 3. 本阶段不以 demo 的视觉结果、layout 结果或 dump 数字作为正确性验收；这些在最终测试与 golden
    验证时统一检查。
 
-### Phase 5：迁移独立测试、fixture 与 golden（准备开始）
+### Phase 5：迁移独立测试、fixture 与 golden（已完成）
 
 1. 集中迁移 `tests/**` 中独立单元测试和跨模块测试的 `TextRange` 构造、offset、interaction boundary、
    query 与 selection 预期；删除已失效的 UTF-16 辅助用法。
 2. 更新 52 项 fixture 输入、测试辅助函数与完整本地 golden。
 3. 审阅 golden diff，确认坐标变化符合 scalar 语义，排版决策未出现非预期漂移。
 
-### Phase 6：完成迁移与验证（待开始）
+### Phase 6：完成迁移与验证（已完成）
 
 1. 搜索并处理核心和测试中的 UTF-16 API、`encode_utf16`、`len_utf16`、surrogate 与旧坐标术语。
 2. 运行相关测试、`cargo test --test tiqian layout_fixture_golden_test`、`cargo test --all-targets` 与
@@ -209,6 +209,25 @@ Phase 1 至 Phase 5 之间允许项目暂时无法编译或运行；Phase 6 完�
    断言，再按模块迁移测试辅助代码与测试用例。
 - 独立测试迁移完成后，再更新 52 项 fixture 和 deterministic golden，并逐项检查坐标变化与排版
    决策变化。
+
+### Phase 5 完成记录
+
+- `tests/**` 的独立测试与跨模块测试已全部切换为 scalar source coordinate；emoji、variation
+   selector、emoji modifier、ZWJ、tag sequence 和补充平面字符的手写范围均按 scalar 重新计数。
+- selection endpoint 与双击选词分别覆盖 interaction boundary 吸附和 raw scalar 所属 unit 查询，
+   避免将 caret 的 nearest 规则错误用于选词。
+- 52 项 fixture 的显式 source range 均覆盖 BMP 或 ASCII 文本；以 scalar pipeline 重放后，所有
+   deterministic golden 保持一致，因此无需写入无内容的 golden diff。
+- `cargo test --test tiqian -- --test-threads=1` 通过 1327 项测试；fixture golden 测试通过。
+
+### Phase 6 完成记录
+
+- 已搜索 `src/**`、`tests/**` 和 `examples/**` 中旧 UTF-16 API。生产代码不再包含 UTF-16
+   offset 或 surrogate 中点逻辑；保留的 surrogate 字样仅用于 Unicode scalar 拒绝校验和历史测试名称。
+- `cargo test --all-targets` 通过：独立测试 1327 项、`paragraph-demo` 测试 19 项，fixture golden
+   测试包含在独立测试中并通过。
+- 已运行 `git diff --check`、编辑器诊断和相关文档风格检查。`paragraph_dp_line_breaker.rs` 的
+   `gap_boundaries` 未读取 warning 以及 demo 未读取 overhang 字段均为本迭代前既有问题。
 
 ## 验证与验收
 

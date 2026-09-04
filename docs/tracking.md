@@ -4,20 +4,21 @@
 完成一轮同步时更新本页；完整调研、对照表、决策、实施记录和验证证据存入
 `docs/tracking/<日期>-<起始短commit>-<结束短commit>.md`。
 
-Kotlin 仓库的 ADR 是算法与架构取舍的唯一来源。Rust 只记录实现差异和验证结果，不复制或另立 ADR。
+Kotlin 仓库的 ADR 是同步 Kotlin 算法与架构取舍的重要来源。Rust 的有意架构差异使用 Rust ADR
+记录，并同步更新 `docs/key-differences.md`。
 
 ## 跟进目标与边界
 
-目标是让 Rust 排版核心与 Kotlin 的算法、结构化 decision 和 fixture 行为保持一致，同时保留
-语言实现差异，例如 Rust 的 UTF-16 `Text` 表示、所有权模型、缓存 API，或以固定版本 ICU4X
-属性数据替代 Kotlin 仓库内的标准 Unicode 属性表。
+目标是让 Rust 排版核心与 Kotlin 的算法和结构化 decision 保持一致，同时保留语言实现差异，
+例如所有权模型、缓存 API 或以固定版本 ICU4X 属性数据替代 Kotlin 仓库内的标准 Unicode 属性表。
+已接受的 Rust 架构差异记录在 `docs/key-differences.md` 与对应 ADR。
 
 每次对照前，必须先阅读 `docs/key-differences.md`，了解已知的关键差异、分类和处理策略。
 
 每次对照默认关注：
 
 - `docs/` 中与 engine 取舍直接相关的 ADR、规则审计和路线记录；
-- `engine/src/` 中 `commonMain` 的排版核心、`commonTest` 的行为测试，以及支撑 fixture parity 的 JVM 测试工具；
+- `engine/src/` 中 `commonMain` 的排版核心与 `commonTest` 的行为测试；
 - 对应的 Rust `src/`、`tests/fixture_layout/` 与 `tools/`。
 
 默认不把前端、demo、平台 adapter、发布脚本和无关文档带入 Rust 核心同步。上游变动如果影响
@@ -39,12 +40,12 @@ git -C <tiqian-kotlin-repository> diff --name-status <已审计终点> UPSTREAM_
 
 ### 映射 Rust 对应物
 
-逐项找到 Rust 实现、测试和 parity 工具，并使用以下状态记录在日期归档中：
+逐项找到 Rust 实现、测试和本地 fixture golden，并使用以下状态记录在日期归档中：
 
 | 状态 | 含义 | 后续动作 |
 | --- | --- | --- |
 | 已同步 | 行为和必要测试已经等价存在 | 记录路径和证据，不重复移植 |
-| 有意差异 | 实现形式不同，但仍遵守 Kotlin 决策 | 写明原因、版本和验证方式 |
+| 有意差异 | Rust 有已接受的不同决策 | 写明 ADR、原因和验证方式 |
 | 待补测试 | 运行语义已存在，缺少上游新增的回归范围 | 由用户决定是否补测 |
 | 待同步 | Rust 缺实现、测试或必要的工具能力 | 形成小范围实施计划 |
 | 不适用 | Kotlin 改动属于 Rust 当前边界之外 | 写明边界 |
@@ -55,7 +56,8 @@ git -C <tiqian-kotlin-repository> diff --name-status <已审计终点> UPSTREAM_
 ### 实施与验证
 
 一次同步只处理可独立验证的一组改动。行为变更同步对应测试；只补测试时也在日期归档中写明
-它固定的上游行为。不要为了追赶上游引入第二套排版规则、临时兼容层或 Rust 独立 ADR。
+它固定的上游行为。不要为了追赶上游引入第二套排版规则或临时兼容层。对有意改变 Rust 架构或
+行为的决策，创建 Rust ADR 并同步更新关键差异文档。
 
 根据改动范围运行：
 
