@@ -21,7 +21,7 @@ source coordinate。
 - `Text` 的 scalar offset 到 UTF-8 byte offset 映射和 scalar-safe slice；
 - source range、span、cluster、glyph、line、break offset、debug decision 与 query 的 scalar 语义；
 - interaction boundary、cluster role、quote、标点、断行、断词和 paragraph shaping 的 scalar 步进；
-- demo、测试辅助代码、52 项本地 fixture 和 golden 的 scalar 坐标更新；
+- demo、测试辅助代码、53 项本地 fixture 和 golden 的 scalar 坐标更新；
 - 公开 API 与相关文档的术语更新。
 
 ### 不包含
@@ -173,7 +173,7 @@ Phase 1 至 Phase 3 不要求编译或运行测试。`TextRange`、`Text` 与 pi
 
 1. 集中迁移 `tests/**` 中独立单元测试和跨模块测试的 `TextRange` 构造、offset、interaction boundary、
    query 与 selection 预期；删除已失效的 UTF-16 辅助用法。
-2. 更新 52 项 fixture 输入、测试辅助函数与完整本地 golden。
+2. 更新 53 项 fixture 输入、测试辅助函数与完整本地 golden。
 3. 审阅 golden diff，确认坐标变化符合 scalar 语义，排版决策未出现非预期漂移。
 
 ### Phase 6：完成迁移与验证（已完成）
@@ -216,8 +216,10 @@ Phase 1 至 Phase 5 之间允许项目暂时无法编译或运行；Phase 6 完�
    selector、emoji modifier、ZWJ、tag sequence 和补充平面字符的手写范围均按 scalar 重新计数。
 - selection endpoint 与双击选词分别覆盖 interaction boundary 吸附和 raw scalar 所属 unit 查询，
    避免将 caret 的 nearest 规则错误用于选词。
-- 52 项 fixture 的显式 source range 均覆盖 BMP 或 ASCII 文本；以 scalar pipeline 重放后，所有
-   deterministic golden 保持一致，因此无需写入无内容的 golden diff。
+- 原有 52 项 fixture 的显式 source range 均覆盖 BMP 或 ASCII 文本；以 scalar pipeline 重放后，
+   它们的 deterministic golden 保持一致。新增 `unicode-scalar-source-coordinates` fixture 覆盖补充
+   平面字符、组合标记、emoji style variation、emoji modifier、ZWJ、区域指示符、keycap 和 emoji
+   tag sequence，并固定这类文本的 scalar range 输出。
 - `cargo test --test tiqian -- --test-threads=1` 通过 1327 项测试；fixture golden 测试通过。
 
 ### Phase 6 完成记录

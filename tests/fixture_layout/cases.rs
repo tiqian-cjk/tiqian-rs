@@ -60,6 +60,11 @@ pub fn fixtures() -> Vec<Fixture> {
         fixture("mandatory-leading-trailing-newline", "\n开头和结尾\n", 160.0),
         fixture("mandatory-crlf", "甲\r\n乙", 160.0),
         fixture("mandatory-wraps-long-line", "中文中文中文中文中文\n尾行", 64.0),
+        fixture(
+            "unicode-scalar-source-coordinates",
+            "样例：𠀋、😀、é、❤️、👍🏻、👩‍💻、🇨🇳、1️⃣、🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}。",
+            160.0,
+        ),
         first_line_indent("indent-opening-quote", "“好咖啡要趁热喝。”他说完便把杯子推了过来，让大家依次尝一口。", 192.0, Some(2.0)),
         pinned("line-end-kinsoku", "中文中文（中文）中文", 80.0),
         interlinear_lines(),
