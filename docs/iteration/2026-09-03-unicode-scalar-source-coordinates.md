@@ -1,4 +1,6 @@
-# 2026-09-03 Unicode scalar source coordinate 迁移
+# 2026-09-03 Unicode scalar source coordinate 迁移（已完成）
+
+> 状态：已完成（2026-09-04）
 
 ## 目标
 
@@ -241,8 +243,14 @@ Phase 1 至 Phase 5 之间允许项目暂时无法编译或运行；Phase 6 完�
 - 所有本地 fixture golden 与 Rust 测试通过；golden 的改动经过逐项审阅。
 - 迁移不引入 Kotlin checkout、fixture 或 golden 测试依赖。
 
+## 完成结论
+
+Rust source coordinate 已统一为 Unicode scalar value。`ScalarOffset` 与 scalar `TextRange`
+覆盖公开 API、layout pipeline、查询、测试 fixture 和 deterministic golden；UTF-8 byte offset
+仅保留在字符串与 shaping 边界。R0001 的验证已完成，后续工作应以该决策作为既定约束。
+
 ## 回滚
 
-当前已完成 Phase 1 至 Phase 4，下一阶段为 Phase 5。若迁移独立测试、fixture 或 golden 时发现
-scalar source coordinate 无法满足 Rust 公开 API 或 layout 不变量，应先停止在当前阶段，记录具体
-约束并重新讨论 R0001；不得通过保留双坐标核心或临时 UTF-16 adapter 继续推进。
+如需改变 source coordinate 的单位或重新引入 UTF-16 互操作，应新增 ADR，并说明对公开 API、
+fixture/golden、interaction boundary 和 Kotlin 差异的影响；不得在核心 pipeline 中重新引入双坐标
+字段或临时 UTF-16 adapter。
