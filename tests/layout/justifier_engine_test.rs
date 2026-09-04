@@ -1,7 +1,7 @@
 use tiqian::clreq::clreq_profile::{
     AdjustmentStylePolicy, ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
 };
-use tiqian::core::geometry::LayoutConstraints;
+use tiqian::core::geometry::{scalar_offset, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -69,7 +69,7 @@ struct PositionedPairShaper;
 impl TextShaper for PositionedPairShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let text = input.text.slice_text(input.range);
-        let advance = if text == "AV" { 10.0 } else { text.utf16_len() as f32 * 16.0 };
+        let advance = if text == "AV" { 10.0 } else { text.scalar_len().value() as f32 * 16.0 };
         let glyphs = if text == "AV" {
             vec![
                 Glyph::builder(1, input.range, 5.0).x(0.0).build(),
@@ -115,7 +115,7 @@ fn connector_boundaries_remain_closed_during_justification() {
         .filter(|allocation| allocation.kind == "CjkInterChar")
         .collect();
     assert_eq!(
-        vec![2],
+        vec![scalar_offset(2)],
         inter_char
             .iter()
             .map(|allocation| allocation.cluster_range.start())
@@ -131,12 +131,12 @@ fn inseparable_number_and_unit_boundary_remains_closed_during_justification() {
     let number = result
         .clusters
         .iter()
-        .find(|cluster| cluster.range.start() <= 2 && cluster.range.end() >= 4)
+        .find(|cluster| cluster.range.start() <= scalar_offset(2) && cluster.range.end() >= scalar_offset(4))
         .unwrap();
     let unit = result
         .clusters
         .iter()
-        .find(|cluster| cluster.range.start() <= 4 && cluster.range.end() >= 5)
+        .find(|cluster| cluster.range.start() <= scalar_offset(4) && cluster.range.end() >= scalar_offset(5))
         .unwrap();
     assert_ne!(number.range, unit.range);
     let decision = result
@@ -268,7 +268,7 @@ fn justify_fills_saturated_line_with_uncapped_even_share() {
         .debug
         .justification_decisions
         .iter()
-        .find(|decision| decision.line_range.start() == 0)
+        .find(|decision| decision.line_range.start().value() == 0)
         .unwrap();
     assert_eq!(0.0, decision.deficit_after);
     assert_eq!(160.0, result.lines[0].visual_width);
@@ -331,7 +331,7 @@ fn justify_distributes_deficit_across_priority_chain() {
         .map(|allocation| allocation.cluster_range.start())
         .collect();
     targets.sort();
-    assert_eq!(vec![0, 1, 2, 3], targets);
+    assert_eq!(vec![scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3)], targets);
     assert_eq!(80.0, result.lines[0].visual_width);
     let geometry = result
         .debug
@@ -390,7 +390,7 @@ fn uniform_tracking_includes_bracket_inner_sides() {
         .map(|allocation| allocation.cluster_range.start())
         .collect();
     targets.sort();
-    assert_eq!(vec![0, 1, 2, 3, 4], targets);
+    assert_eq!(vec![scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4)], targets);
     assert!(decision.allocations.iter().all(|allocation| allocation.kind == "CjkInterChar"));
     assert!(decision
         .allocations
@@ -417,10 +417,10 @@ fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
         .iter()
         .all(|allocation| allocation.kind != "CjkLatinSpace"));
     assert!(decision.allocations.iter().any(|allocation| {
-        allocation.kind == "CjkInterChar" && allocation.cluster_range.start() == 2
+        allocation.kind == "CjkInterChar" && allocation.cluster_range.start().value() == 2
     }));
     assert!(decision.allocations.iter().any(|allocation| {
-        allocation.kind == "CjkInterChar" && allocation.cluster_range.start() == 3
+        allocation.kind == "CjkInterChar" && allocation.cluster_range.start().value() == 3
     }));
 }
 

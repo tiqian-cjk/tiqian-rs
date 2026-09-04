@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
@@ -120,7 +120,7 @@ fn emphasis_marks() -> Fixture {
     let mut fixture = fixture("emphasis-marks", "他强调：豆子新鲜最要紧，烘焙其次。", 128.0);
     fixture.input.paragraph_style.line_height = Some(25.6);
     fixture.input.decorations = vec![DecorationSpan {
-        range: TextRange::new(4, 16),
+        range: text_range(4, 16),
         kind: DecorationKind::Emphasis,
     }];
     fixture
@@ -129,14 +129,14 @@ fn emphasis_marks() -> Fixture {
 fn ruby_line_height() -> Fixture {
     let mut fixture = fixture("ruby-line-height", "甲乙丙丁戊己庚辛壬癸子丑", 64.0);
     fixture.input.paragraph_style.line_height = Some(18.0);
-    fixture.input.ruby_spans = vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))];
+    fixture.input.ruby_spans = vec![RubySpan::new(text_range(4, 5), Text::from("wù"))];
     fixture
 }
 
 fn bopomofo_tone_em_box() -> Fixture {
     let mut fixture = fixture("bopomofo-tone-em-box", "好", 64.0);
     fixture.input.ruby_spans = vec![RubySpan::with_kind(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("ㄏㄠˇ"),
         RubyKind::Bopomofo,
     )];
@@ -146,7 +146,7 @@ fn bopomofo_tone_em_box() -> Fixture {
 fn progressive_technical_inline() -> Fixture {
     let mut fixture = hyphenated("progressive-technical-inline", "中文 internationalization 命令", 160.0);
     fixture.input.content.line_break_spans = vec![LineBreakSpan {
-        range: TextRange::new(3, 23),
+        range: text_range(3, 23),
         policy: LineBreakPolicy::ProgressiveTechnical,
     }];
     fixture
@@ -156,7 +156,7 @@ fn progressive_technical_hash_fill() -> Fixture {
     let mut fixture = without_grid("progressive-technical-hash-fill", "deadbeefcafebabefeedfaceabcdefabcdef", 173.0);
     fixture.use_english_hyphenation = true;
     fixture.input.content.line_break_spans = vec![LineBreakSpan {
-        range: TextRange::new(0, 36),
+        range: text_range(0, 36),
         policy: LineBreakPolicy::ProgressiveTechnical,
     }];
     fixture
@@ -166,7 +166,7 @@ fn progressive_technical_alpha_numeric() -> Fixture {
     let mut fixture = without_grid("progressive-technical-alpha-numeric", "Machine2Machine", 76.0);
     fixture.use_english_hyphenation = true;
     fixture.input.content.line_break_spans = vec![LineBreakSpan {
-        range: TextRange::new(0, 15),
+        range: text_range(0, 15),
         policy: LineBreakPolicy::ProgressiveTechnical,
     }];
     fixture
@@ -175,9 +175,9 @@ fn progressive_technical_alpha_numeric() -> Fixture {
 fn progressive_technical_current_line_emergency() -> Fixture {
     let mut fixture = without_grid("progressive-technical-current-line-emergency", "Swift 这边是我最有体感的。JSONDecoder 慢是个老问题，SR-6252[36] 那个 issue 里挖出的根因是底层走 NSJSONSerialization 再桥接回 Objective-C，swift_dynamicCast 吃掉大量时间。", 579.0);
     fixture.input.content.line_break_spans = vec![
-        LineBreakSpan { range: TextRange::new(16, 27), policy: LineBreakPolicy::ProgressiveTechnical },
-        LineBreakSpan { range: TextRange::new(67, 86), policy: LineBreakPolicy::ProgressiveTechnical },
-        LineBreakSpan { range: TextRange::new(104, 121), policy: LineBreakPolicy::ProgressiveTechnical },
+        LineBreakSpan { range: text_range(16, 27), policy: LineBreakPolicy::ProgressiveTechnical },
+        LineBreakSpan { range: text_range(67, 86), policy: LineBreakPolicy::ProgressiveTechnical },
+        LineBreakSpan { range: text_range(104, 121), policy: LineBreakPolicy::ProgressiveTechnical },
     ];
     fixture
 }
@@ -185,10 +185,10 @@ fn progressive_technical_current_line_emergency() -> Fixture {
 fn interlinear_lines() -> Fixture {
     let mut fixture = fixture("interlinear-lines", "屈原写下离骚，顾炎武王夫之并称。", 224.0);
     fixture.input.decorations = vec![
-        DecorationSpan { range: TextRange::new(0, 2), kind: DecorationKind::ProperNoun },
-        DecorationSpan { range: TextRange::new(4, 6), kind: DecorationKind::BookTitle },
-        DecorationSpan { range: TextRange::new(7, 10), kind: DecorationKind::ProperNoun },
-        DecorationSpan { range: TextRange::new(10, 13), kind: DecorationKind::ProperNoun },
+        DecorationSpan { range: text_range(0, 2), kind: DecorationKind::ProperNoun },
+        DecorationSpan { range: text_range(4, 6), kind: DecorationKind::BookTitle },
+        DecorationSpan { range: text_range(7, 10), kind: DecorationKind::ProperNoun },
+        DecorationSpan { range: text_range(10, 13), kind: DecorationKind::ProperNoun },
     ];
     fixture
 }
@@ -196,8 +196,8 @@ fn interlinear_lines() -> Fixture {
 fn mourning_frame() -> Fixture {
     let mut fixture = fixture("mourning-frame", "悼念：王小明同志、张大同同志。", 72.0);
     fixture.input.decorations = vec![
-        DecorationSpan { range: TextRange::new(3, 6), kind: DecorationKind::Mourning },
-        DecorationSpan { range: TextRange::new(9, 12), kind: DecorationKind::Mourning },
+        DecorationSpan { range: text_range(3, 6), kind: DecorationKind::Mourning },
+        DecorationSpan { range: text_range(9, 12), kind: DecorationKind::Mourning },
     ];
     fixture
 }

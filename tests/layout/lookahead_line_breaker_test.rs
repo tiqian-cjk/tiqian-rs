@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -14,7 +14,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(start: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(start, start + 1),
+        text_range(start, start + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -32,7 +32,7 @@ fn break_lines(
 
 #[test]
 fn hanging_tail_is_excluded_from_fill_density_geometry() {
-    let mut line = LineCandidate::new(IntRange::new(0, 2), TextRange::new(0, 3), 48.0, 16.0);
+    let mut line = LineCandidate::new(IntRange::new(0, 2), text_range(0, 3), 48.0, 16.0);
     line.hanging_cluster_indices = HashSet::from([1, 2]);
     line.validate_hanging_suffix();
 
@@ -58,14 +58,14 @@ fn hanging_tail_is_excluded_from_fill_density_geometry() {
 #[test]
 #[should_panic(expected = "Hanging clusters must be a trailing line suffix")]
 fn hanging_clusters_must_be_a_contiguous_trailing_suffix() {
-    let mut line = LineCandidate::new(IntRange::new(0, 2), TextRange::new(0, 3), 48.0, 32.0);
+    let mut line = LineCandidate::new(IntRange::new(0, 2), text_range(0, 3), 48.0, 32.0);
     line.hanging_cluster_indices = HashSet::from([1]);
     line.validate_hanging_suffix();
 }
 
 #[test]
 fn compatibility_hanging_index_skips_a_trailing_mandatory_break_control() {
-    let mut line = LineCandidate::new(IntRange::new(0, 2), TextRange::new(0, 3), 32.0, 16.0);
+    let mut line = LineCandidate::new(IntRange::new(0, 2), text_range(0, 3), 32.0, 16.0);
     line.repair = Some(RepairOption::Hang {
         penalty: 5,
         reason: "test".to_owned(),

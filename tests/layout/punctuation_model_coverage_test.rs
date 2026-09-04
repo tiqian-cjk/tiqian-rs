@@ -2,7 +2,7 @@ use tiqian::clreq::clreq_profile::{
     ClreqProfile, ClreqProfileResolver, GlueSide, InteriorPunctuationStyle, PunctuationClass, PunctuationGluePlacement,
     PunctuationWidthPolicy,
 };
-use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, Rect};
 use tiqian::core::text::Text;
 use tiqian::layout::punctuation_model::{
     AdjustmentOpportunity, Glue, GlueKind, PunctuationAnchor, PunctuationAtom,
@@ -29,7 +29,7 @@ fn atom(character: char, index: i32, ink: Option<PunctuationInkInput>) -> Punctu
     PunctuationAtomBuilder::default()
         .build(
             character,
-            TextRange::new(index, index + 1),
+            text_range(index, index + 1),
             EM,
             ink,
             PunctuationGluePlacement::MainlandSimplified,
@@ -87,10 +87,10 @@ fn glue_rejects_natural_above_maximum() {
 #[test]
 fn adjustment_opportunity_carries_range_and_glue() {
     let opportunity = AdjustmentOpportunity {
-        range: TextRange::new(1, 2),
+        range: text_range(1, 2),
         glue: punctuation_glue(4.0),
     };
-    assert_eq!(TextRange::new(1, 2), opportunity.range);
+    assert_eq!(text_range(1, 2), opportunity.range);
     assert_eq!(4.0, opportunity.glue.natural);
 }
 
@@ -98,8 +98,8 @@ fn adjustment_opportunity_carries_range_and_glue() {
 fn compression_result_sums_adjustment_reductions() {
     let result = PunctuationSpacingCompressionResult::new(vec![
         PunctuationSpacingAdjustment {
-            range: TextRange::new(0, 2),
-            reduction_target_range: TextRange::new(0, 1),
+            range: text_range(0, 2),
+            reduction_target_range: text_range(0, 1),
             left_char: '。',
             right_char: '「',
             natural_inner_glue: 16.0,
@@ -108,8 +108,8 @@ fn compression_result_sums_adjustment_reductions() {
             reason: "test-a".to_owned(),
         },
         PunctuationSpacingAdjustment {
-            range: TextRange::new(2, 4),
-            reduction_target_range: TextRange::new(2, 3),
+            range: text_range(2, 4),
+            reduction_target_range: text_range(2, 3),
             left_char: '，',
             right_char: '「',
             natural_inner_glue: 8.0,
@@ -138,7 +138,7 @@ fn adjacent_punctuation_inner_glue_collapses_by_half_em() {
     assert_eq!('。', adjustment.left_char);
     assert_eq!('「', adjustment.right_char);
     assert_eq!("collapse-adjacent-punctuation-inner-glue", adjustment.reason);
-    assert_eq!(TextRange::new(0, 2), adjustment.range);
+    assert_eq!(text_range(0, 2), adjustment.range);
 }
 
 #[test]
@@ -185,7 +185,7 @@ fn cjk_closing_before_ascii_point_mark_collapses_trailing_glue() {
         .adjustments
         .pop()
         .unwrap();
-    assert_eq!(TextRange::new(0, 2), adjustment.range);
+    assert_eq!(text_range(0, 2), adjustment.range);
     assert_eq!(closing.range, adjustment.reduction_target_range);
     assert_eq!(8.0, adjustment.natural_inner_glue);
     assert_eq!(0.0, adjustment.adjusted_inner_glue);
@@ -223,16 +223,16 @@ fn cjk_closing_compression_rejects_non_matching_neighbours() {
 #[test]
 fn indexed_build_rejects_out_of_range_index() {
     let builder = PunctuationAtomBuilder::default();
-    assert_eq!(None, builder.build_at(&Text::from("，"), 5, EM));
-    let built = builder.build_at(&Text::from("，"), 0, EM).unwrap();
-    assert_eq!(TextRange::new(0, 1), built.range);
+    assert_eq!(None, builder.build_at(&Text::from("，"), scalar_offset(5), EM));
+    let built = builder.build_at(&Text::from("，"), scalar_offset(0), EM).unwrap();
+    assert_eq!(text_range(0, 1), built.range);
     assert_eq!('，', built.character);
 }
 
 #[test]
 fn non_punctuation_characters_produce_no_atom() {
-    assert_eq!(None, PunctuationAtomBuilder::default().build_at(&Text::from("中"), 0, EM));
-    assert_eq!(None, PunctuationAtomBuilder::default().build_at(&Text::from("a"), 0, EM));
+    assert_eq!(None, PunctuationAtomBuilder::default().build_at(&Text::from("中"), scalar_offset(0), EM));
+    assert_eq!(None, PunctuationAtomBuilder::default().build_at(&Text::from("a"), scalar_offset(0), EM));
 }
 
 #[test]
@@ -313,7 +313,7 @@ fn policy_fallback_splits_glue_by_class_side() {
         PunctuationWidthPolicy::default(),
     )
     .build(
-        '，', TextRange::new(0, 1), EM, None, PunctuationGluePlacement::Traditional,
+        '，', text_range(0, 1), EM, None, PunctuationGluePlacement::Traditional,
         PunctuationWidthPolicy::default(),
     )
     .unwrap();
@@ -420,19 +420,19 @@ fn forced_half_width_connectors_consume_glue_up_front() {
     assert_eq!(0.0, hyphen.trailing_glue_initially_consumed);
     let gb = PunctuationWidthPolicy::with_gb_fixed_separators(true);
     let dot = PunctuationAtomBuilder::new(PunctuationGluePlacement::MainlandSimplified, gb)
-        .build('·', TextRange::new(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, gb)
+        .build('·', text_range(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, gb)
         .unwrap();
     assert!(dot.geometry_source.ends_with("FixedHalfWidth"));
     assert_eq!(4.0, dot.leading_glue_initially_consumed);
     assert_eq!(4.0, dot.trailing_glue_initially_consumed);
     let kaiming = PunctuationWidthPolicy::with_interior(InteriorPunctuationStyle::Kaiming);
     let comma = PunctuationAtomBuilder::new(PunctuationGluePlacement::MainlandSimplified, kaiming)
-        .build('，', TextRange::new(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, kaiming)
+        .build('，', text_range(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, kaiming)
         .unwrap();
     assert!(comma.geometry_source.ends_with("FixedHalfWidth"));
     assert_eq!(8.0, comma.trailing_glue_initially_consumed);
     let stop = PunctuationAtomBuilder::new(PunctuationGluePlacement::MainlandSimplified, kaiming)
-        .build('。', TextRange::new(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, kaiming)
+        .build('。', text_range(0, 1), EM, None, PunctuationGluePlacement::MainlandSimplified, kaiming)
         .unwrap();
     assert!(!stop.geometry_source.ends_with("FixedHalfWidth"));
 }

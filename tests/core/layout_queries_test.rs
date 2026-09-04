@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect, Size, TextRange};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     AutoSpaceDecisionInfo, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph,
@@ -50,7 +50,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
     let debug = LayoutDebugInfo::builder()
         .ruby_decisions(vec![
             RubyDecisionInfo::builder(
-                TextRange::new(0, 2),
+                text_range(0, 2),
                 Text::from("tíqiàn"),
                 0,
                 0.0,
@@ -61,7 +61,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
             .build(),
         ])
         .bopomofo_decisions(vec![BopomofoDecisionInfo::new(
-            TextRange::new(3, 4),
+            text_range(3, 4),
             Text::from("ㄋㄧㄣˊ"),
             0,
             Vec::new(),
@@ -81,19 +81,19 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
 
     assert_eq!(
         "提椠（tíqiàn）与您（ㄋㄧㄣˊ）",
-        get_text_for_copy(&result, TextRange::new(0, 4)).as_str()
+        get_text_for_copy(&result, text_range(0, 4)).as_str()
     );
     assert_eq!(
         "提",
-        get_text_for_copy(&result, TextRange::new(0, 1)).as_str()
+        get_text_for_copy(&result, text_range(0, 1)).as_str()
     );
     assert_eq!(
         "提椠（tíqiàn）",
-        get_text_for_copy(&result, TextRange::new(0, 2)).as_str()
+        get_text_for_copy(&result, text_range(0, 2)).as_str()
     );
     assert_eq!(
         "您（ㄋㄧㄣˊ）",
-        get_text_for_copy(&result, TextRange::new(3, 4)).as_str()
+        get_text_for_copy(&result, text_range(3, 4)).as_str()
     );
 }
 
@@ -101,7 +101,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
 fn positioned_clusters_separate_occupied_box_from_draw_origin() {
     let debug = LayoutDebugInfo::builder()
         .auto_space_decisions(vec![AutoSpaceDecisionInfo {
-            cluster_range: TextRange::new(1, 3),
+            cluster_range: text_range(1, 3),
             side: "leading".to_owned(),
             boundary_role: "CjkLatin".to_owned(),
             mode: "Insert".to_owned(),
@@ -119,13 +119,13 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
         },
         vec![
             Cluster::new(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("中"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
-                TextRange::new(1, 3),
+                text_range(1, 3),
                 Text::from("Hi"),
                 "latin".to_owned(),
                 22.5,
@@ -133,7 +133,7 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
         ],
         Vec::new(),
         vec![line(
-            TextRange::new(0, 3),
+            text_range(0, 3),
             IntRange::new(0, 1),
             15.0,
             0.0,
@@ -161,9 +161,9 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
             right: 32.5,
             bottom: 20.0
         },
-        get_bounding_box(&result, 1)
+        get_bounding_box(&result, scalar_offset(1))
     );
-    assert_eq!(1, get_offset_for_position(&result, 11.0, 5.0));
+    assert_eq!(scalar_offset(1), get_offset_for_position(&result, 11.0, 5.0));
 }
 
 #[test]
@@ -175,16 +175,16 @@ fn glyph_ink_bounds_keep_overhang_separate_from_occupied_geometry() {
             height: 20.0,
         },
         vec![Cluster::new(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("f"),
             "latin".to_owned(),
             10.0,
         )],
         vec![GlyphRun::new(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             "latin".to_owned(),
             vec![
-                Glyph::builder(1, TextRange::new(0, 1), 10.0)
+                Glyph::builder(1, text_range(0, 1), 10.0)
                     .bounds(Some(Rect {
                         left: -3.0,
                         top: -9.0,
@@ -196,7 +196,7 @@ fn glyph_ink_bounds_keep_overhang_separate_from_occupied_geometry() {
             10.0,
         )],
         vec![line(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             IntRange::new(0, 0),
             14.0,
             0.0,
@@ -244,7 +244,7 @@ fn range_boxes_split_multicode_unit_clusters_across_lines() {
                 bottom: 40.0
             },
         ],
-        get_bounding_boxes(&result, TextRange::new(2, 4)),
+        get_bounding_boxes(&result, text_range(2, 4)),
     );
 }
 
@@ -258,19 +258,19 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
         },
         vec![
             Cluster::new(
-                TextRange::new(0, 2),
+                text_range(0, 1),
                 Text::from("😀"),
                 "emoji".to_owned(),
                 20.0,
             ),
             Cluster::new(
-                TextRange::new(2, 4),
+                text_range(1, 3),
                 Text::from("é"),
                 "latin".to_owned(),
                 20.0,
             ),
             Cluster::new(
-                TextRange::new(4, 9),
+                text_range(3, 6),
                 Text::from("👩‍👩"),
                 "emoji".to_owned(),
                 50.0,
@@ -278,7 +278,7 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
         ],
         Vec::new(),
         vec![line(
-            TextRange::new(0, 9),
+            text_range(0, 6),
             IntRange::new(0, 2),
             15.0,
             0.0,
@@ -288,12 +288,12 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
     );
 
     for (x, expected) in [
-        (5.0, 0),
-        (15.0, 2),
-        (25.0, 2),
-        (35.0, 4),
-        (45.0, 4),
-        (75.0, 9),
+        (5.0, scalar_offset(0)),
+        (15.0, scalar_offset(1)),
+        (25.0, scalar_offset(1)),
+        (35.0, scalar_offset(3)),
+        (45.0, scalar_offset(3)),
+        (75.0, scalar_offset(6)),
     ] {
         assert_eq!(
             expected,
@@ -301,19 +301,19 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
         );
     }
     assert_eq!(
-        2,
-        coerce_selection_offset(&result, 3, SourceBoundaryBias::Backward)
+        scalar_offset(1),
+        coerce_selection_offset(&result, scalar_offset(2), SourceBoundaryBias::Backward)
     );
     assert_eq!(
-        4,
-        coerce_selection_offset(&result, 3, SourceBoundaryBias::Forward)
+        scalar_offset(3),
+        coerce_selection_offset(&result, scalar_offset(2), SourceBoundaryBias::Forward)
     );
 }
 
 #[test]
 fn inline_object_is_a_single_selection_unit() {
     let source = "a\\operatorname{lim}b";
-    let object_range = TextRange::new(1, source.encode_utf16().count() as i32 - 1);
+    let object_range = text_range(1, source.chars().count() as i32 - 1);
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from(source)),
         LayoutConstraints::with_defaults(200.0),
@@ -337,12 +337,12 @@ fn inline_object_is_a_single_selection_unit() {
     );
 
     assert_eq!(
-        1,
-        coerce_selection_offset(&result, 5, SourceBoundaryBias::Backward)
+        scalar_offset(1),
+        coerce_selection_offset(&result, scalar_offset(5), SourceBoundaryBias::Backward)
     );
     assert_eq!(
         object_range.end(),
-        coerce_selection_offset(&result, 5, SourceBoundaryBias::Forward)
+        coerce_selection_offset(&result, scalar_offset(5), SourceBoundaryBias::Forward)
     );
     assert_eq!(
         object_range.end(),
@@ -354,10 +354,10 @@ fn inline_object_is_a_single_selection_unit() {
 fn rich_text_decoration_trims_only_outer_punctuation_glue() {
     let debug = LayoutDebugInfo::builder()
         .geometry_decisions(vec![
-            punctuation_geometry(TextRange::new(0, 1), "（", 5.0, 0.0),
-            punctuation_geometry(TextRange::new(1, 2), "，", 0.0, 5.0),
-            punctuation_geometry(TextRange::new(2, 3), "中", 0.0, 0.0),
-            punctuation_geometry(TextRange::new(3, 4), "）", 0.0, 5.0),
+            punctuation_geometry(text_range(0, 1), "（", 5.0, 0.0),
+            punctuation_geometry(text_range(1, 2), "，", 0.0, 5.0),
+            punctuation_geometry(text_range(2, 3), "中", 0.0, 0.0),
+            punctuation_geometry(text_range(3, 4), "）", 0.0, 5.0),
         ])
         .build();
     let result = LayoutResult::with_debug(
@@ -368,25 +368,25 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         },
         vec![
             Cluster::new(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("（"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
-                TextRange::new(1, 2),
+                text_range(1, 2),
                 Text::from("，"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
-                TextRange::new(2, 3),
+                text_range(2, 3),
                 Text::from("中"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::new(
-                TextRange::new(3, 4),
+                text_range(3, 4),
                 Text::from("）"),
                 "cjk".to_owned(),
                 10.0,
@@ -394,7 +394,7 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         ],
         Vec::new(),
         vec![line(
-            TextRange::new(0, 4),
+            text_range(0, 4),
             IntRange::new(0, 3),
             15.0,
             0.0,
@@ -403,7 +403,7 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         )],
         debug,
     );
-    let underline = RichTextSpan::new(TextRange::new(0, 4), RichTextRole::Underline);
+    let underline = RichTextSpan::new(text_range(0, 4), RichTextRole::Underline);
     let occupied = positioned_rich_text_segments(&result, &[underline]);
     let decoration = trimmed_rich_text_decoration_segments(&result, &occupied);
 
@@ -436,20 +436,20 @@ fn sample_multiline_result() -> LayoutResult {
         },
         vec![
             Cluster::new(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("甲"),
                 "cjk".to_owned(),
                 10.0,
             ),
             Cluster::with_display_text(
-                TextRange::new(1, 3),
+                text_range(1, 3),
                 Text::from("——"),
                 Text::from("⸺"),
                 "cjk".to_owned(),
                 20.0,
             ),
             Cluster::new(
-                TextRange::new(3, 4),
+                text_range(3, 4),
                 Text::from("乙"),
                 "cjk".to_owned(),
                 10.0,
@@ -458,7 +458,7 @@ fn sample_multiline_result() -> LayoutResult {
         Vec::new(),
         vec![
             LineBox::builder(
-                TextRange::new(0, 3),
+                text_range(0, 3),
                 IntRange::new(0, 1),
                 15.0,
                 0.0,
@@ -470,7 +470,7 @@ fn sample_multiline_result() -> LayoutResult {
             .indent(4.0)
             .build(),
             line(
-                TextRange::new(3, 4),
+                text_range(3, 4),
                 IntRange::new(2, 2),
                 35.0,
                 20.0,

@@ -5,11 +5,11 @@ use tiqian::core::text_model::link_address_display::displays_address;
 fn identical_display_and_target_is_an_address() {
     assert!(displays_address(
         &Text::from("https://example.com/a"),
-        &Text::from("https://example.com/a"),
+        "https://example.com/a",
     ));
     assert!(displays_address(
         &Text::from("footnote-1"),
-        &Text::from("footnote-1"),
+        "footnote-1",
     ));
 }
 
@@ -17,15 +17,15 @@ fn identical_display_and_target_is_an_address() {
 fn scheme_less_display_of_target_is_an_address() {
     assert!(displays_address(
         &Text::from("example.com/b"),
-        &Text::from("https://example.com/b"),
+        "https://example.com/b",
     ));
     assert!(displays_address(
         &Text::from("example.com"),
-        &Text::from("http://example.com"),
+        "http://example.com",
     ));
     assert!(displays_address(
         &Text::from("a@example.com"),
-        &Text::from("mailto:a@example.com"),
+        "mailto:a@example.com",
     ));
 }
 
@@ -33,19 +33,19 @@ fn scheme_less_display_of_target_is_an_address() {
 fn prose_display_text_is_not_an_address() {
     assert!(!displays_address(
         &Text::from("Example"),
-        &Text::from("https://example.com"),
+        "https://example.com",
     ));
     assert!(!displays_address(
         &Text::from("示例站"),
-        &Text::from("https://example.com"),
+        "https://example.com",
     ));
     assert!(!displays_address(
         &Text::from("action"),
-        &Text::from("generic"),
+        "generic",
     ));
     assert!(!displays_address(
         &Text::from(""),
-        &Text::from("https://example.com"),
+        "https://example.com",
     ));
-    assert!(!displays_address(&Text::from("Example"), &Text::from(""),));
+    assert!(!displays_address(&Text::from("Example"), ""));
 }

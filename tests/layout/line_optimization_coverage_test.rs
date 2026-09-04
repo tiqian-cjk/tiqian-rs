@@ -1,5 +1,5 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::layout::line_optimization::{
     BreakCandidate, LineCandidate, LineOptimizationStrategy, LineSolution, RepairCandidate,
@@ -8,7 +8,7 @@ use tiqian::layout::line_optimization::{
 use tiqian::linebreak::line_break::BreakKind;
 
 fn line_with_hanging(hanging_cluster_indices: HashSet<i32>) -> LineCandidate {
-    let mut line = LineCandidate::new(IntRange::new(0, 4), TextRange::new(0, 5), 80.0, 80.0);
+    let mut line = LineCandidate::new(IntRange::new(0, 4), text_range(0, 5), 80.0, 80.0);
     line.hanging_cluster_indices = hanging_cluster_indices;
     line.validate_hanging_suffix();
     line
@@ -91,7 +91,7 @@ fn in_measure_cluster_range_excludes_the_hanging_suffix() {
     let hanging = line_with_hanging(HashSet::from([3, 4]));
     assert_eq!(IntRange::new(0, 2), hanging.in_measure_cluster_range());
 
-    let plain = LineCandidate::new(IntRange::new(0, 4), TextRange::new(0, 5), 80.0, 80.0);
+    let plain = LineCandidate::new(IntRange::new(0, 4), text_range(0, 5), 80.0, 80.0);
     assert_eq!(IntRange::new(0, 4), plain.in_measure_cluster_range());
 }
 

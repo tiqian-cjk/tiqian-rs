@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, TextRange};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineBoxSpan, InlineObjectBoundaryAdjustment, InlineObjectSpan, LayoutInput, LineBreakPolicy,
@@ -90,7 +90,7 @@ fn inline_box_span_must_be_a_non_empty_in_bounds_range() {
     expect_rejection(
         input(
             ParagraphStyle::default(),
-            vec![InlineBoxSpan::new(TextRange::new(0, 0))],
+            vec![InlineBoxSpan::new(text_range(0, 0))],
             Vec::new(),
             TiqianTextContent::new(Text::from("甲乙")),
         ),
@@ -99,7 +99,7 @@ fn inline_box_span_must_be_a_non_empty_in_bounds_range() {
     expect_rejection(
         input(
             ParagraphStyle::default(),
-            vec![InlineBoxSpan::new(TextRange::new(1, 9))],
+            vec![InlineBoxSpan::new(text_range(1, 9))],
             Vec::new(),
             TiqianTextContent::new(Text::from("甲乙")),
         ),
@@ -112,7 +112,7 @@ fn inline_box_span_must_have_finite_inline_edges() {
     expect_rejection(
         input(
             ParagraphStyle::default(),
-            vec![InlineBoxSpan::with_edges(TextRange::new(0, 1), f32::NAN, 0.0)],
+            vec![InlineBoxSpan::with_edges(text_range(0, 1), f32::NAN, 0.0)],
             Vec::new(),
             TiqianTextContent::new(Text::from("甲乙")),
         ),
@@ -121,7 +121,7 @@ fn inline_box_span_must_have_finite_inline_edges() {
     expect_rejection(
         input(
             ParagraphStyle::default(),
-            vec![InlineBoxSpan::with_edges(TextRange::new(0, 1), 0.0, f32::INFINITY)],
+            vec![InlineBoxSpan::with_edges(text_range(0, 1), 0.0, f32::INFINITY)],
             Vec::new(),
             TiqianTextContent::new(Text::from("甲乙")),
         ),
@@ -133,14 +133,14 @@ fn inline_box_span_must_have_finite_inline_edges() {
 fn line_break_spans_must_be_non_empty_in_bounds_ranges() {
     let empty = TiqianTextContent::builder(Text::from("甲乙"))
         .line_break_spans(vec![LineBreakSpan {
-            range: TextRange::new(0, 0),
+            range: text_range(0, 0),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }])
         .build();
     expect_rejection(input(ParagraphStyle::default(), Vec::new(), Vec::new(), empty), "LineBreakSpan");
     let out_of_bounds = TiqianTextContent::builder(Text::from("甲乙"))
         .line_break_spans(vec![LineBreakSpan {
-            range: TextRange::new(2, 3),
+            range: text_range(2, 3),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }])
         .build();
@@ -153,14 +153,14 @@ fn line_break_spans_must_be_non_empty_in_bounds_ranges() {
 #[test]
 fn auto_space_suppressed_ranges_must_be_non_empty_in_bounds() {
     let empty = TiqianTextContent::builder(Text::from("甲乙"))
-        .auto_space_suppressed_ranges(vec![TextRange::new(1, 1)])
+        .auto_space_suppressed_ranges(vec![text_range(1, 1)])
         .build();
     expect_rejection(
         input(ParagraphStyle::default(), Vec::new(), Vec::new(), empty),
         "Auto-space suppressed range",
     );
     let out_of_bounds = TiqianTextContent::builder(Text::from("甲乙"))
-        .auto_space_suppressed_ranges(vec![TextRange::new(0, 8)])
+        .auto_space_suppressed_ranges(vec![text_range(0, 8)])
         .build();
     expect_rejection(
         input(ParagraphStyle::default(), Vec::new(), Vec::new(), out_of_bounds),
@@ -171,7 +171,7 @@ fn auto_space_suppressed_ranges_must_be_non_empty_in_bounds() {
 #[test]
 fn inline_object_ranges_must_be_unique() {
     let object = inline_object(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         10.0,
         8.0,
         2.0,
@@ -197,7 +197,7 @@ fn inline_object_ranges_must_not_overlap() {
             Vec::new(),
             vec![
                 inline_object(
-                    TextRange::new(0, 2),
+                    text_range(0, 2),
                     10.0,
                     8.0,
                     2.0,
@@ -205,7 +205,7 @@ fn inline_object_ranges_must_not_overlap() {
                     InlineObjectBoundaryAdjustment::FIXED,
                 ),
                 inline_object(
-                    TextRange::new(1, 2),
+                    text_range(1, 2),
                     10.0,
                     8.0,
                     2.0,
@@ -221,7 +221,7 @@ fn inline_object_ranges_must_not_overlap() {
 
 #[test]
 fn inline_object_must_cover_a_non_empty_in_bounds_range() {
-    for range in [TextRange::new(1, 1), TextRange::new(0, 9)] {
+    for range in [text_range(1, 1), text_range(0, 9)] {
         expect_rejection(
             input(
                 ParagraphStyle::default(),
@@ -256,7 +256,7 @@ fn inline_object_must_have_finite_positive_geometry() {
                 ParagraphStyle::default(),
                 Vec::new(),
                 vec![inline_object(
-                    TextRange::new(0, 1),
+                    text_range(0, 1),
                     advance,
                     ascent,
                     descent,
@@ -278,7 +278,7 @@ fn inline_object_leading_boundary_must_be_fixed() {
             ParagraphStyle::default(),
             Vec::new(),
             vec![inline_object(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 10.0,
                 8.0,
                 2.0,
@@ -297,7 +297,7 @@ fn inline_object_leading_boundary_must_be_fixed() {
             ParagraphStyle::default(),
             Vec::new(),
             vec![inline_object(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 10.0,
                 8.0,
                 2.0,
@@ -318,7 +318,7 @@ fn inline_object_trailing_boundary_must_not_exceed_advance() {
             ParagraphStyle::default(),
             Vec::new(),
             vec![inline_object(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 10.0,
                 8.0,
                 2.0,
@@ -337,7 +337,7 @@ fn inline_object_trailing_boundary_must_not_exceed_advance() {
             ParagraphStyle::default(),
             Vec::new(),
             vec![inline_object(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 10.0,
                 8.0,
                 2.0,

@@ -1,5 +1,5 @@
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
@@ -80,7 +80,7 @@ fn auto_space_gap_at_line_end_is_trimmed_like_any_line_edge_blank() {
         .unwrap();
     assert_eq!("trailing", collapse.side);
     assert_eq!(2.0, collapse.trim_amount);
-    assert_eq!(TextRange::new(5, 6), collapse.cluster_range);
+    assert_eq!(text_range(5, 6), collapse.cluster_range);
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
         )
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
         .decorations(vec![DecorationSpan {
-            range: TextRange::new(4, 16),
+            range: text_range(4, 16),
             kind: DecorationKind::Emphasis,
         }])
         .build(),
@@ -252,19 +252,19 @@ fn mourning_span_is_kept_unbroken_and_framed_per_line() {
                 .build(),
         )
         .decorations(vec![
-            DecorationSpan { range: TextRange::new(3, 6), kind: DecorationKind::Mourning },
-            DecorationSpan { range: TextRange::new(9, 12), kind: DecorationKind::Mourning },
+            DecorationSpan { range: text_range(3, 6), kind: DecorationKind::Mourning },
+            DecorationSpan { range: text_range(9, 12), kind: DecorationKind::Mourning },
         ])
         .build(),
     );
 
-    assert_eq!(3, result.lines[0].range.end());
+    assert_eq!(scalar_offset(3), result.lines[0].range.end());
     let segments = &result.debug.decoration_segments;
     assert_eq!(2, segments.len());
     assert!(segments.iter().all(|segment| {
         segment.reason == "MourningSpanKeptUnbroken" && !segment.open_start && !segment.open_end
     }));
-    let first = segments.iter().find(|segment| segment.source_range.start() == 3).unwrap();
+    let first = segments.iter().find(|segment| segment.source_range.start().value() == 3).unwrap();
     assert_eq!(0.0, first.left);
     assert!((first.right - 160.0 / 3.0).abs() < 0.01);
     let line = &result.lines[1];
@@ -280,7 +280,7 @@ fn mourning_span_wider_than_measure_splits_with_open_edges() {
             LayoutConstraints::with_defaults(64.0),
         )
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
-        .decorations(vec![DecorationSpan { range: TextRange::new(0, 5), kind: DecorationKind::Mourning }])
+        .decorations(vec![DecorationSpan { range: text_range(0, 5), kind: DecorationKind::Mourning }])
         .build(),
     );
 
@@ -305,9 +305,9 @@ fn justify_stretches_punctuation_latin_boundary_in_tier_three() {
     );
 
     assert!(result.lines.len() > 1);
-    let line0 = result.debug.justification_decisions.iter().find(|decision| decision.line_range.start() == 0).unwrap();
+    let line0 = result.debug.justification_decisions.iter().find(|decision| decision.line_range.start().value() == 0).unwrap();
     assert!(line0.allocations.iter().any(|allocation| {
-        allocation.cluster_range == TextRange::new(5, 6) && allocation.kind == "CjkInterChar"
+        allocation.cluster_range == text_range(5, 6) && allocation.kind == "CjkInterChar"
     }));
     assert_eq!(0.0, line0.deficit_after);
 }
@@ -321,10 +321,10 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
         )
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
         .decorations(vec![
-            DecorationSpan { range: TextRange::new(0, 2), kind: DecorationKind::ProperNoun },
-            DecorationSpan { range: TextRange::new(4, 6), kind: DecorationKind::BookTitle },
-            DecorationSpan { range: TextRange::new(7, 10), kind: DecorationKind::ProperNoun },
-            DecorationSpan { range: TextRange::new(10, 13), kind: DecorationKind::ProperNoun },
+            DecorationSpan { range: text_range(0, 2), kind: DecorationKind::ProperNoun },
+            DecorationSpan { range: text_range(4, 6), kind: DecorationKind::BookTitle },
+            DecorationSpan { range: text_range(7, 10), kind: DecorationKind::ProperNoun },
+            DecorationSpan { range: text_range(10, 13), kind: DecorationKind::ProperNoun },
         ])
         .build(),
     );
@@ -332,23 +332,23 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
     let segments = &result.debug.decoration_segments;
     assert_eq!(4, segments.len());
     let baseline = result.lines[0].baseline;
-    let quyuan = segments.iter().find(|segment| segment.source_range.start() == 0).unwrap();
+    let quyuan = segments.iter().find(|segment| segment.source_range.start().value() == 0).unwrap();
     assert_eq!("ProperNoun", quyuan.kind);
     assert_eq!(0.0, quyuan.left);
     assert_eq!(32.0, quyuan.right);
     assert!((quyuan.top - (baseline + 16.0 * 0.18)).abs() < 0.01);
     assert!((quyuan.bottom - (baseline + 16.0 * 0.18)).abs() < 0.01);
     assert_eq!("InterlinearLinePerAnnotatedItem", quyuan.reason);
-    let lisao = segments.iter().find(|segment| segment.source_range.start() == 4).unwrap();
+    let lisao = segments.iter().find(|segment| segment.source_range.start().value() == 4).unwrap();
     assert_eq!("BookTitle", lisao.kind);
     assert_eq!(64.0, lisao.left);
     assert_eq!(96.0, lisao.right);
     assert!((lisao.top - (baseline + 16.0 * 0.24)).abs() < 0.01);
-    let guyanwu = segments.iter().find(|segment| segment.source_range.start() == 7).unwrap();
+    let guyanwu = segments.iter().find(|segment| segment.source_range.start().value() == 7).unwrap();
     assert_eq!(112.0, guyanwu.left);
     assert_eq!(159.0, guyanwu.right);
     assert!(guyanwu.reason.ends_with("AdjacentInterlinearLineShortening"));
-    let wangfuzhi = segments.iter().find(|segment| segment.source_range.start() == 10).unwrap();
+    let wangfuzhi = segments.iter().find(|segment| segment.source_range.start().value() == 10).unwrap();
     assert_eq!(161.0, wangfuzhi.left);
     assert_eq!(208.0, wangfuzhi.right);
     assert_eq!(24.0, result.lines[0].bottom - result.lines[0].top);
@@ -359,7 +359,7 @@ fn interlinear_marks_raise_auto_line_height_to_spacing_floor() {
     let layout_with = |line_height| ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("豆子新鲜")), LayoutConstraints::with_defaults(240.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).line_height(line_height).build())
-            .decorations(vec![DecorationSpan { range: TextRange::new(0, 4), kind: DecorationKind::Emphasis }])
+            .decorations(vec![DecorationSpan { range: text_range(0, 4), kind: DecorationKind::Emphasis }])
             .build(),
     );
     let auto = layout_with(None);
@@ -392,7 +392,7 @@ fn emphasis_dot_gap_is_explicit_and_independent_of_line_height() {
                 .build(),
             "着重",
             vec![DecorationSpan {
-                range: TextRange::new(0, 2),
+                range: text_range(0, 2),
                 kind: DecorationKind::Emphasis,
             }],
         );
@@ -414,7 +414,7 @@ fn emphasis_dot_gap_is_explicit_and_independent_of_line_height() {
 #[test]
 fn interlinear_marks_clamp_tight_line_height_to_spacing_floor() {
     let marks = vec![DecorationSpan {
-        range: TextRange::new(0, 4),
+        range: text_range(0, 4),
         kind: DecorationKind::Emphasis,
     }];
     let clamped = layout(

@@ -1,7 +1,7 @@
 use tiqian::clreq::clreq_profile::{
     AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver,
 };
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
@@ -143,7 +143,7 @@ fn layout_with_attached_reference(text: &str) -> tiqian::core::layout_model::Lay
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(2, 3),
+                    range: text_range(2, 3),
                     style: TextStyle::builder().inline_attachment(InlineAttachment::Previous).build(),
                 }])
                 .build(),

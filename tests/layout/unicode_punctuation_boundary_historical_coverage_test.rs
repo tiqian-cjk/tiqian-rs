@@ -1,5 +1,5 @@
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
-use tiqian::core::geometry::LayoutConstraints;
+use tiqian::core::geometry::{scalar_offset, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
@@ -35,7 +35,11 @@ fn layout(
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(indexed.clone())
-                .source_boundaries((0..=indexed.utf16_len()).collect())
+                .source_boundaries(
+                    (0..=indexed.scalar_len().value())
+                        .map(scalar_offset)
+                        .collect(),
+                )
                 .build(),
             LayoutConstraints::with_defaults(max_width),
         )

@@ -1,6 +1,6 @@
 use tiqian::common::{HashMap, HashSet};
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::progressive_break_decisions::{
@@ -10,7 +10,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -19,7 +19,7 @@ fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
 
 #[test]
 fn source_whitespace_capacity_keeps_structural_tier_ahead_of_syllable() {
-    let span = TextRange::new(0, 6);
+    let span = text_range(0, 6);
     let clusters = vec![
         cluster(0, "a", 20.0),
         cluster(1, " ", 4.0),
@@ -65,7 +65,7 @@ fn source_whitespace_capacity_keeps_structural_tier_ahead_of_syllable() {
 
 #[test]
 fn lookahead_cannot_replace_selected_emergency_boundary_with_earlier_same_tier_cut() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let clusters: Vec<_> = (0..5).map(|index| cluster(index, "a", 20.0)).collect();
     let opportunities = HashMap::from([
         (

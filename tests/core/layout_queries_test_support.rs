@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, Size, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Size, TextRange};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun,
@@ -116,20 +116,20 @@ pub fn sample_result() -> LayoutResult {
         input("甲——乙", 40.0),
         Size { width: 34.0, height: 40.0 },
         vec![
-            cluster(TextRange::new(0, 1), "甲", 10.0),
+            cluster(text_range(0, 1), "甲", 10.0),
             Cluster::with_display_text(
-                TextRange::new(1, 3),
+                text_range(1, 3),
                 Text::from("——"),
                 Text::from("⸺"),
                 "cjk".to_owned(),
                 20.0,
             ),
-            cluster(TextRange::new(3, 4), "乙", 10.0),
+            cluster(text_range(3, 4), "乙", 10.0),
         ],
         Vec::new(),
         vec![
             LineBox::builder(
-                TextRange::new(0, 3),
+                text_range(0, 3),
                 IntRange::new(0, 1),
                 15.0,
                 0.0,
@@ -140,7 +140,7 @@ pub fn sample_result() -> LayoutResult {
             )
             .indent(4.0)
             .build(),
-            line(TextRange::new(3, 4), IntRange::new(2, 2), 35.0, 20.0, 40.0, 10.0),
+            line(text_range(3, 4), IntRange::new(2, 2), 35.0, 20.0, 40.0, 10.0),
         ],
     )
 }
@@ -149,20 +149,20 @@ pub fn punctuation_glue_result(leading_consumed: f32) -> LayoutResult {
     result(
         "（，中）",
         vec![
-            cluster(TextRange::new(0, 1), "（", 10.0),
-            cluster(TextRange::new(1, 2), "，", 10.0),
-            cluster(TextRange::new(2, 3), "中", 10.0),
-            cluster(TextRange::new(3, 4), "）", 10.0),
+            cluster(text_range(0, 1), "（", 10.0),
+            cluster(text_range(1, 2), "，", 10.0),
+            cluster(text_range(2, 3), "中", 10.0),
+            cluster(text_range(3, 4), "）", 10.0),
         ],
-        vec![line(TextRange::new(0, 4), IntRange::new(0, 3), 15.0, 0.0, 20.0, 40.0)],
+        vec![line(text_range(0, 4), IntRange::new(0, 3), 15.0, 0.0, 20.0, 40.0)],
         Vec::new(),
         Vec::new(),
         LayoutDebugInfo::builder()
             .geometry_decisions(vec![
-                punctuation_geometry(TextRange::new(0, 1), "（", 5.0, 0.0, leading_consumed),
-                punctuation_geometry(TextRange::new(1, 2), "，", 0.0, 5.0, 0.0),
-                punctuation_geometry(TextRange::new(2, 3), "中", 0.0, 0.0, 0.0),
-                punctuation_geometry(TextRange::new(3, 4), "）", 0.0, 5.0, 0.0),
+                punctuation_geometry(text_range(0, 1), "（", 5.0, 0.0, leading_consumed),
+                punctuation_geometry(text_range(1, 2), "，", 0.0, 5.0, 0.0),
+                punctuation_geometry(text_range(2, 3), "中", 0.0, 0.0, 0.0),
+                punctuation_geometry(text_range(3, 4), "）", 0.0, 5.0, 0.0),
             ])
             .build(),
     )
@@ -172,19 +172,19 @@ pub fn background_geometry_result(metrics: Vec<MetricDecisionInfo>) -> LayoutRes
     result(
         "A B",
         vec![
-            cluster(TextRange::new(0, 1), "A", 12.0),
-            cluster(TextRange::new(1, 2), " ", 5.0),
-            cluster(TextRange::new(2, 3), "B", 14.0),
+            cluster(text_range(0, 1), "A", 12.0),
+            cluster(text_range(1, 2), " ", 5.0),
+            cluster(text_range(2, 3), "B", 14.0),
         ],
-        vec![line(TextRange::new(0, 3), IntRange::new(0, 2), 20.0, 0.0, 30.0, 31.0)],
+        vec![line(text_range(0, 3), IntRange::new(0, 2), 20.0, 0.0, 30.0, 31.0)],
         vec![
-            GlyphRun::new(TextRange::new(0, 1), "latin".to_owned(), vec![Glyph::builder(1, TextRange::new(0, 1), 10.0).build()], 10.0),
-            GlyphRun::new(TextRange::new(2, 3), "latin".to_owned(), vec![Glyph::builder(2, TextRange::new(2, 3), 10.0).build()], 10.0),
+            GlyphRun::new(text_range(0, 1), "latin".to_owned(), vec![Glyph::builder(1, text_range(0, 1), 10.0).build()], 10.0),
+            GlyphRun::new(text_range(2, 3), "latin".to_owned(), vec![Glyph::builder(2, text_range(2, 3), 10.0).build()], 10.0),
         ],
         Vec::new(),
         LayoutDebugInfo::builder()
             .auto_space_decisions(vec![AutoSpaceDecisionInfo {
-                cluster_range: TextRange::new(2, 3),
+                cluster_range: text_range(2, 3),
                 side: "leading".to_owned(),
                 boundary_role: "CjkLatin".to_owned(),
                 mode: "Insert".to_owned(),
@@ -202,11 +202,11 @@ pub fn interaction_boundary_result() -> LayoutResult {
     result(
         "😀é👩‍👩",
         vec![
-            cluster(TextRange::new(0, 2), "😀", 20.0),
-            cluster(TextRange::new(2, 4), "é", 20.0),
-            cluster(TextRange::new(4, 9), "👩‍👩", 50.0),
+            cluster(text_range(0, 1), "😀", 20.0),
+            cluster(text_range(1, 3), "é", 20.0),
+            cluster(text_range(3, 6), "👩‍👩", 50.0),
         ],
-        vec![line(TextRange::new(0, 9), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
+        vec![line(text_range(0, 6), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
         Vec::new(),
         Vec::new(),
         LayoutDebugInfo::default(),
@@ -217,13 +217,13 @@ pub fn word_boundary_result() -> LayoutResult {
     result(
         "前 template 后",
         vec![
-            cluster(TextRange::new(0, 1), "前", 10.0),
-            cluster(TextRange::new(1, 2), " ", 10.0),
-            cluster(TextRange::new(2, 10), "template", 80.0),
-            cluster(TextRange::new(10, 11), " ", 10.0),
-            cluster(TextRange::new(11, 12), "后", 10.0),
+            cluster(text_range(0, 1), "前", 10.0),
+            cluster(text_range(1, 2), " ", 10.0),
+            cluster(text_range(2, 10), "template", 80.0),
+            cluster(text_range(10, 11), " ", 10.0),
+            cluster(text_range(11, 12), "后", 10.0),
         ],
-        vec![line(TextRange::new(0, 12), IntRange::new(0, 4), 15.0, 0.0, 20.0, 120.0)],
+        vec![line(text_range(0, 12), IntRange::new(0, 4), 15.0, 0.0, 20.0, 120.0)],
         Vec::new(),
         Vec::new(),
         LayoutDebugInfo::default(),
@@ -234,27 +234,27 @@ pub fn ruby_selection_result() -> LayoutResult {
     result(
         "张王李",
         vec![
-            cluster(TextRange::new(0, 1), "张", 35.0),
-            cluster(TextRange::new(1, 2), "王", 35.0),
-            cluster(TextRange::new(2, 3), "李", 20.0),
+            cluster(text_range(0, 1), "张", 35.0),
+            cluster(text_range(1, 2), "王", 35.0),
+            cluster(text_range(2, 3), "李", 20.0),
         ],
-        vec![line(TextRange::new(0, 3), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
-        vec![GlyphRun::new(TextRange::new(0, 3), "cjk".to_owned(), vec![
-            Glyph::builder(1, TextRange::new(0, 1), 20.0).build(),
-            Glyph::builder(2, TextRange::new(1, 2), 20.0).build(),
-            Glyph::builder(3, TextRange::new(2, 3), 20.0).build(),
+        vec![line(text_range(0, 3), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
+        vec![GlyphRun::new(text_range(0, 3), "cjk".to_owned(), vec![
+            Glyph::builder(1, text_range(0, 1), 20.0).build(),
+            Glyph::builder(2, text_range(1, 2), 20.0).build(),
+            Glyph::builder(3, text_range(2, 3), 20.0).build(),
         ], 60.0)],
         Vec::new(),
         LayoutDebugInfo::builder()
             .geometry_decisions(vec![
-                ClusterGeometryDecisionInfo::builder(TextRange::new(0, 1), Text::from("张"), Text::from("张"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
-                ClusterGeometryDecisionInfo::builder(TextRange::new(1, 2), Text::from("王"), Text::from("王"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
-                ClusterGeometryDecisionInfo::builder(TextRange::new(2, 3), Text::from("李"), Text::from("李"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).build(),
+                ClusterGeometryDecisionInfo::builder(text_range(0, 1), Text::from("张"), Text::from("张"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
+                ClusterGeometryDecisionInfo::builder(text_range(1, 2), Text::from("王"), Text::from("王"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
+                ClusterGeometryDecisionInfo::builder(text_range(2, 3), Text::from("李"), Text::from("李"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).build(),
             ])
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(TextRange::new(0, 1), Text::from("zhuāng"), 0, 10.0, 0.0, 10.0, 6.0).width(32.0).build(),
-                RubyDecisionInfo::builder(TextRange::new(1, 2), Text::from("chuáng"), 0, 45.0, 0.0, 10.0, 6.0).width(32.0).build(),
-                RubyDecisionInfo::builder(TextRange::new(2, 3), Text::from("shuāng"), 0, 80.0, 0.0, 10.0, 6.0).width(32.0).build(),
+                RubyDecisionInfo::builder(text_range(0, 1), Text::from("zhuāng"), 0, 10.0, 0.0, 10.0, 6.0).width(32.0).build(),
+                RubyDecisionInfo::builder(text_range(1, 2), Text::from("chuáng"), 0, 45.0, 0.0, 10.0, 6.0).width(32.0).build(),
+                RubyDecisionInfo::builder(text_range(2, 3), Text::from("shuāng"), 0, 80.0, 0.0, 10.0, 6.0).width(32.0).build(),
             ])
             .build(),
     )

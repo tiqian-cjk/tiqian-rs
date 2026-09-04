@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineAttachment;
@@ -13,9 +13,9 @@ fn resolve_attached_inline_inter_char_boundaries_with_sino_western_pair() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("中"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("，"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::CjkText, FontRole::CjkPunctuation, FontRole::CjkText],
         &[
@@ -47,9 +47,9 @@ fn resolve_attached_inline_inter_char_boundaries_with_both_cjk_punctuation() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("、"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("。"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("、"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("。"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::CjkPunctuation, FontRole::CjkPunctuation, FontRole::CjkText],
         &[EastAsianSpacingEdges {
@@ -69,9 +69,9 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_leading_not
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from(","), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from(","), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(2, 3), Text::from("a"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::CjkPunctuation, FontRole::CjkText, FontRole::LatinText],
         &[EastAsianSpacingEdges {
@@ -91,9 +91,9 @@ fn resolve_attached_inline_inter_char_boundaries_all_conditions_false() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("*"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("b"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("*"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("b"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[EastAsianSpacingEdges {
@@ -113,9 +113,9 @@ fn resolve_attached_inline_inter_char_boundaries_narrow_narrow_pair() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("*"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("b"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("*"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("b"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[
@@ -147,9 +147,9 @@ fn resolve_attached_inline_inter_char_boundaries_virtual_from_cjk_punctuation_le
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("，"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("汉"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("汉"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::CjkPunctuation, FontRole::LatinText, FontRole::CjkText],
         &[
@@ -181,9 +181,9 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_leading_nar
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("，"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("a"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::CjkPunctuation, FontRole::LatinText, FontRole::LatinText],
         &[
@@ -216,9 +216,9 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_trailing_na
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("x"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("x"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::LatinText, FontRole::LatinText, FontRole::CjkPunctuation],
         &[
@@ -251,9 +251,9 @@ fn resolve_attached_inline_inter_char_boundaries_western_bracket_only() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("("), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("汉"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("("), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("x"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("汉"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::LatinText, FontRole::LatinText, FontRole::CjkText],
         &[EastAsianSpacingEdges {

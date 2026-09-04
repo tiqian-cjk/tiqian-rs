@@ -1,6 +1,6 @@
 use tiqian::common::HashMap;
 use tiqian::clreq::clreq_profile::PunctuationClass;
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, EmergencyTrackingEligibilityDecisionInfo};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -67,9 +67,9 @@ fn plan(
 fn test_cluster_crosses_font_decision_throws() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "abcdef");
-    let bad_cluster = Cluster::new(TextRange::new(0, 5), Text::from("abcde"), "test".to_owned(), 50.0);
+    let bad_cluster = Cluster::new(text_range(0, 5), Text::from("abcde"), "test".to_owned(), 50.0);
     let bad_decision = FontDecision {
-        range: TextRange::new(0, 3),
+        range: text_range(0, 3),
         candidate: FontCandidate {
             key: "test".to_owned(),
             family: "test".to_owned(),
@@ -90,7 +90,7 @@ fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "abcdef");
     let decision = FontDecision {
-        range: TextRange::new(4, 6),
+        range: text_range(4, 6),
         candidate: FontCandidate {
             key: "test".to_owned(),
             family: "test".to_owned(),
@@ -99,7 +99,7 @@ fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
         role: FontRole::LatinText,
         reason: "test".to_owned(),
     };
-    let cluster = Cluster::new(TextRange::new(0, 2), Text::from("ab"), "test".to_owned(), 20.0);
+    let cluster = Cluster::new(text_range(0, 2), Text::from("ab"), "test".to_owned(), 20.0);
     prep.natural_clusters = vec![cluster.clone()];
     prep.clusters = vec![cluster];
     prep.font_decisions = vec![decision];
@@ -134,7 +134,7 @@ fn test_inline_object_kinsoku_line_start() {
             LayoutConstraints::with_defaults(50.0),
         )
         .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             16.0,
             8.0,
             8.0,
@@ -149,8 +149,8 @@ fn test_progressive_break_offsets_unmapped_cluster_index() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "abc");
     prep.progressive_break_offsets = HashMap::from([(
-        999,
-        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, TextRange::new(0, 3)),
+        scalar_offset(999),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, text_range(0, 3)),
     )]);
 
     let result = plan(&engine, &prep);
@@ -163,17 +163,17 @@ fn test_emergency_tracking_eligibility_decisions_branches() {
     let mut prep = base_prep(&engine, "中文字符");
     prep.emergency_tracking_eligibility_decisions = vec![
         EmergencyTrackingEligibilityDecisionInfo {
-            range: TextRange::new(100, 200),
+            range: text_range(100, 200),
             source_text: Text::from("unmapped"),
             reason: "reason".to_owned(),
         },
         EmergencyTrackingEligibilityDecisionInfo {
-            range: TextRange::new(0, 4),
+            range: text_range(0, 4),
             source_text: Text::from("中文字符"),
             reason: "validReason".to_owned(),
         },
         EmergencyTrackingEligibilityDecisionInfo {
-            range: TextRange::new(0, 4),
+            range: text_range(0, 4),
             source_text: Text::from("中文字符"),
             reason: "duplicateReason".to_owned(),
         },
@@ -187,10 +187,10 @@ fn test_emergency_tracking_boundary_whitespace_and_empty() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "ab");
     let clusters = vec![
-        Cluster::new(TextRange::new(0, 0), Text::from(""), "test".to_owned(), 0.0),
-        Cluster::new(TextRange::new(0, 1), Text::from("a"), "test".to_owned(), 10.0),
-        Cluster::new(TextRange::new(1, 1), Text::from(""), "test".to_owned(), 0.0),
-        Cluster::new(TextRange::new(1, 2), Text::from("b"), "test".to_owned(), 10.0),
+        Cluster::new(text_range(0, 0), Text::from(""), "test".to_owned(), 0.0),
+        Cluster::new(text_range(0, 1), Text::from("a"), "test".to_owned(), 10.0),
+        Cluster::new(text_range(1, 1), Text::from(""), "test".to_owned(), 0.0),
+        Cluster::new(text_range(1, 2), Text::from("b"), "test".to_owned(), 10.0),
     ];
     prep.natural_clusters = clusters.clone();
     prep.clusters = clusters;
@@ -199,7 +199,7 @@ fn test_emergency_tracking_boundary_whitespace_and_empty() {
     prep.natural_inline_attachments = vec![Default::default(); 4];
     prep.emergency_tracking_eligibility_decisions = vec![
         EmergencyTrackingEligibilityDecisionInfo {
-            range: TextRange::new(0, 2),
+            range: text_range(0, 2),
             source_text: Text::from("ab"),
             reason: "reason".to_owned(),
         },
@@ -214,8 +214,8 @@ fn test_adjustable_inline_boundary_right_clusters_no_stretch_boundaries() {
     let mut prep = base_prep(&engine, "中文字符排版");
     prep.uniform_inline_object_boundary_after_clusters = [0, 1, 3].into_iter().collect();
     prep.atom_class_by_range = HashMap::from([
-        (TextRange::new(0, 1), PunctuationClass::Dash),
-        (TextRange::new(2, 3), PunctuationClass::Connector),
+        (text_range(0, 1), PunctuationClass::Dash),
+        (text_range(2, 3), PunctuationClass::Connector),
     ]);
 
     assert!(!plan(&engine, &prep).line_solution.lines.is_empty());

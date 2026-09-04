@@ -3,7 +3,7 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
-use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::geometry::{text_range, Rect};
 use tiqian::core::layout_model::{Cluster, Glyph};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineAttachment, InlineBoxSpan};
@@ -23,7 +23,7 @@ const EM: f32 = 16.0;
 
 fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::new(
-        TextRange::new(start, start + text.encode_utf16().count() as i32),
+        text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         font_key.to_owned(),
         advance,
@@ -32,7 +32,7 @@ fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
 
 fn display_cluster(text: &str, display: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::with_display_text(
-        TextRange::new(start, start + text.encode_utf16().count() as i32),
+        text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         Text::from(display),
         font_key.to_owned(),
@@ -66,10 +66,10 @@ fn edge(value: EastAsianSpacingValue) -> EastAsianSpacingEdges {
 #[test]
 fn halt_advance_is_rejected_at_zero_and_at_full_width() {
     let builder = PunctuationAtomBuilder::default();
-    let zero = builder.build('，', TextRange::new(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(0.0)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
+    let zero = builder.build('，', text_range(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(0.0)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
     assert_eq!(None, zero.halt_advance);
     assert_eq!("ProfileGlueFallbackWithoutFontGeometry", zero.geometry_source);
-    let full = builder.build('，', TextRange::new(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(16.0)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
+    let full = builder.build('，', text_range(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(16.0)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
     assert_eq!(None, full.halt_advance);
     assert_eq!("ProfileGlueFallbackWithoutFontGeometry", full.geometry_source);
 }
@@ -77,9 +77,9 @@ fn halt_advance_is_rejected_at_zero_and_at_full_width() {
 #[test]
 fn non_finite_halt_placement_is_ignored() {
     let builder = PunctuationAtomBuilder::default();
-    let ink = builder.build('·', TextRange::new(0, 1), EM, Some(PunctuationInkInput::builder(16.0).ink_bounds(Some(Rect { left: 8.0, top: 4.0, right: 16.0, bottom: 12.0 })).halt_advance(Some(8.0)).halt_placement_x(Some(f32::NAN)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
+    let ink = builder.build('·', text_range(0, 1), EM, Some(PunctuationInkInput::builder(16.0).ink_bounds(Some(Rect { left: 8.0, top: 4.0, right: 16.0, bottom: 12.0 })).halt_advance(Some(8.0)).halt_placement_x(Some(f32::NAN)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
     assert_eq!("FontHaltAdvanceWithInkBoundsFittedPlacement", ink.geometry_source);
-    let no_ink = builder.build('，', TextRange::new(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(8.0)).halt_placement_x(Some(f32::NAN)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
+    let no_ink = builder.build('，', text_range(0, 1), EM, Some(PunctuationInkInput::builder(16.0).halt_advance(Some(8.0)).halt_placement_x(Some(f32::NAN)).build()), PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).unwrap();
     assert_eq!("FontHaltAdvanceWithProfileFallback", no_ink.geometry_source);
     assert_eq!(8.0, no_ink.trailing_glue.natural);
 }
@@ -88,8 +88,8 @@ fn non_finite_halt_placement_is_ignored() {
 fn union_ignores_glyphs_without_bounds() {
     let mark = cluster("，", 0, EM, "cjk");
     let glyphs = [
-        Glyph::builder(1, TextRange::new(0, 1), 8.0).bounds(Some(Rect { left: 0.0, top: 0.0, right: 8.0, bottom: 16.0 })).build(),
-        Glyph::builder(2, TextRange::new(0, 1), 6.0).x(8.0).build(),
+        Glyph::builder(1, text_range(0, 1), 8.0).bounds(Some(Rect { left: 0.0, top: 0.0, right: 8.0, bottom: 16.0 })).build(),
+        Glyph::builder(2, text_range(0, 1), 6.0).x(8.0).build(),
     ];
     let atom = punctuation_atoms(&mark, EM, &PunctuationAtomBuilder::default(), &glyphs, PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default()).remove(0);
     assert_eq!(8.0, atom.ink_bounds.unwrap().width());
@@ -184,8 +184,8 @@ fn attached_ascii_point_mark_check_skips_empty_previous_text() {
 fn inline_box_span_with_zero_net_structural_edge_still_applies_leading() {
     let clusters = [cluster("a", 0, 8.0, "latin")];
     let result = apply_inline_box_spans(&clusters, &[
-        InlineBoxSpan::with_edges(TextRange::new(0, 1), 2.0, 0.0),
-        InlineBoxSpan::with_edges(TextRange::new(0, 1), 0.0, -2.0),
+        InlineBoxSpan::with_edges(text_range(0, 1), 2.0, 0.0),
+        InlineBoxSpan::with_edges(text_range(0, 1), 0.0, -2.0),
     ]);
     assert_eq!(8.0, result.clusters[0].advance);
     assert_eq!(2.0, result.clusters[0].leading_layout_advance);
@@ -196,7 +196,7 @@ fn inline_box_span_with_zero_net_structural_edge_still_applies_leading() {
 #[test]
 fn resolve_clusters_applies_glyph_shift_with_unchanged_advance() {
     let mark = cluster("「", 0, EM, "cjk");
-    let glyph = Glyph::builder(1, TextRange::new(0, 1), 8.0).build();
+    let glyph = Glyph::builder(1, text_range(0, 1), 8.0).build();
     let atoms = punctuation_atoms(&mark, EM, &PunctuationAtomBuilder::default(), &[glyph], PunctuationGluePlacement::MainlandSimplified, PunctuationWidthPolicy::default());
     let resolved = ledger(vec![mark], &atoms).resolve_clusters();
     assert_eq!(16.0, resolved[0].advance);
@@ -240,8 +240,8 @@ fn spacing_plan_ignores_targets_outside_the_budgets() {
     let clusters = vec![cluster("中", 0, EM, "cjk"), cluster("。", 1, EM, "cjk")];
     let atoms = atoms(&clusters);
     let stray = vec![
-        PunctuationSpacingAdjustment { range: TextRange::new(0, 2), reduction_target_range: TextRange::new(0, 1), left_char: '中', right_char: '。', natural_inner_glue: 8.0, adjusted_inner_glue: 0.0, reduction: 8.0, reason: "test-stray".to_owned() },
-        PunctuationSpacingAdjustment { range: TextRange::new(8, 9), reduction_target_range: TextRange::new(8, 9), left_char: '中', right_char: '。', natural_inner_glue: 8.0, adjusted_inner_glue: 0.0, reduction: 8.0, reason: "test-past-end".to_owned() },
+        PunctuationSpacingAdjustment { range: text_range(0, 2), reduction_target_range: text_range(0, 1), left_char: '中', right_char: '。', natural_inner_glue: 8.0, adjusted_inner_glue: 0.0, reduction: 8.0, reason: "test-stray".to_owned() },
+        PunctuationSpacingAdjustment { range: text_range(8, 9), reduction_target_range: text_range(8, 9), left_char: '中', right_char: '。', natural_inner_glue: 8.0, adjusted_inner_glue: 0.0, reduction: 8.0, reason: "test-past-end".to_owned() },
     ];
     let capacity = PunctuationGeometryLedger::from(clusters, &atoms, &PunctuationSpacingCompressionResult::new(stray)).glue_capacities();
     assert!(!capacity.contains_key(&0));

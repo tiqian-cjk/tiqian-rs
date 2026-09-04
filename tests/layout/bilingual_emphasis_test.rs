@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{DecorationKind, DecorationSpan, LayoutInput, TiqianTextContent};
 use tiqian::layout::paragraph_layout_engine::{
@@ -13,7 +13,7 @@ fn emphasis_dots_han_but_not_western_text() {
             LayoutConstraints::with_defaults(400.0),
         )
         .decorations(vec![DecorationSpan {
-            range: TextRange::new(2, 5),
+            range: text_range(2, 5),
             kind: DecorationKind::Emphasis,
         }])
         .build(),
@@ -25,9 +25,9 @@ fn emphasis_dots_han_but_not_western_text() {
         .map(|decision| (decision.cluster_range.start(), decision))
         .collect::<std::collections::HashMap<_, _>>();
 
-    assert!(decisions[&2].applied);
-    assert!(decisions[&4].applied);
-    assert!(!decisions[&3].applied);
-    assert_eq!("no-dot-on-non-han", decisions[&3].reason);
-    assert_eq!(0.0, decisions[&3].dot_diameter);
+    assert!(decisions[&scalar_offset(2)].applied);
+    assert!(decisions[&scalar_offset(4)].applied);
+    assert!(!decisions[&scalar_offset(3)].applied);
+    assert_eq!("no-dot-on-non-han", decisions[&scalar_offset(3)].reason);
+    assert_eq!(0.0, decisions[&scalar_offset(3)].dot_diameter);
 }

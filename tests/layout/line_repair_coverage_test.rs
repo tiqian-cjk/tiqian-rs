@@ -1,5 +1,5 @@
 use tiqian::common::{HashMap, HashSet};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -18,7 +18,7 @@ const EM: f32 = 16.0;
 
 fn cluster(text: &str, index: i32, advance: f32, display_text: &str) -> Cluster {
     Cluster::with_display_text(
-        TextRange::new(index, index + text.encode_utf16().count() as i32),
+        text_range(index, index + text.chars().count() as i32),
         Text::from(text),
         Text::from(display_text),
         "k".to_owned(),
@@ -384,7 +384,7 @@ fn mandatory_break_and_empty_lines_skip_the_repair_loop() {
     assert_eq!(None, mandatory.lines[1].repair);
     let empty_initial = vec![
         line(IntRange::new(0, 3), &natural, &natural, LineEndReason::AutoWrap, None, HashSet::new()),
-        empty_line_candidate(64, LineEndReason::ParagraphEnd),
+        empty_line_candidate(scalar_offset(64), LineEndReason::ParagraphEnd),
     ];
     let empty = repairs(&empty_initial, &natural, &natural, 16.0, &[], &[], &HashSet::new(), &[], None);
     assert_eq!(2, empty.lines.len());
@@ -580,7 +580,7 @@ fn fill_push_in_honours_progressive_tier_promotion_boundaries() {
         line(IntRange::new(0, 1), &natural, &natural, LineEndReason::AutoWrap, None, HashSet::new()),
         line(IntRange::new(2, 5), &natural, &natural, LineEndReason::AutoWrap, None, HashSet::new()),
     ];
-    let span = TextRange::new(0, 6);
+    let span = text_range(0, 6);
     let emergency = ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span);
     let whitespace = ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span);
     let promoted = fill(&lines, &natural, 48.0, &[], 1.0, None, &HashSet::new(), &[], &HashSet::new(), &HashMap::from([(2, emergency), (3, whitespace)]));
@@ -607,8 +607,8 @@ fn fill_push_in_honours_progressive_tier_promotion_boundaries() {
     let refill = fill(&lines, &natural, 96.0, &[], 1.0, None, &HashSet::new(), &[], &HashSet::new(), &HashMap::from([
         (2, emergency),
         (3, whitespace),
-        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, TextRange::new(0, 6))),
-        (5, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, TextRange::new(0, 3))),
+        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, text_range(0, 6))),
+        (5, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, text_range(0, 3))),
         (6, emergency),
     ]));
     assert_eq!(IntRange::new(0, 5), refill[0].cluster_range);
@@ -640,8 +640,8 @@ fn fill_pull_across_different_technical_spans_skips_tier_comparisons() {
         ],
         &natural, 100.0, &[], 1.0, None, &HashSet::new(), &[IntRange::new(4, 5)], &HashSet::new(),
         &HashMap::from([
-            (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, TextRange::new(0, 4))),
-            (6, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, TextRange::new(4, 8))),
+            (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Structural, text_range(0, 4))),
+            (6, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, text_range(4, 8))),
         ]),
     );
     assert_eq!(IntRange::new(0, 5), result[0].cluster_range);

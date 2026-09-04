@@ -1,7 +1,7 @@
 use tiqian::clreq::clreq_profile::{
     InteriorPunctuationStyle, PunctuationGluePlacement, PunctuationWidthPolicy,
 };
-use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::geometry::{text_range, Rect};
 use tiqian::layout::punctuation_model::{
     PunctuationAnchor, PunctuationAtomBuilder, PunctuationInkInput,
 };
@@ -17,7 +17,7 @@ fn atom(
     PunctuationAtomBuilder::new(placement, width)
         .build(
             character,
-            TextRange::new(0, 1),
+            text_range(0, 1),
             EM,
             Some(ink),
             placement,

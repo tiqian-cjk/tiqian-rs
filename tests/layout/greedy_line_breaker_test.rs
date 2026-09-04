@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -11,7 +11,7 @@ use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportuni
 
 fn cluster(start: i32, end: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(start, end),
+        text_range(start, end),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -40,7 +40,7 @@ fn single_cluster_fits_on_one_line() {
     assert_eq!(1, solution.lines.len());
     let line = &solution.lines[0];
     assert_eq!(IntRange::new(0, 0), line.cluster_range);
-    assert_eq!(TextRange::new(0, 1), line.source_range);
+    assert_eq!(text_range(0, 1), line.source_range);
     assert_eq!(16.0, line.natural_width);
     assert_eq!(16.0, line.adjusted_width);
 }
@@ -391,7 +391,7 @@ fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
     let clusters = vec![
         cluster(0, 1, "中", 16.0),
         Cluster::with_display_text(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             Text::from("\n"),
             Text::new(),
             "test".to_owned(),
@@ -405,7 +405,7 @@ fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
     assert_eq!(2, solution.lines.len());
     assert_eq!(IntRange::new(0, 1), solution.lines[0].cluster_range);
     assert_eq!(LineEndReason::MandatoryBreak, solution.lines[0].end_reason);
-    assert_eq!(TextRange::new(2, 2), solution.lines[1].source_range);
+    assert_eq!(text_range(2, 2), solution.lines[1].source_range);
     assert_eq!(LineEndReason::ParagraphEnd, solution.lines[1].end_reason);
 }
 
@@ -414,7 +414,7 @@ fn mandatory_break_blocks_kinsoku_repair_across_boundary() {
     let clusters = vec![
         cluster(0, 1, "中", 16.0),
         Cluster::with_display_text(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             Text::from("\n"),
             Text::new(),
             "test".to_owned(),

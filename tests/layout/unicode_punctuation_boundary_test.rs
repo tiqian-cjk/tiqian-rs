@@ -1,7 +1,7 @@
 use tiqian::common::HashSet;
 
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
@@ -86,7 +86,7 @@ fn western_brackets_touching_cjk_expose_all_inter_char_boundaries() {
         .enumerate()
         .map(|(index, character)| {
             Cluster::new(
-                TextRange::new(index as i32, index as i32 + 1),
+                text_range(index as i32, index as i32 + 1),
                 Text::from(character.to_string()),
                 if matches!(character, '(' | ')') {
                     "latin".to_owned()

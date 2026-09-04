@@ -78,16 +78,16 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
         output.push_str(&format!("kinsoku measure={}字 level={} hang={} reason={}\n", fmt(kinsoku.measure_em), kinsoku.level, kinsoku.hanging, kinsoku.reason));
     }
     for decision in &result.debug.contextual_kinsoku_decisions {
-        output.push_str(&format!("context-kinsoku {}-{} source='{}' cluster={} forbid={} reason={}{}\n", decision.range.start(), decision.range.end(), escape(&decision.source_text), decision.cluster_index, decision.forbidden_position, decision.reason, decision.impossible_measure_fallback.as_ref().map(|value| format!(" fallback={value}")).unwrap_or_default()));
+        output.push_str(&format!("context-kinsoku {}-{} source='{}' cluster={} forbid={} reason={}{}\n", decision.range.start(), decision.range.end(), escape(decision.source_text.as_str()), decision.cluster_index, decision.forbidden_position, decision.reason, decision.impossible_measure_fallback.as_ref().map(|value| format!(" fallback={value}")).unwrap_or_default()));
     }
     for decision in &result.debug.break_opportunity_decisions {
-        output.push_str(&format!("break-opportunity {}-{} source='{}' offsets={}{} reason={}\n", decision.range.start(), decision.range.end(), escape(&decision.source_text), decision.break_offsets.iter().map(i32::to_string).collect::<Vec<_>>().join(","), decision.tier.as_ref().map(|value| format!(" tier={value}")).unwrap_or_default(), decision.reason));
+        output.push_str(&format!("break-opportunity {}-{} source='{}' offsets={}{} reason={}\n", decision.range.start(), decision.range.end(), escape(decision.source_text.as_str()), decision.break_offsets.iter().map(|offset| offset.value().to_string()).collect::<Vec<_>>().join(","), decision.tier.as_ref().map(|value| format!(" tier={value}")).unwrap_or_default(), decision.reason));
     }
     for decision in &result.debug.emergency_tracking_eligibility_decisions {
-        output.push_str(&format!("tracking-eligibility {}-{} source='{}' reason={}\n", decision.range.start(), decision.range.end(), escape(&decision.source_text), decision.reason));
+        output.push_str(&format!("tracking-eligibility {}-{} source='{}' reason={}\n", decision.range.start(), decision.range.end(), escape(decision.source_text.as_str()), decision.reason));
     }
     for attachment in &result.debug.inline_object_punctuation_attachment_decisions {
-        output.push_str(&format!("inline-object-punctuation {}-{} separator={}-{} punctuation={}-{} source='{}' collapsed={} protected={}-{} reason={}\n", attachment.object_range.start(), attachment.object_range.end(), attachment.separator_range.start(), attachment.separator_range.end(), attachment.punctuation_range.start(), attachment.punctuation_range.end(), escape(&attachment.punctuation_text), fmt(attachment.collapsed_advance), attachment.protected_range.start(), attachment.protected_range.end(), attachment.reason));
+        output.push_str(&format!("inline-object-punctuation {}-{} separator={}-{} punctuation={}-{} source='{}' collapsed={} protected={}-{} reason={}\n", attachment.object_range.start(), attachment.object_range.end(), attachment.separator_range.start(), attachment.separator_range.end(), attachment.punctuation_range.start(), attachment.punctuation_range.end(), escape(attachment.punctuation_text.as_str()), fmt(attachment.collapsed_advance), attachment.protected_range.start(), attachment.protected_range.end(), attachment.reason));
     }
     for (index, line) in result.lines.iter().enumerate() {
         let decision = result.debug.line_decisions.get(index);
@@ -106,7 +106,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
         output.push_str(&format!("font {}-{} role={} key={} display='{}' sub={}\n", font.range.start(), font.range.end(), font.role, font.font_key, font.display_text, font.substitution_reason));
     }
     for role in &result.debug.role_overrides {
-        output.push_str(&format!("role-override {}-{} source='{}' {}->{} policy={} reason={}\n", role.range.start(), role.range.end(), escape(&role.source_text), role.original_role, role.overridden_role, role.source, role.reason));
+        output.push_str(&format!("role-override {}-{} source='{}' {}->{} policy={} reason={}\n", role.range.start(), role.range.end(), escape(role.source_text.as_str()), role.original_role, role.overridden_role, role.source, role.reason));
     }
     for punctuation in &result.debug.punctuation_decisions {
         output.push_str(&format!("punct {}-{} '{}' class={} adv={} body={} lead={} trail={} {}anchor={} source={}{}{}{}{}{}{}\n", punctuation.range.start(), punctuation.range.end(), punctuation.ch, punctuation.punctuation_class, fmt(punctuation.advance), fmt(punctuation.body_width), fmt(punctuation.leading_glue_natural), fmt(punctuation.trailing_glue_natural), if punctuation.leading_glue_initially_consumed != 0.0 || punctuation.trailing_glue_initially_consumed != 0.0 { format!("initial={}/{} ", fmt(punctuation.leading_glue_initially_consumed), fmt(punctuation.trailing_glue_initially_consumed)) } else { String::new() }, punctuation.anchor, punctuation.geometry_source, if punctuation.advance_expansion != 0.0 { format!(" expand={}", fmt(punctuation.advance_expansion)) } else { String::new() }, if punctuation.glyph_inline_shift != 0.0 { format!(" glyphShift={}", fmt(punctuation.glyph_inline_shift)) } else { String::new() }, punctuation.glyph_placement_reason.as_ref().map(|value| format!(" placement={value}")).unwrap_or_default(), punctuation.halt_advance.map(|value| format!(" halt={}", fmt(value))).unwrap_or_default(), punctuation.ink_bounds_fallback.as_ref().map(|value| format!(" fallback={value}")).unwrap_or_default(), punctuation.halt_validation.as_ref().map(|value| format!(" haltWarn={value}")).unwrap_or_default()));
@@ -131,7 +131,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
         output.push_str(&format!("mandatorybreak {}-{} afterCluster={} reason={}\n", decision.range.start(), decision.range.end(), decision.break_after_cluster_index, decision.reason));
     }
     for decision in &result.debug.zero_width_break_decisions {
-        output.push_str(&format!("zerowidthbreak {}-{} source='{}' cluster={} reason={}\n", decision.range.start(), decision.range.end(), escape(&decision.source_text), decision.cluster_index, decision.reason));
+        output.push_str(&format!("zerowidthbreak {}-{} source='{}' cluster={} reason={}\n", decision.range.start(), decision.range.end(), escape(decision.source_text.as_str()), decision.cluster_index, decision.reason));
     }
     for decision in &result.debug.line_edge_trim_decisions {
         output.push_str(&format!("edgetrim {}-{} side={} trim={} reason={}\n", decision.cluster_range.start(), decision.cluster_range.end(), decision.side, fmt(decision.trim_amount), decision.reason));

@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, TextRange};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
@@ -22,11 +22,11 @@ fn attached_span(range: TextRange) -> TextSpan {
 
 fn layout_reference(text: &str) -> tiqian::core::layout_model::LayoutResult {
     let byte_start = text.find("[1]").unwrap();
-    let start = text[..byte_start].encode_utf16().count() as i32;
+    let start = text[..byte_start].chars().count() as i32;
     ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
-                .spans(vec![attached_span(TextRange::new(start, start + 3))])
+                .spans(vec![attached_span(text_range(start, start + 3))])
                 .build(),
             LayoutConstraints::with_defaults(320.0),
         )
@@ -135,7 +135,7 @@ fn closing_quote_before_paragraph_end_footnote_has_no_trailing_glue() {
 #[test]
 fn attached_reference_never_starts_wrapped_line_for_supported_breakers() {
     let text = "甲乙1丙";
-    let range = TextRange::new(2, 3);
+    let range = text_range(2, 3);
     for (name, breaker) in [
         (
             "greedy",

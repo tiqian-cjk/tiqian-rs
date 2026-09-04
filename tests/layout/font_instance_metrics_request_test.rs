@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::font::font_metrics::{
@@ -44,7 +44,7 @@ fn per_span_weight_and_italic_reach_metrics_resolver() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中A"))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(1, 2),
+                    range: text_range(1, 2),
                     style: TextStyle::builder()
                         .font_families(vec!["Fixture Sans".to_owned()])
                         .font_size(18.0)
@@ -121,7 +121,7 @@ fn ruby_metrics_use_the_same_italic_instance_as_ruby_shaping() {
                 .build(),
         )
         .ruby_spans(vec![RubySpan::new(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("zhōng"),
         )])
         .build(),

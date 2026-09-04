@@ -1,6 +1,6 @@
 use tiqian::clreq::clreq_profile::ClreqProfile;
 use tiqian::common::{HashMap, HashSet};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{scalar_offset, text_range, TextRange};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineObjectSpan;
@@ -57,8 +57,8 @@ fn cluster_role_ranges_with_inline_object() {
     let text = Text::from("abxcd");
     let options = ClusterRoleRangeOptions::builder()
         .inline_objects_by_start(HashMap::from([(
-            2,
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(2, 3), 8.0, 8.0, 8.0),
+            scalar_offset(2),
+            InlineObjectSpan::with_fixed_boundaries(text_range(2, 3), 8.0, 8.0, 8.0),
         )]))
         .build();
     let ranges = cluster_role_ranges_with_options(
@@ -98,10 +98,10 @@ fn latin_decision(range: TextRange) -> FontDecision {
 fn require_covered_by_with_contiguous_clusters() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 2), "ab"),
-            latin_cluster(TextRange::new(2, 4), "cd"),
+            latin_cluster(text_range(0, 2), "ab"),
+            latin_cluster(text_range(2, 4), "cd"),
         ],
-        &[latin_decision(TextRange::new(0, 2)), latin_decision(TextRange::new(2, 4))],
+        &[latin_decision(text_range(0, 2)), latin_decision(text_range(2, 4))],
     );
 }
 
@@ -109,10 +109,10 @@ fn require_covered_by_with_contiguous_clusters() {
 fn require_covered_by_with_single_cluster() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 1), "a"),
-            latin_cluster(TextRange::new(1, 2), "b"),
+            latin_cluster(text_range(0, 1), "a"),
+            latin_cluster(text_range(1, 2), "b"),
         ],
-        &[latin_decision(TextRange::new(0, 2))],
+        &[latin_decision(text_range(0, 2))],
     );
 }
 
@@ -120,14 +120,14 @@ fn require_covered_by_with_single_cluster() {
 fn require_covered_by_with_multiple_decisions() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 1), "a"),
-            latin_cluster(TextRange::new(1, 2), "b"),
-            latin_cluster(TextRange::new(2, 3), "c"),
+            latin_cluster(text_range(0, 1), "a"),
+            latin_cluster(text_range(1, 2), "b"),
+            latin_cluster(text_range(2, 3), "c"),
         ],
         &[
-            latin_decision(TextRange::new(0, 1)),
-            latin_decision(TextRange::new(1, 2)),
-            latin_decision(TextRange::new(2, 3)),
+            latin_decision(text_range(0, 1)),
+            latin_decision(text_range(1, 2)),
+            latin_decision(text_range(2, 3)),
         ],
     );
 }
@@ -136,8 +136,8 @@ fn require_covered_by_with_multiple_decisions() {
 #[should_panic(expected = "crossing")]
 fn require_covered_by_fails_when_cluster_crosses_decision_range() {
     require_covered_by(
-        &[latin_cluster(TextRange::new(0, 3), "abc")],
-        &[latin_decision(TextRange::new(0, 2))],
+        &[latin_cluster(text_range(0, 3), "abc")],
+        &[latin_decision(text_range(0, 2))],
     );
 }
 
@@ -146,10 +146,10 @@ fn require_covered_by_fails_when_cluster_crosses_decision_range() {
 fn require_covered_by_fails_when_clusters_are_non_contiguous() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 1), "a"),
-            latin_cluster(TextRange::new(2, 3), "c"),
+            latin_cluster(text_range(0, 1), "a"),
+            latin_cluster(text_range(2, 3), "c"),
         ],
-        &[latin_decision(TextRange::new(0, 3))],
+        &[latin_decision(text_range(0, 3))],
     );
 }
 
@@ -157,8 +157,8 @@ fn require_covered_by_fails_when_clusters_are_non_contiguous() {
 #[should_panic(expected = "must return clusters covering")]
 fn require_covered_by_fails_when_clusters_do_not_cover_end() {
     require_covered_by(
-        &[latin_cluster(TextRange::new(0, 1), "a")],
-        &[latin_decision(TextRange::new(0, 3))],
+        &[latin_cluster(text_range(0, 1), "a")],
+        &[latin_decision(text_range(0, 3))],
     );
 }
 
@@ -167,20 +167,20 @@ fn require_covered_by_fails_when_clusters_do_not_cover_end() {
 fn require_covered_by_with_gap_between_decisions() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 1), "a"),
-            latin_cluster(TextRange::new(1, 2), "b"),
+            latin_cluster(text_range(0, 1), "a"),
+            latin_cluster(text_range(1, 2), "b"),
         ],
         &[
-            latin_decision(TextRange::new(0, 1)),
-            latin_decision(TextRange::new(1, 2)),
-            latin_decision(TextRange::new(2, 3)),
+            latin_decision(text_range(0, 1)),
+            latin_decision(text_range(1, 2)),
+            latin_decision(text_range(2, 3)),
         ],
     );
 }
 
 #[test]
 fn require_covered_by_with_empty_decisions() {
-    require_covered_by(&[latin_cluster(TextRange::new(0, 1), "a")], &[]);
+    require_covered_by(&[latin_cluster(text_range(0, 1), "a")], &[]);
 }
 
 #[test]
@@ -188,10 +188,10 @@ fn require_covered_by_with_empty_decisions() {
 fn require_covered_by_with_overlapping_decisions() {
     require_covered_by(
         &[
-            latin_cluster(TextRange::new(0, 2), "ab"),
-            latin_cluster(TextRange::new(2, 4), "cd"),
+            latin_cluster(text_range(0, 2), "ab"),
+            latin_cluster(text_range(2, 4), "cd"),
         ],
-        &[latin_decision(TextRange::new(0, 3))],
+        &[latin_decision(text_range(0, 3))],
     );
 }
 
@@ -235,7 +235,7 @@ fn cluster_role_ranges_with_cr_only() { assert!(role_ranges("a\rb").iter().any(|
 #[test]
 fn cluster_role_ranges_with_emoji_shaping_boundary_inside() {
     let text = Text::from("#\u{FE0F}A");
-    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([2])).build();
+    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([scalar_offset(2)])).build();
     assert!(!cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options).is_empty());
 }
 
@@ -270,7 +270,7 @@ fn cluster_role_ranges_with_emoji_style_variation_no_fe0f() { assert!(!role_rang
 #[test]
 fn cluster_role_ranges_with_multiple_span_boundaries() {
     let text = Text::from("abcdef");
-    let options = ClusterRoleRangeOptions::builder().span_boundaries(HashSet::from([2, 4])).build();
+    let options = ClusterRoleRangeOptions::builder().span_boundaries(HashSet::from([scalar_offset(2), scalar_offset(4)])).build();
     assert!(!cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options).is_empty());
 }
 
@@ -302,7 +302,7 @@ fn cluster_role_ranges_with_single_grapheme() { assert_eq!(1, role_ranges("a").l
 #[test]
 fn cluster_role_ranges_with_emoji_shaping_boundary_at_grapheme_end() {
     let text = Text::from("#\u{FE0F}");
-    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([2])).build();
+    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([scalar_offset(2)])).build();
     assert!(!cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options).is_empty());
 }
 
@@ -321,7 +321,7 @@ fn cluster_role_ranges_with_cjk_punctuation_and_coalesce() { assert!(!role_range
 #[test]
 fn cluster_role_ranges_with_multiple_emoji_shaping_boundaries() {
     let text = Text::from("#\u{FE0F}*\u{FE0F}");
-    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([2, 4])).build();
+    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([scalar_offset(2), scalar_offset(4)])).build();
     assert!(!cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options).is_empty());
 }
 
@@ -333,7 +333,7 @@ fn cluster_role_ranges_with_keycap_base_no_keycap() { assert!(!role_ranges("1\u{
 
 #[test]
 fn cluster_role_ranges_with_crlf_pair_produces_single_cluster() {
-    let range = role_ranges("a\r\nb").into_iter().find(|range| range.range == TextRange::new(1, 3)).unwrap();
+    let range = role_ranges("a\r\nb").into_iter().find(|range| range.range == text_range(1, 3)).unwrap();
     assert!(range.mandatory_break);
 }
 
@@ -352,7 +352,7 @@ fn cluster_role_ranges_with_non_ascii_point_mark() { assert!(!role_ranges("A!B")
 #[test]
 fn cluster_role_ranges_with_emoji_shaping_boundary_inside_and_outside_range() {
     let text = Text::from("😀\u{FE0F}😁");
-    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([4])).build();
+    let options = ClusterRoleRangeOptions::builder().emoji_shaping_boundaries(HashSet::from([scalar_offset(4)])).build();
     assert!(!cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options).is_empty());
 }
 
@@ -363,16 +363,16 @@ fn cluster_role_ranges_with_attached_ascii_point_mark_not_adjacent() { assert!(!
 fn astral_variation_selector_extends_the_run_before_it() {
     let ranges = role_ranges("中\u{E0100}中");
     assert_eq!(2, ranges.len());
-    assert_eq!(TextRange::new(0, 3), ranges[0].range);
+    assert_eq!(text_range(0, 2), ranges[0].range);
     assert_eq!(FontRole::CjkText, ranges[0].role);
-    assert_eq!(TextRange::new(3, 4), ranges[1].range);
+    assert_eq!(text_range(2, 3), ranges[1].range);
 }
 
 #[test]
 fn astral_variation_selector_after_an_attached_point_mark_ends_the_run() {
     let ranges = role_ranges("中,\u{E0100}中");
     assert_eq!(3, ranges.len());
-    assert_eq!(TextRange::new(1, 4), ranges[1].range);
+    assert_eq!(text_range(1, 3), ranges[1].range);
     assert_eq!(FontRole::LatinText, ranges[1].role);
 }
 
@@ -380,7 +380,7 @@ fn astral_variation_selector_after_an_attached_point_mark_ends_the_run() {
 fn astral_variation_selector_between_base_and_modifier_keeps_the_sequence() {
     let ranges = role_ranges("✊\u{E0100}🏻");
     assert_eq!(1, ranges.len());
-    assert_eq!(TextRange::new(0, 5), ranges[0].range);
+    assert_eq!(text_range(0, 3), ranges[0].range);
     assert_eq!(FontRole::Emoji, ranges[0].role);
 }
 
@@ -388,16 +388,16 @@ fn astral_variation_selector_between_base_and_modifier_keeps_the_sequence() {
 fn code_point_above_the_supplementary_selector_range_stands_alone() {
     let ranges = role_ranges("中\u{E01F0}中");
     assert_eq!(3, ranges.len());
-    assert_eq!(TextRange::new(0, 1), ranges[0].range);
-    assert_eq!(TextRange::new(1, 3), ranges[1].range);
-    assert_eq!(TextRange::new(3, 4), ranges[2].range);
+    assert_eq!(text_range(0, 1), ranges[0].range);
+    assert_eq!(text_range(1, 2), ranges[1].range);
+    assert_eq!(text_range(2, 3), ranges[2].range);
 }
 
 #[test]
 fn modifier_base_with_a_bmp_selector_walks_the_selector_true_arm() {
     let ranges = role_ranges("✊\u{FE0F}🏻");
     assert_eq!(1, ranges.len());
-    assert_eq!(TextRange::new(0, 4), ranges[0].range);
+    assert_eq!(text_range(0, 3), ranges[0].range);
     assert_eq!(FontRole::Emoji, ranges[0].role);
 }
 
@@ -405,37 +405,37 @@ fn modifier_base_with_a_bmp_selector_walks_the_selector_true_arm() {
 fn modifier_base_with_only_a_selector_ends_the_walk_at_the_cluster_end() {
     let ranges = role_ranges("✊\u{E0100}");
     assert_eq!(1, ranges.len());
-    assert_eq!(TextRange::new(0, 3), ranges[0].range);
+    assert_eq!(text_range(0, 2), ranges[0].range);
 }
 
 #[test]
 fn zwj_member_inside_a_modifier_base_cluster_breaks_the_walk_below_the_range() {
     let ranges = role_ranges("✊\u{200D}♀️");
     assert_eq!(1, ranges.len());
-    assert_eq!(TextRange::new(0, 4), ranges[0].range);
+    assert_eq!(text_range(0, 4), ranges[0].range);
 }
 
 #[test]
 fn span_boundary_after_a_space_let_the_point_mark_see_its_whitespace_neighbour() {
     let text = Text::from("a ,");
-    let options = ClusterRoleRangeOptions::builder().span_boundaries(HashSet::from([2])).build();
+    let options = ClusterRoleRangeOptions::builder().span_boundaries(HashSet::from([scalar_offset(2)])).build();
     let ranges = cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options);
     assert_eq!(2, ranges.len());
-    assert_eq!(TextRange::new(0, 2), ranges[0].range);
-    assert_eq!(TextRange::new(2, 3), ranges[1].range);
+    assert_eq!(text_range(0, 2), ranges[0].range);
+    assert_eq!(text_range(2, 3), ranges[1].range);
 }
 
 #[test]
 fn inline_object_over_the_cr_walks_the_lf_with_a_cr_behind_it() {
     let text = Text::from("\r\n");
     let options = ClusterRoleRangeOptions::builder().inline_objects_by_start(HashMap::from([(
-        0,
-        InlineObjectSpan::with_fixed_boundaries(TextRange::new(0, 1), 8.0, 8.0, 8.0),
+        scalar_offset(0),
+        InlineObjectSpan::with_fixed_boundaries(text_range(0, 1), 8.0, 8.0, 8.0),
     )])).build();
     let ranges = cluster_role_ranges_with_options(&text, &CjkFontRoleClassifier, &FontRoleContext::default(), &ClreqProfile::mainland_horizontal(), &options);
     assert_eq!(2, ranges.len());
-    assert_eq!(TextRange::new(0, 1), ranges[0].range);
-    assert_eq!(TextRange::new(1, 2), ranges[1].range);
+    assert_eq!(text_range(0, 1), ranges[0].range);
+    assert_eq!(text_range(1, 2), ranges[1].range);
     assert!(!ranges[1].mandatory_break);
     assert!(ranges.iter().all(|range| !range.mandatory_break));
 }
@@ -444,7 +444,7 @@ fn inline_object_over_the_cr_walks_the_lf_with_a_cr_behind_it() {
 fn cluster_role_ranges_with_span_boundaries() {
     let text = Text::from("abcd");
     let options = ClusterRoleRangeOptions::builder()
-        .span_boundaries(HashSet::from([2]))
+        .span_boundaries(HashSet::from([scalar_offset(2)]))
         .build();
     let ranges = cluster_role_ranges_with_options(
         &text,
@@ -460,7 +460,7 @@ fn cluster_role_ranges_with_span_boundaries() {
 fn cluster_role_ranges_with_emoji_shaping_boundaries() {
     let text = Text::from("#\u{FE0F}");
     let options = ClusterRoleRangeOptions::builder()
-        .emoji_shaping_boundaries(HashSet::from([1]))
+        .emoji_shaping_boundaries(HashSet::from([scalar_offset(1)]))
         .build();
     let ranges = cluster_role_ranges_with_options(
         &text,

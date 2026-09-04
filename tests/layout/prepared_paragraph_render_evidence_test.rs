@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, RubyKind, RubySpan, TextSpan,
@@ -20,7 +20,7 @@ fn pinyin_ruby_emits_ruby_decisions() {
             TiqianTextContent::new(Text::from("北京是首都。")),
             LayoutConstraints::with_defaults(200.0),
         )
-        .ruby_spans(vec![RubySpan::new(TextRange::new(0, 2), Text::from("Běijīng"))])
+        .ruby_spans(vec![RubySpan::new(text_range(0, 2), Text::from("Běijīng"))])
         .build(),
     );
 
@@ -49,7 +49,7 @@ fn bopomofo_ruby_emits_bopomofo_decisions() {
             LayoutConstraints::with_defaults(200.0),
         )
         .ruby_spans(vec![RubySpan::with_kind(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("ㄏㄠˇ"),
             RubyKind::Bopomofo,
         )])
@@ -72,9 +72,9 @@ fn decorations_emit_segments_dots_and_ranges() {
             LayoutConstraints::with_defaults(200.0),
         )
         .decorations(vec![
-            DecorationSpan { range: TextRange::new(0, 2), kind: DecorationKind::ProperNoun },
-            DecorationSpan { range: TextRange::new(3, 5), kind: DecorationKind::BookTitle },
-            DecorationSpan { range: TextRange::new(6, 9), kind: DecorationKind::Emphasis },
+            DecorationSpan { range: text_range(0, 2), kind: DecorationKind::ProperNoun },
+            DecorationSpan { range: text_range(3, 5), kind: DecorationKind::BookTitle },
+            DecorationSpan { range: text_range(6, 9), kind: DecorationKind::Emphasis },
         ])
         .build(),
     );
@@ -105,7 +105,7 @@ fn style_delta_emits_per_cell_style_block() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("普通字与小字混排的段落。"))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(4, 6),
+                    range: text_range(4, 6),
                     style: TextStyle::builder().font_size(12.0).font_weight(700).build(),
                 }])
                 .build(),
@@ -127,7 +127,7 @@ fn inline_boxes_emit_inline_edges() {
             TiqianTextContent::new(Text::from("文字与边距。")),
             LayoutConstraints::with_defaults(200.0),
         )
-        .inline_boxes(vec![InlineBoxSpan::with_edges(TextRange::new(0, 1), 2.0, 3.0)])
+        .inline_boxes(vec![InlineBoxSpan::with_edges(text_range(0, 1), 2.0, 3.0)])
         .build(),
     );
 

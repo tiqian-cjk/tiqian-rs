@@ -1,6 +1,6 @@
 use tiqian::clreq::bopomofo_reading::{BopomofoTone, bopomofo_parser};
 use tiqian::clreq::clreq_profile::{KinsokuLevel, clreq_punctuation_policies};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
@@ -33,7 +33,7 @@ fn forbidden_at_line_end_covers_opening_solidus_and_other() {
 
 #[test]
 fn kinsoku_rule_allows_clusters_without_display_text() {
-    let empty = Cluster::new(TextRange::new(0, 0), Text::new(), "stub".into(), 0.0);
+    let empty = Cluster::new(text_range(0, 0), Text::new(), "stub".into(), 0.0);
     let rule = ClreqKinsokuRule::default();
     assert!(!rule.forbidden_at_line_start(&empty));
     assert!(!rule.forbidden_at_line_end(&empty));

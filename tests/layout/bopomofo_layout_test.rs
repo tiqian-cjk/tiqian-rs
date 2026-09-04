@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::layout_model::BopomofoGlyphRole;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -35,12 +35,12 @@ fn bopomofo_symbols_and_tones_occupy_right_side_annotation_zone() {
     let result = layout(
         vec![
             RubySpan::with_kind(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("ㄓㄨㄥ"),
                 RubyKind::Bopomofo,
             ),
             RubySpan::with_kind(
-                TextRange::new(1, 2),
+                text_range(1, 2),
                 Text::from("ㄔㄤˊ"),
                 RubyKind::Bopomofo,
             ),
@@ -51,13 +51,13 @@ fn bopomofo_symbols_and_tones_occupy_right_side_annotation_zone() {
         .debug
         .bopomofo_decisions
         .iter()
-        .find(|decision| decision.base_range.start() == 0)
+        .find(|decision| decision.base_range.start().value() == 0)
         .unwrap();
     let chang = result
         .debug
         .bopomofo_decisions
         .iter()
-        .find(|decision| decision.base_range.start() == 1)
+        .find(|decision| decision.base_range.start().value() == 1)
         .unwrap();
 
     assert_eq!(700, zhong.font_weight);
@@ -98,7 +98,7 @@ fn bopomofo_reserves_annotated_base_without_changing_unannotated_neighbor() {
     let plain = layout(Vec::new(), Vec::new());
     let annotated = layout(
         vec![RubySpan::with_kind(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("ㄓㄨㄥ"),
             RubyKind::Bopomofo,
         )],
@@ -114,23 +114,23 @@ fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
     let weighted = layout(
         vec![
             RubySpan::with_kind(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("ㄓㄨㄥ"),
                 RubyKind::Bopomofo,
             ),
             RubySpan::with_kind(
-                TextRange::new(1, 2),
+                text_range(1, 2),
                 Text::from("ㄨㄣˊ"),
                 RubyKind::Bopomofo,
             ),
         ],
         vec![
             TextSpan {
-                range: TextRange::new(0, 1),
+                range: text_range(0, 1),
                 style: TextStyle::builder().font_weight(500).build(),
             },
             TextSpan {
-                range: TextRange::new(1, 2),
+                range: text_range(1, 2),
                 style: TextStyle::builder().font_weight(700).build(),
             },
         ],
@@ -141,7 +141,7 @@ fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
             .debug
             .bopomofo_decisions
             .iter()
-            .find(|decision| decision.base_range == TextRange::new(0, 1))
+            .find(|decision| decision.base_range == text_range(0, 1))
             .unwrap()
             .font_weight
     );
@@ -151,7 +151,7 @@ fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
             .debug
             .bopomofo_decisions
             .iter()
-            .find(|decision| decision.base_range == TextRange::new(1, 2))
+            .find(|decision| decision.base_range == text_range(1, 2))
             .unwrap()
             .font_weight
     );
@@ -161,7 +161,7 @@ fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
 fn bopomofo_decision_keeps_source_reading_for_copy() {
     let neutral = layout(
         vec![RubySpan::with_kind(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("˙ㄉㄜ"),
             RubyKind::Bopomofo,
         )],
@@ -184,7 +184,7 @@ fn bopomofo_decision_keeps_source_reading_for_copy() {
 fn bopomofo_annotation_locale_does_not_replace_simplified_base_locale() {
     let neutral = layout(
         vec![RubySpan::with_kind(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             Text::from("˙ㄉㄜ"),
             RubyKind::Bopomofo,
         )],

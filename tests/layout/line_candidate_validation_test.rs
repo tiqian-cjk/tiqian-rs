@@ -1,10 +1,10 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::layout::line_optimization::LineCandidate;
 
 fn candidate(hanging: HashSet<i32>, range: IntRange) -> LineCandidate {
-    let mut candidate = LineCandidate::new(range, TextRange::new(0, 4), 64.0, 64.0);
+    let mut candidate = LineCandidate::new(range, text_range(0, 4), 64.0, 64.0);
     candidate.hanging_cluster_indices = hanging;
     candidate.validate_hanging_suffix();
     candidate

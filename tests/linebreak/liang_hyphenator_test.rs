@@ -68,7 +68,7 @@ fn parses_patterns_and_exception_blocks_stripping_comments() {
         }
         "#,
     );
-    let (patterns, exceptions) = parse_tex_hyphenation_patterns(&source);
+    let (patterns, exceptions) = parse_tex_hyphenation_patterns(source.as_str());
     assert_eq!(Some(&vec![0, 0, 0, 0, 4]), patterns.get(".ach"));
     assert_eq!(Some(&vec![0, 5, 0, 0, 0]), patterns.get("abal"));
     assert_eq!(Some(&vec![2]), exceptions.get("table"));

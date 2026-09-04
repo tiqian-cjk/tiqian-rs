@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
@@ -205,18 +205,18 @@ fn contextual_role_extensions_wrap_outside_the_pipeline() {
     let dash_aware = with_contextual_dash_ellipsis_roles(&base, &dash_text, &context);
     assert_eq!(
         FontRole::CjkPunctuation,
-        dash_aware.classify(&dash_text, TextRange::new(2, 3), &context)
+        dash_aware.classify(&dash_text, text_range(2, 3), &context)
     );
     assert_eq!(
-        base.classify(&dash_text, TextRange::new(0, 1), &context),
-        dash_aware.classify(&dash_text, TextRange::new(0, 1), &context)
+        base.classify(&dash_text, text_range(0, 1), &context),
+        dash_aware.classify(&dash_text, text_range(0, 1), &context)
     );
 
     let quote_text = Text::from("中a“b”c文");
     let quote_aware = with_contextual_quote_roles(&base, &quote_text, &context);
     assert_eq!(
         FontRole::LatinText,
-        quote_aware.classify(&quote_text, TextRange::new(2, 3), &context)
+        quote_aware.classify(&quote_text, text_range(2, 3), &context)
     );
 }
 
@@ -227,7 +227,7 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
         .debug
         .font_decisions
         .iter()
-        .filter(|decision| decision.source_text.contains('—') || decision.source_text.contains('…'))
+        .filter(|decision| decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…'))
         .collect();
     assert_eq!(3, western_marks.len());
     assert!(western_marks.iter().all(|decision| {
@@ -258,7 +258,7 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
         .role_overrides
         .iter()
         .filter(|override_info| {
-            override_info.source_text.contains('—') || override_info.source_text.contains('…')
+            override_info.source_text.as_str().contains('—') || override_info.source_text.as_str().contains('…')
         })
         .all(|override_info| override_info.source == "DashEllipsisSurroundingScriptContext"));
 
@@ -285,7 +285,7 @@ fn latin_dash_run_at_paragraph_end_stays_one_cluster() {
         .debug
         .font_decisions
         .iter()
-        .find(|decision| decision.source_text.contains('—'))
+        .find(|decision| decision.source_text.as_str().contains('—'))
         .unwrap();
     assert_eq!("——", decision.source_text);
     assert_eq!("LatinText", decision.role);
@@ -297,7 +297,7 @@ fn style_span_inside_latin_dash_run_splits_the_cluster() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("A——B"))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(2, 3),
+                    range: text_range(2, 3),
                     style: TextStyle::builder().font_weight(700).build(),
                 }])
                 .build(),
@@ -352,7 +352,7 @@ fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("A——B"))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(2, 3),
+                    range: text_range(2, 3),
                     style: TextStyle::builder().font_weight(700).build(),
                 }])
                 .build(),

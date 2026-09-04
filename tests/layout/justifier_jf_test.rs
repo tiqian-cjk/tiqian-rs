@@ -1,6 +1,6 @@
 use tiqian::common::{HashMap, HashSet};
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -52,7 +52,7 @@ impl Default for JustificationRequestConfig {
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + text.encode_utf16().count() as i32),
+        text_range(index, index + text.chars().count() as i32),
         Text::from(text),
         "k".to_owned(),
         advance,

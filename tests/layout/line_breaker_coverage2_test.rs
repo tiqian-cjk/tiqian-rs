@@ -1,5 +1,5 @@
 use tiqian::common::{HashMap, HashSet};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -14,7 +14,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -129,17 +129,17 @@ fn test_lookahead_hard_break_at_end_and_middle() {
 
 #[test]
 fn test_line_candidate_ends_with_progressive_break() {
-    let candidate = LineCandidate::new(IntRange::new(0, 1), TextRange::new(0, 2), 32.0, 32.0);
+    let candidate = LineCandidate::new(IntRange::new(0, 1), text_range(0, 2), 32.0, 32.0);
     let opportunities = HashMap::from([(
         2,
-        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, TextRange::new(0, 4)),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Syllable, text_range(0, 4)),
     )]);
     assert!(ends_with_progressive_break(&candidate, &opportunities));
 
     let mut paragraph_end = candidate.clone();
     paragraph_end.end_reason = LineEndReason::ParagraphEnd;
     assert!(!ends_with_progressive_break(&paragraph_end, &opportunities));
-    assert!(!ends_with_progressive_break(&LineCandidate::new(IntRange::EMPTY, TextRange::new(0, 0), 0.0, 0.0), &opportunities));
+    assert!(!ends_with_progressive_break(&LineCandidate::new(IntRange::EMPTY, text_range(0, 0), 0.0, 0.0), &opportunities));
     assert!(!ends_with_progressive_break(&candidate, &HashMap::new()));
 }
 

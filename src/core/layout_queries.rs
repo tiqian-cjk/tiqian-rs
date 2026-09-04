@@ -394,9 +394,9 @@ pub fn get_bounding_box(result: &LayoutResult, offset: ScalarOffset) -> Rect {
         .unwrap_or_else(|| get_cursor_rect(result, clamped))
 }
 
-/// Returns one or more line-box slices covered by `range`. When a source range cuts through a
-/// multi-code-unit display cluster, `SourceRangeLinearClusterSplit` divides the cluster box
-/// proportionally by source UTF-16 offsets until glyph-level source mapping lands.
+/// 返回 `range` 覆盖的一项或多项行框切片。source range 切入含多个 scalar 的显示 cluster 时，
+/// `SourceRangeLinearClusterSplit` 在 glyph-level source mapping 可用前，按 source scalar offset
+/// 比例切分 cluster box。
 pub fn get_bounding_boxes(result: &LayoutResult, range: TextRange) -> Vec<Rect> {
     if range.is_empty() || result.lines.is_empty() {
         return Vec::new();
@@ -969,9 +969,9 @@ pub fn get_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> ScalarO
     )
 }
 
-/// Hit-tests a static-text selection endpoint and snaps it to a safe source interaction boundary.
-/// This retains per-code-point Latin selection inside word layout atoms without ever returning the
-/// middle of a surrogate, combining sequence, emoji ZWJ sequence, or other grouped source unit.
+/// 对静态文本的 selection endpoint 做 hit-test，并吸附到安全的 source interaction boundary。
+/// 这会保留 word layout atom 内逐 scalar 的 Latin selection，同时不会返回组合序列、emoji ZWJ
+/// 序列或其他 grouped source unit 的内部位置。
 pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) -> ScalarOffset {
     if result.lines.is_empty() {
         return ScalarOffset::ZERO;
@@ -1029,7 +1029,11 @@ pub fn get_selection_offset_for_position(result: &LayoutResult, x: f32, y: f32) 
     }
 }
 
-/// Coerces an external scalar offset to a safe selection/caret boundary.
+/// 将外部 scalar offset 吸附到安全的 caret 或选区端点。
+///
+/// 此函数为插入点选择一个 interaction boundary，按 `bias` 决定内部位置落向前、后或最近边界。
+/// 双击选词不使用该吸附规则，应由 [`get_selection_word_boundary`] 保持原始 scalar offset 并查找其所属
+/// interaction unit，避免把对象内部位置或组合序列内部位置归到相邻内容。
 pub fn coerce_selection_offset(
     result: &LayoutResult,
     offset: ScalarOffset,
@@ -1061,7 +1065,11 @@ pub fn coerce_selection_offset(
     )
 }
 
-/// Expands a safe source offset to the word selected by a static-text double click.
+/// 将双击位置扩展为静态文本中的选词范围。
+///
+/// 与 [`coerce_selection_offset`] 不同，此函数不按最近边界吸附输入 offset。合法的 scalar offset
+/// 仍可能位于组合序列或 ZWJ 序列等 interaction unit 内部；函数保留该 offset，以便选择其所属的
+/// 完整 unit。对象范围也在此之前直接命中，避免将对象内部位置错误地归到相邻文本。
 /// `SourceInteractionWordExpansion` joins adjacent letter/digit/connector graphemes, keeps Han
 /// ideographs individually selectable, groups adjacent whitespace, and otherwise returns exactly
 /// one source interaction unit. It does not depend on shaping-cluster width or line-break atoms.
@@ -1071,8 +1079,7 @@ pub fn get_selection_word_boundary(result: &LayoutResult, offset: ScalarOffset) 
         return TextRange::new(ScalarOffset::ZERO, ScalarOffset::ZERO);
     }
     let text_length = text.scalar_len();
-    let clamped =
-        coerce_selection_offset(result, offset.min(text_length), SourceBoundaryBias::Nearest);
+    let clamped = offset.min(text_length);
     if let Some(inline_object) = result.input.inline_objects.iter().find(|inline_object| {
         clamped >= inline_object.range.start() && clamped < inline_object.range.end()
     }) {

@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, LineBreakPolicy,
@@ -56,13 +56,13 @@ fn explicit_zero_line_height_keeps_the_control_paragraph_at_zero_height() {
 #[test]
 fn emergency_boundary_eligibility_skips_zero_width_and_mandatory_controls() {
     let zwsp_text = "ab\u{200b}cd";
-    let zwsp_length = Text::from(zwsp_text).utf16_len();
+    let zwsp_length = Text::from(zwsp_text).scalar_len();
     let zwsp = layout(
         &zwsp_text,
         200.0,
         None,
         vec![LineBreakSpan {
-            range: TextRange::new(0, zwsp_length),
+            range: text_range(0, zwsp_length.value()),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
         Vec::new(),
@@ -74,7 +74,7 @@ fn emergency_boundary_eligibility_skips_zero_width_and_mandatory_controls() {
         200.0,
         None,
         vec![LineBreakSpan {
-            range: TextRange::new(0, 5),
+            range: text_range(0, 5),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
         Vec::new(),
@@ -90,10 +90,10 @@ fn emergency_boundary_eligibility_skips_inline_object_boundaries() {
         200.0,
         None,
         vec![LineBreakSpan {
-            range: TextRange::new(0, 3),
+            range: text_range(0, 3),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
-        vec![InlineObjectSpan::with_fixed_boundaries(TextRange::new(1, 2), 16.0, 8.0, 8.0)],
+        vec![InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 16.0, 8.0, 8.0)],
     );
     assert_eq!(1, result.lines.len());
     assert_eq!(0, result.lines[0].cluster_range.first());
@@ -107,7 +107,7 @@ fn dash_and_solidus_boundaries_inside_technical_spans_never_stretch() {
             24.0,
             None,
             vec![LineBreakSpan {
-                range: TextRange::new(0, Text::from(text).utf16_len()),
+                range: text_range(0, Text::from(text).scalar_len().value()),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }],
             Vec::new(),
@@ -126,8 +126,8 @@ fn overlapping_technical_spans_keep_the_first_boundary_reason() {
         200.0,
         None,
         vec![
-            LineBreakSpan { range: TextRange::new(0, 4), policy: LineBreakPolicy::ProgressiveTechnical },
-            LineBreakSpan { range: TextRange::new(2, 6), policy: LineBreakPolicy::ProgressiveTechnical },
+            LineBreakSpan { range: text_range(0, 4), policy: LineBreakPolicy::ProgressiveTechnical },
+            LineBreakSpan { range: text_range(2, 6), policy: LineBreakPolicy::ProgressiveTechnical },
         ],
         Vec::new(),
     );

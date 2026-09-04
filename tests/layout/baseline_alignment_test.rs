@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
@@ -39,7 +39,7 @@ fn latin_inside_cjk_uses_shared_roman_baseline() {
 fn explicit_baseline_shift_reaches_latin_cluster() {
     let content = TiqianTextContent::builder(Text::from("中A文"))
         .spans(vec![TextSpan {
-            range: TextRange::new(1, 2),
+            range: text_range(1, 2),
             style: TextStyle::builder().baseline_shift(-6.0).build(),
         }])
         .build();
@@ -78,11 +78,11 @@ fn cjk_mixed_sizes_align_by_ideographic_box_bottom() {
     let content = TiqianTextContent::builder(Text::from("中小大"))
         .spans(vec![
             TextSpan {
-                range: TextRange::new(1, 2),
+                range: text_range(1, 2),
                 style: TextStyle::builder().font_size(12.0).build(),
             },
             TextSpan {
-                range: TextRange::new(2, 3),
+                range: text_range(2, 3),
                 style: TextStyle::builder().font_size(20.0).build(),
             },
         ])

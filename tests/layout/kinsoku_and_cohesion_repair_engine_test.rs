@@ -1,6 +1,6 @@
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
 use tiqian::clreq::clreq_profile::HangingPunctuationStyle;
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
@@ -93,10 +93,10 @@ fn kinsoku_carries_previous_cluster_when_forbidden_punctuation_would_start_line(
     let result = layout("中文中文。", 64.0, true);
 
     assert_eq!(2, result.lines.len());
-    assert_eq!(0, result.lines[0].range.start());
-    assert_eq!(3, result.lines[0].range.end());
-    assert_eq!(3, result.lines[1].range.start());
-    assert_eq!(5, result.lines[1].range.end());
+    assert_eq!(scalar_offset(0), result.lines[0].range.start());
+    assert_eq!(scalar_offset(3), result.lines[0].range.end());
+    assert_eq!(scalar_offset(3), result.lines[1].range.start());
+    assert_eq!(scalar_offset(5), result.lines[1].range.end());
     assert_eq!(48.0, result.lines[0].adjusted_width);
     assert_eq!(24.0, result.lines[1].adjusted_width);
     assert_eq!(None, result.debug.line_decisions[0].repair);
@@ -119,8 +119,8 @@ fn kinsoku_pushes_line_start_punctuation_in_when_glue_can_shrink() {
 
     assert_eq!(1, result.lines.len());
     let line = &result.lines[0];
-    assert_eq!(0, line.range.start());
-    assert_eq!(4, line.range.end());
+    assert_eq!(scalar_offset(0), line.range.start());
+    assert_eq!(scalar_offset(4), line.range.end());
     assert_eq!(64.0, line.natural_width);
     assert_eq!(56.0, line.adjusted_width);
     assert_eq!(
@@ -142,10 +142,10 @@ fn kinsoku_leaves_greedy_break_alone_when_no_forbidden_punctuation_starts_line()
     let result = layout("中文中文哈哈", 64.0, true);
 
     assert_eq!(2, result.lines.len());
-    assert_eq!(0, result.lines[0].range.start());
-    assert_eq!(4, result.lines[0].range.end());
-    assert_eq!(4, result.lines[1].range.start());
-    assert_eq!(6, result.lines[1].range.end());
+    assert_eq!(scalar_offset(0), result.lines[0].range.start());
+    assert_eq!(scalar_offset(4), result.lines[0].range.end());
+    assert_eq!(scalar_offset(4), result.lines[1].range.start());
+    assert_eq!(scalar_offset(6), result.lines[1].range.end());
     assert_eq!(None, result.debug.line_decisions[0].repair);
     assert_eq!(None, result.debug.line_decisions[1].repair);
 }
@@ -199,7 +199,7 @@ fn numeric_suffix_symbol_remains_on_one_line() {
         .iter()
         .map(|line| {
             text.chars()
-                .skip(line.range.start() as usize)
+                .skip(line.range.start().value() as usize)
                 .take((line.range.end() - line.range.start()) as usize)
                 .collect::<String>()
         })
@@ -221,7 +221,7 @@ fn bibliographic_numeric_locator_exposes_structural_breaks() {
     let result = layout(text, 224.0, false);
     let locator_start = text
         .split_once("44")
-        .map(|(prefix, _)| prefix.encode_utf16().count() as i32)
+        .map(|(prefix, _)| prefix.chars().count() as i32)
         .expect("expected locator");
     let decision = result
         .debug
@@ -229,15 +229,15 @@ fn bibliographic_numeric_locator_exposes_structural_breaks() {
         .first()
         .expect("expected bibliographic decision");
 
-    assert_eq!(TextRange::new(locator_start, text.encode_utf16().count() as i32), decision.range);
+    assert_eq!(text_range(locator_start, text.chars().count() as i32), decision.range);
     assert_eq!("44(10):21-38.", decision.source_text);
     assert_eq!(
         vec![
             text.split_once('(')
-                .map(|(prefix, _)| prefix.encode_utf16().count() as i32)
+                .map(|(prefix, _)| scalar_offset(prefix.chars().count() as i32))
                 .expect("expected opening parenthesis"),
             text.split_once(':')
-                .map(|(prefix, _)| prefix.encode_utf16().count() as i32 + 1)
+                .map(|(prefix, _)| scalar_offset(prefix.chars().count() as i32 + 1))
                 .expect("expected colon"),
         ],
         decision.break_offsets,
@@ -273,7 +273,7 @@ fn kinsoku_level_none_leaves_forbidden_marks_at_line_start() {
         true,
     );
     assert!(none.debug.line_decisions.iter().all(|decision| decision.repair.is_none()));
-    assert!(none.lines.iter().any(|line| line.range.start() == 3));
+    assert!(none.lines.iter().any(|line| line.range.start().value() == 3));
 
     let basic = layout_at_kinsoku(
         text,
@@ -342,8 +342,8 @@ fn hanging_punctuation_fills_line_to_measure_and_overflows_visual() {
 
     assert!(hanging.lines.len() >= 2);
     let line = &hanging.lines[0];
-    assert_eq!(0, line.range.start());
-    assert_eq!(5, line.range.end());
+    assert_eq!(scalar_offset(0), line.range.start());
+    assert_eq!(scalar_offset(5), line.range.end());
     assert_eq!(64.0, line.adjusted_width);
     assert!(line.visual_width > 64.0, "hung mark must overflow: {}", line.visual_width);
     assert_eq!(

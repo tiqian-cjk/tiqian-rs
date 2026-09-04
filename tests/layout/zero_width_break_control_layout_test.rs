@@ -1,3 +1,4 @@
+use tiqian::core::geometry::scalar_offset;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
@@ -57,10 +58,10 @@ fn zero_width_space_is_unshaped_soft_break_for_both_breakers() {
                 .all(|glyph| glyph.cluster_range != control.range),
             "{name}"
         );
-        assert_eq!(0, result.lines[0].range.start(), "{name}");
-        assert_eq!(4, result.lines[0].range.end(), "{name}");
-        assert_eq!(4, result.lines[1].range.start(), "{name}");
-        assert_eq!(7, result.lines[1].range.end(), "{name}");
+        assert_eq!(scalar_offset(0), result.lines[0].range.start(), "{name}");
+        assert_eq!(scalar_offset(4), result.lines[0].range.end(), "{name}");
+        assert_eq!(scalar_offset(4), result.lines[1].range.start(), "{name}");
+        assert_eq!(scalar_offset(7), result.lines[1].range.end(), "{name}");
         assert_eq!(
             "ZeroWidthSpaceSoftBreakNoShape",
             result
@@ -86,7 +87,7 @@ fn leading_zero_width_space_does_not_create_empty_auto_wrapped_line() {
         ("lookahead", layout_with_lookahead("\u{200b}中", 8.0)),
     ] {
         assert_eq!(1, result.lines.len(), "{name}");
-        assert_eq!(0, result.lines[0].range.start(), "{name}");
-        assert_eq!(2, result.lines[0].range.end(), "{name}");
+        assert_eq!(scalar_offset(0), result.lines[0].range.start(), "{name}");
+        assert_eq!(scalar_offset(2), result.lines[0].range.end(), "{name}");
     }
 }

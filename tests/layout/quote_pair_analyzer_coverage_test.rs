@@ -1,5 +1,5 @@
 use tiqian::common::HashMap;
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole, FontRoleClassifier, FontRoleContext};
 use tiqian::layout::quote_pair_analyzer::{
@@ -18,7 +18,7 @@ fn deprecated_classify_pairs_with_font_role_classifier_delegates() {
         &classifier,
         &FontRoleContext::default(),
     );
-    assert_eq!(Some(&FontRole::CjkPunctuation), roles.get(&2));
+    assert_eq!(Some(&FontRole::CjkPunctuation), roles.get(&scalar_offset(2)));
 }
 
 #[test]
@@ -78,10 +78,10 @@ fn code_point_before_returns_supplementary_for_surrogate_pair() {
 #[test]
 fn quote_pair_aware_font_role_classifier_uses_override() {
     let classifier = CjkFontRoleClassifier;
-    let roles = HashMap::from([(2, FontRole::LatinText)]);
+    let roles = HashMap::from([(scalar_offset(2), FontRole::LatinText)]);
     let override_classifier = QuotePairAwareFontRoleClassifier::new(&classifier, &roles);
     let text = Text::from("ab");
-    let result = override_classifier.classify(&text, TextRange::new(0, 2), &FontRoleContext::default());
+    let result = override_classifier.classify(&text, text_range(0, 2), &FontRoleContext::default());
     assert_eq!(FontRole::LatinText, result);
 }
 
@@ -91,7 +91,7 @@ fn quote_pair_aware_font_role_classifier_delegates_when_no_override() {
     let roles = HashMap::new();
     let override_classifier = QuotePairAwareFontRoleClassifier::new(&classifier, &roles);
     let text = Text::from("ab");
-    let range = TextRange::new(0, 2);
+    let range = text_range(0, 2);
     let context = FontRoleContext::default();
     assert_eq!(
         classifier.classify(&text, range, &context),

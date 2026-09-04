@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -33,7 +33,7 @@ fn inline_edges_reserve_advance_and_move_glyph_origin() {
     let boxed = layout(
         "中。",
         vec![InlineBoxSpan::with_all(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             3.0,
             5.0,
             InlineBoxOuterSpacing::Source,
@@ -42,16 +42,16 @@ fn inline_edges_reserve_advance_and_move_glyph_origin() {
     let plain_stop = plain
         .clusters
         .iter()
-        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .find(|cluster| cluster.range == text_range(1, 2))
         .unwrap();
     let boxed_stop = boxed
         .clusters
         .iter()
-        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .find(|cluster| cluster.range == text_range(1, 2))
         .unwrap();
     let positioned = positioned_clusters(&boxed)
         .into_iter()
-        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .find(|cluster| cluster.range == text_range(1, 2))
         .unwrap();
 
     assert!((boxed_stop.advance - plain_stop.advance - 8.0).abs() < 0.001);
@@ -68,7 +68,7 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
     let narrow = layout(
         "中./中",
         vec![InlineBoxSpan::with_all(
-            TextRange::new(1, 3),
+            text_range(1, 3),
             3.0,
             5.0,
             InlineBoxOuterSpacing::Narrow,
@@ -99,7 +99,7 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
     let source = layout(
         "中./中",
         vec![InlineBoxSpan::with_all(
-            TextRange::new(1, 3),
+            text_range(1, 3),
             3.0,
             5.0,
             InlineBoxOuterSpacing::Source,

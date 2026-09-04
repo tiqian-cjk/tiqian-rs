@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
@@ -134,7 +134,7 @@ struct TailHyphenator;
 
 impl Hyphenator for TailHyphenator {
     fn hyphenate(&self, word: &Text) -> Vec<i32> {
-        vec![word.utf16_len() - 5]
+        vec![word.scalar_len().value() - 5]
     }
 }
 
@@ -155,14 +155,14 @@ fn greedy_breaker_produces_multiple_lines_when_width_overflows() {
     assert_eq!(2, result.lines.len());
     assert_eq!(8, result.clusters.len());
     let first = &result.lines[0];
-    assert_eq!(0, first.range.start());
-    assert_eq!(4, first.range.end());
+    assert_eq!(scalar_offset(0), first.range.start());
+    assert_eq!(scalar_offset(4), first.range.end());
     assert_eq!(64.0, first.adjusted_width);
     assert_eq!(0.0, first.top);
     assert_eq!(24.0, first.bottom);
     let second = &result.lines[1];
-    assert_eq!(4, second.range.start());
-    assert_eq!(8, second.range.end());
+    assert_eq!(scalar_offset(4), second.range.start());
+    assert_eq!(scalar_offset(8), second.range.end());
     assert_eq!(64.0, second.adjusted_width);
     assert_eq!(24.0, second.top);
     assert_eq!(48.0, second.bottom);
@@ -244,7 +244,7 @@ fn url_like_latin_token_breaks_at_separators_without_synthetic_hyphen() {
     assert!(result.lines.len() > 1);
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
     assert!(result.clusters.iter().all(|cluster| cluster.text != url));
-    assert!(result.clusters.iter().any(|cluster| cluster.text.ends_with('/')));
+    assert!(result.clusters.iter().any(|cluster| cluster.text.as_str().ends_with('/')));
     assert!(result.clusters.iter().any(|cluster| cluster.text == "example."));
     assert!(result.debug.line_decisions.iter().all(|decision| {
         decision
@@ -323,7 +323,7 @@ fn long_opaque_token_can_break_even_when_it_fits_alone_but_not_after_cjk_prefix(
 #[test]
 fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() {
     let text = "中文abcdefghij";
-    let technical_range = TextRange::new(2, text.encode_utf16().count() as i32);
+    let technical_range = text_range(2, text.chars().count() as i32);
     let technical = LineBreakSpan {
         range: technical_range,
         policy: LineBreakPolicy::ProgressiveTechnical,
@@ -342,7 +342,7 @@ fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() 
             breaker,
             &FOUR_SEVEN_HYPHENATOR,
         );
-        assert_eq!(6, result.lines[0].range.end());
+        assert_eq!(scalar_offset(6), result.lines[0].range.end());
         assert_eq!(0.0, result.lines[0].hyphen_advance);
         assert!(result.debug.line_decisions[0]
             .notes
@@ -373,7 +373,7 @@ fn progressive_technical_structural_break_falls_through_to_emergency_before_trac
         text,
         124.0,
         vec![LineBreakSpan {
-            range: TextRange::new(2, text.encode_utf16().count() as i32),
+            range: text_range(2, text.chars().count() as i32),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
         Box::new(LookaheadLineBreaker::default()),
@@ -401,7 +401,7 @@ fn progressive_technical_structural_break_falls_through_to_emergency_before_trac
 fn progressive_technical_hard_break_overrides_number_run_cohesion() {
     let text = "aaaaa1234567890bbbb";
     let span = LineBreakSpan {
-        range: TextRange::new(0, text.encode_utf16().count() as i32),
+        range: text_range(0, text.chars().count() as i32),
         policy: LineBreakPolicy::ProgressiveTechnical,
     };
     let breakers: Vec<Box<dyn LineBreaker>> = vec![
@@ -423,7 +423,7 @@ fn progressive_technical_hard_break_overrides_number_run_cohesion() {
 #[test]
 fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
     let text = "deadbeef1234deadbeef1234 ab.cdEfghijklmnop";
-    let technical_range = TextRange::new(25, text.encode_utf16().count() as i32);
+    let technical_range = text_range(25, text.chars().count() as i32);
     let result = layout_with_breaker(
         text,
         300.0,
@@ -467,7 +467,7 @@ fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
 fn progressive_technical_break_falls_through_structural_tier_before_overstretching_outside_text() {
     let text = "中 ab/cdefghijk";
     let span = LineBreakSpan {
-        range: TextRange::new(2, text.encode_utf16().count() as i32),
+        range: text_range(2, text.chars().count() as i32),
         policy: LineBreakPolicy::ProgressiveTechnical,
     };
     let breakers: Vec<Box<dyn LineBreaker>> = vec![
@@ -478,7 +478,7 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
 
     for breaker in breakers {
         let result = layout_with_breaker(text, 100.0, vec![span.clone()], breaker, &TWO_FOUR_SIX_HYPHENATOR);
-        assert_eq!(7, result.lines[0].range.end());
+        assert_eq!(scalar_offset(7), result.lines[0].range.end());
         assert_eq!(0.0, result.lines[0].hyphen_advance);
         assert!(result.debug.line_decisions[0]
             .notes
@@ -500,17 +500,17 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
 #[test]
 fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_measure() {
     let text = "Swift 这边是我最有体感的。JSONDecoder 慢是个老问题，SR-6252[36] 那个 issue 里挖出的根因是底层走 NSJSONSerialization 再桥接回 Objective-C，swift_dynamicCast 吃掉大量时间。";
-    let swift_range = TextRange::new(104, 121);
+    let swift_range = text_range(104, 121);
     let result = layout_with_breaker(
         text,
         579.0,
         vec![
             LineBreakSpan {
-                range: TextRange::new(16, 27),
+                range: text_range(16, 27),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             },
             LineBreakSpan {
-                range: TextRange::new(67, 86),
+                range: text_range(67, 86),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             },
             LineBreakSpan {
@@ -568,7 +568,7 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
 #[test]
 fn unbroken_progressive_span_uses_source_space_then_keeps_body_opportunities_available() {
     let text = "甲乙ab cd丙丁戊己";
-    let technical_range = TextRange::new(2, 7);
+    let technical_range = text_range(2, 7);
     let result = layout_with_breaker(
         text,
         129.0,
@@ -599,7 +599,7 @@ fn unbroken_progressive_span_uses_source_space_then_keeps_body_opportunities_ava
     );
     assert!(adjustment.deficit_after.abs() < 0.001);
     assert!(adjustment.allocations.iter().any(|allocation| {
-        allocation.cluster_range == TextRange::new(4, 5)
+        allocation.cluster_range == text_range(4, 5)
             && allocation.kind == "ProgressiveTechnical"
             && allocation.reason == "ProgressiveTechnicalWhitespaceStretch"
     }));
