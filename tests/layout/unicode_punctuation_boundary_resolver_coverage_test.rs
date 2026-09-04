@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::FontRole;
@@ -8,9 +8,9 @@ fn clusters(text: &str, font_key: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
     text.chars()
         .map(|character| {
-            let end = offset + character.len_utf16() as i32;
+            let end = offset + 1;
             let cluster = Cluster::new(
-                TextRange::new(offset, end),
+                text_range(offset, end),
                 Text::from(character.to_string()),
                 font_key.to_owned(),
                 advance,
@@ -139,7 +139,7 @@ fn resolve_unicode_punctuation_boundaries_with_is_whitespace_code_point_non_bmp(
     let text = Text::from("😀");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(0, 2), Text::from("😀"), "latin".to_owned(), 8.0)],
+        &[Cluster::new(text_range(0, 1), Text::from("😀"), "latin".to_owned(), 8.0)],
         &[FontRole::LatinText],
         &[],
     );
@@ -187,7 +187,7 @@ fn resolve_unicode_punctuation_boundaries_with_previous_content_cluster_empty() 
     let text = Text::from("“");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(0, 1), Text::from("“"), "latin".to_owned(), 16.0)],
+        &[Cluster::new(text_range(0, 1), Text::from("“"), "latin".to_owned(), 16.0)],
         &[FontRole::LatinText],
         &[],
     );
@@ -214,8 +214,8 @@ fn resolve_unicode_punctuation_boundaries_with_code_point_at_or_null_surrogate()
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("“"), "latin".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 3), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("“"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
         ],
         &[FontRole::LatinText, FontRole::Emoji],
         &[],
@@ -229,8 +229,8 @@ fn resolve_unicode_punctuation_boundaries_with_empty_range() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 0), Text::default(), "cjk".to_owned(), 0.0),
-            Cluster::new(TextRange::new(0, 1), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 0), Text::default(), "cjk".to_owned(), 0.0),
+            Cluster::new(text_range(0, 1), Text::from("中"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::CjkText; 2],
         &[],
@@ -280,10 +280,10 @@ fn resolve_unicode_punctuation_boundaries_with_decimal_mark_following_inside_dig
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from(" "), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("1"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(3, 5), Text::from("23"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from(" "), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("1"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(3, 5), Text::from("23"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText, FontRole::LatinText, FontRole::CjkPunctuation, FontRole::LatinText],
         &[],
@@ -297,10 +297,10 @@ fn resolve_unicode_punctuation_boundaries_with_decimal_mark_following_outside_di
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from(" "), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(3, 4), Text::from("2"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from(" "), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("，"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(3, 4), Text::from("2"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 4],
         &[],
@@ -325,7 +325,7 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_at_cluster_zero_forbidden
     let text = Text::from("a.5");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(1, 3), Text::from(".5"), "latin".to_owned(), 16.0)],
+        &[Cluster::new(text_range(1, 3), Text::from(".5"), "latin".to_owned(), 16.0)],
         &[FontRole::LatinText],
         &[],
     );
@@ -338,8 +338,8 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_after_letter_cluster_forb
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 3), Text::from(".5"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 3), Text::from(".5"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 2],
         &[],
@@ -353,9 +353,9 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_followed_by_letter_forbid
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 4), Text::from(".x"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 4), Text::from(".x"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -369,9 +369,9 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_alone_after_space_forbidd
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("."), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("."), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -385,9 +385,9 @@ fn resolve_unicode_punctuation_boundaries_astral_tail_keeps_pair_as_last_signifi
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 5), Text::from(".😀"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from(" "), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 4), Text::from(".😀"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -401,8 +401,8 @@ fn resolve_unicode_punctuation_boundaries_authored_break_inside_previous_cluster
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 3), Text::from("a\nb"), "latin".to_owned(), 24.0),
-            Cluster::new(TextRange::new(3, 4), Text::from("，"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 3), Text::from("a\nb"), "latin".to_owned(), 24.0),
+            Cluster::new(text_range(3, 4), Text::from("，"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 2],
         &[],
@@ -417,8 +417,8 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_at_text_start_no_left_conte
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("’"), "latin".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("s"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("’"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("s"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 2],
         &[],
@@ -432,8 +432,8 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_left_neighbour_supplementar
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("’"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("’"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::Emoji, FontRole::LatinText],
         &[],
@@ -450,9 +450,9 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_after_empty_cluster_forbi
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 1), Text::default(), "latin".to_owned(), 0.0),
-            Cluster::new(TextRange::new(1, 3), Text::from(".5"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 1), Text::default(), "latin".to_owned(), 0.0),
+            Cluster::new(text_range(1, 3), Text::from(".5"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -465,7 +465,7 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_right_neighbour_supplementa
     let text = Text::from("’😀");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(0, 3), Text::from("’😀"), "latin".to_owned(), 32.0)],
+        &[Cluster::new(text_range(0, 2), Text::from("’😀"), "latin".to_owned(), 32.0)],
         &[FontRole::LatinText],
         &[],
     );
@@ -544,8 +544,8 @@ fn resolve_unicode_punctuation_boundaries_with_code_point_before_surrogate_pair(
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("”"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("”"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::Emoji, FontRole::LatinText],
         &[],
@@ -559,8 +559,8 @@ fn resolve_unicode_punctuation_boundaries_with_code_point_at_or_null_supplementa
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("“"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("“"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::Emoji, FontRole::LatinText],
         &[],
@@ -586,9 +586,9 @@ fn resolve_unicode_punctuation_boundaries_is_decimal_mark_after_space_non_whites
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("1"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("，"), "latin".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("2"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("1"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("，"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(2, 3), Text::from("2"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -602,9 +602,9 @@ fn resolve_unicode_punctuation_boundaries_is_decimal_mark_after_space_empty_prev
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("，"), "latin".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("5"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("，"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(2, 3), Text::from("5"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -645,8 +645,8 @@ fn resolve_unicode_punctuation_boundaries_previous_content_cluster_empty_only() 
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 0), Text::default(), "latin".to_owned(), 0.0),
-            Cluster::new(TextRange::new(0, 1), Text::from("“"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 0), Text::default(), "latin".to_owned(), 0.0),
+            Cluster::new(text_range(0, 1), Text::from("“"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::LatinText; 2],
         &[],
@@ -660,9 +660,9 @@ fn resolve_unicode_punctuation_boundaries_next_content_cluster_returns_content()
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from(")"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("”"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from(")"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("”"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("中"), "cjk".to_owned(), 16.0),
         ],
         &[FontRole::LatinText, FontRole::LatinText, FontRole::CjkText],
         &[],
@@ -676,9 +676,9 @@ fn resolve_unicode_punctuation_boundaries_has_authored_break_with_code_point() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("\n"), "latin".to_owned(), 0.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("“"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(0, 1), Text::from("a"), "latin".to_owned(), 8.0),
+            Cluster::new(text_range(1, 2), Text::from("\n"), "latin".to_owned(), 0.0),
+            Cluster::new(text_range(2, 3), Text::from("“"), "latin".to_owned(), 8.0),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -691,7 +691,7 @@ fn resolve_unicode_punctuation_boundaries_has_authored_break_null_code_point() {
     let text = Text::from("“");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(0, 1), Text::from("“"), "latin".to_owned(), 16.0)],
+        &[Cluster::new(text_range(0, 1), Text::from("“"), "latin".to_owned(), 16.0)],
         &[FontRole::LatinText],
         &[],
     );
@@ -716,8 +716,8 @@ fn resolve_unicode_punctuation_boundaries_first_code_point_length_surrogate() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("“"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("“"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::Emoji, FontRole::LatinText],
         &[],
@@ -731,8 +731,8 @@ fn resolve_unicode_punctuation_boundaries_code_point_at_or_null_surrogate_pair()
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0),
-            Cluster::new(TextRange::new(2, 3), Text::from("“"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("“"), "latin".to_owned(), 16.0),
         ],
         &[FontRole::Emoji, FontRole::LatinText],
         &[],
@@ -745,7 +745,7 @@ fn resolve_unicode_punctuation_boundaries_code_point_before_surrogate_pair() {
     let text = Text::from("😀");
     let result = resolve_unicode_punctuation_boundaries(
         &text,
-        &[Cluster::new(TextRange::new(0, 2), Text::from("😀"), "emoji".to_owned(), 16.0)],
+        &[Cluster::new(text_range(0, 1), Text::from("😀"), "emoji".to_owned(), 16.0)],
         &[FontRole::Emoji],
         &[],
     );

@@ -126,8 +126,8 @@ fn ruby_base_range_crossing_cluster_boundaries_is_skipped() {
         LayoutConstraints::with_defaults(320.0),
         Vec::new(),
         vec![
-            RubySpan::new(tiqian::core::geometry::TextRange::new(0, 2), Text::from("zhōng")),
-            RubySpan::new(tiqian::core::geometry::TextRange::new(1, 3), Text::from("wén")),
+            RubySpan::new(tiqian::core::geometry::text_range(0, 2), Text::from("zhōng")),
+            RubySpan::new(tiqian::core::geometry::text_range(1, 3), Text::from("wén")),
         ],
         Box::new(ExplainableStubTextShaper),
     );
@@ -162,12 +162,12 @@ fn space_runs_resolve_both_wide_narrow_orders() {
 fn attached_reference_at_source_end_lays_out_without_virtual_boundary() {
     let text = "正文：“内容·[1]";
     let byte_start = text.find("[1]").unwrap();
-    let start = text[..byte_start].encode_utf16().count() as i32;
+    let start = text[..byte_start].chars().count() as i32;
     let result = layout(
         text,
         LayoutConstraints::with_defaults(320.0),
         vec![TextSpan {
-            range: tiqian::core::geometry::TextRange::new(start, start + 3),
+            range: tiqian::core::geometry::text_range(start, start + 3),
             style: TextStyle::builder()
                 .inline_attachment(InlineAttachment::Previous)
                 .build(),

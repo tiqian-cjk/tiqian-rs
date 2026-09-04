@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -153,7 +153,7 @@ fn formula_line_end_discards_the_trailing_boundary_advance() {
         false,
         Vec::new(),
         vec![InlineObjectSpan::with_trailing_boundary(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             24.0,
             12.0,
             12.0,
@@ -179,7 +179,7 @@ fn attached_footnote_trailing_glue_trims_when_the_line_ends_at_the_run() {
         164.0,
         false,
         vec![TextSpan {
-            range: TextRange::new(8, 11),
+            range: text_range(8, 11),
             style: TextStyle::builder()
                 .inline_attachment(InlineAttachment::Previous)
                 .build(),
@@ -190,7 +190,7 @@ fn attached_footnote_trailing_glue_trims_when_the_line_ends_at_the_run() {
     let trim = result.debug.line_edge_trim_decisions.iter().find(|decision| {
         decision.reason == "AttachedInlineVirtualBoundaryLineEndTrim"
     }).unwrap();
-    assert_eq!(TextRange::new(8, 11), trim.cluster_range);
+    assert_eq!(text_range(8, 11), trim.cluster_range);
     assert_eq!(8.0, trim.trim_amount);
     assert_eq!("trailing", trim.side);
 }
@@ -203,7 +203,7 @@ fn lone_latin_cluster_merges_both_auto_space_edge_trims_into_one_key() {
         .filter(|decision| decision.reason == "TextAutoSpaceLineEdgeTrim")
         .collect();
     assert_eq!(vec!["trailing", "leading"], trims.iter().map(|decision| decision.side.as_str()).collect::<Vec<_>>());
-    assert!(trims.iter().all(|decision| decision.cluster_range == TextRange::new(1, 2) && decision.trim_amount == 2.0), "{trims:?}");
+    assert!(trims.iter().all(|decision| decision.cluster_range == text_range(1, 2) && decision.trim_amount == 2.0), "{trims:?}");
     assert_eq!(16.0, result.lines[1].adjusted_width);
 }
 
@@ -216,7 +216,7 @@ fn attached_object_mark_hangs_instead_of_leaving_the_separator_at_an_edge() {
         false,
         Vec::new(),
         vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             100.0,
             12.0,
             12.0,
@@ -279,7 +279,7 @@ fn hyphen_squeeze_falls_back_to_zero_used_glue_when_the_line_already_fits() {
 #[test]
 fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
     let text = "中中中中中中 aaaa";
-    let spans = vec![LineBreakSpan { range: TextRange::new(0, Text::from(text).utf16_len()), policy: LineBreakPolicy::ProgressiveTechnical }];
+    let spans = vec![LineBreakSpan { range: text_range(0, Text::from(text).scalar_len().value()), policy: LineBreakPolicy::ProgressiveTechnical }];
     let tiny = layout_with_spans(text, 96.004, spans.clone(), None);
     assert_eq!(IntRange::new(0, 5), tiny.lines[0].cluster_range, "{:?}", tiny.lines);
     let deltas: Vec<_> = tiny.debug.justification_decisions.iter().flat_map(|decision| &decision.allocations)
@@ -303,7 +303,7 @@ fn formula_object_without_boundary_discards_nothing_at_line_end() {
         false,
         Vec::new(),
         vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             24.0,
             12.0,
             12.0,
@@ -320,7 +320,7 @@ fn baseline_shift_span_raises_the_final_cluster_shift() {
         200.0,
         false,
         vec![TextSpan {
-            range: TextRange::new(0, 2),
+            range: text_range(0, 2),
             style: TextStyle::builder().baseline_shift(4.0).build(),
         }],
         Vec::new(),
@@ -348,7 +348,7 @@ fn emergency_selected_break_opens_the_preferred_tracking_span() {
         text,
         101.0,
         vec![LineBreakSpan {
-            range: TextRange::new(0, Text::from(text).utf16_len()),
+            range: text_range(0, Text::from(text).scalar_len().value()),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
         None,
@@ -368,7 +368,7 @@ fn technical_line_body_stretch_rejects_the_clean_tier_and_replays() {
         text,
         96.0,
         vec![LineBreakSpan {
-            range: TextRange::new(0, Text::from(text).utf16_len()),
+            range: text_range(0, Text::from(text).scalar_len().value()),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
         None,
@@ -424,7 +424,7 @@ impl TextShaper for DashInkBoundsTextShaper {
             shaped.clusters,
             shaped.glyph_runs.into_iter().map(|run| tiqian::core::layout_model::GlyphRun {
                 glyphs: run.glyphs.into_iter().map(|glyph| {
-                    input.display_text.contains('⸺').then(|| tiqian::core::layout_model::Glyph {
+                    input.display_text.as_str().contains('⸺').then(|| tiqian::core::layout_model::Glyph {
                         bounds: Some(tiqian::core::geometry::Rect {
                             left: self.left,
                             top: 0.0,
@@ -468,7 +468,7 @@ fn inline_object_with_zero_discardable_advance() {
         false,
         Vec::new(),
         vec![InlineObjectSpan::with_trailing_boundary(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             24.0,
             12.0,
             12.0,
@@ -489,7 +489,7 @@ fn inline_object_separator_space_trim_edge() {
         false,
         Vec::new(),
         vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             16.0,
             12.0,
             12.0,

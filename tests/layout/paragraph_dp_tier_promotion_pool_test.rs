@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -11,7 +11,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -35,7 +35,7 @@ fn latin_clusters() -> Vec<Cluster> {
 #[test]
 fn foreign_span_candidate_survives_the_promotion_pool_purge() {
     let clusters = latin_clusters();
-    let span = TextRange::new(0, clusters.len() as i32);
+    let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;
@@ -44,7 +44,7 @@ fn foreign_span_candidate_survives_the_promotion_pool_purge() {
             1,
             ProgressiveBreakOpportunity::new(
                 ProgressiveBreakTier::Emergency,
-                TextRange::new(0, 1),
+                text_range(0, 1),
             ),
         ),
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
@@ -73,14 +73,14 @@ fn committed_compressed_line_with_foreign_span_opportunities_keeps_plain_push_in
             2,
             ProgressiveBreakOpportunity::new(
                 ProgressiveBreakTier::Emergency,
-                TextRange::new(0, 2),
+                text_range(0, 2),
             ),
         ),
         (
             3,
             ProgressiveBreakOpportunity::new(
                 ProgressiveBreakTier::Whitespace,
-                TextRange::new(2, 4),
+                text_range(2, 4),
             ),
         ),
     ]);
@@ -108,7 +108,7 @@ fn committed_compressed_end_without_opportunity_keeps_plain_push_in_reason() {
         2,
         ProgressiveBreakOpportunity::new(
             ProgressiveBreakTier::Emergency,
-            TextRange::new(0, 2),
+            text_range(0, 2),
         ),
     )]);
 

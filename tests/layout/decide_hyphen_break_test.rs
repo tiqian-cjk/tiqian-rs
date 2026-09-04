@@ -1,13 +1,13 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::progressive_break_decisions::decide_hyphen_break;
 
 fn cluster(start: i32, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(start, start + 1),
+        text_range(start, start + 1),
         Text::from("x"),
         "k".to_owned(),
         advance,

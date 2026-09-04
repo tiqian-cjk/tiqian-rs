@@ -16,7 +16,6 @@ collections-std = []
 default = ["collections-hashbrown"]
 
 [dependencies]
-bytecount = {version = "0.6", features = ["runtime-dispatch-simd"]}
 icu_properties = {version = "2.3", features = ["compiled_data"]}
 
 hashbrown = {version = "0.17", optional = true}
@@ -28,8 +27,6 @@ mimalloc = "0.1.47"
 harfrust = "0.13"
 pollster = "1.0"
 read-fonts = "0.43"
-serde = {version = "1", features = ["derive"]}
-serde_json = "1"
 skrifa = "0.46"
 vello = "0.10.0"
 winit = "0.30"

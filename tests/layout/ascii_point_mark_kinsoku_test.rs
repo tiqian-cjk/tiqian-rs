@@ -1,7 +1,7 @@
 use tiqian::clreq::clreq_profile::{
     ClreqProfile, ClreqProfileResolver, HangingPunctuationStyle, KinsokuLevel, KinsokuMode,
 };
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineLengthGrid, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle,
@@ -246,7 +246,7 @@ fn first_line_indent_uses_the_same_impossible_measure_fallback() {
 fn line_break_geometry_includes_bopomofo_spread_when_choosing_the_fallback() {
     let text = "中,文";
     for breaker in greedy_and_lookahead() {
-        let result = layout_with(text, 32.0, breaker, KinsokuLevel::Basic, HangingPunctuationStyle::Disabled, Some(Ic::ZERO), vec![RubySpan::with_kind(TextRange::new(0, 1), Text::from("ㄅ"), RubyKind::Bopomofo)], Vec::new(), true);
+        let result = layout_with(text, 32.0, breaker, KinsokuLevel::Basic, HangingPunctuationStyle::Disabled, Some(Ic::ZERO), vec![RubySpan::with_kind(text_range(0, 1), Text::from("ㄅ"), RubyKind::Bopomofo)], Vec::new(), true);
         assert!(line_texts(&result, text).iter().all(|line| !line.starts_with(',')));
         assert_eq!("AttachedAsciiPointMarkImpossibleMeasureHang", result.debug.contextual_kinsoku_decisions[0].impossible_measure_fallback.as_deref().unwrap());
     }
@@ -255,7 +255,7 @@ fn line_break_geometry_includes_bopomofo_spread_when_choosing_the_fallback() {
 #[test]
 fn styled_point_mark_run_can_extend_one_impossible_measure_hang() {
     let text = "中!,文";
-    let spans = vec![TextSpan { range: TextRange::new(2, 3), style: TextStyle::builder().font_weight(700).build() }];
+    let spans = vec![TextSpan { range: text_range(2, 3), style: TextStyle::builder().font_weight(700).build() }];
     for breaker in greedy_and_lookahead() {
         let result = layout_with(text, 15.0, breaker, KinsokuLevel::Basic, HangingPunctuationStyle::Disabled, Some(Ic::ZERO), Vec::new(), spans.clone(), true);
         assert!(line_texts(&result, text).iter().all(|line| !line.starts_with('!') && !line.starts_with(',')));

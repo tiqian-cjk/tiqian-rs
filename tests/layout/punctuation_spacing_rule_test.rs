@@ -1,5 +1,5 @@
 use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::text::Text;
 use tiqian::layout::punctuation_model::{
     PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,
@@ -14,7 +14,7 @@ fn atom(character: char, index: i32) -> PunctuationAtom {
     )
     .build(
         character,
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         EM,
         None,
         PunctuationGluePlacement::MainlandSimplified,
@@ -80,7 +80,7 @@ fn cjk_closing_before_ascii_point_mark_consumes_only_closing_glue() {
     assert_eq!(8.0, adjustment.natural_inner_glue);
     assert_eq!(0.0, adjustment.adjusted_inner_glue);
     assert_eq!(8.0, adjustment.reduction);
-    assert_eq!(TextRange::new(0, 1), adjustment.reduction_target_range);
+    assert_eq!(text_range(0, 1), adjustment.reduction_target_range);
     assert_eq!(
         "collapse-cjk-closing-before-ascii-point-mark",
         adjustment.reason

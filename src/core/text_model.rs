@@ -2,7 +2,7 @@
 
 use crate::common::HashSet;
 
-use super::geometry::TextRange;
+use super::geometry::{ScalarOffset, TextRange};
 use super::text::Text;
 use super::units::Ic;
 
@@ -10,11 +10,11 @@ use super::units::Ic;
 pub struct TiqianTextContent {
     pub text: Text,
     pub spans: Vec<TextSpan>,
-    /// 即使不携带影响布局的样式，也必须成为 cluster 边界的 source offset（UTF-16 code unit）。链接、颜色、
+    /// 即使不携带影响布局的样式，也必须成为 cluster 边界的 scalar source offset。链接、颜色、
     /// 下划线等仅渲染范围需要精确的占用几何；否则，拉丁 cluster 中在尾随标点前结束的范围
     /// （`template|.`）会退化为按比例切片。
-    pub source_boundaries: HashSet<i32>,
-    /// 内部西文 token 使用显式断行策略的、影响布局的 source range（UTF-16 code unit）。
+    pub source_boundaries: HashSet<ScalarOffset>,
+    /// 内部西文 token 使用显式断行策略的、影响布局的 scalar source range。
     pub line_break_spans: Vec<LineBreakSpan>,
     /// `VerbatimRangeAutoSpace`：逐字范围（行内代码、技术文本）内部的 CJK↔Western 边界
     /// 不接收自动间距。严格位于范围内的边界被抑制；范围外缘保留周围正文的契约。
@@ -49,7 +49,7 @@ impl TiqianTextContentBuilder {
         self
     }
 
-    pub fn source_boundaries(mut self, source_boundaries: HashSet<i32>) -> Self {
+    pub fn source_boundaries(mut self, source_boundaries: HashSet<ScalarOffset>) -> Self {
         self.content.source_boundaries = source_boundaries;
         self
     }
@@ -531,8 +531,8 @@ pub struct DecorationSpan {
 /// model 并列而不在其中。平台无关（`argb` Int），所以 frontend contract 不携带 Skia type。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ColorSpan {
-    pub start: i32,
-    pub end: i32,
+    pub start: ScalarOffset,
+    pub end: ScalarOffset,
     pub argb: i32,
 }
 

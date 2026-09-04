@@ -1,5 +1,5 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
@@ -89,7 +89,7 @@ fn western_quote_pair_reaches_latin_font_pipeline_without_cjk_geometry() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| matches!(override_info.range.start(), 0 | 6))
+        .filter(|override_info| [scalar_offset(0), scalar_offset(6)].contains(&override_info.range.start()))
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(
@@ -114,7 +114,7 @@ fn cjk_quote_pair_reaches_punctuation_geometry_with_outer_context_evidence() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| matches!(override_info.range.start(), 1 | 3))
+        .filter(|override_info| [scalar_offset(1), scalar_offset(3)].contains(&override_info.range.start()))
         .collect::<Vec<_>>();
     assert_eq!(2, quote_overrides.len());
     assert!(
@@ -128,7 +128,7 @@ fn cjk_quote_pair_reaches_punctuation_geometry_with_outer_context_evidence() {
             .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext")
     );
     assert_eq!(
-        vec![1, 3],
+        vec![scalar_offset(1), scalar_offset(3)],
         result
             .debug
             .punctuation_decisions
@@ -147,7 +147,7 @@ fn mixed_paragraph_start_quote_uses_paragraph_language_fallback() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| matches!(override_info.range.start(), 0 | 8))
+        .filter(|override_info| [scalar_offset(0), scalar_offset(8)].contains(&override_info.range.start()))
         .collect::<Vec<_>>();
     assert_eq!(2, quote_overrides.len());
     assert!(
@@ -180,7 +180,7 @@ fn contraction_apostrophe_stays_latin_inside_cjk_single_quotes() {
             .debug
             .punctuation_decisions
             .iter()
-            .all(|decision| decision.range.start() != 6)
+            .all(|decision| decision.range.start() != scalar_offset(6))
     );
 }
 
@@ -317,10 +317,10 @@ fn quote_roles_survive_style_and_source_boundaries() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(2, 7),
+                    range: text_range(2, 7),
                     style: TextStyle::builder().font_weight(700).build(),
                 }])
-                .source_boundaries(HashSet::from([1, 2, 6, 7, 8, 9]))
+                .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(6), scalar_offset(7), scalar_offset(8), scalar_offset(9)]))
                 .build(),
             LayoutConstraints::with_defaults(320.0),
         )
@@ -343,15 +343,15 @@ fn quote_roles_survive_style_and_source_boundaries() {
             )
         })
         .collect::<std::collections::HashMap<_, _>>();
-    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&1));
-    assert_eq!(Some(&"LatinText"), roles_by_index.get(&6));
-    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&8));
+    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&scalar_offset(1)));
+    assert_eq!(Some(&"LatinText"), roles_by_index.get(&scalar_offset(6)));
+    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&scalar_offset(8)));
     assert_eq!(
         "latin-primary",
         result
             .clusters
             .iter()
-            .find(|cluster| cluster.range.start() == 6)
+            .find(|cluster| cluster.range.start().value() == 6)
             .unwrap()
             .font_key
     );
@@ -372,11 +372,11 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         "这些太直白了是吧，\n “欧派”“double”“double may”呢",
     ] {
         let result = layout(text);
-        let quote_indices = text
-            .encode_utf16()
+        let quote_indices: HashSet<tiqian::core::geometry::ScalarOffset> = text
+            .chars()
             .enumerate()
-            .filter_map(|(index, code_unit)| {
-                matches!(code_unit, 0x2018 | 0x2019 | 0x201C | 0x201D).then_some(index as i32)
+            .filter_map(|(index, character)| {
+                matches!(character, '‘' | '’' | '“' | '”').then_some(scalar_offset(index as i32))
             })
             .collect::<HashSet<_>>();
 
@@ -406,15 +406,15 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
             "{text}",
         );
         let final_open = text
-            .encode_utf16()
+            .chars()
             .enumerate()
-            .filter_map(|(index, unit)| (unit == 0x201C).then_some(index as i32))
+            .filter_map(|(index, character)| (character == '“').then_some(scalar_offset(index as i32)))
             .last()
             .unwrap();
         let final_close = text
-            .encode_utf16()
+            .chars()
             .enumerate()
-            .filter_map(|(index, unit)| (unit == 0x201D).then_some(index as i32))
+            .filter_map(|(index, character)| (character == '”').then_some(scalar_offset(index as i32)))
             .last()
             .unwrap();
         let final_overrides = result
@@ -422,7 +422,7 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
             .role_overrides
             .iter()
             .filter(|override_info| {
-                matches!(override_info.range.start(), index if index == final_open || index == final_close)
+                override_info.range.start() == final_open || override_info.range.start() == final_close
             })
             .collect::<Vec<_>>();
         assert_eq!(2, final_overrides.len(), "{text}");
@@ -456,15 +456,15 @@ fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
     );
 
     let final_open = text
-        .encode_utf16()
+        .chars()
         .enumerate()
-        .filter_map(|(index, unit)| (unit == 0x201C).then_some(index as i32))
+        .filter_map(|(index, character)| (character == '“').then_some(scalar_offset(index as i32)))
         .last()
         .unwrap();
     let final_close = text
-        .encode_utf16()
+        .chars()
         .enumerate()
-        .filter_map(|(index, unit)| (unit == 0x201D).then_some(index as i32))
+        .filter_map(|(index, character)| (character == '”').then_some(scalar_offset(index as i32)))
         .last()
         .unwrap();
     let final_overrides = result
@@ -472,7 +472,7 @@ fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
         .role_overrides
         .iter()
         .filter(|override_info| {
-            matches!(override_info.range.start(), index if index == final_open || index == final_close)
+            override_info.range.start() == final_open || override_info.range.start() == final_close
         })
         .collect::<Vec<_>>();
     assert_eq!(2, final_overrides.len());
@@ -517,13 +517,13 @@ fn records_role_overrides_for_resolved_quote_pairs() {
         .debug
         .role_overrides
         .iter()
-        .find(|override_info| override_info.range.start() == 0)
+        .find(|override_info| override_info.range.start().value() == 0)
         .unwrap();
     let closing = result
         .debug
         .role_overrides
         .iter()
-        .find(|override_info| override_info.range.start() == 6)
+        .find(|override_info| override_info.range.start().value() == 6)
         .unwrap();
     assert_eq!("LatinText", opening.overridden_role);
     assert_eq!("CjkPunctuation", opening.original_role);
@@ -540,7 +540,7 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         .debug
         .font_decisions
         .iter()
-        .find(|decision| decision.range.start() == 2)
+        .find(|decision| decision.range.start().value() == 2)
         .unwrap();
     assert_eq!("CjkPunctuation", opening.role);
     assert_eq!("cjk-primary", opening.font_key);
@@ -549,7 +549,7 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         .debug
         .role_overrides
         .iter()
-        .find(|override_info| override_info.range.start() == 2)
+        .find(|override_info| override_info.range.start().value() == 2)
         .unwrap();
     assert_eq!(
         "PairedPunctuationContentScriptContext",

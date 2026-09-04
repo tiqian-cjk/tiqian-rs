@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineBoxSpan, LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
@@ -15,7 +15,7 @@ fn end_only_inline_box_emits_edge_without_inline_start_field() {
             LayoutConstraints::with_defaults(320.0),
         )
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
-        .inline_boxes(vec![InlineBoxSpan::with_edges(TextRange::new(0, 2), 0.0, 4.0)])
+        .inline_boxes(vec![InlineBoxSpan::with_edges(text_range(0, 2), 0.0, 4.0)])
         .build(),
     );
 

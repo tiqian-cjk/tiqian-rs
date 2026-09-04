@@ -2,13 +2,10 @@ use tiqian::clreq::number_symbol_cohesion::number_symbol_cohesion;
 use tiqian::core::text::Text;
 
 fn groups(text: &str) -> Vec<String> {
-    number_symbol_cohesion::unbreakable_ranges(&Text::from(text))
+    let source = Text::from(text);
+    number_symbol_cohesion::unbreakable_ranges(&source)
         .into_iter()
-        .map(|range| {
-            let units: Vec<u16> = text.encode_utf16().collect();
-            String::from_utf16(&units[range.first() as usize..=range.last() as usize])
-                .expect("Kotlin source range must be valid UTF-16")
-        })
+        .map(|range| source.slice(range).to_owned())
         .collect()
 }
 

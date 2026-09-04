@@ -1,3 +1,4 @@
+use tiqian::core::geometry::scalar_offset;
 use tiqian::core::text::Text;
 use tiqian::linebreak::line_break::{
     BreakKind, LineBreakAnalyzer, SimpleCharacterLineBreakAnalyzer, is_mandatory_break_code_point,
@@ -38,7 +39,7 @@ fn marks_required_after_line_feed() {
         BreakKind::Required,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 2)
+            .find(|opportunity| opportunity.index == scalar_offset(2))
             .unwrap()
             .kind
     );
@@ -46,7 +47,7 @@ fn marks_required_after_line_feed() {
         BreakKind::Allowed,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 1)
+            .find(|opportunity| opportunity.index == scalar_offset(1))
             .unwrap()
             .kind
     );
@@ -59,7 +60,7 @@ fn collapses_crlf_to_a_single_break_after_lf() {
         BreakKind::Allowed,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 2)
+            .find(|opportunity| opportunity.index == scalar_offset(2))
             .unwrap()
             .kind
     );
@@ -67,7 +68,7 @@ fn collapses_crlf_to_a_single_break_after_lf() {
         BreakKind::Required,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 3)
+            .find(|opportunity| opportunity.index == scalar_offset(3))
             .unwrap()
             .kind
     );
@@ -80,7 +81,7 @@ fn preserves_each_blank_line_break() {
         BreakKind::Required,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 2)
+            .find(|opportunity| opportunity.index == scalar_offset(2))
             .unwrap()
             .kind
     );
@@ -88,7 +89,7 @@ fn preserves_each_blank_line_break() {
         BreakKind::Required,
         opportunities
             .iter()
-            .find(|opportunity| opportunity.index == 3)
+            .find(|opportunity| opportunity.index == scalar_offset(3))
             .unwrap()
             .kind
     );
@@ -102,7 +103,7 @@ fn test_simple_character_line_break_analyzer() {
 
     let single = analyzer.analyze(&Text::from("A"));
     assert_eq!(1, single.len());
-    assert_eq!(1, single[0].index);
+    assert_eq!(scalar_offset(1), single[0].index);
     assert_eq!(BreakKind::Required, single[0].kind);
     assert_eq!("SimpleCharacterLineBreakAnalyzer", single[0].reason);
 

@@ -51,7 +51,7 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
         assert_eq!(role, decision.role, "{text}");
         assert_eq!(
             text.chars().position(|character| character == mark).unwrap() as i32,
-            decision.range.start(),
+            decision.range.start().value(),
             "{text}",
         );
         assert_eq!(
@@ -61,7 +61,7 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
                 .last()
                 .unwrap() as i32
                 + 1,
-            decision.range.end(),
+            decision.range.end().value(),
             "{text}",
         );
         assert_eq!("DashEllipsisSurroundingScriptContext", decision.source, "{text}");
@@ -176,7 +176,7 @@ fn western_context_keeps_dash_and_ellipsis_on_latin_face_and_preserves_source_di
     let text = "English — next; ellipsis… / slash. A——B; Wait……what?";
     let result = layout(text, "zh-Hans");
     for decision in result.debug.font_decisions.iter().filter(|decision| {
-        decision.source_text.contains('—') || decision.source_text.contains('…')
+        decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
     }) {
         assert_eq!("LatinText", decision.role);
         assert_eq!(decision.source_text, decision.display_text);
@@ -185,7 +185,7 @@ fn western_context_keeps_dash_and_ellipsis_on_latin_face_and_preserves_source_di
     assert_eq!("……", result.debug.font_decisions.iter().find(|d| d.source_text == "……").unwrap().source_text);
     assert!(result.debug.punctuation_decisions.iter().all(|decision| !matches!(decision.ch, '—' | '…')));
     assert!(result.debug.role_overrides.iter().filter(|decision| {
-        decision.source_text.contains('—') || decision.source_text.contains('…')
+        decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
     }).all(|decision| decision.source == "DashEllipsisSurroundingScriptContext"));
 }
 
@@ -197,7 +197,7 @@ fn cjk_context_keeps_clreq_display_substitution_independent_of_mark_count() {
         assert_eq!(display, decision.display_text);
     }
     assert!(result.debug.font_decisions.iter().filter(|decision| {
-        decision.source_text.contains('—') || decision.source_text.contains('…')
+        decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
     }).all(|decision| decision.role == "CjkPunctuation"));
 }
 

@@ -13,8 +13,8 @@ fn decisions(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDe
 #[test]
 fn nested_pair_inside_neutral_enclosing_inherits_the_outer_quotation() {
     let decisions = decisions("“—‘文’—”");
-    let outer = decisions.iter().find(|decision| decision.index == 0).unwrap();
-    let inner = decisions.iter().find(|decision| decision.index == 2).unwrap();
+    let outer = decisions.iter().find(|decision| decision.index.value() == 0).unwrap();
+    let inner = decisions.iter().find(|decision| decision.index.value() == 2).unwrap();
     assert_eq!("PairedPunctuationEnclosingQuoteContext", inner.source);
     assert_eq!("quote-pair-inherits-enclosing-quotation", inner.reason);
     assert_eq!(outer.role, inner.role);
@@ -27,7 +27,7 @@ fn nested_pair_inside_neutral_enclosing_inherits_the_outer_quotation() {
 fn space_before_unmatched_quote_with_cjk_right_skips_the_delimited_rule() {
     let decision = decisions(" ’中")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("UnmatchedQuoteSurroundingScriptContext", decision.source);
     assert_eq!(FontRole::CjkPunctuation, decision.role);
@@ -37,7 +37,7 @@ fn space_before_unmatched_quote_with_cjk_right_skips_the_delimited_rule() {
 fn tab_before_a_wholly_western_pair_delimits_like_a_space() {
     let decision = decisions("\t“a”")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("DelimitedWesternQuotationRun", decision.source);
 }
@@ -46,7 +46,7 @@ fn tab_before_a_wholly_western_pair_delimits_like_a_space() {
 fn space_before_a_pair_with_non_western_content_skips_the_delimited_rule() {
     let decision = decisions(" “中”")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("PairedPunctuationContentScriptContext", decision.source);
     assert_eq!(FontRole::CjkPunctuation, decision.role);
@@ -56,7 +56,7 @@ fn space_before_a_pair_with_non_western_content_skips_the_delimited_rule() {
 fn space_before_a_mixed_content_pair_reports_mixed_content() {
     let decision = decisions(" “a中”")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("ParagraphLanguageQuoteContext", decision.source);
     assert!(decision.reason.contains("mixed-quoted-content"));
@@ -66,7 +66,7 @@ fn space_before_a_mixed_content_pair_reports_mixed_content() {
 fn mixed_enclosing_level_falls_back_to_paragraph_language() {
     let decision = decisions("a“中”文")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("ParagraphLanguageQuoteContext", decision.source);
     assert!(decision.reason.contains("mixed-enclosing-level-script"));
@@ -85,7 +85,7 @@ fn non_chinese_locale_resolves_neutral_context_to_latin_text() {
 fn private_use_char_before_a_quote_fails_the_low_surrogate_range_above() {
     let decision = decisions("\u{E000}“中")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!("UnmatchedQuoteSurroundingScriptContext", decision.source);
     assert_eq!(FontRole::CjkPunctuation, decision.role);
@@ -94,8 +94,8 @@ fn private_use_char_before_a_quote_fails_the_low_surrogate_range_above() {
 #[test]
 fn sibling_pairs_inside_one_quotation_each_inherit_the_outer_role() {
     let decisions = decisions("“‘a’‘b’”");
-    let first = decisions.iter().find(|decision| decision.index == 1).unwrap();
-    let second = decisions.iter().find(|decision| decision.index == 4).unwrap();
+    let first = decisions.iter().find(|decision| decision.index.value() == 1).unwrap();
+    let second = decisions.iter().find(|decision| decision.index.value() == 4).unwrap();
     assert_eq!("PairedPunctuationEnclosingQuoteContext", first.source);
     assert_eq!("PairedPunctuationEnclosingQuoteContext", second.source);
     assert_eq!(first.role, second.role);

@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -10,7 +10,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         16.0,

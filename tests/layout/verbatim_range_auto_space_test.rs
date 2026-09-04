@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, TextRange};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
@@ -37,7 +37,7 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
             .count()
     );
 
-    let result = layout(text, vec![TextRange::new(1, 13)]);
+    let result = layout(text, vec![text_range(1, 13)]);
     assert_eq!(
         2,
         result
@@ -75,7 +75,7 @@ fn authored_space_inside_verbatim_range_is_not_normalized() {
             .count()
     );
 
-    let result = layout(text, vec![TextRange::new(1, 5)]);
+    let result = layout(text, vec![text_range(1, 5)]);
     assert_eq!(
         0,
         result

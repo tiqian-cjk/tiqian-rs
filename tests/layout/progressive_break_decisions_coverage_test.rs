@@ -1,5 +1,5 @@
 use tiqian::common::{HashMap, HashSet};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::progressive_break_decisions::{
@@ -9,7 +9,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -61,7 +61,7 @@ fn allowed(
 
 #[test]
 fn defaults_admit_the_clean_tier_without_geometry_inputs() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let opportunities = HashMap::from([
         (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
@@ -73,7 +73,7 @@ fn defaults_admit_the_clean_tier_without_geometry_inputs() {
 
 #[test]
 fn line_start_at_the_overflow_boundary_scans_an_empty_range() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let opportunities = HashMap::from([(
         2,
         ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
@@ -84,7 +84,7 @@ fn line_start_at_the_overflow_boundary_scans_an_empty_range() {
 
 #[test]
 fn two_same_tier_boundaries_pick_the_rightmost() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let clusters: Vec<_> = (0..5).map(|index| cluster(index, "中", 16.0)).collect();
     let opportunities = HashMap::from([
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
@@ -96,7 +96,7 @@ fn two_same_tier_boundaries_pick_the_rightmost() {
 
 #[test]
 fn visibly_loose_clean_tiers_fall_through_to_emergency() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let clusters: Vec<_> = (0..5).map(|index| cluster(index, "中", 16.0)).collect();
     let opportunities = HashMap::from([
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
@@ -108,7 +108,7 @@ fn visibly_loose_clean_tiers_fall_through_to_emergency() {
 
 #[test]
 fn a_leftward_emergency_boundary_keeps_the_best_clean_tier() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let clusters: Vec<_> = (0..5).map(|index| cluster(index, "中", 16.0)).collect();
     let opportunities = HashMap::from([
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
@@ -126,7 +126,7 @@ fn span_edge_and_whitespace_clusters_do_not_count_as_technical_units() {
         cluster(2, "a", 16.0),
         cluster(3, "b", 16.0),
     ];
-    let span = TextRange::new(1, 4);
+    let span = text_range(1, 4);
     let opportunities = HashMap::from([
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
         (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
@@ -138,7 +138,7 @@ fn span_edge_and_whitespace_clusters_do_not_count_as_technical_units() {
 #[test]
 fn single_technical_unit_falls_back_to_the_cjk_gap_density() {
     let clusters = vec![cluster(0, "a", 16.0), cluster(1, "b", 16.0), cluster(2, "c", 16.0)];
-    let span = TextRange::new(0, 1);
+    let span = text_range(0, 1);
     let opportunities = HashMap::from([
         (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
@@ -149,7 +149,7 @@ fn single_technical_unit_falls_back_to_the_cjk_gap_density() {
 
 #[test]
 fn candidate_outside_the_cluster_list_is_allowed() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let opportunities = HashMap::from([(
         1,
         ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
@@ -163,19 +163,19 @@ fn candidates_outside_the_active_span_are_allowed() {
     let clusters: Vec<_> = (0..4).map(|index| cluster(index, "中", 16.0)).collect();
     let leading_span = HashMap::from([(
         1,
-        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, TextRange::new(5, 10)),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(5, 10)),
     )]);
     assert!(allowed(0, 1, 2, &leading_span, Some(&clusters)));
 
     let trailing_span = HashMap::from([(
         1,
-        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, TextRange::new(0, 2)),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 2)),
     )]);
     assert!(allowed(0, 1, 2, &trailing_span, Some(&clusters)));
 
     let inner_span = HashMap::from([(
         1,
-        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, TextRange::new(0, 4)),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 4)),
     )]);
     assert!(!allowed(0, 1, 2, &inner_span, Some(&clusters)));
 }
@@ -183,8 +183,8 @@ fn candidates_outside_the_active_span_are_allowed() {
 #[test]
 fn candidates_of_a_different_span_are_allowed() {
     let opportunities = HashMap::from([
-        (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, TextRange::new(0, 2))),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, TextRange::new(2, 6))),
+        (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 2))),
+        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, text_range(2, 6))),
     ]);
 
     assert!(allowed(0, 1, 3, &opportunities, None));
@@ -192,7 +192,7 @@ fn candidates_of_a_different_span_are_allowed() {
 
 #[test]
 fn same_tier_past_the_raw_greedy_is_allowed_and_worse_tiers_are_not() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let opportunities = HashMap::from([
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
         (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
@@ -205,7 +205,7 @@ fn same_tier_past_the_raw_greedy_is_allowed_and_worse_tiers_are_not() {
 
 #[test]
 fn candidates_before_the_raw_greedy_must_match_the_selected_boundary() {
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let opportunities = HashMap::from([
         (1, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
         (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),

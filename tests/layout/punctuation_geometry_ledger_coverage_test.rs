@@ -1,6 +1,6 @@
 use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
 use tiqian::common::HashMap;
-use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::geometry::{text_range, Rect};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -19,7 +19,7 @@ const EM: f32 = 16.0;
 
 fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::new(
-        TextRange::new(start, start + text.encode_utf16().count() as i32),
+        text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         font_key.to_owned(),
         advance,
@@ -49,7 +49,7 @@ fn ledger_of(texts: &[&str]) -> PunctuationGeometryLedger {
         .iter()
         .map(|text| {
             let result = cluster(text, start, EM, "cjk");
-            start = result.range.end();
+            start = result.range.end().value();
             result
         })
         .collect();
@@ -62,7 +62,7 @@ fn ledger_of(texts: &[&str]) -> PunctuationGeometryLedger {
 }
 
 fn line(range: IntRange, start: i32, end: i32) -> LineCandidate {
-    LineCandidate::new(range, TextRange::new(start, end), 32.0, 32.0)
+    LineCandidate::new(range, text_range(start, end), 32.0, 32.0)
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn decision_info_lists_every_geometry_with_budgets() {
     let infos = ledger_of(&["。", "中"]).to_decision_info();
     assert_eq!(1, infos.len());
     let info = &infos[0];
-    assert_eq!(TextRange::new(0, 1), info.range);
+    assert_eq!(text_range(0, 1), info.range);
     assert_eq!("。", info.source_text);
     assert_eq!(16.0, info.base_advance);
     assert_eq!(8.0, info.body_width);
@@ -145,8 +145,8 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
     let clusters = vec![cluster("「", 0, EM, "cjk"), cluster("「", 1, EM, "cjk")];
     let atoms = atoms_for(&clusters);
     let stray = PunctuationSpacingAdjustment {
-        range: TextRange::new(90, 91),
-        reduction_target_range: TextRange::new(90, 91),
+        range: text_range(90, 91),
+        reduction_target_range: text_range(90, 91),
         left_char: '。',
         right_char: '「',
         natural_inner_glue: 8.0,
@@ -162,8 +162,8 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
     assert_eq!(2, stray_ledger.glue_capacities().len());
 
     let leading_target = PunctuationSpacingAdjustment {
-        range: TextRange::new(0, 1),
-        reduction_target_range: TextRange::new(0, 1),
+        range: text_range(0, 1),
+        reduction_target_range: text_range(0, 1),
         left_char: '「',
         right_char: '「',
         natural_inner_glue: 8.0,
@@ -183,7 +183,7 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
     let centred = builder
         .build(
             '·',
-            TextRange::new(0, 1),
+            text_range(0, 1),
             EM,
             Some(
                 PunctuationInkInput::builder(16.0)
@@ -198,8 +198,8 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
         .unwrap();
     let centred_clusters = vec![cluster("·", 0, EM, "cjk"), cluster("中", 1, EM, "cjk")];
     let centred_target = PunctuationSpacingAdjustment {
-        range: TextRange::new(0, 1),
-        reduction_target_range: TextRange::new(0, 1),
+        range: text_range(0, 1),
+        reduction_target_range: text_range(0, 1),
         left_char: '·',
         right_char: '中',
         natural_inner_glue: 8.0,
@@ -262,7 +262,7 @@ fn attached_inline_boundary_at_line_end_consumes_trailing_glue() {
         EM,
     );
     let decision = &result.decisions[0];
-    assert_eq!(TextRange::new(0, 4), decision.range);
+    assert_eq!(text_range(0, 4), decision.range);
     assert_eq!('」', decision.left_char);
     assert_eq!('\0', decision.right_char);
     assert_eq!("AttachedInlineVirtualPunctuationBoundary:line-end", decision.reason);
@@ -291,7 +291,7 @@ fn attached_inline_boundary_adjacent_punctuation_halves_virtual_glue() {
     assert_eq!(16.0, decision.natural_inner_glue);
     assert_eq!(8.0, decision.adjusted_inner_glue);
     assert_eq!(8.0, decision.reduction);
-    assert_eq!(TextRange::new(0, 5), decision.range);
+    assert_eq!(text_range(0, 5), decision.range);
 
     let bitten = ledger
         .consume_trailing_by_cluster(&HashMap::from([(0, 4.0)]))
@@ -430,7 +430,7 @@ fn line_edge_trim_consumes_half_width_at_edges_and_skips_empty_inputs() {
     assert_eq!(8.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
     assert_eq!("LineEndHalfWidthPunctuation", decision.reason);
-    assert_eq!(TextRange::new(0, 1), decision.cluster_range);
+    assert_eq!(text_range(0, 1), decision.cluster_range);
     assert_eq!(8.0, trimmed.geometry.resolve_clusters()[0].advance);
 
     let relaxed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], false);
@@ -444,7 +444,7 @@ fn line_edge_trim_consumes_centred_punctuation_once_per_line() {
     let atom = builder
         .build(
             '·',
-            TextRange::new(0, 1),
+            text_range(0, 1),
             EM,
             Some(
                 PunctuationInkInput::builder(16.0)
@@ -480,9 +480,9 @@ fn cluster_index_range_finds_covered_clusters() {
         cluster("中", 1, EM, "cjk"),
         cluster("中", 2, EM, "cjk"),
     ];
-    assert_eq!(None, cluster_index_range_for(&[], TextRange::new(0, 3)));
-    assert_eq!(Some((0, 2)), cluster_index_range_for(&clusters, TextRange::new(0, 3)));
-    assert_eq!(Some((1, 1)), cluster_index_range_for(&clusters, TextRange::new(1, 2)));
-    assert_eq!(None, cluster_index_range_for(&clusters, TextRange::new(5, 6)));
-    assert_eq!(Some((0, 0)), cluster_index_range_for(&clusters, TextRange::new(0, 1)));
+    assert_eq!(None, cluster_index_range_for(&[], text_range(0, 3)));
+    assert_eq!(Some((0, 2)), cluster_index_range_for(&clusters, text_range(0, 3)));
+    assert_eq!(Some((1, 1)), cluster_index_range_for(&clusters, text_range(1, 2)));
+    assert_eq!(None, cluster_index_range_for(&clusters, text_range(5, 6)));
+    assert_eq!(Some((0, 0)), cluster_index_range_for(&clusters, text_range(0, 1)));
 }

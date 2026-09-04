@@ -2,7 +2,7 @@ use tiqian::clreq::clreq_profile::{
     AdjustmentStylePolicy, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver, KinsokuLevel,
     KinsokuMode, LineEndPunctuationStyle, PunctuationWidthPolicy,
 };
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Rect, TextRange};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
@@ -133,7 +133,7 @@ impl TextShaper for PushInCenteredCommaTextShaper {
             .display_text
             .chars()
             .scan(input.range.start(), |start, character| {
-                let end = *start + character.len_utf16() as i32;
+                let end = *start + 1;
                 let range = TextRange::new(*start, end);
                 *start = end;
                 Some(Cluster::with_display_text(
@@ -328,7 +328,7 @@ fn push_in_keeps_font_centered_punctuation_compression_paired() {
         .find(|decision| decision.kind == "PushIn")
         .unwrap();
     assert_eq!(8.0, push_in.shrink);
-    assert_eq!(TextRange::new(4, 5), push_in.push_in_allocations[0].cluster_range);
+    assert_eq!(text_range(4, 5), push_in.push_in_allocations[0].cluster_range);
 }
 
 #[test]
@@ -341,16 +341,16 @@ fn records_punctuation_atoms_in_layout_debug() {
         .iter()
         .find(|decision| decision.ch == '，')
         .unwrap();
-    assert_eq!(TextRange::new(2, 3), comma.range);
+    assert_eq!(text_range(2, 3), comma.range);
     assert_eq!("PauseOrStop", comma.punctuation_class);
     assert_eq!(16.0, comma.advance);
     assert_eq!(8.0, comma.body_width);
     assert_eq!(0.0, comma.leading_glue_natural);
     assert_eq!(8.0, comma.trailing_glue_natural);
     assert_eq!("Leading", comma.anchor);
-    assert_eq!(TextRange::new(5, 6), result.debug.punctuation_decisions.iter().find(|decision| decision.ch == '。').unwrap().range);
+    assert_eq!(text_range(5, 6), result.debug.punctuation_decisions.iter().find(|decision| decision.ch == '。').unwrap().range);
     let dash = result.debug.punctuation_decisions.iter().find(|decision| decision.ch == '⸺').unwrap();
-    assert_eq!(TextRange::new(6, 8), dash.range);
+    assert_eq!(text_range(6, 8), dash.range);
     assert_eq!("Dash", dash.punctuation_class);
     assert_eq!(32.0, dash.advance);
     assert_eq!(3, result.debug.punctuation_decisions.len());
@@ -392,7 +392,7 @@ fn compresses_cjk_closing_before_ascii_point_mark_without_reclassifying_ascii() 
     let result = layout("中」,next");
 
     let closing = result.clusters.iter().find(|cluster| cluster.text == "」").unwrap();
-    let comma_font = result.debug.font_decisions.iter().find(|decision| decision.range.start() == 2).unwrap();
+    let comma_font = result.debug.font_decisions.iter().find(|decision| decision.range.start().value() == 2).unwrap();
     let spacing = result.debug.spacing_decisions.iter().find(|decision| {
         decision.reason == "collapse-cjk-closing-before-ascii-point-mark"
     }).unwrap();

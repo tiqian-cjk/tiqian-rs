@@ -1,3 +1,4 @@
+use tiqian::core::geometry::scalar_offset;
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{FontRole, FontRoleContext};
 use tiqian::layout::quote_pair_analyzer::{
@@ -16,13 +17,13 @@ fn decisions(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDe
 fn matches_simple_and_nested_quote_pairs() {
     let analyzer = QuotePairAnalyzer;
     assert_eq!(
-        vec![QuotePair::new(2, 5, QuoteType::Double)],
+        vec![QuotePair::new(scalar_offset(2), scalar_offset(5), QuoteType::Double)],
         analyzer.analyze(&Text::from("他说“你好”")),
     );
     let nested = analyzer.analyze(&Text::from("他说：“她说‘你好’。”"));
     assert_eq!(2, nested.len());
-    assert!(nested.contains(&QuotePair::new(6, 9, QuoteType::Single)));
-    assert!(nested.contains(&QuotePair::new(3, 11, QuoteType::Double)));
+    assert!(nested.contains(&QuotePair::new(scalar_offset(6), scalar_offset(9), QuoteType::Single)));
+    assert!(nested.contains(&QuotePair::new(scalar_offset(3), scalar_offset(11), QuoteType::Double)));
 }
 
 #[test]
@@ -30,7 +31,7 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
     let analyzer = QuotePairAnalyzer;
     let text = "‘that’s’";
     assert_eq!(
-        vec![QuotePair::new(0, 7, QuoteType::Single)],
+        vec![QuotePair::new(scalar_offset(0), scalar_offset(7), QuoteType::Single)],
         analyzer.analyze(&Text::from(text))
     );
 
@@ -63,11 +64,11 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
 fn digit_only_flanks_leave_single_quotes_pairable() {
     let analyzer = QuotePairAnalyzer;
     let text = Text::from("“1‘2’3”");
-    assert!(!is_non_cjk_in_word_apostrophe(&text, 3));
+    assert!(!is_non_cjk_in_word_apostrophe(&text, scalar_offset(3)));
     assert_eq!(
         vec![
-            QuotePair::new(2, 4, QuoteType::Single),
-            QuotePair::new(0, 6, QuoteType::Double),
+            QuotePair::new(scalar_offset(2), scalar_offset(4), QuoteType::Single),
+            QuotePair::new(scalar_offset(0), scalar_offset(6), QuoteType::Double),
         ],
         analyzer.analyze(&text),
     );
@@ -77,7 +78,7 @@ fn digit_only_flanks_leave_single_quotes_pairable() {
 fn letter_flanked_decade_apostrophe_stays_in_word() {
     let analyzer = QuotePairAnalyzer;
     let text = Text::from("90’s");
-    assert!(is_non_cjk_in_word_apostrophe(&text, 2));
+    assert!(is_non_cjk_in_word_apostrophe(&text, scalar_offset(2)));
     assert!(analyzer.analyze(&text).is_empty());
     let roles = analyzer.classify_quote_roles(&text, &[], &FontRoleContext::default());
     assert_eq!(1, roles.len());
@@ -89,7 +90,7 @@ fn letter_flanked_decade_apostrophe_stays_in_word() {
 fn digit_bound_closing_quotes_are_detected_as_prime_candidates() {
     for (text, index) in [("1’30”", 1), ("1’30”", 4), ("6.1”", 3)] {
         let text = Text::from(text);
-        assert!(is_digit_bound_closing_quote(&text, index));
+        assert!(is_digit_bound_closing_quote(&text, scalar_offset(index)));
     }
 }
 
@@ -99,7 +100,7 @@ fn cjk_outer_context_classifies_paired_quotes_as_cjk() {
     let result = decisions(text);
 
     assert_eq!(
-        vec![2, 8],
+        vec![scalar_offset(2), scalar_offset(8)],
         result
             .iter()
             .map(|decision| decision.index)
@@ -122,7 +123,7 @@ fn latin_content_at_text_start_classifies_quotes_as_latin() {
     let result = decisions("“Hello” world");
 
     assert_eq!(
-        vec![0, 6],
+        vec![scalar_offset(0), scalar_offset(6)],
         result
             .iter()
             .map(|decision| decision.index)
@@ -140,7 +141,7 @@ fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
     let result = decisions("（如 ‘O’, ‘Q’）");
 
     assert_eq!(
-        vec![3, 5, 8, 10],
+        vec![scalar_offset(3), scalar_offset(5), scalar_offset(8), scalar_offset(10)],
         result
             .iter()
             .map(|decision| decision.index)

@@ -1,7 +1,7 @@
 use tiqian::common::{HashMap, HashSet};
 
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -20,7 +20,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -241,7 +241,7 @@ fn source_space_compression_promotes_emergency_break_to_syllable() {
         cluster(3, "e", 15.0),
         cluster(4, "l", 15.0),
     ];
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let progressive = HashMap::from([
         (
             1,
@@ -298,7 +298,7 @@ fn cleaner_boundary_that_still_leaves_deficit_does_not_promote() {
         cluster(3, "e", 15.0),
         cluster(4, "l", 15.0),
     ];
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let progressive = HashMap::from([
         (
             3,
@@ -333,7 +333,7 @@ fn selected_tier_refills_across_intermediate_cleaner_boundary() {
         cluster(3, "e", 15.0),
         cluster(4, "l", 15.0),
     ];
-    let span = TextRange::new(0, 5);
+    let span = text_range(0, 5);
     let progressive = HashMap::from([
         (
             3,

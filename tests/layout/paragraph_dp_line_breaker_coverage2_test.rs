@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -11,7 +11,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -68,8 +68,8 @@ fn test_candidate_window_bounds_compression_edges() {
 #[test]
 fn test_progressive_tier_promotion_branches() {
     let clusters = latin_clusters();
-    let span = TextRange::new(0, clusters.len() as i32);
-    let other_span = TextRange::new(1, 3);
+    let span = text_range(0, clusters.len() as i32);
+    let other_span = text_range(1, 3);
 
     let mut no_promotion_config = LineBreakerConfig::default();
     no_promotion_config.shrink_opportunities = vec![ShrinkOpportunity::new(
@@ -130,7 +130,7 @@ fn test_progressive_tier_promotion_branches() {
 #[test]
 fn test_commit_segment_original_break_not_null_resulting_break_null() {
     let clusters = latin_clusters();
-    let span = TextRange::new(0, clusters.len() as i32);
+    let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;

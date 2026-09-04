@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::text::Text;
 use tiqian::font::font_metrics::{
     BaselineClass, FontMetricSource, FontMetricsNormalizationInput, FontMetricsNormalizer,
@@ -48,12 +48,12 @@ fn test_font_request_and_roles() {
     assert_eq!(FontRole::CjkText, candidate.role);
 
     let decision = FontDecision {
-        range: TextRange::new(0, 1),
+        range: text_range(0, 1),
         candidate: candidate.clone(),
         role: FontRole::CjkText,
         reason: "reason".to_owned(),
     };
-    assert_eq!(TextRange::new(0, 1), decision.range);
+    assert_eq!(text_range(0, 1), decision.range);
     assert_eq!(candidate, decision.candidate);
     assert_eq!(FontRole::CjkText, decision.role);
     assert_eq!("reason", decision.reason);
@@ -73,7 +73,7 @@ fn test_prefer_cjk_for_ambiguous_punctuation_resolver() {
 
     let cjk_decision = resolver.resolve(
         &Text::from("中"),
-        TextRange::new(0, 1),
+        text_range(0, 1),
         &FontRequest {
             preferred_families: vec!["CustomCjk".to_owned()],
             locale: "zh-Hans".to_owned(),
@@ -85,7 +85,7 @@ fn test_prefer_cjk_for_ambiguous_punctuation_resolver() {
 
     let cjk_default_family = resolver.resolve(
         &Text::from("中"),
-        TextRange::new(0, 1),
+        text_range(0, 1),
         &FontRequest {
             preferred_families: Vec::new(),
             locale: "zh-Hans".to_owned(),
@@ -95,10 +95,10 @@ fn test_prefer_cjk_for_ambiguous_punctuation_resolver() {
     assert_eq!("cjk-key", cjk_default_family.candidate.family);
 
     for (text, range, role, expected_key) in [
-        ("A", TextRange::new(0, 1), FontRole::LatinText, "latin-key"),
-        ("©", TextRange::new(0, 1), FontRole::Symbol, "symbol-key"),
-        ("😀", TextRange::new(0, 2), FontRole::Emoji, "symbol-key"),
-        ("\u{0001}", TextRange::new(0, 1), FontRole::Unknown, "symbol-key"),
+        ("A", text_range(0, 1), FontRole::LatinText, "latin-key"),
+        ("©", text_range(0, 1), FontRole::Symbol, "symbol-key"),
+        ("😀", text_range(0, 2), FontRole::Emoji, "symbol-key"),
+        ("\u{0001}", text_range(0, 1), FontRole::Unknown, "symbol-key"),
     ] {
         let decision = resolver.resolve(
             &Text::from(text),

@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::GlyphRun;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -94,7 +94,7 @@ fn ruby_uses_existing_interline_space_without_changing_line_box() {
         "中文排版",
         400.0,
         style,
-        vec![RubySpan::new(TextRange::new(0, 1), Text::from("zhōng"))],
+        vec![RubySpan::new(text_range(0, 1), Text::from("zhōng"))],
     );
 
     assert_eq!(plain.lines[0].top, ruby.lines[0].top);
@@ -124,7 +124,7 @@ fn per_line_mode_expands_only_the_annotated_line_when_ruby_collides() {
         "甲乙丙丁戊己庚辛壬癸子丑",
         64.0,
         style,
-        vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))],
+        vec![RubySpan::new(text_range(4, 5), Text::from("wù"))],
     );
 
     assert_eq!(plain.size.height + 6.0, annotated.size.height);
@@ -149,7 +149,7 @@ fn uniform_paragraph_mode_expands_every_line_by_same_ruby_deficit() {
         "甲乙丙丁戊己庚辛壬癸子丑",
         64.0,
         style,
-        vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))],
+        vec![RubySpan::new(text_range(4, 5), Text::from("wù"))],
     );
 
     assert_eq!(3, result.lines.len());
@@ -175,7 +175,7 @@ fn ruby_on_one_line_keeps_the_whole_baseline_grid_stable() {
         "甲乙丙丁戊己庚辛",
         64.0,
         style,
-        vec![RubySpan::new(TextRange::new(4, 5), Text::from("wù"))],
+        vec![RubySpan::new(text_range(4, 5), Text::from("wù"))],
     );
     assert_eq!(plain.lines.len(), annotated.lines.len());
     assert_eq!(plain.size.height, annotated.size.height);
@@ -202,7 +202,7 @@ fn ruby_vertical_geometry_uses_metrics_not_reading_ink() {
                 LayoutConstraints::with_defaults(64.0),
             )
             .paragraph_style(style.clone())
-            .ruby_spans(vec![RubySpan::new(TextRange::new(0, 1), Text::from(reading))])
+            .ruby_spans(vec![RubySpan::new(text_range(0, 1), Text::from(reading))])
             .build(),
         )
     };
@@ -254,7 +254,7 @@ fn wide_adjacent_readings_spread_but_narrow_do_not() {
             readings
                 .iter()
                 .enumerate()
-                .map(|(index, reading)| RubySpan::new(TextRange::new(index as i32, index as i32 + 1), Text::from(*reading)))
+                .map(|(index, reading)| RubySpan::new(text_range(index as i32, index as i32 + 1), Text::from(*reading)))
                 .collect(),
         )
         .clusters

@@ -187,8 +187,7 @@ impl PunctuationGeometryLedger {
                     .iter()
                     .find(|a| inside(a.range, self.natural_clusters[n as usize].range))
             });
-            let next_char =
-                next.and_then(|n| self.natural_clusters[n as usize].text.chars().next());
+            let next_char = next.and_then(|n| self.natural_clusters[n as usize].text.chars().next());
             let natural = left + right;
             let adjusted=if next.is_none(){0.}else if left_atom.is_some()&&right_atom.is_some(){(natural-em/2.).max(0.)}else if left_atom.is_some_and(|a|a.punctuation_class==PunctuationClass::Closing)&&next_char.is_some_and(super::super::clreq::clreq_profile::clreq_punctuation_policies::is_ascii_point_mark){(natural-em/2.).max(0.)}else{natural};
             if let Some(mut p) = previous_budget {
@@ -610,6 +609,7 @@ fn consume_by_range(
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::geometry::text_range;
     use crate::core::text::Text;
     use crate::layout::punctuation_geometry_stage::punctuation_atoms;
     use crate::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressionResult};
@@ -617,8 +617,8 @@ mod tests {
     #[test]
     fn geometry_without_budget_falls_back_to_body_width() {
         let clusters = vec![
-            Cluster::new(TextRange::new(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
         ];
         let builder = PunctuationAtomBuilder::default();
         let atoms = punctuation_atoms(
@@ -647,10 +647,10 @@ mod tests {
     #[test]
     fn attached_boundary_records_null_characters_for_empty_text_clusters() {
         let textless_next = vec![
-            Cluster::new(TextRange::new(0, 1), Text::from("」"), "cjk".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("r"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("」"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("r"), "latin".to_owned(), 16.0),
             Cluster::with_display_text(
-                TextRange::new(2, 2),
+                text_range(2, 2),
                 Text::from(""),
                 Text::from("a"),
                 "latin".to_owned(),
@@ -686,14 +686,14 @@ mod tests {
 
         let textless_previous = vec![
             Cluster::with_display_text(
-                TextRange::new(0, 0),
+                text_range(0, 0),
                 Text::from(""),
                 Text::from("」"),
                 "cjk".to_owned(),
                 16.0,
             ),
-            Cluster::new(TextRange::new(0, 1), Text::from("r"), "latin".to_owned(), 16.0),
-            Cluster::new(TextRange::new(1, 2), Text::from("「"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("r"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("「"), "cjk".to_owned(), 16.0),
         ];
         let previous_atoms: Vec<_> = textless_previous
             .iter()

@@ -49,7 +49,7 @@ pub mod bopomofo_parser {
             };
         }
 
-        if reading.starts_with(NEUTRAL) {
+        if reading.as_str().starts_with(NEUTRAL) {
             return BopomofoReading {
                 symbols: symbols_of(&reading.as_str()[NEUTRAL.len_utf8()..]),
                 tone: BopomofoTone::Neutral,
@@ -68,7 +68,7 @@ pub mod bopomofo_parser {
         };
         let has_suffix_mark = matches!(last, YANGPING | SHANG | QU | YINPING_MACRON);
         let body = if has_suffix_mark {
-            &reading.as_str()[..reading.len() - last.len_utf8()]
+            &reading.as_str()[..reading.byte_len() - last.len_utf8()]
         } else {
             reading.as_str()
         };

@@ -4,7 +4,7 @@ use super::super::clreq::clreq_profile::{
     GlueSide, PunctuationClass, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_policies,
 };
-use super::super::core::geometry::{Rect, TextRange};
+use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::text::Text;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -262,7 +262,7 @@ impl PunctuationSpacingCompressor {
                 if left.punctuation_class != PunctuationClass::Closing {
                     return None;
                 }
-                let right_char = utf16_char_at_or_none(text, left.range.end())?;
+                let right_char = scalar_char_at_or_none(text, left.range.end())?;
                 if !clreq_punctuation_policies::is_ascii_point_mark(right_char) {
                     return None;
                 }
@@ -318,8 +318,8 @@ impl PunctuationAtomBuilder {
         }
     }
 
-    pub fn build_at(&self, text: &Text, index: i32, em: f32) -> Option<PunctuationAtom> {
-        let character = utf16_char_at_or_none(text, index)?;
+    pub fn build_at(&self, text: &Text, index: ScalarOffset, em: f32) -> Option<PunctuationAtom> {
+        let character = scalar_char_at_or_none(text, index)?;
         self.build(
             character,
             TextRange::new(index, index + 1),
@@ -650,7 +650,7 @@ fn class_based_glue(
     }
 }
 
-fn utf16_char_at_or_none(text: &Text, index: i32) -> Option<char> {
+fn scalar_char_at_or_none(text: &Text, index: ScalarOffset) -> Option<char> {
     text.code_point_at_or_none(index)
         .and_then(|code_point| char::from_u32(code_point as u32))
 }

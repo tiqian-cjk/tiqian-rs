@@ -4,7 +4,7 @@ use crate::common::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::super::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::layout_model::LayoutResult;
 use super::super::core::text_model::LayoutInput;
 use super::super::font::font_metrics::{
@@ -138,7 +138,7 @@ impl ParagraphLayoutEngine for ExplainableStubParagraphLayoutEngine {
 }
 
 fn validate_layout_input(input: &LayoutInput) {
-    let text_length = input.content.text.utf16_len();
+    let text_length = input.content.text.scalar_len();
     assert!(
         input.paragraph_style.emphasis_dot_gap_em.is_finite()
             && input.paragraph_style.emphasis_dot_gap_em >= 0.0,
@@ -231,6 +231,6 @@ fn validate_layout_input(input: &LayoutInput) {
     }
 }
 
-fn is_non_empty_source_range(range: TextRange, text_length: i32) -> bool {
-    range.start() >= 0 && range.start() < range.end() && range.end() <= text_length
+fn is_non_empty_source_range(range: TextRange, text_length: ScalarOffset) -> bool {
+    range.start() < range.end() && range.end() <= text_length
 }

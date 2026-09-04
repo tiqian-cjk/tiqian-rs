@@ -6,7 +6,7 @@
 // Terms of Use: https://www.unicode.org/terms_of_use.html
 
 use tiqian::clreq::clreq_profile::ClreqProfile;
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole, FontRoleContext};
 use tiqian::layout::cluster_role_resolution::cluster_role_ranges;
@@ -30,7 +30,7 @@ fn fully_qualified_emoji_sequences_resolve_to_one_emoji_range() {
             .map(|range| (range.range, range.role))
             .collect::<Vec<_>>();
             let expected = vec![(
-                TextRange::new(0, text.encode_utf16().count() as i32),
+                text_range(0, text.chars().count() as i32),
                 FontRole::Emoji,
             )];
             (actual != expected)

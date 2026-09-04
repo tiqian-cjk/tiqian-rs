@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -14,7 +14,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from(text),
         "test".to_owned(),
         advance,
@@ -178,7 +178,7 @@ fn compressed_same_tier_boundary_is_not_reported_as_promotion() {
         cluster(3, "c", 30.0),
         cluster(4, "d", 30.0),
     ];
-    let span = TextRange::new(0, clusters.len() as i32);
+    let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities =
         vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];

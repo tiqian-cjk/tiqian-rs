@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/UnicodePunctuationBoundaryResolver.kt
 
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
+use super::super::core::geometry::ScalarOffset;
 use super::super::core::layout_model::{Cluster, ContextualKinsokuDecisionInfo};
 use super::super::core::text::Text;
 use super::super::font::font_policy::FontRole;
@@ -196,8 +197,8 @@ pub fn resolve_unicode_punctuation_boundaries(
     roles: &[FontRole],
     quote_pairs: &[QuotePair],
 ) -> UnicodePunctuationBoundaries {
-    let opens: HashSet<i32> = quote_pairs.iter().map(|p| p.open_index).collect();
-    let closes: HashSet<i32> = quote_pairs.iter().map(|p| p.close_index).collect();
+    let opens: HashSet<ScalarOffset> = quote_pairs.iter().map(|p| p.open_index).collect();
+    let closes: HashSet<ScalarOffset> = quote_pairs.iter().map(|p| p.close_index).collect();
     let mut starts = HashSet::new();
     let mut ends = HashSet::new();
     let mut ranges = Vec::new();
@@ -215,8 +216,8 @@ pub fn resolve_unicode_punctuation_boundaries(
         let Some((lo, lc)) = last_significant(&source) else {
             continue;
         };
-        let first_offset = cluster.range.start() + fo;
-        let last_offset = cluster.range.start() + lo;
+        let first_offset = cluster.range.start() + fo.value();
+        let last_offset = cluster.range.start() + lo.value();
         let first_class = unicode_punctuation_line_break::class_of(fc);
         let last_class = unicode_punctuation_line_break::class_of(lc);
         let first_dir = quote_direction(text, first_offset, fc, first_class);
@@ -314,7 +315,7 @@ enum QuoteDirection {
 }
 fn quote_direction(
     text: &Text,
-    offset: i32,
+    offset: ScalarOffset,
     cp: i32,
     cls: UnicodePunctuationLineBreakClass,
 ) -> QuoteDirection {
@@ -357,39 +358,29 @@ fn rule_for_start(c: UnicodePunctuationLineBreakClass) -> &'static str {
 fn cluster_text(text: &Text, c: &Cluster) -> Option<Text> {
     Some(text.slice_text(c.range))
 }
-fn first_significant(s: &Text) -> Option<(i32, i32)> {
-    let mut off = 0;
-    for c in s.chars() {
-        let cp = c as i32;
-        if !c.is_whitespace() {
-            return Some((off, cp));
-        }
-        off += c.len_utf16() as i32;
-    }
-    None
+fn first_significant(s: &Text) -> Option<(ScalarOffset, i32)> {
+    s.scalar_indices().find_map(|(offset, character)| {
+        (!character.is_whitespace()).then_some((offset, character as i32))
+    })
 }
-fn last_significant(s: &Text) -> Option<(i32, i32)> {
-    let mut v = Vec::new();
-    let mut off = 0;
-    for c in s.chars() {
-        v.push((off, c as i32, c.is_whitespace()));
-        off += c.len_utf16() as i32;
-    }
-    v.into_iter().rev().find(|x| !x.2).map(|(o, c, _)| (o, c))
+fn last_significant(s: &Text) -> Option<(ScalarOffset, i32)> {
+    s.scalar_indices()
+        .filter(|(_, character)| !character.is_whitespace())
+        .last()
+        .map(|(offset, character)| (offset, character as i32))
 }
-fn follows_authored_boundary(text: &Text, offset: i32) -> bool {
-    let mut c = offset;
-    while c > 0 {
-        let Some(p) = text.code_point_before(c) else {
-            return true;
-        };
+fn follows_authored_boundary(text: &Text, offset: ScalarOffset) -> bool {
+    let Some(end) = text.utf8_byte_index_at(offset) else {
+        return true;
+    };
+    for character in text.as_str()[..end].chars().rev() {
+        let p = character as i32;
         if is_mandatory_break_code_point(p) || is_zero_width_space_code_point(p) {
             return true;
         }
         if !(p <= 0xffff && char::from_u32(p as u32).is_some_and(char::is_whitespace)) {
             return false;
         }
-        c -= if p > 0xffff { 2 } else { 1 };
     }
     true
 }

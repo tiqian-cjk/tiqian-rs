@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::TextStyle;
 use tiqian::font::font_policy::{FontCandidate, FontDecision, FontRole};
@@ -9,7 +9,7 @@ use tiqian::shaping::text_shaper::{
 };
 
 fn input(text: &str, role: FontRole, display_text: &str) -> ShapingInput {
-    let range = TextRange::new(0, Text::from(text).utf16_len());
+    let range = text_range(0, Text::from(text).scalar_len().value());
     ShapingInput::builder(
         Text::from(text),
         range,
@@ -67,10 +67,10 @@ fn shapes_clreq_dash_substitution_as_two_em_display_cluster() {
 fn shaping_input_with_features_and_constants() {
     let input = ShapingInput::builder(
         Text::from("Test"),
-        TextRange::new(0, 4),
+        text_range(0, 4),
         TextStyle::builder().font_size(16.0).build(),
         FontDecision {
-            range: TextRange::new(0, 4),
+            range: text_range(0, 4),
             candidate: FontCandidate {
                 key: "test-font".to_owned(),
                 family: "test-font".to_owned(),

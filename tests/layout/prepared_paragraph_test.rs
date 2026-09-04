@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, Size, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Size};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     BopomofoDecisionInfo, BopomofoGlyphPlacement, BopomofoGlyphRole, Cluster,
@@ -21,7 +21,7 @@ fn evidence_result() -> LayoutResult {
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("。A"))
             .spans(vec![TextSpan {
-                range: TextRange::new(1, 2),
+                range: text_range(1, 2),
                 style: TextStyle::builder()
                     .font_size(20.0)
                     .font_weight(700)
@@ -32,41 +32,41 @@ fn evidence_result() -> LayoutResult {
         LayoutConstraints::with_defaults(48.0),
     )
     .decorations(vec![DecorationSpan {
-        range: TextRange::new(0, 1),
+        range: text_range(0, 1),
         kind: DecorationKind::Emphasis,
     }])
-    .inline_boxes(vec![InlineBoxSpan::with_edges(TextRange::new(0, 1), 2.0, 3.0)])
+    .inline_boxes(vec![InlineBoxSpan::with_edges(text_range(0, 1), 2.0, 3.0)])
     .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-        TextRange::new(1, 2),
+        text_range(1, 2),
         24.0,
         12.0,
         4.0,
     )])
     .build();
     let clusters = vec![
-        Cluster::new(TextRange::new(0, 1), Text::from("。"), "cjk".to_owned(), 16.0),
-        Cluster::new(TextRange::new(1, 2), Text::from("A"), "latin".to_owned(), 10.0),
+        Cluster::new(text_range(0, 1), Text::from("。"), "cjk".to_owned(), 16.0),
+        Cluster::new(text_range(1, 2), Text::from("A"), "latin".to_owned(), 10.0),
     ];
     let glyph_runs = vec![
         GlyphRun::with_open_type_features(
-            TextRange::new(0, 1),
+            text_range(0, 1),
             "cjk".to_owned(),
-            vec![Glyph::builder(9, TextRange::new(0, 1), 16.0)
+            vec![Glyph::builder(9, text_range(0, 1), 16.0)
                 .render_font_key(Some("Noto Serif CJK".to_owned()))
                 .build()],
             16.0,
             vec!["kern".to_owned(), "liga".to_owned()],
         ),
         GlyphRun::new(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             "latin".to_owned(),
-            vec![Glyph::builder(10, TextRange::new(1, 2), 24.0).build()],
+            vec![Glyph::builder(10, text_range(1, 2), 24.0).build()],
             24.0,
         ),
     ];
     let lines = vec![
         LineBox::builder(
-            TextRange::new(0, 2),
+            text_range(0, 2),
             IntRange::new(0, 1),
             20.0,
             0.0,
@@ -78,7 +78,7 @@ fn evidence_result() -> LayoutResult {
         .build(),
     ];
     let ruby = RubyDecisionInfo::builder(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("diǎn"),
         0,
         8.0,
@@ -91,7 +91,7 @@ fn evidence_result() -> LayoutResult {
     .font_weight(500)
     .build();
     let bopomofo = BopomofoDecisionInfo::builder(
-        TextRange::new(1, 2),
+        text_range(1, 2),
         Text::from("ㄟ"),
         0,
         vec![BopomofoGlyphPlacement::new(
@@ -108,7 +108,7 @@ fn evidence_result() -> LayoutResult {
     .build();
     let debug = LayoutDebugInfo::builder()
         .font_decisions(vec![FontDecisionInfo {
-            range: TextRange::new(1, 2),
+            range: text_range(1, 2),
             source_text: Text::from("A"),
             display_text: Text::from("A"),
             role: "LatinText".to_owned(),
@@ -118,7 +118,7 @@ fn evidence_result() -> LayoutResult {
         }])
         .shaping_decisions(vec![
             ShapingDecisionInfo::builder(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("。"),
                 Text::from("。"),
                 "cjk".to_owned(),
@@ -134,7 +134,7 @@ fn evidence_result() -> LayoutResult {
         ])
         .punctuation_decisions(vec![
             PunctuationDecisionInfo::builder(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 '。',
                 "PauseOrStop".to_owned(),
                 16.0,
@@ -150,7 +150,7 @@ fn evidence_result() -> LayoutResult {
         .ruby_decisions(vec![ruby])
         .bopomofo_decisions(vec![bopomofo])
         .decoration_segments(vec![DecorationSegmentInfo {
-            source_range: TextRange::new(0, 1),
+            source_range: text_range(0, 1),
             kind: "ProperNoun".to_owned(),
             line_index: 0,
             left: 0.0,
@@ -163,7 +163,7 @@ fn evidence_result() -> LayoutResult {
         }])
         .decoration_decisions(vec![
             DecorationDecisionInfo::builder(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 Text::from("。"),
                 "Emphasis".to_owned(),
                 true,
@@ -277,8 +277,8 @@ fn real_ruby_and_bopomofo_layouts_emit_evidence_only_when_requested() {
     )
     .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
     .ruby_spans(vec![
-        RubySpan::new(TextRange::new(0, 1), Text::from("zhōng")),
-        RubySpan::with_kind(TextRange::new(1, 2), Text::from("ㄨㄣˊ"), RubyKind::Bopomofo),
+        RubySpan::new(text_range(0, 1), Text::from("zhōng")),
+        RubySpan::with_kind(text_range(1, 2), Text::from("ㄨㄣˊ"), RubyKind::Bopomofo),
     ])
     .build();
     let result = ExplainableStubParagraphLayoutEngine::default().layout(input);

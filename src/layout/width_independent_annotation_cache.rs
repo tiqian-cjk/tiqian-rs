@@ -12,7 +12,7 @@ use super::super::clreq::clreq_profile::{
 use super::super::core::east_asian_spacing::{
     EastAsianSpacingEdges, EastAsianSpacingValue, unicode_east_asian_spacing,
 };
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, Cluster, InlineObjectPunctuationAttachmentDecisionInfo,
@@ -63,7 +63,7 @@ pub struct WidthIndependentAnnotationKey {
     pub text: Text,
     pub spans: Vec<TextSpan>,
     pub line_break_spans: Vec<LineBreakSpan>,
-    pub source_boundaries: HashSet<i32>,
+    pub source_boundaries: HashSet<ScalarOffset>,
     pub text_style: TextStyle,
     pub decorations: Vec<DecorationSpan>,
     pub ruby_spans: Vec<RubySpan>,
@@ -97,9 +97,9 @@ pub fn to_width_independent_annotation_key(
 pub struct WidthIndependentParagraphAnnotation {
     pub text: Text,
     pub font_size: f32,
-    pub style_at: Arc<dyn Fn(i32) -> TextStyle + Send + Sync>,
-    pub font_size_at: Arc<dyn Fn(i32) -> f32 + Send + Sync>,
-    pub bopomofo_font_weight_at: Arc<dyn Fn(i32) -> i32 + Send + Sync>,
+    pub style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync>,
+    pub font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync>,
+    pub bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync>,
     pub ruby_font_size: f32,
     pub ruby_stack_gap: f32,
     pub ruby_font_weight: i32,
@@ -261,7 +261,7 @@ pub fn prepare_width_independent_annotation(
         .collect();
     let style_spans = spans.clone();
     let input_style = input.text_style.clone();
-    let style_at: Arc<dyn Fn(i32) -> TextStyle + Send + Sync> = Arc::new(move |offset| {
+    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::new(move |offset| {
         style_spans
             .iter()
             .rev()
@@ -285,7 +285,7 @@ pub fn prepare_width_independent_annotation(
         .filter(|decoration| decoration.kind == DecorationKind::Emphasis)
         .map(|decoration| decoration.range)
         .collect();
-    let emphasis_italic_at = |offset: i32| {
+    let emphasis_italic_at = |offset: ScalarOffset| {
         emphasis_ranges
             .iter()
             .any(|range| offset >= range.start() && offset < range.end())
@@ -300,10 +300,10 @@ pub fn prepare_width_independent_annotation(
         .cloned()
         .collect();
     let mut boundaries = HashSet::new();
-    let length = text.utf16_len();
+    let length = text.scalar_len();
     let mut add_range = |range: TextRange| {
         for offset in [range.start(), range.end()] {
-            if offset > 0 && offset < length {
+            if offset > ScalarOffset::ZERO && offset < length {
                 boundaries.insert(offset);
             }
         }
@@ -327,14 +327,14 @@ pub fn prepare_width_independent_annotation(
         add_range(span.range)
     }
     for offset in &input.content.source_boundaries {
-        if *offset > 0 && *offset < length {
+        if *offset > ScalarOffset::ZERO && *offset < length {
             boundaries.insert(*offset);
         }
     }
     let mut emoji_shaping_boundaries = HashSet::new();
     let mut add_emoji_shaping_range = |range: TextRange| {
         for offset in [range.start(), range.end()] {
-            if offset > 0 && offset < length {
+            if offset > ScalarOffset::ZERO && offset < length {
                 emoji_shaping_boundaries.insert(offset);
             }
         }
@@ -390,10 +390,8 @@ pub fn prepare_width_independent_annotation(
     let dash_ellipsis_role_override_infos: Vec<_> = dash_ellipsis_role_decisions
         .iter()
         .map(|decision| {
-            let first_code_point_range = TextRange::new(
-                decision.range.start(),
-                decision.range.start() + 1,
-            );
+            let first_code_point_range =
+                TextRange::new(decision.range.start(), decision.range.start() + 1);
             RoleOverrideInfo {
                 range: decision.range,
                 source_text: text.slice_text(decision.range),
@@ -507,7 +505,7 @@ pub fn prepare_width_independent_annotation(
             .locale
             .clone()
             .unwrap_or_else(|| input.text_style.locale.clone());
-        let range = TextRange::new(0, metric.utf16_len());
+        let range = TextRange::new(ScalarOffset::ZERO, metric.scalar_len());
         let decision = fallback_resolver.resolve(
             metric,
             range,
@@ -539,7 +537,7 @@ pub fn prepare_width_independent_annotation(
             text_shaper.shape(
                 &ShapingInput::builder(
                     ruby.text.clone(),
-                    TextRange::new(0, ruby.text.utf16_len()),
+                    TextRange::new(ScalarOffset::ZERO, ruby.text.scalar_len()),
                     style,
                     decision,
                 )
@@ -673,7 +671,7 @@ pub fn build_paragraph_layout_prep(
                     .sum::<f32>()
                     > measure
             });
-    let emphasis = |offset: i32| {
+    let emphasis = |offset: ScalarOffset| {
         input.decorations.iter().any(|decoration| {
             decoration.kind == DecorationKind::Emphasis
                 && offset >= decoration.range.start()
@@ -788,7 +786,7 @@ pub fn build_paragraph_layout_prep(
             }
         })
         .collect();
-    let suppressed = |offset: i32| {
+    let suppressed = |offset: ScalarOffset| {
         input
             .content
             .auto_space_suppressed_ranges

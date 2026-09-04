@@ -1,4 +1,4 @@
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -11,7 +11,7 @@ use tiqian::layout::progressive_break_decisions::{
 
 fn cluster(index: i32, advance: f32) -> Cluster {
     Cluster::new(
-        TextRange::new(index, index + 1),
+        text_range(index, index + 1),
         Text::from("中"),
         "test".to_owned(),
         advance,
@@ -24,11 +24,11 @@ fn han_clusters(count: i32, advance: f32) -> Vec<Cluster> {
 
 fn latin_clusters() -> Vec<Cluster> {
     vec![
-        Cluster::new(TextRange::new(0, 1), Text::from("a"), "test".to_owned(), 30.0),
-        Cluster::new(TextRange::new(1, 2), Text::from("/"), "test".to_owned(), 30.0),
-        Cluster::new(TextRange::new(2, 3), Text::from("b"), "test".to_owned(), 25.0),
-        Cluster::new(TextRange::new(3, 4), Text::from("c"), "test".to_owned(), 30.0),
-        Cluster::new(TextRange::new(4, 5), Text::from("d"), "test".to_owned(), 30.0),
+        Cluster::new(text_range(0, 1), Text::from("a"), "test".to_owned(), 30.0),
+        Cluster::new(text_range(1, 2), Text::from("/"), "test".to_owned(), 30.0),
+        Cluster::new(text_range(2, 3), Text::from("b"), "test".to_owned(), 25.0),
+        Cluster::new(text_range(3, 4), Text::from("c"), "test".to_owned(), 30.0),
+        Cluster::new(text_range(4, 5), Text::from("d"), "test".to_owned(), 30.0),
     ]
 }
 
@@ -156,7 +156,7 @@ fn compressed_final_mandatory_line_uses_the_compressed_commit_branch() {
 #[test]
 fn tier_promotion_routes_the_repair_reason_through_the_promotion_code() {
     let clusters = latin_clusters();
-    let span = TextRange::new(0, clusters.len() as i32);
+    let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;
@@ -174,7 +174,7 @@ fn tier_promotion_routes_the_repair_reason_through_the_promotion_code() {
 #[test]
 fn promotion_check_returns_false_when_the_candidate_end_has_no_opportunity() {
     let clusters = latin_clusters();
-    let span = TextRange::new(0, clusters.len() as i32);
+    let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
     config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;

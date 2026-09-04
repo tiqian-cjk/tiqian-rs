@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use tiqian::common::{HashMap, HashSet};
 use tiqian::clreq::clreq_profile::ClreqPunctuationGlyphSubstitutor;
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Rect, TextRange};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -30,7 +30,7 @@ use tiqian::shaping::text_shaper::{
 #[test]
 fn map_to_cluster_range_with_zero_and_positive_advance() {
     let cluster = Cluster::with_display_text(
-        TextRange::new(0, 4),
+        text_range(0, 4),
         Text::from("test"),
         Text::from("test"),
         "k".to_owned(),
@@ -39,20 +39,20 @@ fn map_to_cluster_range_with_zero_and_positive_advance() {
 
     let mapped_zero = map_to_cluster_range(
         &[
-            Glyph::builder(1, TextRange::new(0, 2), 0.0).build(),
-            Glyph::builder(2, TextRange::new(2, 4), 0.0).build(),
+            Glyph::builder(1, text_range(0, 2), 0.0).build(),
+            Glyph::builder(2, text_range(2, 4), 0.0).build(),
         ],
         &cluster,
     );
     assert_eq!(2, mapped_zero.len());
     assert_eq!(10.0, mapped_zero[0].advance);
     assert_eq!(10.0, mapped_zero[1].advance);
-    assert_eq!(TextRange::new(0, 4), mapped_zero[0].cluster_range);
+    assert_eq!(text_range(0, 4), mapped_zero[0].cluster_range);
 
     let mapped_normal = map_to_cluster_range(
         &[
-            Glyph::builder(1, TextRange::new(0, 2), 8.0).build(),
-            Glyph::builder(2, TextRange::new(2, 4), 12.0).x(8.0).build(),
+            Glyph::builder(1, text_range(0, 2), 8.0).build(),
+            Glyph::builder(2, text_range(2, 4), 12.0).x(8.0).build(),
         ],
         &cluster,
     );
@@ -64,7 +64,7 @@ fn map_to_cluster_range_with_zero_and_positive_advance() {
 #[test]
 fn cluster_predicates_and_curly_quote_features() {
     let mandatory = Cluster::with_display_text(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("\n"),
         Text::new(),
         "mandatory-break".to_owned(),
@@ -75,7 +75,7 @@ fn cluster_predicates_and_curly_quote_features() {
     assert!(!is_inline_object_cluster(&mandatory));
 
     let zero_width = Cluster::with_display_text(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("\u{200B}"),
         Text::new(),
         "zero-width-space".to_owned(),
@@ -85,7 +85,7 @@ fn cluster_predicates_and_curly_quote_features() {
     assert!(!is_mandatory_break_cluster(&zero_width));
 
     let inline_object = Cluster::with_display_text(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("x"),
         Text::new(),
         "inline-object".to_owned(),
@@ -95,7 +95,7 @@ fn cluster_predicates_and_curly_quote_features() {
     assert!(!is_mandatory_break_cluster(&inline_object));
 
     let normal = Cluster::with_display_text(
-        TextRange::new(0, 1),
+        text_range(0, 1),
         Text::from("中"),
         Text::from("中"),
         "font".to_owned(),
@@ -298,7 +298,7 @@ struct HyphenWordHyphenator;
 
 impl Hyphenator for HyphenWordHyphenator {
     fn hyphenate(&self, word: &Text) -> Vec<i32> {
-        if word.contains("hyphen") {
+        if word.as_str().contains("hyphen") {
             vec![2, 4]
         } else {
             Vec::new()
@@ -342,8 +342,14 @@ struct MachineHyphenator;
 
 impl Hyphenator for MachineHyphenator {
     fn hyphenate(&self, word: &Text) -> Vec<i32> {
-        if word.contains("Machine") {
-            vec![-1, 0, 3, word.utf16_len(), word.utf16_len() + 1]
+        if word.as_str().contains("Machine") {
+            vec![
+                -1,
+                0,
+                3,
+                word.scalar_len().value(),
+                word.scalar_len().value() + 1,
+            ]
         } else {
             vec![2]
         }
@@ -355,7 +361,7 @@ static MACHINE_HYPHENATOR: MachineHyphenator = MachineHyphenator;
 #[test]
 fn progressive_technical_span_breaks_and_tiers() {
     let text = "Machine2Machine /v2.0_alpha=beta&gamma supercalifragilisticexpialidocious short";
-    let span = TextRange::new(0, text.len() as i32);
+    let span = text_range(0, Text::from(text).scalar_len().value());
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from(text))
             .line_break_spans(vec![
@@ -364,7 +370,7 @@ fn progressive_technical_span_breaks_and_tiers() {
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 },
                 LineBreakSpan {
-                    range: TextRange::new(5, 10),
+                    range: text_range(5, 10),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 },
             ])
@@ -456,7 +462,7 @@ fn multi_cluster_shaper_for_word_cuts_and_opaque_hard_cuts() {
             if input.range.length() <= 1 || self.split.fetch_xor(true, Ordering::Relaxed) {
                 return result;
             }
-            let mid = (input.range.start() + input.range.end()) / 2;
+            let mid = input.range.start() + input.range.length() / 2;
             ShapingResult::new(
                 vec![
                     Cluster::with_display_text(
@@ -581,7 +587,13 @@ impl Hyphenator for DirectShapeHyphenator {
             "abcdef" => vec![1],
             "abcdeg" => vec![2],
             "antidisestablishmentarianism" => Vec::new(),
-            "Machine" => vec![-1, 0, 2, word.utf16_len(), word.utf16_len() + 2],
+            "Machine" => vec![
+                -1,
+                0,
+                2,
+                word.scalar_len().value(),
+                word.scalar_len().value() + 2,
+            ],
             _ => vec![2],
         }
     }
@@ -611,11 +623,11 @@ fn direct_shape_paragraph_edge_cases() {
     let text = Text::from(
         "abcdef abcdeg antidisestablishmentarianism singlecluster Machine2Machine /a/b/c 12(3):. 12a(3):45 12(3a):45 12(3):-45 12(3):45- 12(3):45-6a 12(3):4a-65 12(3):abc aaaaaa111111 a1b2c3d4e5f6 http://example.com/foo https://example.com/foo?a=1&b=2#x%20~y abc.d abc.12 abc.de abc.de12 --.com foo.-bar /start end/ a/b a//b",
     );
-    let range = TextRange::new(0, text.utf16_len());
+    let range = text_range(0, text.scalar_len().value());
     let input = LayoutInput::builder(
         TiqianTextContent::builder(text.clone())
             .line_break_spans(vec![LineBreakSpan {
-                range: TextRange::new(0, 10),
+                range: text_range(0, 10),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }])
             .build(),
@@ -686,7 +698,7 @@ fn direct_shape_paragraph_edge_cases() {
     assert!(!cjk.shaping_results.is_empty());
 
     let space = Text::from(" ");
-    let space_range = TextRange::new(0, 1);
+    let space_range = text_range(0, 1);
     let space_input = LayoutInput::builder(
         TiqianTextContent::new(space.clone()),
         LayoutConstraints::with_defaults(100.0),
@@ -729,7 +741,14 @@ impl Hyphenator for ProgressivePriorityHyphenator {
         if word == "abcdef" {
             vec![2, 4]
         } else {
-            vec![-1, 0, 1, 2, word.utf16_len(), word.utf16_len() + 2]
+            vec![
+                -1,
+                0,
+                1,
+                2,
+                word.scalar_len().value(),
+                word.scalar_len().value() + 2,
+            ]
         }
     }
 }
@@ -740,12 +759,12 @@ static PROGRESSIVE_PRIORITY_HYPHENATOR: ProgressivePriorityHyphenator =
 #[test]
 fn progressive_technical_tier_priority_and_false_branches() {
     let text = Text::from("abcdef/ghijkl");
-    let span = TextRange::new(0, 13);
+    let span = text_range(0, 13);
     let input = LayoutInput::builder(
         TiqianTextContent::builder(text.clone())
             .line_break_spans(vec![
                 LineBreakSpan {
-                    range: TextRange::new(0, 2),
+                    range: text_range(0, 2),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 },
                 LineBreakSpan {
@@ -753,7 +772,7 @@ fn progressive_technical_tier_priority_and_false_branches() {
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 },
                 LineBreakSpan {
-                    range: TextRange::new(10, 13),
+                    range: text_range(10, 13),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 },
             ])
@@ -767,9 +786,9 @@ fn progressive_technical_tier_priority_and_false_branches() {
         role: FontRole::LatinText,
     };
     let ranges = [
-        TextRange::new(0, 7),
-        TextRange::new(2, 7),
-        TextRange::new(0, 0),
+        text_range(0, 7),
+        text_range(2, 7),
+        text_range(0, 0),
     ];
     let decisions = HashMap::from([
         (
@@ -878,7 +897,7 @@ static TIER_REVISIT_HYPHENATOR: TierRevisitHyphenator = TierRevisitHyphenator;
 #[test]
 fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
     let text = Text::from("abcdef/");
-    let span = TextRange::new(0, 7);
+    let span = text_range(0, 7);
     let input = LayoutInput::builder(
         TiqianTextContent::builder(text.clone())
             .line_break_spans(vec![LineBreakSpan {
@@ -889,7 +908,7 @@ fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
         LayoutConstraints::with_defaults(4.0),
     )
     .build();
-    let ranges = [TextRange::new(0, 7), TextRange::new(2, 7)];
+    let ranges = [text_range(0, 7), text_range(2, 7)];
     let candidate = FontCandidate {
         key: "k".to_owned(),
         family: "f".to_owned(),
@@ -942,7 +961,7 @@ fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
 fn latin_separator_tokens_cover_url_leading_slash_and_dash_locators() {
     for token in ["//example.com/a", "12(3):45–67", "12(3):45—67"] {
         let text = Text::from(token);
-        let range = TextRange::new(0, text.utf16_len());
+        let range = text_range(0, text.scalar_len().value());
         let input = LayoutInput::builder(
             TiqianTextContent::new(text.clone()),
             LayoutConstraints::with_defaults(500.0),

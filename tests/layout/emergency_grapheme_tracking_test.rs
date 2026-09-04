@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, TextRange};
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -20,7 +20,7 @@ fn no_indent_style() -> ParagraphStyle {
 }
 
 fn technical_layout(text: &str, max_width: f32) -> tiqian::core::layout_model::LayoutResult {
-    let range = TextRange::new(0, text.encode_utf16().count() as i32);
+    let range = text_range(0, text.chars().count() as i32);
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = english_hyphenation::en_us();
     engine.layout(
@@ -49,8 +49,8 @@ fn rejected_letter_digit_structural_offsets_remain_emergency_cuts() {
         .flat_map(|decision| decision.break_offsets.iter().copied())
         .collect();
 
-    assert!(emergency.contains(&7), "{emergency:?}");
-    assert!(emergency.contains(&8), "{emergency:?}");
+    assert!(emergency.contains(&scalar_offset(7)), "{emergency:?}");
+    assert!(emergency.contains(&scalar_offset(8)), "{emergency:?}");
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
 }
 
@@ -59,7 +59,7 @@ struct UniformAdvanceTextShaper;
 impl TextShaper for UniformAdvanceTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let source = input.text.slice_text(input.range);
-        let advance = source.utf16_len() as f32 * 10.0;
+        let advance = source.scalar_len().value() as f32 * 10.0;
         ShapingResult::new(
             vec![Cluster::with_display_text(
                 input.range,
@@ -83,7 +83,7 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(vec![LineBreakSpan {
-                    range: TextRange::new(0, text.encode_utf16().count() as i32),
+                    range: text_range(0, text.chars().count() as i32),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 }])
                 .build(),
@@ -93,7 +93,7 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
         .build(),
     );
 
-    assert_eq!(TextRange::new(0, 8), result.lines[0].range);
+    assert_eq!(text_range(0, 8), result.lines[0].range);
     assert!(result.debug.line_decisions[0]
         .notes
         .iter()
@@ -105,7 +105,7 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
 fn hash_inside_technical_url_skips_syllable_classification() {
     let hash = "deadbeefcafebabefeedfaceabcdefabcdef";
     let text = format!("https://example.com/commit/{hash}");
-    let hash_start = text.find(hash).unwrap() as i32;
+    let hash_start = text[..text.find(hash).unwrap()].chars().count() as i32;
     let result = technical_layout(&text, 192.0);
     let syllable_offsets: Vec<_> = result
         .debug
@@ -118,7 +118,7 @@ fn hash_inside_technical_url_skips_syllable_classification() {
     assert!(
         syllable_offsets
             .iter()
-            .all(|offset| *offset <= hash_start || *offset >= text.len() as i32),
+            .all(|offset| offset.value() <= hash_start || offset.value() >= text.chars().count() as i32),
         "{syllable_offsets:?}"
     );
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
@@ -202,7 +202,7 @@ fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
         .emergency_tracking_eligibility_decisions
         .iter()
         .any(|decision| {
-            decision.range == TextRange::new(0, text.encode_utf16().count() as i32)
+            decision.range == text_range(0, text.chars().count() as i32)
                 && decision.reason == "LongRepeatedLetterRun"
         }));
     for line in result
@@ -217,7 +217,7 @@ fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
 #[test]
 fn opaque_hard_break_keeps_combining_grapheme_intact() {
     let text = "abc123e\u{0301}def456ghi";
-    let combining_mark_offset = text.find('\u{0301}').unwrap() as i32;
+    let combining_mark_offset = scalar_offset(text[..text.find('\u{0301}').unwrap()].chars().count() as i32);
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = english_hyphenation::en_us();
     let result = engine.layout(
@@ -239,13 +239,13 @@ fn opaque_hard_break_keeps_combining_grapheme_intact() {
 #[test]
 fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_controls() {
     let object_text = "aaaaaaaaaaaa\u{fffc}bbbbbbbbbbbb";
-    let object_range = TextRange::new(12, 13);
+    let object_range = text_range(12, 13);
     let mut object_engine = ExplainableStubParagraphLayoutEngine::default();
     let object_result = object_engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(object_text))
                 .line_break_spans(vec![LineBreakSpan {
-                    range: TextRange::new(0, object_text.encode_utf16().count() as i32),
+                    range: text_range(0, object_text.chars().count() as i32),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 }])
                 .build(),
@@ -274,13 +274,13 @@ fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_
     }));
 
     let zero_width_text = "aaaaaaaaaaaa\u{200b}bbbbbbbbbbbb";
-    let zero_width_range = TextRange::new(12, 13);
+    let zero_width_range = text_range(12, 13);
     let mut zero_width_engine = ExplainableStubParagraphLayoutEngine::default();
     let zero_width_result = zero_width_engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(zero_width_text))
                 .line_break_spans(vec![LineBreakSpan {
-                    range: TextRange::new(0, zero_width_text.encode_utf16().count() as i32),
+                    range: text_range(0, zero_width_text.chars().count() as i32),
                     policy: LineBreakPolicy::ProgressiveTechnical,
                 }])
                 .build(),
@@ -307,7 +307,11 @@ fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_
 fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components() {
     let identity = "abc123def456ghi789";
     let text = format!("https://example.com/path/to/{identity}");
-    let identity_start = text.find(identity).expect("identity start") as i32;
+    let identity_start = scalar_offset(
+        text[..text.find(identity).expect("identity start")]
+            .chars()
+            .count() as i32,
+    );
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = english_hyphenation::en_us();
     let result = engine.layout(
@@ -320,7 +324,7 @@ fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components()
     );
 
     assert_eq!(
-        vec![TextRange::new(identity_start, text.encode_utf16().count() as i32)],
+        vec![TextRange::new(identity_start, scalar_offset(text.chars().count() as i32))],
         result
             .debug
             .emergency_tracking_eligibility_decisions

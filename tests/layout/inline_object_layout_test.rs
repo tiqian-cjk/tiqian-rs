@@ -1,5 +1,5 @@
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -81,7 +81,7 @@ fn line_boundary_closes_one_ulp_gap_without_changing_baseline_distance() {
 fn inline_object_reuses_existing_interline_space_without_moving_baseline_grid() {
     let plain = layout(Vec::new());
     let with_object = layout(vec![InlineObjectSpan::with_fixed_boundaries(
-        TextRange::new(1, 2),
+        text_range(1, 2),
         16.0,
         20.0,
         2.0,
@@ -110,8 +110,8 @@ fn inline_object_reuses_existing_interline_space_without_moving_baseline_grid() 
 #[test]
 fn inline_object_expands_only_the_boundary_with_actual_collision() {
     let result = layout(vec![
-        InlineObjectSpan::with_fixed_boundaries(TextRange::new(0, 1), 16.0, 14.0, 10.0),
-        InlineObjectSpan::with_fixed_boundaries(TextRange::new(1, 2), 16.0, 20.0, 2.0),
+        InlineObjectSpan::with_fixed_boundaries(text_range(0, 1), 16.0, 14.0, 10.0),
+        InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 16.0, 20.0, 2.0),
     ]);
 
     assert!((result.lines[1].baseline - result.lines[0].baseline - 31.6).abs() < 0.001);
@@ -139,8 +139,8 @@ fn inline_object_expands_only_the_boundary_with_actual_collision() {
                 .build(),
         )
         .inline_objects(vec![
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(0, 1), 16.0, 14.0, 10.0),
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(1, 2), 16.0, 20.0, 2.0),
+            InlineObjectSpan::with_fixed_boundaries(text_range(0, 1), 16.0, 14.0, 10.0),
+            InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 16.0, 20.0, 2.0),
         ])
         .build(),
     );
@@ -159,7 +159,7 @@ fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
         .text_style(TextStyle::builder().font_size(16.0).build())
         .paragraph_style(style())
         .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 2),
+            text_range(1, 2),
             20.0,
             30.0,
             4.0,
@@ -169,7 +169,7 @@ fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
     let object = result
         .clusters
         .iter()
-        .find(|cluster| cluster.range == TextRange::new(1, 2))
+        .find(|cluster| cluster.range == text_range(1, 2))
         .unwrap();
 
     assert_eq!(20.0, object.advance);
@@ -210,11 +210,11 @@ fn inline_object_is_one_indivisible_break_cluster() {
         .text_style(TextStyle::builder().font_size(16.0).build())
         .paragraph_style(style())
         .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 2), 20.0, 16.0, 4.0,
+            text_range(1, 2), 20.0, 16.0, 4.0,
         )])
         .build(),
     );
-    let index = result.clusters.iter().position(|cluster| cluster.range == TextRange::new(1, 2)).unwrap() as i32;
+    let index = result.clusters.iter().position(|cluster| cluster.range == text_range(1, 2)).unwrap() as i32;
     assert!(result.lines.iter().any(|line| line.cluster_range.first() == index && line.cluster_range.last() == index));
 }
 
@@ -228,11 +228,11 @@ fn inline_object_keeps_alternate_source_text_while_skipping_its_glyph_shaping() 
         .text_style(TextStyle::builder().font_size(16.0).build())
         .paragraph_style(style())
         .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-            TextRange::new(1, 3), 20.0, 16.0, 4.0,
+            text_range(1, 3), 20.0, 16.0, 4.0,
         )])
         .build(),
     );
-    let object = result.clusters.iter().find(|cluster| cluster.range == TextRange::new(1, 3)).unwrap();
+    let object = result.clusters.iter().find(|cluster| cluster.range == text_range(1, 3)).unwrap();
     assert_eq!("图片", object.text);
     assert_eq!("", object.display_text);
     assert!(result.glyph_runs.iter().flat_map(|run| &run.glyphs).all(|glyph| glyph.cluster_range != object.range));
@@ -274,7 +274,7 @@ fn formula_boundary_compression_pushes_attached_comma_into_previous_line() {
         .text_style(TextStyle::builder().font_size(16.0).build())
         .paragraph_style(style())
         .inline_objects(vec![InlineObjectSpan::with_trailing_boundary(
-            TextRange::new(0, 2),
+            text_range(0, 2),
             30.0,
             16.0,
             4.0,
@@ -285,10 +285,10 @@ fn formula_boundary_compression_pushes_attached_comma_into_previous_line() {
         )])
         .build(),
     );
-    assert!(result.lines.iter().all(|line| !Text::from(text).slice_text(line.range).starts_with('，')));
+    assert!(result.lines.iter().all(|line| !Text::from(text).slice_text(line.range).as_str().starts_with('，')));
     let repair = result.debug.line_decisions[0].repair_decision.as_ref().unwrap();
     assert_eq!("PushIn", repair.kind);
-    assert!(repair.push_in_allocations.iter().any(|allocation| allocation.cluster_range == TextRange::new(0, 2) && allocation.shrink > 0.0));
+    assert!(repair.push_in_allocations.iter().any(|allocation| allocation.cluster_range == text_range(0, 2) && allocation.shrink > 0.0));
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn per_atom_formula_chain_never_breaks_mid_run() {
     let objects: Vec<_> = (1..=4)
         .map(|index| {
             InlineObjectSpan::with_trailing_boundary(
-                TextRange::new(index, index + 1),
+                text_range(index, index + 1),
                 12.0,
                 16.0,
                 4.0,
@@ -316,7 +316,7 @@ fn per_atom_formula_chain_never_breaks_mid_run() {
         .build(),
     );
     for line in &result.lines {
-        assert!(![2, 3, 4].contains(&line.range.end()), "{:?}", result.lines);
+        assert!(![scalar_offset(2), scalar_offset(3), scalar_offset(4)].contains(&line.range.end()), "{:?}", result.lines);
     }
 }
 
@@ -334,11 +334,11 @@ fn punctuation_attached_to_inline_object_never_starts_wrapped_line() {
                     .text_style(TextStyle::builder().font_size(16.0).build())
                     .paragraph_style(style())
                     .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-                        TextRange::new(0, 2), 30.0, 16.0, 4.0,
+                        text_range(0, 2), 30.0, 16.0, 4.0,
                     )])
                     .build(),
                 );
-                assert!(result.lines.iter().all(|line| !Text::from(text.as_str()).slice_text(line.range).starts_with(comma)));
+                assert!(result.lines.iter().all(|line| !Text::from(text.as_str()).slice_text(line.range).as_str().starts_with(comma)));
                 assert!(result.debug.contextual_kinsoku_decisions.iter().any(|decision| decision.source_text == comma.to_string() && decision.reason == "InlineObjectAttachedKinsoku"));
             }
         }
@@ -359,11 +359,11 @@ fn separator_space_before_punctuation_collapses_and_stays_with_inline_object() {
                 .text_style(TextStyle::builder().font_size(16.0).build())
                 .paragraph_style(style())
                 .inline_objects(vec![InlineObjectSpan::new(
-                    TextRange::new(1, 2), 24.0, 16.0, 4.0, adjustment.clone(), adjustment,
+                    text_range(1, 2), 24.0, 16.0, 4.0, adjustment.clone(), adjustment,
                 )])
                 .build(),
             );
-            assert_eq!(0.0, result.clusters.iter().find(|cluster| cluster.range == TextRange::new(2, 3)).unwrap().advance);
+            assert_eq!(0.0, result.clusters.iter().find(|cluster| cluster.range == text_range(2, 3)).unwrap().advance);
             let line_texts: Vec<_> = result.lines.iter().map(|line| Text::from(text).slice_text(line.range).to_string()).collect();
             assert!(
                 line_texts.iter().all(|line| !line.trim_start().starts_with('，')),
@@ -371,9 +371,9 @@ fn separator_space_before_punctuation_collapses_and_stays_with_inline_object() {
             );
             assert!(result.debug.contextual_kinsoku_decisions.iter().any(|decision| decision.source_text == "，" && decision.reason == "InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace"));
             let attachment = &result.debug.inline_object_punctuation_attachment_decisions[0];
-            assert_eq!(TextRange::new(2, 3), attachment.separator_range);
+            assert_eq!(text_range(2, 3), attachment.separator_range);
             assert!(attachment.collapsed_advance > 0.0);
-            assert!(result.debug.justification_decisions.iter().flat_map(|decision| &decision.allocations).all(|allocation| allocation.cluster_range != TextRange::new(1, 2) || allocation.kind != "InlineObjectBoundary"));
+            assert!(result.debug.justification_decisions.iter().flat_map(|decision| &decision.allocations).all(|allocation| allocation.cluster_range != text_range(1, 2) || allocation.kind != "InlineObjectBoundary"));
         }
     }
 }
@@ -401,14 +401,14 @@ fn relation_stretch_moves_both_formula_sides_by_the_same_final_geometry() {
         .text_style(TextStyle::builder().font_size(16.0).build())
         .paragraph_style(style())
         .inline_objects(vec![
-            InlineObjectSpan::with_trailing_boundary(TextRange::new(0, 1), 10.0 + natural_gap, 12.0, 4.0, relation(false)),
-            InlineObjectSpan::with_trailing_boundary(TextRange::new(1, 2), 10.0 + natural_gap, 12.0, 4.0, relation(true)),
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(2, 3), 10.0, 12.0, 4.0),
+            InlineObjectSpan::with_trailing_boundary(text_range(0, 1), 10.0 + natural_gap, 12.0, 4.0, relation(false)),
+            InlineObjectSpan::with_trailing_boundary(text_range(1, 2), 10.0 + natural_gap, 12.0, 4.0, relation(true)),
+            InlineObjectSpan::with_fixed_boundaries(text_range(2, 3), 10.0, 12.0, 4.0),
         ])
         .build(),
     );
     let positioned = tiqian::core::layout_queries::positioned_clusters(&result);
-    let formula: Vec<_> = positioned.iter().filter(|cluster| cluster.range.end() <= 3).collect();
+    let formula: Vec<_> = positioned.iter().filter(|cluster| cluster.range.end() <= scalar_offset(3)).collect();
     assert_eq!(3, formula.len());
     assert!(formula.iter().all(|cluster| cluster.line_index == 0));
     let before = formula[1].draw_x - (formula[0].draw_x + 10.0);
@@ -424,7 +424,7 @@ fn relation_stretch_moves_both_formula_sides_by_the_same_final_geometry() {
 fn formula_break_keeps_baseline_operator_on_previous_line() {
     let text = "a+b";
     let operator = InlineObjectSpan::new(
-        TextRange::new(1, 2),
+        text_range(1, 2),
         12.0,
         12.0,
         4.0,
@@ -433,9 +433,9 @@ fn formula_break_keeps_baseline_operator_on_previous_line() {
     );
     for strategy in 0..3 {
         let objects = vec![
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(0, 1), 12.0, 12.0, 4.0),
+            InlineObjectSpan::with_fixed_boundaries(text_range(0, 1), 12.0, 12.0, 4.0),
             operator.clone(),
-            InlineObjectSpan::with_fixed_boundaries(TextRange::new(2, 3), 12.0, 12.0, 4.0),
+            InlineObjectSpan::with_fixed_boundaries(text_range(2, 3), 12.0, 12.0, 4.0),
         ];
         let result = fixed_basic_engine(breaker(strategy)).layout(
             LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(24.0))
@@ -448,11 +448,11 @@ fn formula_break_keeps_baseline_operator_on_previous_line() {
         assert!(lines.len() > 1);
         assert!(lines.iter().skip(1).all(|line| !line.starts_with('+')));
         assert!(lines.iter().take(lines.len() - 1).any(|line| line.ends_with('+')));
-        assert_eq!(8.0, result.clusters.iter().find(|cluster| cluster.range == TextRange::new(1, 2)).unwrap().advance);
+        assert_eq!(8.0, result.clusters.iter().find(|cluster| cluster.range == text_range(1, 2)).unwrap().advance);
         assert_eq!(20.0, result.lines[0].visual_width);
-        assert_eq!(0.0, tiqian::core::layout_queries::positioned_clusters(&result).iter().find(|cluster| cluster.range == TextRange::new(2, 3)).unwrap().draw_x);
-        assert!(result.debug.line_edge_trim_decisions.iter().any(|decision| decision.cluster_range == TextRange::new(1, 2) && decision.reason == "InlineObjectLineEndDiscardableGlue" && decision.natural_glue == 4.0));
-        let decision = result.debug.inline_object_decisions.iter().find(|decision| decision.range == TextRange::new(1, 2)).unwrap();
+        assert_eq!(0.0, tiqian::core::layout_queries::positioned_clusters(&result).iter().find(|cluster| cluster.range == text_range(2, 3)).unwrap().draw_x);
+        assert!(result.debug.line_edge_trim_decisions.iter().any(|decision| decision.cluster_range == text_range(1, 2) && decision.reason == "InlineObjectLineEndDiscardableGlue" && decision.natural_glue == 4.0));
+        let decision = result.debug.inline_object_decisions.iter().find(|decision| decision.range == text_range(1, 2)).unwrap();
         assert!(decision.leading_prevents_line_break);
         assert_eq!(4.0, decision.trailing_line_end_discardable_advance);
         let unbroken = fixed_basic_engine(breaker(strategy)).layout(
@@ -463,7 +463,7 @@ fn formula_break_keeps_baseline_operator_on_previous_line() {
                 .build(),
         );
         assert_eq!(1, unbroken.lines.len());
-        assert_eq!(12.0, unbroken.clusters.iter().find(|cluster| cluster.range == TextRange::new(1, 2)).unwrap().advance);
+        assert_eq!(12.0, unbroken.clusters.iter().find(|cluster| cluster.range == text_range(1, 2)).unwrap().advance);
         assert!(unbroken.debug.line_edge_trim_decisions.iter().all(|decision| decision.reason != "InlineObjectLineEndDiscardableGlue"));
     }
 }

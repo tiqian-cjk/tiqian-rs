@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tiqian::common::{HashMap, HashSet};
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver};
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -78,23 +78,23 @@ fn lru_cache_update_existing_key_and_clear() {
 fn containing_items_and_first_contained_item_branches() {
     let clusters = vec![
         Cluster::with_display_text(
-            TextRange::new(0, 2), Text::from("aa"), Text::from("aa"), "k".to_owned(), 10.0,
+            text_range(0, 2), Text::from("aa"), Text::from("aa"), "k".to_owned(), 10.0,
         ),
         Cluster::with_display_text(
-            TextRange::new(2, 5), Text::from("bbb"), Text::from("bbb"), "k".to_owned(), 15.0,
+            text_range(2, 5), Text::from("bbb"), Text::from("bbb"), "k".to_owned(), 15.0,
         ),
         Cluster::with_display_text(
-            TextRange::new(5, 7), Text::from("cc"), Text::from("cc"), "k".to_owned(), 10.0,
+            text_range(5, 7), Text::from("cc"), Text::from("cc"), "k".to_owned(), 10.0,
         ),
         Cluster::with_display_text(
-            TextRange::new(7, 9), Text::from("dd"), Text::from("dd"), "k".to_owned(), 10.0,
+            text_range(7, 9), Text::from("dd"), Text::from("dd"), "k".to_owned(), 10.0,
         ),
     ];
     let items = vec![
-        TextRange::new(0, 2),
-        TextRange::new(1, 4),
-        TextRange::new(5, 8),
-        TextRange::new(10, 12),
+        text_range(0, 2),
+        text_range(1, 4),
+        text_range(5, 8),
+        text_range(10, 12),
     ];
 
     assert_eq!(
@@ -166,7 +166,7 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
             LayoutInput::builder(
                 TiqianTextContent::builder(Text::from("Hello World with English Words"))
                     .line_break_spans(vec![LineBreakSpan {
-                        range: TextRange::new(0, 11),
+                        range: text_range(0, 11),
                         policy: LineBreakPolicy::ProgressiveTechnical,
                     }])
                     .build(),
@@ -174,17 +174,17 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
             )
             .decorations(vec![
                 DecorationSpan {
-                    range: TextRange::new(0, 5),
+                    range: text_range(0, 5),
                     kind: DecorationKind::Emphasis,
                 },
                 DecorationSpan {
-                    range: TextRange::new(6, 11),
+                    range: text_range(6, 11),
                     kind: DecorationKind::ProperNoun,
                 },
             ])
             .build(),
             HashMap::from([(
-                TextRange::new(0, 11),
+                text_range(0, 11),
                 tiqian::common::HashSet::from([ProgressiveBreakTier::Structural]),
             )]),
         ),
@@ -292,12 +292,12 @@ fn verbatim_ranges_and_auto_space_decisions() {
     let text = Text::from("中文 English 混排测试 12345");
     let input = LayoutInput::builder(
         TiqianTextContent::builder(text)
-            .auto_space_suppressed_ranges(vec![TextRange::new(0, 15)])
+            .auto_space_suppressed_ranges(vec![text_range(0, 15)])
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
     .inline_boxes(vec![InlineBoxSpan::with_all(
-        TextRange::new(2, 9),
+        text_range(2, 9),
         0.0,
         0.0,
         InlineBoxOuterSpacing::Narrow,
@@ -331,15 +331,15 @@ fn ruby_spread_accumulation_and_edges() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("中文测试段落"))
-            .source_boundaries(HashSet::from([1, 2, 3, 4, 5]))
+            .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5)]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
     .ruby_spans(vec![
-        RubySpan::new(TextRange::new(0, 2), Text::from("zhōngwén")),
-        RubySpan::new(TextRange::new(2, 4), Text::from("cèshìchángdà")),
-        RubySpan::new(TextRange::new(4, 6), Text::from("duànluòchángdà")),
-        RubySpan::new(TextRange::new(99, 100), Text::from("invalid")),
+        RubySpan::new(text_range(0, 2), Text::from("zhōngwén")),
+        RubySpan::new(text_range(2, 4), Text::from("cèshìchángdà")),
+        RubySpan::new(text_range(4, 6), Text::from("duànluòchángdà")),
+        RubySpan::new(text_range(99, 100), Text::from("invalid")),
     ])
     .build();
     let annotation = prepare_width_independent_annotation(
@@ -370,15 +370,15 @@ fn ruby_spread_second_visit_and_zero_first_cluster() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("一二三四五六七八"))
-            .source_boundaries(HashSet::from([0, 1, 2, 3, 4, 5, 6, 7]))
+            .source_boundaries(HashSet::from([scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5), scalar_offset(6), scalar_offset(7)]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
     .ruby_spans(vec![
-        RubySpan::new(TextRange::new(0, 1), Text::from("chángdàchángdà")),
-        RubySpan::new(TextRange::new(0, 1), Text::from("chángdàchángdà")),
-        RubySpan::new(TextRange::new(2, 3), Text::from("chángdàchángdàchángdà")),
-        RubySpan::new(TextRange::new(2, 3), Text::from("chángdàchángdàchángdà")),
+        RubySpan::new(text_range(0, 1), Text::from("chángdàchángdà")),
+        RubySpan::new(text_range(0, 1), Text::from("chángdàchángdà")),
+        RubySpan::new(text_range(2, 3), Text::from("chángdàchángdàchángdà")),
+        RubySpan::new(text_range(2, 3), Text::from("chángdàchángdàchángdà")),
     ])
     .build();
     let annotation = prepare_width_independent_annotation(
@@ -443,7 +443,7 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
             for prevents1 in [true, false] {
                 for prevents2 in [true, false] {
                     let object1 = InlineObjectSpan::with_trailing_boundary(
-                        TextRange::new(1, 2),
+                        text_range(1, 2),
                         20.0,
                         12.0,
                         4.0,
@@ -460,7 +460,7 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
                             .build(),
                     );
                     let object2 = InlineObjectSpan::with_leading_boundary(
-                        TextRange::new(2, 3),
+                        text_range(2, 3),
                         20.0,
                         12.0,
                         4.0,
@@ -507,7 +507,7 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
     }
 
     let object1 = InlineObjectSpan::with_trailing_boundary(
-        TextRange::new(1, 2),
+        text_range(1, 2),
         20.0,
         12.0,
         4.0,
@@ -520,7 +520,7 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
             .build(),
     );
     let object2 = InlineObjectSpan::with_leading_boundary(
-        TextRange::new(2, 3),
+        text_range(2, 3),
         20.0,
         12.0,
         4.0,
@@ -612,14 +612,14 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
 
     let text = "正文：“内容·[1]，后文";
     let byte_start = text.find("[1]").unwrap();
-    let attach_start = text[..byte_start].encode_utf16().count() as i32;
+    let attach_start = text[..byte_start].chars().count() as i32;
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.text_shaper = Box::new(NarrowInkShaper);
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(attach_start, attach_start + 3),
+                    range: text_range(attach_start, attach_start + 3),
                     style: TextStyle::builder()
                         .inline_attachment(InlineAttachment::Previous)
                         .build(),
@@ -653,7 +653,7 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
     assert!(decision.natural_inner_glue > 0.0);
     assert!(decision.reduction > 0.0);
     assert_eq!(
-        text[..text.find('·').unwrap()].encode_utf16().count() as i32,
+        scalar_offset(text[..text.find('·').unwrap()].chars().count() as i32),
         decision.reduction_target_range.start()
     );
 }
@@ -665,27 +665,27 @@ fn prepare_width_independent_annotation_branches() {
         TiqianTextContent::builder(Text::from("测试文本【中文】与English，以及注音与行内框。"))
             .spans(vec![
                 TextSpan {
-                    range: TextRange::new(0, 0),
+                    range: text_range(0, 0),
                     style: TextStyle::builder().font_size(10.0).build(),
                 },
                 TextSpan {
-                    range: TextRange::new(0, 1),
+                    range: text_range(0, 1),
                     style: TextStyle::builder().font_size(18.0).font_weight(500).build(),
                 },
                 TextSpan {
-                    range: TextRange::new(1, 4),
+                    range: text_range(1, 4),
                     style: TextStyle::builder().font_size(18.0).font_weight(500).build(),
                 },
                 TextSpan {
-                    range: TextRange::new(4, 8),
+                    range: text_range(4, 8),
                     style: TextStyle::builder().font_size(14.0).font_weight(300).build(),
                 },
             ])
             .line_break_spans(vec![LineBreakSpan {
-                range: TextRange::new(8, 15),
+                range: text_range(8, 15),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }])
-            .source_boundaries(HashSet::from([1, 2, 3, 4, 6]))
+            .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(6)]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
@@ -698,31 +698,31 @@ fn prepare_width_independent_annotation_branches() {
     )
     .decorations(vec![
         DecorationSpan {
-            range: TextRange::new(0, 4),
+            range: text_range(0, 4),
             kind: DecorationKind::Emphasis,
         },
         DecorationSpan {
-            range: TextRange::new(4, 8),
+            range: text_range(4, 8),
             kind: DecorationKind::ProperNoun,
         },
     ])
     .ruby_spans(vec![
-        RubySpan::builder(TextRange::new(0, 2), Text::from("cèshì"))
+        RubySpan::builder(text_range(0, 2), Text::from("cèshì"))
             .locale(Some("zh-Latn".to_owned()))
             .build(),
-        RubySpan::new(TextRange::new(2, 4), Text::new()),
-        RubySpan::with_kind(TextRange::new(0, 1), Text::from("˙ㄅ"), RubyKind::Bopomofo),
-        RubySpan::with_kind(TextRange::new(0, 1), Text::from("ㄆ"), RubyKind::Bopomofo),
-        RubySpan::with_kind(TextRange::new(99, 100), Text::from("invalid"), RubyKind::Bopomofo),
+        RubySpan::new(text_range(2, 4), Text::new()),
+        RubySpan::with_kind(text_range(0, 1), Text::from("˙ㄅ"), RubyKind::Bopomofo),
+        RubySpan::with_kind(text_range(0, 1), Text::from("ㄆ"), RubyKind::Bopomofo),
+        RubySpan::with_kind(text_range(99, 100), Text::from("invalid"), RubyKind::Bopomofo),
     ])
     .inline_boxes(vec![
-        InlineBoxSpan::with_edges(TextRange::new(15, 17), 4.0, 0.0),
-        InlineBoxSpan::with_edges(TextRange::new(17, 19), 0.0, 4.0),
-        InlineBoxSpan::with_all(TextRange::new(19, 21), 0.0, 0.0, InlineBoxOuterSpacing::Narrow),
-        InlineBoxSpan::with_all(TextRange::new(21, 23), 0.0, 0.0, InlineBoxOuterSpacing::Source),
+        InlineBoxSpan::with_edges(text_range(15, 17), 4.0, 0.0),
+        InlineBoxSpan::with_edges(text_range(17, 19), 0.0, 4.0),
+        InlineBoxSpan::with_all(text_range(19, 21), 0.0, 0.0, InlineBoxOuterSpacing::Narrow),
+        InlineBoxSpan::with_all(text_range(21, 23), 0.0, 0.0, InlineBoxOuterSpacing::Source),
     ])
     .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
-        TextRange::new(23, 24),
+        text_range(23, 24),
         20.0,
         12.0,
         4.0,
@@ -739,18 +739,18 @@ fn prepare_width_independent_annotation_branches() {
         engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
-    assert_eq!(18.0, (annotation.font_size_at)(0));
-    assert_eq!(14.0, (annotation.font_size_at)(5));
-    assert_eq!(16.0, (annotation.font_size_at)(24));
-    assert_eq!(800, (annotation.bopomofo_font_weight_at)(0));
-    assert_eq!(600, (annotation.bopomofo_font_weight_at)(5));
-    assert_eq!(700, (annotation.bopomofo_font_weight_at)(24));
-    assert_eq!(18.0, (annotation.style_at)(0).font_size);
-    assert_eq!(18.0, (annotation.style_at)(3).font_size);
-    assert_eq!(14.0, (annotation.style_at)(4).font_size);
-    assert_eq!(14.0, (annotation.style_at)(7).font_size);
-    assert_eq!(16.0, (annotation.style_at)(8).font_size);
-    assert_eq!(16.0, (annotation.style_at)(25).font_size);
+    assert_eq!(18.0, (annotation.font_size_at)(scalar_offset(0)));
+    assert_eq!(14.0, (annotation.font_size_at)(scalar_offset(5)));
+    assert_eq!(16.0, (annotation.font_size_at)(scalar_offset(24)));
+    assert_eq!(800, (annotation.bopomofo_font_weight_at)(scalar_offset(0)));
+    assert_eq!(600, (annotation.bopomofo_font_weight_at)(scalar_offset(5)));
+    assert_eq!(700, (annotation.bopomofo_font_weight_at)(scalar_offset(24)));
+    assert_eq!(18.0, (annotation.style_at)(scalar_offset(0)).font_size);
+    assert_eq!(18.0, (annotation.style_at)(scalar_offset(3)).font_size);
+    assert_eq!(14.0, (annotation.style_at)(scalar_offset(4)).font_size);
+    assert_eq!(14.0, (annotation.style_at)(scalar_offset(7)).font_size);
+    assert_eq!(16.0, (annotation.style_at)(scalar_offset(8)).font_size);
+    assert_eq!(16.0, (annotation.style_at)(scalar_offset(25)).font_size);
 
     let prep = build_paragraph_layout_prep(
         &input,
@@ -777,9 +777,9 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.clreq_profile_resolver = Box::new(TaiwanProfileResolver);
     let text = Text::from("「引用」·中点‧间隔•中点，逗号。句号！问号？．点号、顿号以及 English words 间距");
-    let spans: Vec<TextSpan> = (0..text.utf16_len())
-        .map(|offset| TextSpan {
-            range: TextRange::new(offset, offset + 1),
+    let spans: Vec<TextSpan> = text.scalar_indices()
+        .map(|(offset, _)| TextSpan {
+            range: tiqian::core::geometry::TextRange::new(offset, offset + 1),
             style: TextStyle::builder().font_size(16.0).build(),
         })
         .collect();
@@ -788,12 +788,12 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
             let input = LayoutInput::builder(
                 TiqianTextContent::builder(text.clone())
                     .spans(spans.clone())
-                    .source_boundaries((0..text.utf16_len()).collect())
+                    .source_boundaries(text.scalar_indices().map(|(offset, _)| offset).collect())
                     .build(),
                 LayoutConstraints::with_defaults(300.0),
             )
             .inline_objects(vec![InlineObjectSpan::with_trailing_boundary(
-                TextRange::new(0, 1),
+                text_range(0, 1),
                 20.0,
                 12.0,
                 4.0,
@@ -836,11 +836,11 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("English 中文 混排 Latin 测试 样式"))
             .spans(vec![TextSpan {
-                range: TextRange::new(8, 10),
+                range: text_range(8, 10),
                 style: TextStyle::builder().font_size(24.0).build(),
             }])
             .line_break_spans(vec![LineBreakSpan {
-                range: TextRange::new(0, 7),
+                range: text_range(0, 7),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }])
             .build(),
@@ -848,11 +848,11 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
     )
     .decorations(vec![
         DecorationSpan {
-            range: TextRange::new(0, 7),
+            range: text_range(0, 7),
             kind: DecorationKind::Emphasis,
         },
         DecorationSpan {
-            range: TextRange::new(11, 13),
+            range: text_range(11, 13),
             kind: DecorationKind::ProperNoun,
         },
     ])
@@ -868,13 +868,13 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
-    assert_eq!(24.0, (annotation.font_size_at)(8));
-    assert_eq!(24.0, (annotation.font_size_at)(9));
-    for offset in [-1, 0, 7, 10, 20, 100] {
-        assert_eq!(input.text_style.font_size, (annotation.font_size_at)(offset));
+    assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(8)));
+    assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(9)));
+    for offset in [0, 7, 10, 20, 100] {
+        assert_eq!(input.text_style.font_size, (annotation.font_size_at)(scalar_offset(offset)));
     }
     let rejected = HashMap::from([(
-        TextRange::new(0, 7),
+        text_range(0, 7),
         HashSet::from([ProgressiveBreakTier::Structural]),
     )]);
     let prep = build_paragraph_layout_prep(
@@ -936,7 +936,7 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("Hello World Latin"))
             .line_break_spans(vec![LineBreakSpan {
-                range: TextRange::new(0, 17),
+                range: text_range(0, 17),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }])
             .build(),
@@ -944,11 +944,11 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
     )
     .decorations(vec![
         DecorationSpan {
-            range: TextRange::new(0, 5),
+            range: text_range(0, 5),
             kind: DecorationKind::ProperNoun,
         },
         DecorationSpan {
-            range: TextRange::new(6, 11),
+            range: text_range(6, 11),
             kind: DecorationKind::Emphasis,
         },
     ])
@@ -966,7 +966,7 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
     );
     annotation.segment_shaping_cache = HashMap::new();
     let rejected = HashMap::from([(
-        TextRange::new(0, 17),
+        text_range(0, 17),
         HashSet::from([ProgressiveBreakTier::Structural]),
     )]);
     let prep = build_paragraph_layout_prep(

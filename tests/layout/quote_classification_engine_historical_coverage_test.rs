@@ -1,5 +1,5 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{LayoutConstraints, Rect, ScalarOffset, scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
@@ -21,18 +21,18 @@ fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     )
 }
 
-fn utf16_index_of(text: &str, needle: char) -> i32 {
-    text.find(needle).map(|byte_index| text[..byte_index].encode_utf16().count() as i32).unwrap()
+fn scalar_index_of(text: &str, needle: char) -> ScalarOffset {
+    scalar_offset(text.find(needle).map(|byte_index| text[..byte_index].chars().count() as i32).unwrap())
 }
 
-fn utf16_last_index_of(text: &str, needle: char) -> i32 {
-    text.rfind(needle).map(|byte_index| text[..byte_index].encode_utf16().count() as i32).unwrap()
+fn scalar_last_index_of(text: &str, needle: char) -> ScalarOffset {
+    scalar_offset(text.rfind(needle).map(|byte_index| text[..byte_index].chars().count() as i32).unwrap())
 }
 
-fn curly_quote_indices(text: &str) -> HashSet<i32> {
-    text.encode_utf16()
+fn curly_quote_indices(text: &str) -> HashSet<ScalarOffset> {
+    text.chars()
         .enumerate()
-        .filter_map(|(index, unit)| matches!(unit, 0x2018 | 0x2019 | 0x201C | 0x201D).then_some(index as i32))
+        .filter_map(|(index, character)| matches!(character, '‘' | '’' | '“' | '”').then_some(scalar_offset(index as i32)))
         .collect()
 }
 
@@ -108,7 +108,7 @@ fn mixed_quote_contexts_reach_the_font_and_punctuation_pipeline() {
             .build(),
     );
     let cjk_quote_indices = HashSet::from([
-        utf16_index_of(text, '“'), utf16_index_of(text, '”'), utf16_last_index_of(text, '“'), utf16_last_index_of(text, '”'),
+        scalar_index_of(text, '“'), scalar_index_of(text, '”'), scalar_last_index_of(text, '“'), scalar_last_index_of(text, '”'),
     ]);
     let all_quote_indices = curly_quote_indices(text);
     for index in &cjk_quote_indices {
@@ -132,8 +132,8 @@ fn quote_roles_survive_style_and_source_boundaries() {
     let result = ExplainableStubParagraphLayoutEngine::default().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
-                .spans(vec![TextSpan { range: TextRange::new(2, 7), style: TextStyle::builder().font_weight(700).build() }])
-                .source_boundaries(HashSet::from([1, 2, 6, 7, 8, 9]))
+                .spans(vec![TextSpan { range: text_range(2, 7), style: TextStyle::builder().font_weight(700).build() }])
+                .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(6), scalar_offset(7), scalar_offset(8), scalar_offset(9)]))
                 .build(),
             LayoutConstraints::with_defaults(320.0),
         )
@@ -141,10 +141,10 @@ fn quote_roles_survive_style_and_source_boundaries() {
         .build(),
     );
     let roles: std::collections::HashMap<_, _> = result.debug.role_overrides.iter().map(|override_info| (override_info.range.start(), override_info.overridden_role.as_str())).collect();
-    assert_eq!(Some(&"CjkPunctuation"), roles.get(&1));
-    assert_eq!(Some(&"LatinText"), roles.get(&6));
-    assert_eq!(Some(&"CjkPunctuation"), roles.get(&8));
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.range.start() == 6).unwrap().font_key);
+    assert_eq!(Some(&"CjkPunctuation"), roles.get(&scalar_offset(1)));
+    assert_eq!(Some(&"LatinText"), roles.get(&scalar_offset(6)));
+    assert_eq!(Some(&"CjkPunctuation"), roles.get(&scalar_offset(8)));
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.range.start().value() == 6).unwrap().font_key);
     assert_eq!(text, result.clusters.iter().map(|cluster| cluster.text.as_str()).collect::<String>());
 }
 
@@ -162,9 +162,9 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         let quote_indices = curly_quote_indices(text);
         assert_eq!(quote_indices, result.debug.font_decisions.iter().filter(|decision| decision.role == "CjkPunctuation" && quote_indices.contains(&decision.range.start())).map(|decision| decision.range.start()).collect());
         assert_eq!(quote_indices, result.debug.punctuation_decisions.iter().filter(|decision| matches!(decision.ch, '‘' | '’' | '“' | '”')).map(|decision| decision.range.start()).collect());
-        let final_indices: HashSet<i32> = HashSet::from([
-            utf16_last_index_of(text, '“'),
-            utf16_last_index_of(text, '”'),
+        let final_indices: HashSet<ScalarOffset> = HashSet::from([
+            scalar_last_index_of(text, '“'),
+            scalar_last_index_of(text, '”'),
         ]);
         let final_overrides: Vec<_> = result.debug.role_overrides.iter().filter(|override_info| final_indices.contains(&override_info.range.start())).collect();
         assert_eq!(2, final_overrides.len(), "{text}");
@@ -184,9 +184,9 @@ fn mi10s_adjacent_latin_transcriptions_keep_the_final_quote_pair_in_cjk_context(
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
             .build(),
     );
-    let final_indices: HashSet<i32> = HashSet::from([
-        utf16_last_index_of(text, '“'),
-        utf16_last_index_of(text, '”'),
+    let final_indices: HashSet<ScalarOffset> = HashSet::from([
+        scalar_last_index_of(text, '“'),
+        scalar_last_index_of(text, '”'),
     ]);
     let final_overrides: Vec<_> = result.debug.role_overrides.iter().filter(|override_info| final_indices.contains(&override_info.range.start())).collect();
     assert_eq!(2, final_overrides.len());
@@ -198,7 +198,7 @@ fn mi10s_adjacent_latin_transcriptions_keep_the_final_quote_pair_in_cjk_context(
 #[test]
 fn skips_neutral_dash_before_latin_quote_pair_in_layout() {
     let result = layout("English — “hello”");
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text.contains("“hello”")).unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text.as_str().contains("“hello”")).unwrap().font_key);
 }
 
 #[test]
@@ -215,8 +215,8 @@ fn keeps_slash_led_latin_technical_run_out_of_cjk_punctuation_geometry() {
 #[test]
 fn records_role_overrides_for_resolved_quote_pairs() {
     let result = layout("“Hello” world");
-    let opening = result.debug.role_overrides.iter().find(|override_info| override_info.range.start() == 0).unwrap();
-    let closing = result.debug.role_overrides.iter().find(|override_info| override_info.range.start() == 6).unwrap();
+    let opening = result.debug.role_overrides.iter().find(|override_info| override_info.range.start().value() == 0).unwrap();
+    let closing = result.debug.role_overrides.iter().find(|override_info| override_info.range.start().value() == 6).unwrap();
     assert_eq!("LatinText", opening.overridden_role);
     assert_eq!("CjkPunctuation", opening.original_role);
     assert_eq!("PairedPunctuationOuterScriptContext", opening.source);
@@ -227,7 +227,7 @@ fn records_role_overrides_for_resolved_quote_pairs() {
 fn mixed_chinese_question_at_paragraph_start_keeps_cjk_quote_geometry() {
     let text = "“Json是谁？”";
     let result = layout(text);
-    let quote_indices: HashSet<i32> = HashSet::from([0, text.encode_utf16().count() as i32 - 1]);
+    let quote_indices: HashSet<ScalarOffset> = HashSet::from([scalar_offset(0), scalar_offset(text.chars().count() as i32 - 1)]);
     let overrides: Vec<_> = result.debug.role_overrides.iter().filter(|override_info| quote_indices.contains(&override_info.range.start())).collect();
     assert_eq!(quote_indices, overrides.iter().map(|override_info| override_info.range.start()).collect());
     assert!(overrides.iter().all(|override_info| override_info.overridden_role == "CjkPunctuation"));
@@ -239,10 +239,10 @@ fn mixed_chinese_question_at_paragraph_start_keeps_cjk_quote_geometry() {
 #[test]
 fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
     let result = layout("1.“你知道李白是怎么死的吗？”");
-    let opening = result.debug.font_decisions.iter().find(|decision| decision.range.start() == 2).unwrap();
+    let opening = result.debug.font_decisions.iter().find(|decision| decision.range.start().value() == 2).unwrap();
     assert_eq!("CjkPunctuation", opening.role);
     assert_eq!("cjk-primary", opening.font_key);
-    let override_info = result.debug.role_overrides.iter().find(|override_info| override_info.range.start() == 2).unwrap();
+    let override_info = result.debug.role_overrides.iter().find(|override_info| override_info.range.start().value() == 2).unwrap();
     assert_eq!("PairedPunctuationContentScriptContext", override_info.source);
     assert_eq!("quoted-content-script", override_info.reason);
     assert_eq!("CjkPunctuation", override_info.overridden_role);
@@ -314,16 +314,16 @@ fn leaves_latin_context_curly_quotes_outside_cjk_punctuation_geometry() {
 #[test]
 fn keeps_contraction_apostrophe_latin_inside_cjk_single_quotes() {
     let result = layout("中‘that’s’中");
-    let opening = result.debug.font_decisions.iter().find(|decision| decision.range == TextRange::new(1, 2)).unwrap();
-    let contraction = result.debug.font_decisions.iter().find(|decision| decision.range == TextRange::new(2, 8)).unwrap();
-    let closing = result.debug.font_decisions.iter().find(|decision| decision.range == TextRange::new(8, 9)).unwrap();
+    let opening = result.debug.font_decisions.iter().find(|decision| decision.range == text_range(1, 2)).unwrap();
+    let contraction = result.debug.font_decisions.iter().find(|decision| decision.range == text_range(2, 8)).unwrap();
+    let closing = result.debug.font_decisions.iter().find(|decision| decision.range == text_range(8, 9)).unwrap();
     assert_eq!("CjkPunctuation", opening.role);
     assert_eq!("LatinText", contraction.role);
     assert_eq!("that’s", contraction.source_text);
     assert_eq!("latin-primary", contraction.font_key);
     assert_eq!("CjkPunctuation", closing.role);
     assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "that’s").unwrap().font_key);
-    assert!(result.debug.punctuation_decisions.iter().all(|decision| decision.range != TextRange::new(6, 7)));
+    assert!(result.debug.punctuation_decisions.iter().all(|decision| decision.range != text_range(6, 7)));
 }
 
 #[test]

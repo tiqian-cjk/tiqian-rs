@@ -18,10 +18,10 @@ fn classify_without_pairs(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer
 #[test]
 fn nested_pair_inherits_enclosing_quote_role() {
     let decisions = analyze_and_classify("他说：“她说‘你好’。”");
-    if let Some(inner_open) = decisions.iter().find(|decision| decision.index == 6) {
+    if let Some(inner_open) = decisions.iter().find(|decision| decision.index.value() == 6) {
         assert_eq!(FontRole::CjkPunctuation, inner_open.role);
     }
-    if let Some(inner_close) = decisions.iter().find(|decision| decision.index == 9) {
+    if let Some(inner_close) = decisions.iter().find(|decision| decision.index.value() == 9) {
         assert_eq!(FontRole::CjkPunctuation, inner_close.role);
     }
 }
@@ -29,7 +29,7 @@ fn nested_pair_inherits_enclosing_quote_role() {
 #[test]
 fn nested_pair_latin_inner_inherits_cjk_enclosing() {
     let decisions = analyze_and_classify("他说：“hello”");
-    if let Some(inner_open) = decisions.iter().find(|decision| decision.index == 3) {
+    if let Some(inner_open) = decisions.iter().find(|decision| decision.index.value() == 3) {
         assert_eq!(FontRole::CjkPunctuation, inner_open.role);
     }
 }
@@ -126,7 +126,7 @@ fn nearest_strong_script_role_forward_skips_paired_open_quote() {
 fn enclosing_pair_resolved_before_inner_pair() {
     let inner_open = analyze_and_classify("“‘abc’”")
         .into_iter()
-        .find(|decision| decision.index == 1)
+        .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!(FontRole::CjkPunctuation, inner_open.role);
     assert_eq!("PairedPunctuationEnclosingQuoteContext", inner_open.source);

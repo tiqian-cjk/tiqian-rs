@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LineEndReason};
 use tiqian::core::source_interaction_boundaries::source_grapheme_boundaries;
 use tiqian::core::text::Text;
@@ -69,7 +69,7 @@ fn mandatory_line_break_clusters_are_zero_width_and_not_shaped() {
             .all(|glyph| glyph.cluster_range != break_cluster.range)
     );
     assert_eq!(
-        vec![TextRange::new(0, 3), TextRange::new(4, 7)],
+        vec![text_range(0, 3), text_range(4, 7)],
         result.glyph_runs.iter().map(|run| run.range).collect::<Vec<_>>(),
     );
     assert_eq!(
@@ -120,7 +120,7 @@ fn single_mandatory_break_after_wrapped_line_does_not_create_empty_line() {
         .lines
         .iter()
         .all(|line| Text::from(text).slice_text(line.range) != "\n"));
-    let mandatory_end = text[..text.find('\n').unwrap()].encode_utf16().count() as i32 + 1;
+    let mandatory_end = scalar_offset(text[..text.find('\n').unwrap()].chars().count() as i32 + 1);
     assert_eq!(
         LineEndReason::MandatoryBreak,
         result
@@ -149,8 +149,8 @@ fn crlf_is_one_mandatory_break_cluster() {
         .find(|cluster| cluster.text == "\r\n")
         .unwrap();
     assert_eq!(1, result.debug.mandatory_break_decisions.len());
-    assert_eq!(1, break_cluster.range.start());
-    assert_eq!(3, break_cluster.range.end());
+    assert_eq!(scalar_offset(1), break_cluster.range.start());
+    assert_eq!(scalar_offset(3), break_cluster.range.end());
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn consecutive_and_trailing_mandatory_breaks_preserve_blank_lines() {
     assert_eq!(LineEndReason::MandatoryBreak, result.lines[2].end_reason);
     assert_eq!(LineEndReason::ParagraphEnd, result.lines[3].end_reason);
     assert_eq!(0.0, result.lines[1].visual_width);
-    assert_eq!(TextRange::new(5, 5), result.lines[3].range);
+    assert_eq!(text_range(5, 5), result.lines[3].range);
 }
 
 #[test]
@@ -323,9 +323,9 @@ fn combining_marks_stay_in_their_base_shaping_runs() {
 #[test]
 fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
     let text = "👩🏽‍💻";
-    let length = text.encode_utf16().count() as i32;
+    let length = text.chars().count() as i32;
     let atomic_content = TiqianTextContent::builder(Text::from(text))
-        .source_boundaries(HashSet::from([2]))
+        .source_boundaries(HashSet::from([scalar_offset(2)]))
         .build();
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let atomic = engine.layout(
@@ -338,7 +338,7 @@ fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
             .build(),
     );
     assert_eq!(
-        vec![TextRange::new(0, length)],
+        vec![text_range(0, length)],
         atomic
             .debug
             .font_decisions
@@ -388,13 +388,13 @@ fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
 #[test]
 fn complex_emoji_graphemes_honor_text_span_style_boundaries() {
     let text = "👩🏽‍💻";
-    let length = text.encode_utf16().count() as i32;
+    let length = text.chars().count() as i32;
     let styled_content = TiqianTextContent::builder(Text::from(text))
         .spans(vec![TextSpan {
-            range: TextRange::new(2, length),
+            range: text_range(2, length),
             style: TextStyle::builder().font_weight(700).build(),
         }])
-        .source_boundaries(HashSet::from([2]))
+        .source_boundaries(HashSet::from([scalar_offset(2)]))
         .build();
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     let styled = engine.layout(
@@ -407,7 +407,7 @@ fn complex_emoji_graphemes_honor_text_span_style_boundaries() {
             .build(),
     );
     assert_eq!(
-        vec![TextRange::new(0, 2), TextRange::new(2, length)],
+        vec![text_range(0, 2), text_range(2, 3), text_range(3, length)],
         styled
             .debug
             .shaping_decisions
@@ -421,13 +421,13 @@ fn complex_emoji_graphemes_honor_text_span_style_boundaries() {
 fn source_grapheme_boundaries_do_not_join_zwj_with_ordinary_text() {
     let left = Text::from("👩‍中");
     assert_eq!(
-        vec![0, 3, 4],
-        source_grapheme_boundaries(&left, TextRange::new(0, left.utf16_len()))
+        vec![scalar_offset(0), scalar_offset(2), scalar_offset(3)],
+        source_grapheme_boundaries(&left, text_range(0, left.scalar_len().value()))
     );
     let right = Text::from("中‍👩");
     assert_eq!(
-        vec![0, 2, 4],
-        source_grapheme_boundaries(&right, TextRange::new(0, right.utf16_len()))
+        vec![scalar_offset(0), scalar_offset(2), scalar_offset(3)],
+        source_grapheme_boundaries(&right, text_range(0, right.scalar_len().value()))
     );
 }
 
@@ -439,12 +439,12 @@ fn records_unicode_emoji_sequence_role_promotions() {
     assert_eq!(
         vec![
             (
-                TextRange::new(0, 2),
+                text_range(0, 2),
                 "Symbol",
                 "Emoji",
                 "EmojiStyleVariationSequence"
             ),
-            (TextRange::new(3, 6), "LatinText", "Emoji", "KeycapSequence"),
+            (text_range(3, 6), "LatinText", "Emoji", "KeycapSequence"),
         ],
         result
             .debug

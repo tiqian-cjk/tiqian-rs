@@ -1,65 +1,32 @@
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 
-use super::geometry::TextRange;
+use super::geometry::{ScalarOffset, TextRange};
 
-/// A view over shared UTF-8 storage. Slicing clones the `Arc` and narrows the range,
-/// so cluster-sized substrings allocate nothing and reuse the parent index.
+/// 共享 UTF-8 存储上的文本视图。
+///
+/// 切片只克隆 `Arc` 并缩窄范围，cluster 大小的子串不分配内存，并与父文本复用 scalar 索引。
 pub struct Text {
     inner: Arc<TextInner>,
     byte_start: u32,
     byte_end: u32,
-    utf16_start: u32,
-    /// [`FULL_VIEW`] when the view runs to the end of `inner`, whose UTF-16 length is
-    /// only known once the index exists.
-    utf16_end: u32,
+    scalar_start: ScalarOffset,
+    /// `None` 表示延伸到共享文本末尾，长度在首次 source coordinate 访问时解析。
+    scalar_end: Option<ScalarOffset>,
 }
 
 struct TextInner {
     utf8: String,
-    index: OnceLock<Utf16Index>,
+    scalar_index: OnceLock<ScalarIndex>,
 }
 
-const FULL_VIEW: u32 = u32::MAX;
-
-/// All-ASCII text needs no side tables: UTF-16 offsets equal byte offsets and every
-/// code unit is a byte. Other text pays for explicit tables.
-enum Utf16Index {
-    Ascii,
-    Wide(WideIndex),
-}
-
-/// `utf16_to_utf8` maps every UTF-16 offset to its UTF-8 byte offset, using
-/// [`SURROGATE_HALF`] for offsets that land inside a surrogate pair.
-/// `utf8_to_utf16` holds one entry per scalar, ascending by byte offset.
-struct WideIndex {
-    units: Vec<u16>,
-    utf16_to_utf8: Vec<u32>,
-    utf8_to_utf16: Vec<(u32, u32)>,
-}
-
-const SURROGATE_HALF: u32 = u32::MAX;
-
-impl WideIndex {
-    #[inline]
-    fn unit_at(&self, offset: usize) -> Option<i32> {
-        self.units.get(offset).copied().map(i32::from)
-    }
-
-    #[inline]
-    fn byte_index_at(&self, utf16_offset: i32) -> Option<usize> {
-        if utf16_offset < 0 {
-            return None;
-        }
-        self.utf16_to_utf8
-            .get(utf16_offset as usize)
-            .copied()
-            .filter(|byte| *byte != SURROGATE_HALF)
-            .map(|byte| byte as usize)
-    }
+/// 每一项是全文对应 scalar boundary 的 UTF-8 byte offset。
+///
+/// 首项为 `0`，末项为全文 byte length，因此长度始终为 `scalar_len + 1`。
+struct ScalarIndex {
+    byte_boundaries: Vec<u32>,
 }
 
 impl Text {
@@ -72,9 +39,29 @@ impl Text {
         &self.inner.utf8[self.byte_start as usize..self.byte_end as usize]
     }
 
+    /// 返回当前文本视图的 UTF-8 byte 长度，不可作为 source coordinate 使用。
     #[inline]
-    pub fn utf16_len(&self) -> i32 {
-        (self.resolved_utf16_end() - self.utf16_start) as i32
+    pub fn byte_len(&self) -> usize {
+        self.as_str().len()
+    }
+
+    /// 按当前文本视图的 Unicode scalar 顺序遍历字符。
+    #[inline]
+    pub fn chars(&self) -> std::str::Chars<'_> {
+        self.as_str().chars()
+    }
+
+    /// 按当前文本视图的本地 scalar offset 遍历字符。
+    #[inline]
+    pub fn scalar_indices(&self) -> impl Iterator<Item = (ScalarOffset, char)> + '_ {
+        self.chars()
+            .enumerate()
+            .map(|(index, character)| (ScalarOffset::new(index as i32), character))
+    }
+
+    #[inline]
+    pub fn scalar_len(&self) -> ScalarOffset {
+        ScalarOffset::new(self.resolved_scalar_end() - self.scalar_start)
     }
 
     #[inline]
@@ -83,110 +70,48 @@ impl Text {
     }
 
     #[inline]
-    pub fn utf16_code_unit_at(&self, offset: i32) -> i32 {
-        self.utf16_code_unit_at_or_none(offset)
-            .expect("UTF-16 offset must address a code unit")
+    pub fn code_point_at_or_none(&self, offset: ScalarOffset) -> Option<i32> {
+        let byte = self.absolute_byte_index_at(offset)?;
+        (byte < self.byte_end as usize)
+            .then(|| self.inner.utf8[byte..].chars().next().map(|character| character as i32))
+            .flatten()
     }
 
+    pub fn code_point_before(&self, offset: ScalarOffset) -> Option<i32> {
+        let byte = self.absolute_byte_index_at(offset)?;
+        (byte > self.byte_start as usize)
+            .then(|| self.inner.utf8[..byte].chars().next_back().map(|character| character as i32))
+            .flatten()
+    }
+
+    /// 相对于 [`Self::as_str`] 的 UTF-8 byte offset。
     #[inline]
-    pub fn utf16_code_unit_at_or_none(&self, offset: i32) -> Option<i32> {
-        if offset < 0 {
-            return None;
-        }
-        let absolute = (self.utf16_start + offset as u32) as usize;
-        if absolute >= self.resolved_utf16_end() as usize {
-            return None;
-        }
-        match self.index() {
-            Utf16Index::Ascii => Some(i32::from(self.inner.utf8.as_bytes()[absolute])),
-            Utf16Index::Wide(wide) => wide.unit_at(absolute),
-        }
-    }
-
-    pub fn code_point_at_compat(&self, offset: i32, end: i32) -> i32 {
-        debug_assert!(
-            offset >= 0 && offset < end && end <= self.utf16_len(),
-            "UTF-16 code point range must lie within the text"
-        );
-        let absolute = (self.utf16_start + offset as u32) as usize;
-        let Utf16Index::Wide(wide) = self.index() else {
-            return i32::from(self.inner.utf8.as_bytes()[absolute]);
-        };
-        let high = i32::from(wide.units[absolute]);
-        if !(HIGH_SURROGATE_START..=HIGH_SURROGATE_END).contains(&high) || offset + 1 >= end {
-            return high;
-        }
-        let low = i32::from(wide.units[absolute + 1]);
-        if !(LOW_SURROGATE_START..=LOW_SURROGATE_END).contains(&low) {
-            return high;
-        }
-        supplementary_code_point(high, low)
-    }
-
-    pub fn code_point_at_or_none(&self, offset: i32) -> Option<i32> {
-        let high = self.utf16_code_unit_at_or_none(offset)?;
-        if !(HIGH_SURROGATE_START..=HIGH_SURROGATE_END).contains(&high) {
-            return Some(high);
-        }
-        let Some(low) = self.utf16_code_unit_at_or_none(offset + 1) else {
-            return Some(high);
-        };
-        if !(LOW_SURROGATE_START..=LOW_SURROGATE_END).contains(&low) {
-            return Some(high);
-        }
-        Some(supplementary_code_point(high, low))
-    }
-
-    pub fn code_point_before(&self, offset: i32) -> Option<i32> {
-        debug_assert!(
-            offset <= self.utf16_len(),
-            "UTF-16 offset must not exceed the text length"
-        );
-        if offset <= 0 {
-            return None;
-        }
-        let low = self.utf16_code_unit_at(offset - 1);
-        if !(LOW_SURROGATE_START..=LOW_SURROGATE_END).contains(&low) || offset < 2 {
-            return Some(low);
-        }
-        let high = self.utf16_code_unit_at(offset - 2);
-        if !(HIGH_SURROGATE_START..=HIGH_SURROGATE_END).contains(&high) {
-            return Some(low);
-        }
-        Some(supplementary_code_point(high, low))
-    }
-
-    /// Byte index into [`Self::as_str`], not into the shared storage.
-    #[inline]
-    pub fn utf8_byte_index_at(&self, utf16_offset: i32) -> Option<usize> {
-        if utf16_offset < 0 || utf16_offset > self.utf16_len() {
-            return None;
-        }
-        self.absolute_byte_index_at(utf16_offset)
+    pub fn utf8_byte_index_at(&self, offset: ScalarOffset) -> Option<usize> {
+        self.absolute_byte_index_at(offset)
             .map(|byte| byte - self.byte_start as usize)
     }
 
-    /// Accepts a byte offset into [`Self::as_str`].
-    pub fn utf16_offset_at(&self, byte_offset: usize) -> Option<i32> {
+    /// 接收相对于 [`Self::as_str`] 的 UTF-8 byte offset，并仅接受 scalar boundary。
+    pub fn scalar_offset_at(&self, byte_offset: usize) -> Option<ScalarOffset> {
         let absolute = self.byte_start as usize + byte_offset;
         if absolute > self.byte_end as usize {
             return None;
         }
-        match self.index() {
-            Utf16Index::Ascii => Some(byte_offset as i32),
-            Utf16Index::Wide(wide) => wide
-                .utf8_to_utf16
-                .binary_search_by_key(&(absolute as u32), |(byte, _)| *byte)
-                .ok()
-                .map(|index| (wide.utf8_to_utf16[index].1 - self.utf16_start) as i32),
-        }
+        let absolute_scalar = self
+            .index()
+            .byte_boundaries
+            .binary_search(&(absolute as u32))
+            .ok()?;
+        Some(ScalarOffset::new(
+            absolute_scalar as i32 - self.scalar_start.value(),
+        ))
     }
 
     pub fn slice(&self, range: TextRange) -> &str {
         self.slice_offsets(range.start(), range.end())
     }
 
-    pub fn slice_offsets(&self, start: i32, end: i32) -> &str {
+    pub fn slice_offsets(&self, start: ScalarOffset, end: ScalarOffset) -> &str {
         let (start, end) = self.absolute_byte_bounds(start, end);
         &self.inner.utf8[start..end]
     }
@@ -198,13 +123,13 @@ impl Text {
             inner: Arc::clone(&self.inner),
             byte_start: byte_start as u32,
             byte_end: byte_end as u32,
-            utf16_start: self.utf16_start + range.start() as u32,
-            utf16_end: self.utf16_start + range.end() as u32,
+            scalar_start: ScalarOffset::new(self.scalar_start.value() + range.start().value()),
+            scalar_end: Some(ScalarOffset::new(self.scalar_start.value() + range.end().value())),
         }
     }
 
     #[inline]
-    fn absolute_byte_bounds(&self, start: i32, end: i32) -> (usize, usize) {
+    fn absolute_byte_bounds(&self, start: ScalarOffset, end: ScalarOffset) -> (usize, usize) {
         (
             self.absolute_byte_index_at(start)
                 .expect("source slice start must lie on a Unicode scalar boundary"),
@@ -214,58 +139,31 @@ impl Text {
     }
 
     #[inline]
-    fn absolute_byte_index_at(&self, utf16_offset: i32) -> Option<usize> {
-        if utf16_offset < 0 {
+    fn absolute_byte_index_at(&self, offset: ScalarOffset) -> Option<usize> {
+        if offset > self.scalar_len() {
             return None;
         }
-        let absolute = (self.utf16_start + utf16_offset as u32) as i32;
-        match self.index() {
-            Utf16Index::Ascii => Some(absolute as usize),
-            Utf16Index::Wide(wide) => wide.byte_index_at(absolute),
-        }
+        let absolute = self.scalar_start.value() + offset.value();
+        self.index()
+            .byte_boundaries
+            .get(absolute as usize)
+            .copied()
+            .map(|byte| byte as usize)
     }
 
     #[inline]
-    fn resolved_utf16_end(&self) -> u32 {
-        if self.utf16_end != FULL_VIEW {
-            return self.utf16_end;
-        }
-        match self.index() {
-            Utf16Index::Ascii => self.inner.utf8.len() as u32,
-            Utf16Index::Wide(wide) => wide.units.len() as u32,
-        }
+    fn resolved_scalar_end(&self) -> ScalarOffset {
+        self.scalar_end
+            .unwrap_or_else(|| ScalarOffset::new(self.index().byte_boundaries.len() as i32 - 1))
     }
 
-    fn index(&self) -> &Utf16Index {
-        self.inner.index.get_or_init(|| {
+    fn index(&self) -> &ScalarIndex {
+        self.inner.scalar_index.get_or_init(|| {
             let utf8 = self.inner.utf8.as_str();
-            if utf8.is_ascii() {
-                return Utf16Index::Ascii;
-            }
-
-            let scalar_count = bytecount::num_chars(utf8.as_bytes());
-            let mut units: Vec<u16> = Vec::with_capacity(utf8.len());
-            let mut utf16_to_utf8 = Vec::with_capacity(utf8.len() + 1);
-            let mut utf8_to_utf16 = Vec::with_capacity(scalar_count + 1);
-
-            for (byte_offset, character) in utf8.char_indices() {
-                utf8_to_utf16.push((byte_offset as u32, units.len() as u32));
-                utf16_to_utf8.push(byte_offset as u32);
-                let before = units.len();
-                let mut buffer = [0_u16; 2];
-                units.extend_from_slice(character.encode_utf16(&mut buffer));
-                if units.len() - before == 2 {
-                    utf16_to_utf8.push(SURROGATE_HALF);
-                }
-            }
-
-            utf8_to_utf16.push((utf8.len() as u32, units.len() as u32));
-            utf16_to_utf8.push(utf8.len() as u32);
-            Utf16Index::Wide(WideIndex {
-                units,
-                utf16_to_utf8,
-                utf8_to_utf16,
-            })
+            let mut byte_boundaries = Vec::with_capacity(utf8.chars().count() + 1);
+            byte_boundaries.extend(utf8.char_indices().map(|(byte, _)| byte as u32));
+            byte_boundaries.push(utf8.len() as u32);
+            ScalarIndex { byte_boundaries }
         })
     }
 }
@@ -276,8 +174,8 @@ impl Clone for Text {
             inner: Arc::clone(&self.inner),
             byte_start: self.byte_start,
             byte_end: self.byte_end,
-            utf16_start: self.utf16_start,
-            utf16_end: self.utf16_end,
+            scalar_start: self.scalar_start,
+            scalar_end: self.scalar_end,
         }
     }
 }
@@ -293,11 +191,11 @@ impl From<String> for Text {
         Self {
             byte_start: 0,
             byte_end: utf8.len() as u32,
-            utf16_start: 0,
-            utf16_end: FULL_VIEW,
+            scalar_start: ScalarOffset::ZERO,
+            scalar_end: None,
             inner: Arc::new(TextInner {
                 utf8,
-                index: OnceLock::new(),
+                scalar_index: OnceLock::new(),
             }),
         }
     }
@@ -401,19 +299,47 @@ impl Borrow<str> for Text {
     }
 }
 
-impl Deref for Text {
-    type Target = str;
+#[cfg(test)]
+mod tests {
+    use super::Text;
+    use crate::core::geometry::{scalar_offset, text_range};
 
-    fn deref(&self) -> &Self::Target {
-        self.as_str()
+    #[test]
+    fn scalar_and_utf8_boundaries_round_trip() {
+        let text = Text::from("A中😀e\u{301}");
+        assert_eq!(text.scalar_len(), scalar_offset(5));
+        assert_eq!(text.utf8_byte_index_at(scalar_offset(0)), Some(0));
+        assert_eq!(text.utf8_byte_index_at(scalar_offset(1)), Some(1));
+        assert_eq!(text.utf8_byte_index_at(scalar_offset(2)), Some(4));
+        assert_eq!(text.utf8_byte_index_at(scalar_offset(3)), Some(8));
+        assert_eq!(text.utf8_byte_index_at(scalar_offset(5)), Some(11));
+        assert_eq!(text.scalar_offset_at(8), Some(scalar_offset(3)));
+        assert_eq!(text.scalar_offset_at(9), Some(scalar_offset(4)));
+        assert_eq!(text.code_point_at_or_none(scalar_offset(2)), Some(0x1F600));
+        assert_eq!(text.code_point_before(scalar_offset(3)), Some(0x1F600));
+    }
+
+    #[test]
+    fn scalar_slices_share_the_index_and_keep_local_offsets() {
+        let text = Text::from("A中😀e\u{301}");
+        let slice = text.slice_text(text_range(1, 4));
+        assert_eq!(slice, "中😀e");
+        assert_eq!(slice.scalar_len(), scalar_offset(3));
+        assert_eq!(slice.utf8_byte_index_at(scalar_offset(2)), Some(7));
+        assert_eq!(slice.scalar_offset_at(7), Some(scalar_offset(2)));
+        assert_eq!(slice.slice_offsets(scalar_offset(1), scalar_offset(2)), "😀");
+    }
+
+    #[test]
+    fn scalar_iteration_and_byte_length_are_local_to_the_view() {
+        let text = Text::from("A中😀");
+        let slice = text.slice_text(text_range(1, 3));
+
+        assert_eq!(slice.byte_len(), "中😀".len());
+        assert_eq!(slice.chars().collect::<Vec<_>>(), vec!['中', '😀']);
+        assert_eq!(
+            slice.scalar_indices().collect::<Vec<_>>(),
+            vec![(scalar_offset(0), '中'), (scalar_offset(1), '😀')]
+        );
     }
 }
-
-fn supplementary_code_point(high: i32, low: i32) -> i32 {
-    0x10000 + ((high - HIGH_SURROGATE_START) << 10) + (low - LOW_SURROGATE_START)
-}
-
-const HIGH_SURROGATE_START: i32 = 0xD800;
-const HIGH_SURROGATE_END: i32 = 0xDBFF;
-const LOW_SURROGATE_START: i32 = 0xDC00;
-const LOW_SURROGATE_END: i32 = 0xDFFF;

@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -100,13 +100,14 @@ impl TextShaper for FeatureBoundaryTextShaper {
         if input.display_text != "A’B" {
             return ExplainableStubTextShaper.shape(input);
         }
-        let clusters: Vec<_> = (input.range.start()..input.range.end())
-            .map(|index| {
-                let range = TextRange::new(index, index + 1);
+        let clusters: Vec<_> = (0..input.range.length())
+            .map(|local_offset| {
+                let range = input.range.start() + local_offset;
+                let range = tiqian::core::geometry::TextRange::new(range, range + 1);
                 Cluster::with_display_text(
                     range,
                     input.text.slice_text(range),
-                    input.display_text.slice_text(TextRange::new(index - input.range.start(), index - input.range.start() + 1)),
+                    input.display_text.slice_text(text_range(local_offset, local_offset + 1)),
                     input.font_decision.candidate.key.clone(),
                     16.0,
                 )
@@ -137,7 +138,7 @@ fn preserves_open_type_features_as_final_glyph_run_boundaries() {
     engine.text_shaper = Box::new(FeatureBoundaryTextShaper);
     let result = engine.layout(input("A’B"));
     assert_eq!(
-        vec![TextRange::new(0, 1), TextRange::new(1, 2), TextRange::new(2, 3)],
+        vec![text_range(0, 1), text_range(1, 2), text_range(2, 3)],
         result.glyph_runs.iter().map(|run| run.range).collect::<Vec<_>>(),
     );
     assert_eq!(
@@ -188,7 +189,7 @@ struct MissingGlyphTextShaper;
 impl TextShaper for MissingGlyphTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             result.decisions = result
                 .decisions
                 .into_iter()
@@ -218,7 +219,7 @@ struct UnverifiedCoverageTextShaper;
 impl TextShaper for UnverifiedCoverageTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⋯') {
+        if input.display_text.as_str().contains('⋯') {
             result.decisions = result
                 .decisions
                 .into_iter()
@@ -256,7 +257,7 @@ struct UnderfilledDashInkTextShaper;
 impl TextShaper for UnderfilledDashInkTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             for run in &mut result.glyph_runs {
                 for glyph in &mut run.glyphs {
                     glyph.advance = 32.0;
@@ -297,7 +298,7 @@ struct OneEmFallbackDashTextShaper;
 impl TextShaper for OneEmFallbackDashTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             for cluster in &mut result.clusters {
                 cluster.advance = 16.0;
             }
@@ -345,7 +346,7 @@ struct DashSpanSizeTextShaper;
 impl TextShaper for DashSpanSizeTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             for cluster in &mut result.clusters {
                 cluster.advance = 32.0;
             }
@@ -377,7 +378,7 @@ fn dash_coverage_target_uses_the_dash_span_font_size() {
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中——文"))
                 .spans(vec![TextSpan {
-                    range: TextRange::new(1, 3),
+                    range: text_range(1, 3),
                     style: TextStyle::builder().font_size(32.0).build(),
                 }])
                 .build(),
@@ -401,7 +402,7 @@ struct CenteredDashInkTextShaper;
 impl TextShaper for CenteredDashInkTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             for run in &mut result.glyph_runs {
                 for glyph in &mut run.glyphs {
                     glyph.advance = 32.0;
@@ -439,7 +440,7 @@ struct FullDashInkTextShaper;
 impl TextShaper for FullDashInkTextShaper {
     fn shape(&self, input: &ShapingInput) -> ShapingResult {
         let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.contains('⸺') {
+        if input.display_text.as_str().contains('⸺') {
             for run in &mut result.glyph_runs {
                 for glyph in &mut run.glyphs {
                     glyph.advance = 32.0;

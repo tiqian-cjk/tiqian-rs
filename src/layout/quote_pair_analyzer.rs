@@ -3,20 +3,20 @@
 use crate::common::HashMap;
 use icu_properties::{CodePointMapData, props::EastAsianWidth};
 
-use super::super::core::geometry::TextRange;
+use super::super::core::geometry::{ScalarOffset, TextRange, scalar_offset};
 use super::super::core::text::Text;
 use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
 use super::contextual_quote_role_resolver::ContextualQuoteRoleResolver;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct QuotePair {
-    pub open_index: i32,
-    pub close_index: i32,
+    pub open_index: ScalarOffset,
+    pub close_index: ScalarOffset,
     pub quote_type: QuoteType,
 }
 
 impl QuotePair {
-    pub fn new(open_index: i32, close_index: i32, quote_type: QuoteType) -> Self {
+    pub fn new(open_index: ScalarOffset, close_index: ScalarOffset, quote_type: QuoteType) -> Self {
         Self {
             open_index,
             close_index,
@@ -33,14 +33,14 @@ pub enum QuoteType {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QuoteRoleDecision {
-    pub index: i32,
+    pub index: ScalarOffset,
     pub role: FontRole,
     pub source: String,
     pub reason: String,
 }
 
 impl QuoteRoleDecision {
-    pub fn new(index: i32, role: FontRole, source: String, reason: String) -> Self {
+    pub fn new(index: ScalarOffset, role: FontRole, source: String, reason: String) -> Self {
         Self {
             index,
             role,
@@ -62,9 +62,9 @@ impl QuotePairAnalyzer {
     pub fn analyze(&self, text: &Text) -> Vec<QuotePair> {
         let mut stack = Vec::new();
         let mut pairs = Vec::new();
-        let text_length = text.utf16_len();
-        for index in 0..text_length {
-            match text.utf16_code_unit_at(index) {
+        for (raw_index, character) in text.chars().enumerate() {
+            let index = scalar_offset(raw_index as i32);
+            match character as u32 {
                 0x201C => stack.push((index, QuoteType::Double)),
                 0x2018 => stack.push((index, QuoteType::Single)),
                 0x201D
@@ -95,7 +95,7 @@ impl QuotePairAnalyzer {
         text: &Text,
         pairs: &[QuotePair],
         context: &FontRoleContext,
-    ) -> HashMap<i32, FontRole> {
+    ) -> HashMap<ScalarOffset, FontRole> {
         self.classify_quote_roles(text, pairs, context)
             .into_iter()
             .map(|decision| (decision.index, decision.role))
@@ -112,7 +112,7 @@ impl QuotePairAnalyzer {
         pairs: &[QuotePair],
         _font_role_classifier: &dyn FontRoleClassifier,
         context: &FontRoleContext,
-    ) -> HashMap<i32, FontRole> {
+    ) -> HashMap<ScalarOffset, FontRole> {
         self.classify_pairs(text, pairs, context)
     }
 
@@ -137,7 +137,7 @@ impl QuotePairAnalyzer {
     }
 }
 
-pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
+pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: ScalarOffset) -> bool {
     let Some(before) = text.code_point_before(index) else {
         return false;
     };
@@ -152,8 +152,8 @@ pub fn is_non_cjk_in_word_apostrophe(text: &Text, index: i32) -> bool {
             || is_non_cjk_non_numeric_word_character(after))
 }
 
-pub fn is_digit_bound_closing_quote(text: &Text, index: i32) -> bool {
-    matches!(text.utf16_code_unit_at(index), 0x2019 | 0x201D)
+pub fn is_digit_bound_closing_quote(text: &Text, index: ScalarOffset) -> bool {
+    matches!(text.code_point_at_or_none(index), Some(0x2019 | 0x201D))
         && text.code_point_before(index).is_some_and(
             super::super::core::unicode_word_character::unicode_word_character::is_number,
         )
@@ -170,7 +170,6 @@ pub fn is_non_cjk_word_internal_quote_pair(text: &Text, pair: QuotePair) -> bool
         return false;
     }
 
-    // UTF-16 offsets must advance by code point to avoid inspecting a low surrogate.
     let mut index = pair.open_index + 1;
     while index < pair.close_index {
         let Some(code_point) = text.code_point_at_or_none(index) else {
@@ -179,7 +178,7 @@ pub fn is_non_cjk_word_internal_quote_pair(text: &Text, pair: QuotePair) -> bool
         if !is_non_cjk_word_character(code_point) {
             return false;
         }
-        index += if code_point > 0xFFFF { 2 } else { 1 };
+        index += 1;
     }
     true
 }
@@ -206,13 +205,13 @@ fn is_non_cjk_non_numeric_word_character(code_point: i32) -> bool {
  */
 pub struct QuotePairAwareFontRoleClassifier<'a> {
     delegate: &'a dyn FontRoleClassifier,
-    quote_roles: &'a HashMap<i32, FontRole>,
+    quote_roles: &'a HashMap<ScalarOffset, FontRole>,
 }
 
 impl<'a> QuotePairAwareFontRoleClassifier<'a> {
     pub fn new(
         delegate: &'a dyn FontRoleClassifier,
-        quote_roles: &'a HashMap<i32, FontRole>,
+        quote_roles: &'a HashMap<ScalarOffset, FontRole>,
     ) -> Self {
         Self {
             delegate,
@@ -237,7 +236,7 @@ pub enum ContextualQuoteFontRoleClassifier<'a> {
     Passthrough(&'a dyn FontRoleClassifier),
     Overrides {
         delegate: &'a dyn FontRoleClassifier,
-        quote_roles: HashMap<i32, FontRole>,
+        quote_roles: HashMap<ScalarOffset, FontRole>,
     },
 }
 

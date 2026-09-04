@@ -3,7 +3,7 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
-use tiqian::core::geometry::{Rect, TextRange};
+use tiqian::core::geometry::{text_range, Rect};
 use tiqian::core::layout_model::{Cluster, Glyph};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineAttachment, InlineBoxSpan};
@@ -20,7 +20,7 @@ const EM: f32 = 16.0;
 
 fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::new(
-        TextRange::new(start, start + text.encode_utf16().count() as i32),
+        text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         font_key.to_owned(),
         advance,
@@ -29,7 +29,7 @@ fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
 
 fn display_cluster(text: &str, display: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
     Cluster::with_display_text(
-        TextRange::new(start, start + text.encode_utf16().count() as i32),
+        text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         Text::from(display),
         font_key.to_owned(),
@@ -38,7 +38,7 @@ fn display_cluster(text: &str, display: &str, start: i32, advance: f32, font_key
 }
 
 fn glyph(id: u32, advance: f32, x: f32, bounds: Option<Rect>) -> Glyph {
-    Glyph::builder(id, TextRange::new(0, 1), advance)
+    Glyph::builder(id, text_range(0, 1), advance)
         .x(x)
         .bounds(bounds)
         .build()
@@ -123,8 +123,8 @@ fn per_character_ink_subtracts_preceding_glyph_pens() {
         ],
     );
     assert_eq!(2, output.len());
-    assert_eq!(TextRange::new(0, 1), output[0].range);
-    assert_eq!(TextRange::new(1, 2), output[1].range);
+    assert_eq!(text_range(0, 1), output[0].range);
+    assert_eq!(text_range(1, 2), output[1].range);
     assert_eq!(12.0, output[0].ink_bounds.unwrap().width());
     assert_eq!(12.0, output[1].ink_bounds.unwrap().width());
     assert!(output.iter().all(|atom| atom.ink_bounds_fallback.is_none()));
@@ -376,14 +376,14 @@ fn attached_ascii_point_marks_need_a_contiguous_non_space_base() {
 fn inline_box_spans_add_structural_edges_and_skip_degenerate_ranges() {
     let clusters = vec![cluster("a", 0, 8.0, "latin"), cluster("b", 1, 8.0, "latin"), cluster("c", 2, 8.0, "latin")];
     assert_eq!(clusters, apply_inline_box_spans(&clusters, &[]).clusters);
-    assert!(apply_inline_box_spans(&[], &[InlineBoxSpan::with_edges(TextRange::new(0, 1), 2.0, 0.0)]).clusters.is_empty());
-    let skipped = apply_inline_box_spans(&clusters, &[InlineBoxSpan::with_edges(TextRange::new(2, 2), 4.0, 0.0), InlineBoxSpan::with_edges(TextRange::new(10, 11), 4.0, 0.0)]);
+    assert!(apply_inline_box_spans(&[], &[InlineBoxSpan::with_edges(text_range(0, 1), 2.0, 0.0)]).clusters.is_empty());
+    let skipped = apply_inline_box_spans(&clusters, &[InlineBoxSpan::with_edges(text_range(2, 2), 4.0, 0.0), InlineBoxSpan::with_edges(text_range(10, 11), 4.0, 0.0)]);
     assert!(skipped.decisions.is_empty());
     assert!(skipped.advance_by_cluster.is_empty());
     let applied = apply_inline_box_spans(&clusters, &[
-        InlineBoxSpan::with_edges(TextRange::new(0, 1), 2.0, 0.0),
-        InlineBoxSpan::with_edges(TextRange::new(1, 2), 0.0, 3.0),
-        InlineBoxSpan::with_edges(TextRange::new(0, 2), 0.0, 1.5),
+        InlineBoxSpan::with_edges(text_range(0, 1), 2.0, 0.0),
+        InlineBoxSpan::with_edges(text_range(1, 2), 0.0, 3.0),
+        InlineBoxSpan::with_edges(text_range(0, 2), 0.0, 1.5),
     ]);
     assert_eq!(3, applied.decisions.len());
     assert_eq!(2.0, applied.advance_by_cluster[&0]);
@@ -393,6 +393,6 @@ fn inline_box_spans_add_structural_edges_and_skip_degenerate_ranges() {
     assert_eq!(12.5, applied.clusters[1].advance);
     assert_eq!(8.0, applied.clusters[2].advance);
     assert_eq!(0.0, applied.clusters[2].leading_layout_advance);
-    let clamped = apply_inline_box_spans(&[cluster("a", 0, 2.0, "latin")], &[InlineBoxSpan::with_edges(TextRange::new(0, 1), 0.0, -6.0)]);
+    let clamped = apply_inline_box_spans(&[cluster("a", 0, 2.0, "latin")], &[InlineBoxSpan::with_edges(text_range(0, 1), 0.0, -6.0)]);
     assert_eq!(0.0, clamped.clusters[0].advance);
 }

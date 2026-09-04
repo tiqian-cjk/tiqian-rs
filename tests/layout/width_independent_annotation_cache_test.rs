@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tiqian::common::HashMap;
 
-use tiqian::core::geometry::{LayoutConstraints, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, ParagraphStyle, RubySpan,
@@ -116,8 +116,8 @@ fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
     assert!(initial_calls > 0);
     assert_eq!(1, entries.lock().unwrap().size());
 
-    let narrow_result = engine.layout(input(&normal.content.text, 180.0));
-    let wide_result = engine.layout(input(&normal.content.text, 500.0));
+    let narrow_result = engine.layout(input(normal.content.text.as_str(), 180.0));
+    let wide_result = engine.layout(input(normal.content.text.as_str(), 500.0));
     assert_eq!(initial_calls, calls.load(Ordering::SeqCst));
     assert!(narrow_result.lines.len() >= normal_result.lines.len());
     assert!(normal_result.lines.len() >= wide_result.lines.len());
@@ -139,16 +139,16 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     engine.layout(font_changed);
     let mut emphasis_changed = base.clone();
     emphasis_changed.decorations = vec![DecorationSpan {
-        range: TextRange::new(0, 4),
+        range: text_range(0, 4),
         kind: DecorationKind::Emphasis,
     }];
     engine.layout(emphasis_changed);
     let mut ruby_changed = base.clone();
-    ruby_changed.ruby_spans = vec![RubySpan::new(TextRange::new(0, 2), Text::from("zhōngxī"))];
+    ruby_changed.ruby_spans = vec![RubySpan::new(text_range(0, 2), Text::from("zhōngxī"))];
     engine.layout(ruby_changed);
     let mut inline_box_changed = base;
     inline_box_changed.inline_boxes =
-        vec![InlineBoxSpan::with_edges(TextRange::new(2, 4), 4.0, 4.0)];
+        vec![InlineBoxSpan::with_edges(text_range(2, 4), 4.0, 4.0)];
     engine.layout(inline_box_changed);
 
     assert_eq!(6, entries.lock().unwrap().size());

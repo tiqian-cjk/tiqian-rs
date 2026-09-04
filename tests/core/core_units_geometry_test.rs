@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::{LayoutDebugInfo, MaxLinesDecisionInfo};
 use tiqian::core::units::{Ic, IcLiteral};
 
@@ -40,7 +40,7 @@ fn rect_width_returns_difference() {
 #[test]
 #[should_panic(expected = "TextRange start must not be greater than end.")]
 fn text_range_rejects_start_greater_than_end() {
-    TextRange::new(5, 2);
+    text_range(5, 2);
 }
 
 #[test]
