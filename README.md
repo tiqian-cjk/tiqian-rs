@@ -6,6 +6,24 @@
 
 - Rust toolchain（Cargo，edition 2024）
 
+## 段落构造
+
+`api::ParagraphBuilder` 按文本顺序追加内容，并生成现有 `LayoutInput`、颜色和 rich-text 范围。调用方无需计算 `TextRange` 或维护纯绘制范围的 `source_boundaries`：
+
+```rust
+use tiqian::api::{ParagraphBuilder, RubyAnnotation, TextStyleOverride};
+use tiqian::core::geometry::LayoutConstraints;
+
+let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+builder.push("欢迎使用");
+builder.with_ruby(RubyAnnotation::pinyin("tíqiàn"), |builder| {
+	builder.styled(TextStyleOverride::builder().font_weight(700).build(), "提椠");
+});
+let output = builder.build()?;
+```
+
+将 `output.input` 传入现有 `ParagraphLayoutEngine`；当前 renderer 额外读取 `output.colors` 与 `output.rich_text` 重放颜色和富文本几何。
+
 ## Fixture 验证
 
 本仓库在 `tests/fixture_layout/` 保存全部 52 项 deterministic stub fixture 与对应 golden。每项 fixture 都使用 greedy、lookahead、paragraph-DP 三种 breaker，并比较完整 layout decision dump。
