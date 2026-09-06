@@ -8,8 +8,8 @@ use tiqian::core::layout_queries::{
     trimmed_rich_text_decoration_segments,
 };
 use tiqian::core::text_model::{
-    RichTextBackgroundDrawStyle, RichTextLinePattern, RichTextRole, RichTextSpan, TextSpan,
-    TextStyle,
+    ColorSpan, RichTextBackgroundDrawStyle, RichTextLinePattern, RichTextRole, RichTextSpan,
+    TextSpan, TextStyle,
 };
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
@@ -23,12 +23,6 @@ const WAVE_AMPLITUDE_EM: f32 = 0.06;
 
 fn default_text_color() -> AlphaColor<Srgb> {
     AlphaColor::from_rgba8(30, 30, 35, 255)
-}
-
-#[derive(Clone, Copy)]
-pub struct DemoColorSpan {
-    pub range: TextRange,
-    pub color: AlphaColor<Srgb>,
 }
 
 pub struct DemoRenderer<'a> {
@@ -66,7 +60,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        colors: &[DemoColorSpan],
+        colors: &[ColorSpan],
     ) -> Result<(), String> {
         let positions: HashMap<_, _> = positioned_clusters(result)
             .into_iter()
@@ -205,7 +199,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        colors: &[DemoColorSpan],
+        colors: &[ColorSpan],
     ) -> Result<(), String> {
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result
@@ -845,12 +839,12 @@ fn text_style_at(spans: &[TextSpan], base: &TextStyle, offset: ScalarOffset) -> 
         .unwrap_or_else(|| base.clone())
 }
 
-fn color_at(colors: &[DemoColorSpan], range: TextRange) -> Option<AlphaColor<Srgb>> {
+fn color_at(colors: &[ColorSpan], range: TextRange) -> Option<AlphaColor<Srgb>> {
     colors
         .iter()
         .rev()
-        .find(|span| span.range.start() <= range.start() && span.range.end() > range.start())
-        .map(|span| span.color)
+        .find(|span| span.start <= range.start() && span.end > range.start())
+    .map(|span| color_from_argb(span.argb))
 }
 
 #[cfg(test)]

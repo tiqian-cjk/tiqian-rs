@@ -1,3 +1,4 @@
+mod api;
 mod clreq;
 mod core;
 mod font;

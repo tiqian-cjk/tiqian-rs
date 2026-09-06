@@ -3,6 +3,8 @@
 //! Translation modules are added only after their corresponding Kotlin source
 //! files and direct dependencies have been mapped.
 
+#[path = "api/mod.rs"]
+pub mod api;
 pub mod common;
 #[cfg(not(target_arch = "wasm32"))]
 mod mimalloc;

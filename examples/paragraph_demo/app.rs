@@ -853,6 +853,53 @@ mod tests {
     }
 
     #[test]
+    fn closing_paragraph_combines_italic_bold_and_larger_text_style() {
+        let document = build_document_demo(640.0, 1.0)
+            .blocks
+            .into_iter()
+            .find_map(|block| match block {
+                DemoDocumentDemoBlock::Paragraph(document)
+                    if document
+                        .input
+                        .content
+                        .text
+                        .as_str()
+                        .starts_with("好的中文排版不会抢在文字之前") =>
+                {
+                    Some(document)
+                }
+                _ => None,
+            })
+            .expect("demo must contain the closing paragraph");
+        let text = document.input.content.text.as_str();
+        let (byte_start, _) = text
+            .match_indices("连贯、安静而从容")
+            .next()
+            .expect("closing paragraph must contain its highlighted text");
+        let start = document
+            .input
+            .content
+            .text
+            .scalar_offset_at(byte_start)
+            .expect("match start must be a Unicode scalar boundary");
+        let style = document
+            .input
+            .content
+            .spans
+            .iter()
+            .find(|span| start >= span.range.start() && start < span.range.end())
+            .expect("closing highlight must have a generated text style");
+
+        assert_eq!(
+            "好的中文排版不会抢在文字之前引人注意，却能让阅读更加连贯、安静而从容。字形、标点、注文和段落彼此协调，长篇正文才能在不同版面中保持稳定的节奏。",
+            text
+        );
+        assert!(style.style.italic);
+        assert_eq!(700, style.style.font_weight);
+        assert_eq!(19.5, style.style.font_size);
+    }
+
+    #[test]
     fn default_window_sample_exhibits_hanging_punctuation_and_hyphenation() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
