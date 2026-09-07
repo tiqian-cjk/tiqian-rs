@@ -1,4 +1,6 @@
-use crate::core::text_model::{DecorationKind, RichTextPaint, RichTextRole};
+use crate::core::text_model::{
+    DecorationKind, RichTextBackgroundPaint, RichTextLayer,
+};
 
 use super::builder::ParagraphBuilder;
 use super::style::{InlineBoxStyle, RubyAnnotation, TextStyleOverride};
@@ -44,11 +46,10 @@ impl ParagraphBuilder {
 
     pub fn rich_text(
         &mut self,
-        role: RichTextRole,
-        paint: RichTextPaint,
+        layers: &[RichTextLayer],
         text: &str,
     ) -> &mut Self {
-        self.with_rich_text(role, paint, |builder| builder.push(text));
+        self.with_rich_text(layers, |builder| builder.push(text));
         self
     }
 
@@ -65,10 +66,10 @@ impl ParagraphBuilder {
     pub fn inline_code(
         &mut self,
         style: TextStyleOverride,
-        paint: RichTextPaint,
+        background: RichTextBackgroundPaint,
         text: &str,
     ) -> &mut Self {
-        self.with_inline_code(style, paint, |builder| builder.push(text));
+        self.with_inline_code(style, background, |builder| builder.push(text));
         self
     }
 

@@ -526,122 +526,136 @@ pub struct DecorationSpan {
     pub kind: DecorationKind,
 }
 
-/// SOURCE range 上每个 span 的文本颜色（ARGB）——rich-text 颜色（ADR 0030 A 档）。
-/// 仅渲染：与 `DecorationSpan` 一样，绝不影响 metrics、breaking 或 justification，因此它与 layout
-/// model 并列而不在其中。平台无关（`argb` Int），所以 frontend contract 不携带 Skia type。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ColorSpan {
-    pub start: ScalarOffset,
-    pub end: ScalarOffset,
-    pub argb: i32,
-}
-
-/// SOURCE range 上的 render/semantic rich-text role。这些 span 不添加 metrics、breaking penalty 或
-/// justification rule：它们在 layout 后复用 `LayoutResult` geometry，source text 与 CJK paragraph
-/// decision 因而仍由 core pipeline 拥有。它们的 boundary 仍可经由
-/// `TiqianTextContent.source_boundaries` 传入，使引擎暴露精确 range geometry，而非切过合并 cluster。
+/// SOURCE range 上的视觉 layer 与非视觉语义。
+///
+/// 这些数据不参与文本测量、断行或行调整；布局完成后，它们通过 `LayoutResult` 的几何结果供渲染
+/// 和语义处理使用。范围边界经由 `TiqianTextContent.source_boundaries` 传入，使引擎暴露精确的
+/// source range geometry，而不是切过合并后的 cluster。
 #[derive(Clone, Debug, PartialEq)]
 pub struct RichTextSpan {
+    /// Rich-text 在 source text 中覆盖的范围。
     pub range: TextRange,
-    pub role: RichTextRole,
-    pub paint: RichTextPaint,
+    /// 在该范围上绘制或定位的视觉 layer。
+    pub layers: Vec<RichTextLayer>,
+    /// 不直接绘制、但供链接和技术文本等功能使用的语义标记。
+    pub semantics: Vec<RichTextSemantic>,
 }
 
-impl RichTextSpan {
-    pub fn new(range: TextRange, role: RichTextRole) -> Self {
-        Self {
-            range,
-            role,
-            paint: RichTextPaint::default(),
-        }
-    }
-
-    pub fn with_paint(range: TextRange, role: RichTextRole, paint: RichTextPaint) -> Self {
-        Self { range, role, paint }
-    }
-}
-
+/// 一项作用于同一 source range 的视觉 layer 及其绘制顺序。
 #[derive(Clone, Debug, PartialEq)]
-/// 禁止手工构造：必须使用 [`RichTextPaint::builder`]，以保留 Kotlin 的构造校验。
-pub struct RichTextPaint {
-    /// 可选 ARGB paint。None 表示“继承当前 text color/default role paint”。
-    pub argb: Option<i32>,
-    /// 行装饰的 stroke pattern。background role 忽略此字段。
-    pub line_pattern: RichTextLinePattern,
-    /// background role 的 box geometry 与 paint。行装饰忽略此字段。
-    pub background: RichTextBackgroundPaint,
-    /// 两个紧邻且具有相同 paint 的 range 共同分摊的总视觉空隙。
-    pub adjacent_same_style_clearance: f32,
+pub struct RichTextLayer {
+    /// layer 的用途和几何参数。
+    pub kind: RichTextLayerKind,
+    /// 按顺序应用于该 layer 的 paint。
+    pub paints: Vec<RichTextPaint>,
+}
+
+/// Rich-text layer 的用途。只有会改变文本几何的参数才会被降低到 layout 输入。
+#[derive(Clone, Debug, PartialEq)]
+pub enum RichTextLayerKind {
+    /// 正文 glyph 使用的 paint layer。
+    Text,
+    /// 覆盖正文区域的背景 layer。
+    Background {
+        background: RichTextBackgroundPaint,
+    },
+    /// 位于正文下方的下划线 layer。
+    Underline {
+        line: RichTextLinePaint,
+    },
+    /// 穿过正文的删除线 layer。
+    LineThrough {
+        line: RichTextLinePaint,
+    },
+    /// 由 layout 生成的强调、着重等装饰 layer。
+    Decoration {
+        kind: DecorationKind,
+    },
+    /// 与 ruby 或 bopomofo layout placement 关联的注音 layer。
+    Annotation {
+        kind: RubyKind,
+    },
+}
+
+/// 一项平台无关的绘制描述，由前端根据具体绘制 API 重放。
+#[derive(Clone, Debug, PartialEq)]
+pub enum RichTextPaint {
+    /// 使用指定颜色填充图形或 glyph。
+    Fill {
+        argb: i32,
+    },
+    /// 使用指定颜色和宽度描边。
+    Stroke {
+        argb: i32,
+        width: f32,
+    },
+    /// 使用指定颜色绘制阴影。
+    Shadow {
+        argb: i32,
+        offset_x: f32,
+        offset_y: f32,
+        blur_radius: f32,
+        spread_radius: f32,
+    },
 }
 
 impl Default for RichTextPaint {
+    /// 返回普通正文使用的默认填充色。
+    fn default() -> Self {
+        Self::Fill {
+            argb: 0xFF1E1E23_u32 as i32,
+        }
+    }
+}
+
+/// 不直接参与绘制的 rich-text 语义。
+#[derive(Clone, Debug, PartialEq)]
+pub enum RichTextSemantic {
+    /// 可交互链接的目标地址。
+    Link {
+        target: String,
+    },
+    /// 采用技术文本断行和空格策略的范围。
+    TechnicalInline,
+}
+
+/// 下划线或删除线的几何和绘制参数。
+#[derive(Clone, Debug, PartialEq)]
+pub struct RichTextLinePaint {
+    /// 线宽，单位为 layout unit。
+    pub thickness: f32,
+    /// 线段的重复模式。
+    pub pattern: RichTextLinePattern,
+    /// 相邻同样式范围之间共同分摊的间隙。
+    pub adjacent_same_style_clearance: f32,
+}
+
+impl Default for RichTextLinePaint {
+    /// 返回一条无间隙的实线默认参数。
     fn default() -> Self {
         Self {
-            argb: None,
-            line_pattern: RichTextLinePattern::Solid,
-            background: RichTextBackgroundPaint::default(),
+            thickness: 1.0,
+            pattern: RichTextLinePattern::Solid,
             adjacent_same_style_clearance: 0.0,
         }
     }
 }
 
-impl RichTextPaint {
-    pub fn builder() -> RichTextPaintBuilder {
-        RichTextPaintBuilder {
-            paint: Self::default(),
-        }
-    }
-
-    fn checked(self) -> Self {
-        assert!(
-            self.adjacent_same_style_clearance.is_finite()
-                && self.adjacent_same_style_clearance >= 0.0
-        );
-        self
-    }
-}
-
-pub struct RichTextPaintBuilder {
-    paint: RichTextPaint,
-}
-
-impl RichTextPaintBuilder {
-    pub fn argb(mut self, value: i32) -> Self {
-        self.paint.argb = Some(value);
-        self
-    }
-    pub fn line_pattern(mut self, value: RichTextLinePattern) -> Self {
-        self.paint.line_pattern = value;
-        self
-    }
-    pub fn background(mut self, value: RichTextBackgroundPaint) -> Self {
-        self.paint.background = value;
-        self
-    }
-    pub fn adjacent_same_style_clearance(mut self, value: f32) -> Self {
-        self.paint.adjacent_same_style_clearance = value;
-        self
-    }
-    pub fn build(self) -> RichTextPaint {
-        self.paint.checked()
-    }
-}
-
+/// 背景 layer 的几何参数和度量策略。
 #[derive(Clone, Debug, PartialEq)]
-/// 禁止手工构造：必须使用 [`RichTextBackgroundPaint::builder`]，以保留 Kotlin 的构造校验。
 pub struct RichTextBackgroundPaint {
-    /// glyph edge 与每个水平 box edge 间的固定空间，单位 layout unit。
+    /// 背景左右边缘相对文字的内边距。
     pub horizontal_padding: f32,
-    /// 所选 typographic box 上下的额外空间，单位物理 layout unit。
+    /// 背景上下边缘相对文字面的内边距。
     pub vertical_padding: f32,
-    /// frontend 重放最终 background rectangle 时使用的 radius。
+    /// source range 两端的圆角半径。
     pub corner_radius: f32,
-    /// source range 在另一 visual line 延续的边缘使用的 radius。默认 `corner_radius`，保留现有的
-    /// per-line rounded-box appearance，除非 authored role 显式区分 continuation edge。
+    /// 跨行延续边缘使用的圆角半径。
     pub continuation_corner_radius: f32,
+    /// 决定背景垂直范围参考哪一组字体度量。
     pub metric_policy: RichTextBackgroundMetricPolicy,
-    /// 最终 box 是填充还是描边；两种模式复用相同的测量 geometry。
-    pub draw_style: RichTextBackgroundDrawStyle,
+    /// 相邻同样式背景之间共同分摊的间隙。
+    pub adjacent_same_style_clearance: f32,
 }
 
 impl Default for RichTextBackgroundPaint {
@@ -652,12 +666,13 @@ impl Default for RichTextBackgroundPaint {
             corner_radius: 0.0,
             continuation_corner_radius: 0.0,
             metric_policy: RichTextBackgroundMetricPolicy::MarkedFaces,
-            draw_style: RichTextBackgroundDrawStyle::Fill,
+            adjacent_same_style_clearance: 0.0,
         }
     }
 }
 
 impl RichTextBackgroundPaint {
+    /// 创建背景参数构造器；未显式设置的延续圆角沿用普通圆角。
     pub fn builder() -> RichTextBackgroundPaintBuilder {
         RichTextBackgroundPaintBuilder {
             paint: Self::default(),
@@ -665,15 +680,6 @@ impl RichTextBackgroundPaint {
         }
     }
 
-    fn checked(self) -> Self {
-        assert!(self.horizontal_padding.is_finite() && self.horizontal_padding >= 0.0);
-        assert!(self.vertical_padding.is_finite() && self.vertical_padding >= 0.0);
-        assert!(self.corner_radius.is_finite() && self.corner_radius >= 0.0);
-        assert!(
-            self.continuation_corner_radius.is_finite() && self.continuation_corner_radius >= 0.0
-        );
-        self
-    }
 }
 
 pub struct RichTextBackgroundPaintBuilder {
@@ -703,32 +709,15 @@ impl RichTextBackgroundPaintBuilder {
         self.paint.metric_policy = value;
         self
     }
-    pub fn draw_style(mut self, value: RichTextBackgroundDrawStyle) -> Self {
-        self.paint.draw_style = value;
+    pub fn adjacent_same_style_clearance(mut self, value: f32) -> Self {
+        self.paint.adjacent_same_style_clearance = value;
         self
     }
     pub fn build(mut self) -> RichTextBackgroundPaint {
         if !self.continuation_corner_radius_was_set {
             self.paint.continuation_corner_radius = self.paint.corner_radius;
         }
-        self.paint.checked()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-/// 禁止手工构造带字段变体：使用 [`RichTextBackgroundDrawStyle::border`]，以保留 Kotlin 的构造校验。
-pub enum RichTextBackgroundDrawStyle {
-    Fill,
-    /// 由 frontend 保持在 resolved box 内的物理 layout-unit stroke。
-    Border {
-        stroke_width: f32,
-    },
-}
-
-impl RichTextBackgroundDrawStyle {
-    pub fn border(stroke_width: f32) -> Self {
-        assert!(stroke_width.is_finite() && stroke_width > 0.0);
-        Self::Border { stroke_width }
+        self.paint
     }
 }
 
@@ -744,62 +733,18 @@ pub enum RichTextBackgroundMetricPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-/// 禁止手工构造带字段变体：使用 [`RichTextLinePattern::dashed`] 或
-/// [`RichTextLinePattern::dotted`]，以保留 Kotlin 的构造校验。
 pub enum RichTextLinePattern {
+    /// 连续实线。
     Solid,
-    /// 由 frontend 提供的物理 layout-unit dash geometry。
+    /// 按线段长度和间隔重复的虚线。
     Dashed {
-        stroke_width: f32,
         dash_length: f32,
         gap_length: f32,
     },
-    /// 具有 frontend 提供 diameter 与可见 edge-to-edge gap 的圆点。
+    /// 按间隔重复的点线。
     Dotted {
-        dot_diameter: f32,
         gap_length: f32,
     },
-}
-
-impl RichTextLinePattern {
-    pub fn dashed(stroke_width: f32, dash_length: f32, gap_length: f32) -> Self {
-        assert!(stroke_width.is_finite() && stroke_width > 0.0);
-        assert!(dash_length.is_finite() && dash_length > 0.0);
-        assert!(gap_length.is_finite() && gap_length > 0.0);
-        Self::Dashed {
-            stroke_width,
-            dash_length,
-            gap_length,
-        }
-    }
-
-    pub fn dotted(dot_diameter: f32, gap_length: f32) -> Self {
-        assert!(dot_diameter.is_finite() && dot_diameter > 0.0);
-        assert!(gap_length.is_finite() && gap_length > 0.0);
-        Self::Dotted {
-            dot_diameter,
-            gap_length,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum RichTextRole {
-    /// Compose `SpanStyle.background`，每 visual line 绘制一个连续 typographic box。
-    Background,
-    /// Compose `TextDecoration.Underline`，以 Tiqian line geometry + skip-ink 绘制。
-    Underline,
-    /// Compose `TextDecoration.LineThrough`，以 Tiqian line geometry 绘制。
-    LineThrough,
-    /// Link source range。URL/click tag 保存在 model 中；link action 属于 frontend/accessibility slice，
-    /// 所以此 role 不隐含 visual fallback 或 navigation。
-    Link { target: String },
-    /// Renderer-owned technical inline range。它参与共享 progressive technical break policy 但自身不携带
-    /// paint，因此 adapter 可提供 code box、border 或 fallback presentation 而不重复 geometry。
-    TechnicalInline,
-    /// 经 Tiqian builder 创作的 inline code role。其 source 不变；Compose bridge 也经由 `TextSpan`
-    /// lowering 其 generic monospace font family。
-    InlineCode,
 }
 
 /// 行间注（ruby, ADR 0032）：在 base SOURCE `base_range` 上方的、小字号 annotation `text`——本 slice

@@ -1,11 +1,10 @@
 use std::fmt;
 
-use crate::core::text_model::{ColorSpan, LayoutInput, RichTextSpan};
+use crate::core::text_model::{LayoutInput, RichTextSpan};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphBuildOutput {
     pub input: LayoutInput,
-    pub colors: Vec<ColorSpan>,
     pub rich_text: Vec<RichTextSpan>,
 }
 

@@ -11,7 +11,8 @@ use super::source_interaction_boundaries::{
 };
 use super::text::Text;
 use super::text_model::{
-    RichTextBackgroundMetricPolicy, RichTextPaint, RichTextRole, RichTextSpan, TextStyle,
+    DecorationKind, RichTextBackgroundMetricPolicy, RichTextLayer, RichTextLayerKind,
+    RichTextSpan, RubyKind, TextStyle,
 };
 
 const INTERLINEAR_UNDERLINE_OFFSET_EM: f32 = 0.18;
@@ -215,16 +216,22 @@ pub fn resolved_background_corner_radii(
     let maximum = (box_width / 2.0).min(box_height / 2.0);
     let resolve = |radius: f32| (radius - inset).clamp(0.0, maximum);
 
-    let paint = &segment.span.paint.background;
+    let Some(RichTextLayer {
+        kind: RichTextLayerKind::Background { background },
+        ..
+    }) = segment_layer(segment)
+    else {
+        panic!("background corner radii require a background layer");
+    };
     let left = resolve(if segment.continues_from_previous_line() {
-        paint.continuation_corner_radius
+        background.continuation_corner_radius
     } else {
-        paint.corner_radius
+        background.corner_radius
     });
     let right = resolve(if segment.continues_on_next_line() {
-        paint.continuation_corner_radius
+        background.continuation_corner_radius
     } else {
-        paint.corner_radius
+        background.corner_radius
     });
     RichTextCornerRadii {
         top_left: left,
@@ -444,77 +451,122 @@ pub fn positioned_rich_text_segments(
         if start == end {
             continue;
         }
-        // One normalized span instance for ALL of this span's slices — allocated once
-        // (not per overlapping cluster) so the merge check compares by identity.
-        let normalized = Arc::new(RichTextSpan {
-            range: TextRange::new(start, end),
-            role: span.role.clone(),
-            paint: span.paint.clone(),
-        });
-        let mut pending: Option<RichTextLineSegment> = None;
-        // Clusters are source-ordered: binary-search the first cluster that reaches
-        // the span, and stop past its end — each span scans only its own window.
-        let mut lo = 0_usize;
-        let mut hi = clusters.len();
-        while lo < hi {
-            let mid = (lo + hi) >> 1;
-            if clusters[mid].range.end() <= start {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        for cluster in &clusters[lo..] {
-            if cluster.range.start() >= end {
-                break;
-            }
-            let slice_start = start.max(cluster.range.start());
-            let slice_end = end.min(cluster.range.end());
-            if slice_start >= slice_end {
-                continue;
-            }
-            let rect = slice_rect(cluster, slice_start, slice_end);
-            let next = RichTextLineSegment::new(
-                Arc::clone(&normalized),
-                cluster.line_index,
-                TextRange::new(slice_start, slice_end),
-                rect.left,
-                rect.top,
-                rect.right,
-                rect.bottom,
-                cluster.baseline,
-            );
-            if let Some(current) = pending.take() {
-                if current.line_index == next.line_index
-                    && Arc::ptr_eq(&current.span, &next.span)
-                    && current.range.end() == next.range.start()
-                {
-                    // Source-contiguous occupied slices merge into one continuous rect, so a decoration
-                    // or background never acquires an internal sliver (涂). Outer punctuation glue is
-                    // removed afterwards by trimmed_rich_text_decoration_segments, not here.
-                    pending = Some(RichTextLineSegment {
-                        span: current.span,
-                        line_index: current.line_index,
-                        range: TextRange::new(current.range.start(), next.range.end()),
-                        left: current.left,
-                        top: current.top.min(next.top),
-                        right: next.right,
-                        bottom: current.bottom.max(next.bottom),
-                        baseline: current.baseline,
-                    });
+        for layer in &span.layers {
+            // One normalized span instance for this layer's slices — allocated once
+            // (not per overlapping cluster) so the merge check compares by identity.
+            let normalized = Arc::new(RichTextSpan {
+                range: TextRange::new(start, end),
+                layers: vec![layer.clone()],
+                semantics: Vec::new(),
+            });
+            let mut pending: Option<RichTextLineSegment> = None;
+            // Clusters are source-ordered: binary-search the first cluster that reaches
+            // the span, and stop past its end — each span scans only its own window.
+            let mut lo = 0_usize;
+            let mut hi = clusters.len();
+            while lo < hi {
+                let mid = (lo + hi) >> 1;
+                if clusters[mid].range.end() <= start {
+                    lo = mid + 1;
                 } else {
-                    out.push(current);
+                    hi = mid;
+                }
+            }
+            for cluster in &clusters[lo..] {
+                if cluster.range.start() >= end {
+                    break;
+                }
+                let slice_start = start.max(cluster.range.start());
+                let slice_end = end.min(cluster.range.end());
+                if slice_start >= slice_end {
+                    continue;
+                }
+                let rect = slice_rect(cluster, slice_start, slice_end);
+                let next = RichTextLineSegment::new(
+                    Arc::clone(&normalized),
+                    cluster.line_index,
+                    TextRange::new(slice_start, slice_end),
+                    rect.left,
+                    rect.top,
+                    rect.right,
+                    rect.bottom,
+                    cluster.baseline,
+                );
+                if let Some(current) = pending.take() {
+                    if current.line_index == next.line_index
+                        && Arc::ptr_eq(&current.span, &next.span)
+                        && current.range.end() == next.range.start()
+                    {
+                        // Source-contiguous occupied slices merge into one continuous rect, so a decoration
+                        // or background never acquires an internal sliver (涂). Outer punctuation glue is
+                        // removed afterwards by trimmed_rich_text_decoration_segments, not here.
+                        pending = Some(RichTextLineSegment {
+                            span: current.span,
+                            line_index: current.line_index,
+                            range: TextRange::new(current.range.start(), next.range.end()),
+                            left: current.left,
+                            top: current.top.min(next.top),
+                            right: next.right,
+                            bottom: current.bottom.max(next.bottom),
+                            baseline: current.baseline,
+                        });
+                    } else {
+                        out.push(current);
+                        pending = Some(next);
+                    }
+                } else {
                     pending = Some(next);
                 }
-            } else {
-                pending = Some(next);
             }
-        }
-        if let Some(segment) = pending {
-            out.push(segment);
+            if let Some(segment) = pending {
+                out.push(segment);
+            }
         }
     }
     out
+}
+
+/// 返回与既有 decoration layout 输出关联的 layer。关联只要求 source range 相交且
+/// `DecorationKind` 相同；layer 不必覆盖生成该几何的完整 `DecorationSpan` range。
+pub fn rich_text_decoration_layers<'a>(
+    spans: &'a [RichTextSpan],
+    range: TextRange,
+    kind: DecorationKind,
+) -> Vec<&'a RichTextLayer> {
+    matching_layers(spans, range, |layer_kind| {
+        matches!(layer_kind, RichTextLayerKind::Decoration { kind: layer_kind } if *layer_kind == kind)
+    })
+}
+
+/// 返回与既有 ruby 或 bopomofo layout 输出关联的 layer。关联只要求 base source range
+/// 相交且 `RubyKind` 相同；layer 不必覆盖生成该 placement 的完整 `RubySpan.base_range`。
+pub fn rich_text_annotation_layers<'a>(
+    spans: &'a [RichTextSpan],
+    base_range: TextRange,
+    kind: RubyKind,
+) -> Vec<&'a RichTextLayer> {
+    matching_layers(spans, base_range, |layer_kind| {
+        matches!(layer_kind, RichTextLayerKind::Annotation { kind: layer_kind } if *layer_kind == kind)
+    })
+}
+
+fn matching_layers<'a>(
+    spans: &'a [RichTextSpan],
+    range: TextRange,
+    matches_kind: impl Fn(&RichTextLayerKind) -> bool,
+) -> Vec<&'a RichTextLayer> {
+    // Decoration 和 annotation 的 layer 可能只记录 push() 时的局部范围，因此按相交范围匹配。
+    spans
+        .iter()
+        .filter(|span| ranges_intersect(span.range, range))
+        .flat_map(|span| span.layers.iter())
+        .filter(|layer| matches_kind(&layer.kind))
+        .collect()
+}
+
+/// 判断两个半开 source range 是否有实际交集。
+fn ranges_intersect(left: TextRange, right: TextRange) -> bool {
+    left.start() < right.end() && right.start() < left.end()
 }
 
 /// Returns underline/strike-through segments with punctuation glue removed at the decoration's outer
@@ -533,8 +585,11 @@ pub fn trimmed_rich_text_decoration_segments(
         .iter()
         .filter(|segment| {
             matches!(
-                segment.span.role,
-                RichTextRole::Underline | RichTextRole::LineThrough
+                segment_layer(segment),
+                Some(RichTextLayer {
+                    kind: RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. },
+                    ..
+                })
             )
         })
         .cloned()
@@ -561,8 +616,11 @@ pub fn rich_text_background_segments(
         .iter()
         .filter(|segment| {
             matches!(
-                segment.span.role,
-                RichTextRole::Background | RichTextRole::InlineCode
+                segment_layer(segment),
+                Some(RichTextLayer {
+                    kind: RichTextLayerKind::Background { .. },
+                    ..
+                })
             )
         })
         .cloned()
@@ -589,7 +647,14 @@ pub fn rich_text_background_segments(
 
             let first = covered[0];
             let last = covered[covered.len() - 1];
-            let horizontal_padding = segment.span.paint.background.horizontal_padding;
+            let Some(RichTextLayer {
+                kind: RichTextLayerKind::Background { background },
+                ..
+            }) = segment_layer(&segment)
+            else {
+                return segment;
+            };
+            let horizontal_padding = background.horizontal_padding;
             let leading_padding = if segment.range.start() == segment.span.range.start() {
                 horizontal_padding
             } else {
@@ -617,7 +682,7 @@ pub fn rich_text_background_segments(
                 .min(natural_last_right + trailing_padding)
                 .max(left);
 
-            let (face_top, face_bottom) = match segment.span.paint.background.metric_policy {
+            let (face_top, face_bottom) = match background.metric_policy {
                 RichTextBackgroundMetricPolicy::MarkedFaces => {
                     marked_face_vertical_bounds(result, &covered, &result.debug.metric_decisions)
                 }
@@ -638,7 +703,7 @@ pub fn rich_text_background_segments(
                     )
                 }
             };
-            let vertical_padding = segment.span.paint.background.vertical_padding;
+            let vertical_padding = background.vertical_padding;
             RichTextLineSegment {
                 top: (face_top - vertical_padding).max(segment.top),
                 bottom: (face_bottom + vertical_padding).min(segment.bottom),
@@ -678,11 +743,7 @@ fn with_adjacent_same_style_clearance(
             let shared_clearance = |other: Option<&RichTextLineSegment>| {
                 other
                     .map(|candidate| {
-                        segment
-                            .span
-                            .paint
-                            .adjacent_same_style_clearance
-                            .min(candidate.span.paint.adjacent_same_style_clearance)
+                        layer_clearance(&segment).min(layer_clearance(candidate))
                     })
                     .unwrap_or(0.0)
             };
@@ -698,16 +759,61 @@ fn with_adjacent_same_style_clearance(
 }
 
 fn same_visible_style(left: &RichTextLineSegment, right: &RichTextLineSegment) -> bool {
-    left.span.role == right.span.role
-        && visible_paint(&left.span.paint) == visible_paint(&right.span.paint)
+    match (segment_layer(left), segment_layer(right)) {
+        (
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::Background { background: left_background },
+                paints: left_paints,
+            }),
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::Background { background: right_background },
+                paints: right_paints,
+            }),
+        ) => {
+            left_paints == right_paints
+                && left_background.horizontal_padding == right_background.horizontal_padding
+                && left_background.vertical_padding == right_background.vertical_padding
+                && left_background.corner_radius == right_background.corner_radius
+                && left_background.continuation_corner_radius == right_background.continuation_corner_radius
+                && left_background.metric_policy == right_background.metric_policy
+        }
+        (
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::Underline { line: left_line },
+                paints: left_paints,
+            }),
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::Underline { line: right_line },
+                paints: right_paints,
+            }),
+        )
+        | (
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::LineThrough { line: left_line },
+                paints: left_paints,
+            }),
+            Some(RichTextLayer {
+                kind: RichTextLayerKind::LineThrough { line: right_line },
+                paints: right_paints,
+            }),
+        ) => left_paints == right_paints && left_line.thickness == right_line.thickness && left_line.pattern == right_line.pattern,
+        _ => false,
+    }
 }
 
-fn visible_paint(paint: &RichTextPaint) -> RichTextPaint {
-    RichTextPaint {
-        argb: paint.argb,
-        line_pattern: paint.line_pattern.clone(),
-        background: paint.background.clone(),
-        adjacent_same_style_clearance: 0.0,
+/// 取出 line segment 对应的单一 layer；positioned_rich_text_segments 按 layer 分别生成 segment。
+fn segment_layer(segment: &RichTextLineSegment) -> Option<&RichTextLayer> {
+    segment.span.layers.first()
+}
+
+/// 返回当前 layer 在相邻同样式 segment 之间需要分摊的间距。
+fn layer_clearance(segment: &RichTextLineSegment) -> f32 {
+    match segment_layer(segment).map(|layer| &layer.kind) {
+        Some(RichTextLayerKind::Background { background }) => background.adjacent_same_style_clearance,
+        Some(RichTextLayerKind::Underline { line } | RichTextLayerKind::LineThrough { line }) => {
+            line.adjacent_same_style_clearance
+        }
+        _ => 0.0,
     }
 }
 
@@ -863,13 +969,15 @@ pub fn rich_text_decoration_line_y(
         stroke_width.is_finite() && stroke_width >= 0.0,
         "strokeWidth must be finite and non-negative"
     );
-    let role = &segment.span.role;
+    let Some(kind) = segment_layer(segment).map(|layer| &layer.kind) else {
+        panic!("richTextDecorationLineY requires a line layer");
+    };
     assert!(
-        matches!(role, RichTextRole::Underline | RichTextRole::LineThrough),
+        matches!(kind, RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. }),
         "richTextDecorationLineY only supports underline and line-through segments"
     );
     let style = resolved_text_style_at(result, segment.range.start());
-    let raw_line_y = if matches!(role, RichTextRole::Underline) {
+    let raw_line_y = if matches!(kind, RichTextLayerKind::Underline { .. }) {
         segment.baseline + style.font_size * INTERLINEAR_UNDERLINE_OFFSET_EM
     } else {
         // `IdeographicMetricBoxLineThroughCenter`: a Chinese strike-through bisects the

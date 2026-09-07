@@ -1,8 +1,9 @@
 use crate::core::geometry::TextRange;
 use crate::core::text::Text;
 use crate::core::text_model::{
-    ColorSpan, DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LineBreakPolicy,
-    LineBreakSpan, RichTextPaint, RichTextRole, RichTextSpan, RubySpan,
+    DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LineBreakPolicy,
+    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextPaint,
+    RichTextSemantic, RubySpan,
 };
 
 use super::builder::ParagraphBuilder;
@@ -20,23 +21,24 @@ pub(super) enum OpenScopeKind {
     Ruby(RubyAnnotation),
     InlineBox(InlineBoxStyle),
     Decoration(DecorationKind),
-    Color(i32),
-    RichText(RichTextRole, RichTextPaint),
+    Paints(Vec<RichTextPaint>),
+    RichText(Vec<RichTextLayer>),
     Link(String),
     Technical,
-    InlineCode(TextStyleOverride, RichTextPaint),
+    InlineCode(TextStyleOverride, RichTextBackgroundPaint),
     AutoSpaceSuppressed,
 }
 
 impl OpenScopeKind {
+    /// 将内部 scope 映射为错误信息和调试输出使用的公开类别。
     pub(super) fn public_kind(&self) -> ParagraphScopeKind {
         match self {
             Self::TextStyle(_) => ParagraphScopeKind::TextStyle,
             Self::Ruby(_) => ParagraphScopeKind::Ruby,
             Self::InlineBox(_) => ParagraphScopeKind::InlineBox,
             Self::Decoration(_) => ParagraphScopeKind::Decoration,
-            Self::Color(_) => ParagraphScopeKind::Color,
-            Self::RichText(_, _) => ParagraphScopeKind::RichText,
+            Self::Paints(_) => ParagraphScopeKind::Color,
+            Self::RichText(_) => ParagraphScopeKind::RichText,
             Self::Link(_) => ParagraphScopeKind::Link,
             Self::Technical => ParagraphScopeKind::Technical,
             Self::InlineCode(_, _) => ParagraphScopeKind::InlineCode,
@@ -46,10 +48,7 @@ impl OpenScopeKind {
 }
 
 impl ParagraphBuilder {
-    pub fn push_text_style(
-        &mut self,
-        style: TextStyleOverride,
-    ) -> Result<(), ParagraphBuildError> {
+    pub fn push_text_style(&mut self, style: TextStyleOverride) -> Result<(), ParagraphBuildError> {
         self.push_scope(OpenScopeKind::TextStyle(style));
         Ok(())
     }
@@ -70,16 +69,17 @@ impl ParagraphBuilder {
     }
 
     pub fn push_color(&mut self, argb: i32) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::Color(argb));
+        self.push_scope(OpenScopeKind::Paints(vec![RichTextPaint::Fill { argb }]));
         Ok(())
     }
 
-    pub fn push_rich_text(
-        &mut self,
-        role: RichTextRole,
-        paint: RichTextPaint,
-    ) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::RichText(role, paint));
+    pub fn push_paints(&mut self, paints: &[RichTextPaint]) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::Paints(paints.to_vec()));
+        Ok(())
+    }
+
+    pub fn push_rich_text(&mut self, layers: &[RichTextLayer]) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::RichText(layers.to_vec()));
         Ok(())
     }
 
@@ -96,9 +96,9 @@ impl ParagraphBuilder {
     pub fn push_inline_code(
         &mut self,
         style: TextStyleOverride,
-        paint: RichTextPaint,
+        background: RichTextBackgroundPaint,
     ) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::InlineCode(style, paint));
+        self.push_scope(OpenScopeKind::InlineCode(style, background));
         Ok(())
     }
 
@@ -160,11 +160,7 @@ impl ParagraphBuilder {
         result
     }
 
-    pub fn with_text_style(
-        &mut self,
-        style: TextStyleOverride,
-        content: impl FnOnce(&mut Self),
-    ) {
+    pub fn with_text_style(&mut self, style: TextStyleOverride, content: impl FnOnce(&mut Self)) {
         self.with_scope(OpenScopeKind::TextStyle(style), content);
     }
 
@@ -213,7 +209,10 @@ impl ParagraphBuilder {
     }
 
     pub fn with_color(&mut self, argb: i32, content: impl FnOnce(&mut Self)) {
-        self.with_scope(OpenScopeKind::Color(argb), content);
+        self.with_scope(
+            OpenScopeKind::Paints(vec![RichTextPaint::Fill { argb }]),
+            content,
+        );
     }
 
     pub fn try_with_color(
@@ -221,25 +220,34 @@ impl ParagraphBuilder {
         argb: i32,
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::Color(argb), content)
+        self.try_with_scope(
+            OpenScopeKind::Paints(vec![RichTextPaint::Fill { argb }]),
+            content,
+        )
     }
 
-    pub fn with_rich_text(
+    pub fn with_paints(&mut self, paints: &[RichTextPaint], content: impl FnOnce(&mut Self)) {
+        self.with_scope(OpenScopeKind::Paints(paints.to_vec()), content);
+    }
+
+    pub fn try_with_paints(
         &mut self,
-        role: RichTextRole,
-        paint: RichTextPaint,
-        content: impl FnOnce(&mut Self),
-    ) {
-        self.with_scope(OpenScopeKind::RichText(role, paint), content);
+        paints: &[RichTextPaint],
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        self.try_with_scope(OpenScopeKind::Paints(paints.to_vec()), content)
+    }
+
+    pub fn with_rich_text(&mut self, layers: &[RichTextLayer], content: impl FnOnce(&mut Self)) {
+        self.with_scope(OpenScopeKind::RichText(layers.to_vec()), content);
     }
 
     pub fn try_with_rich_text(
         &mut self,
-        role: RichTextRole,
-        paint: RichTextPaint,
+        layers: &[RichTextLayer],
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::RichText(role, paint), content)
+        self.try_with_scope(OpenScopeKind::RichText(layers.to_vec()), content)
     }
 
     pub fn with_link(&mut self, target: String, content: impl FnOnce(&mut Self)) {
@@ -268,19 +276,19 @@ impl ParagraphBuilder {
     pub fn with_inline_code(
         &mut self,
         style: TextStyleOverride,
-        paint: RichTextPaint,
+        background: RichTextBackgroundPaint,
         content: impl FnOnce(&mut Self),
     ) {
-        self.with_scope(OpenScopeKind::InlineCode(style, paint), content);
+        self.with_scope(OpenScopeKind::InlineCode(style, background), content);
     }
 
     pub fn try_with_inline_code(
         &mut self,
         style: TextStyleOverride,
-        paint: RichTextPaint,
+        background: RichTextBackgroundPaint,
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::InlineCode(style, paint), content)
+        self.try_with_scope(OpenScopeKind::InlineCode(style, background), content)
     }
 
     pub fn with_auto_space_suppressed(&mut self, content: impl FnOnce(&mut Self)) {
@@ -305,8 +313,13 @@ impl ParagraphBuilder {
         sequence
     }
 
+    /// 关闭闭包创建的 scope，并检查 scope 栈顶仍是该闭包打开的 scope。
     fn finish_closure_scope(&mut self, sequence: u64, scope_kind: ParagraphScopeKind) {
-        if self.open_scopes.last().is_some_and(|scope| scope.sequence == sequence) {
+        if self
+            .open_scopes
+            .last()
+            .is_some_and(|scope| scope.sequence == sequence)
+        {
             let scope = self.open_scopes.pop().expect("scope stack was checked");
             if let Err(error) = self.finish_scope(scope) {
                 self.record_error(error);
@@ -316,6 +329,7 @@ impl ParagraphBuilder {
         }
     }
 
+    /// 将 scope 的 source 范围降低为 layout 数据或 rich-text side channel 数据。
     fn finish_scope(&mut self, scope: OpenScope) -> Result<(), ParagraphBuildError> {
         let range = TextRange::new(scope.start, self.scalar_offset);
         match scope.kind {
@@ -360,46 +374,17 @@ impl ParagraphBuilder {
                 }
                 Ok(())
             }
-            OpenScopeKind::Color(argb) => {
-                if !range.is_empty() {
-                    self.colors.push((
-                        scope.sequence,
-                        ColorSpan {
-                            start: range.start(),
-                            end: range.end(),
-                            argb,
-                        },
-                    ));
-                    self.add_source_boundaries(range);
-                }
-                Ok(())
-            }
-            OpenScopeKind::RichText(role, paint) => {
-                if !range.is_empty() {
-                    let horizontal_padding = paint.background.horizontal_padding;
-                    let creates_inline_box = horizontal_padding > 0.0
-                        && matches!(role, RichTextRole::Background | RichTextRole::InlineCode);
-                    self.rich_text.push((
-                        scope.sequence,
-                        RichTextSpan::with_paint(range, role, paint),
-                    ));
-                    if creates_inline_box {
-                        self.inline_boxes.push((
-                            scope.sequence,
-                            InlineBoxSpan::with_edges(range, horizontal_padding, horizontal_padding),
-                        ));
-                    }
-                    self.add_source_boundaries(range);
-                }
-                Ok(())
-            }
+            OpenScopeKind::Paints(_) | OpenScopeKind::RichText(_) => Ok(()),
             OpenScopeKind::Link(target) => {
                 if !range.is_empty() {
-                    self.rich_text.push((
-                        scope.sequence,
-                        RichTextSpan::new(range, RichTextRole::Link { target: target.clone() }),
-                    ));
-                    self.add_source_boundaries(range);
+                    // Link 语义保留在 rich-text 中；只有可见文本本身显示链接地址时，才额外采用技术文本断行策略。
+                    self.record_rich_text(
+                        range,
+                        Vec::new(),
+                        vec![RichTextSemantic::Link {
+                            target: target.clone(),
+                        }],
+                    );
                     let visible_text = Text::from(self.source.as_str()).slice_text(range);
                     if crate::core::text_model::link_address_display::displays_address(
                         &visible_text,
@@ -418,11 +403,12 @@ impl ParagraphBuilder {
             }
             OpenScopeKind::Technical => {
                 if !range.is_empty() {
-                    self.rich_text.push((
-                        scope.sequence,
-                        RichTextSpan::new(range, RichTextRole::TechnicalInline),
-                    ));
-                    self.add_source_boundaries(range);
+                    // Technical 文本共享技术文本断行策略，并抑制范围内的自动空格。
+                    self.record_rich_text(
+                        range,
+                        Vec::new(),
+                        vec![RichTextSemantic::TechnicalInline],
+                    );
                     self.line_break_spans.push((
                         scope.sequence,
                         LineBreakSpan {
@@ -430,24 +416,24 @@ impl ParagraphBuilder {
                             policy: LineBreakPolicy::ProgressiveTechnical,
                         },
                     ));
-                    self.auto_space_suppressed_ranges.push((scope.sequence, range));
+                    self.auto_space_suppressed_ranges
+                        .push((scope.sequence, range));
                 }
                 Ok(())
             }
-            OpenScopeKind::InlineCode(_, paint) => {
+            OpenScopeKind::InlineCode(_, background) => {
                 if !range.is_empty() {
-                    let horizontal_padding = paint.background.horizontal_padding;
-                    self.rich_text.push((
-                        scope.sequence,
-                        RichTextSpan::with_paint(range, RichTextRole::InlineCode, paint),
-                    ));
-                    if horizontal_padding > 0.0 {
-                        self.inline_boxes.push((
-                            scope.sequence,
-                            InlineBoxSpan::with_edges(range, horizontal_padding, horizontal_padding),
-                        ));
+                    // Inline code 同时提供视觉背景和技术文本语义；背景 padding 由 build() 转为 inline box。
+                    let mut layers = self.current_layers(&RichTextLayerKind::Background {
+                        background: RichTextBackgroundPaint::default(),
+                    });
+                    if layers.is_empty() {
+                        layers.push(RichTextLayer {
+                            kind: RichTextLayerKind::Background { background },
+                            paints: self.current_paints(),
+                        });
                     }
-                    self.add_source_boundaries(range);
+                    self.record_rich_text(range, layers, vec![RichTextSemantic::TechnicalInline]);
                     self.line_break_spans.push((
                         scope.sequence,
                         LineBreakSpan {
@@ -455,13 +441,15 @@ impl ParagraphBuilder {
                             policy: LineBreakPolicy::ProgressiveTechnical,
                         },
                     ));
-                    self.auto_space_suppressed_ranges.push((scope.sequence, range));
+                    self.auto_space_suppressed_ranges
+                        .push((scope.sequence, range));
                 }
                 Ok(())
             }
             OpenScopeKind::AutoSpaceSuppressed => {
                 if !range.is_empty() {
-                    self.auto_space_suppressed_ranges.push((scope.sequence, range));
+                    self.auto_space_suppressed_ranges
+                        .push((scope.sequence, range));
                 }
                 Ok(())
             }
