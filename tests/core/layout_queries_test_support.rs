@@ -6,15 +6,20 @@ use tiqian::core::layout_model::{
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    LayoutInput, TextSpan, TextStyle, TiqianTextContent,
+    LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent,
 };
 
-pub fn input(text: &str, max_width: f32) -> LayoutInput {
+pub fn input_with_rich_text(
+    text: &str,
+    max_width: f32,
+    rich_text: Vec<RichTextSpan>,
+) -> LayoutInput {
     LayoutInput::builder(
         TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(max_width),
     )
     .text_style(TextStyle::builder().font_size(10.0).build())
+    .rich_text(rich_text)
     .build()
 }
 
@@ -51,10 +56,31 @@ pub fn result(
     spans: Vec<TextSpan>,
     debug: LayoutDebugInfo,
 ) -> LayoutResult {
+    result_with_rich_text(
+        text,
+        clusters,
+        lines,
+        glyph_runs,
+        spans,
+        Vec::new(),
+        debug,
+    )
+}
+
+pub fn result_with_rich_text(
+    text: &str,
+    clusters: Vec<Cluster>,
+    lines: Vec<LineBox>,
+    glyph_runs: Vec<GlyphRun>,
+    spans: Vec<TextSpan>,
+    rich_text: Vec<RichTextSpan>,
+    debug: LayoutDebugInfo,
+) -> LayoutResult {
     let content = TiqianTextContent::builder(Text::from(text)).spans(spans).build();
     LayoutResult::with_debug(
         LayoutInput::builder(content, LayoutConstraints::with_defaults(100.0))
             .text_style(TextStyle::builder().font_size(10.0).build())
+            .rich_text(rich_text)
             .build(),
         Size {
             width: 120.0,
@@ -112,8 +138,12 @@ pub fn punctuation_geometry(
 }
 
 pub fn sample_result() -> LayoutResult {
+    sample_result_with_rich_text(Vec::new())
+}
+
+pub fn sample_result_with_rich_text(rich_text: Vec<RichTextSpan>) -> LayoutResult {
     LayoutResult::new(
-        input("甲——乙", 40.0),
+        input_with_rich_text("甲——乙", 40.0, rich_text),
         Size { width: 34.0, height: 40.0 },
         vec![
             cluster(text_range(0, 1), "甲", 10.0),
@@ -146,7 +176,14 @@ pub fn sample_result() -> LayoutResult {
 }
 
 pub fn punctuation_glue_result(leading_consumed: f32) -> LayoutResult {
-    result(
+    punctuation_glue_result_with_rich_text(leading_consumed, Vec::new())
+}
+
+pub fn punctuation_glue_result_with_rich_text(
+    leading_consumed: f32,
+    rich_text: Vec<RichTextSpan>,
+) -> LayoutResult {
+    result_with_rich_text(
         "（，中）",
         vec![
             cluster(text_range(0, 1), "（", 10.0),
@@ -157,6 +194,7 @@ pub fn punctuation_glue_result(leading_consumed: f32) -> LayoutResult {
         vec![line(text_range(0, 4), IntRange::new(0, 3), 15.0, 0.0, 20.0, 40.0)],
         Vec::new(),
         Vec::new(),
+        rich_text,
         LayoutDebugInfo::builder()
             .geometry_decisions(vec![
                 punctuation_geometry(text_range(0, 1), "（", 5.0, 0.0, leading_consumed),
@@ -168,8 +206,11 @@ pub fn punctuation_glue_result(leading_consumed: f32) -> LayoutResult {
     )
 }
 
-pub fn background_geometry_result(metrics: Vec<MetricDecisionInfo>) -> LayoutResult {
-    result(
+pub fn background_geometry_result_with_rich_text(
+    metrics: Vec<MetricDecisionInfo>,
+    rich_text: Vec<RichTextSpan>,
+) -> LayoutResult {
+    result_with_rich_text(
         "A B",
         vec![
             cluster(text_range(0, 1), "A", 12.0),
@@ -182,6 +223,7 @@ pub fn background_geometry_result(metrics: Vec<MetricDecisionInfo>) -> LayoutRes
             GlyphRun::new(text_range(2, 3), "latin".to_owned(), vec![Glyph::builder(2, text_range(2, 3), 10.0).build()], 10.0),
         ],
         Vec::new(),
+        rich_text,
         LayoutDebugInfo::builder()
             .auto_space_decisions(vec![AutoSpaceDecisionInfo {
                 cluster_range: text_range(2, 3),

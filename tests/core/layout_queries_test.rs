@@ -7,12 +7,12 @@ use tiqian::core::layout_model::{
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
-    positioned_rich_text_segments, trimmed_rich_text_decoration_segments,
 };
 use tiqian::core::source_interaction_boundaries::SourceBoundaryBias;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    InlineObjectSpan, LayoutInput, RichTextRole, RichTextSpan, TextStyle, TiqianTextContent,
+    InlineObjectSpan, LayoutInput, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
+    RichTextSpan, TextStyle, TiqianTextContent,
 };
 
 fn layout_input(text: &str, max_width: f32) -> LayoutInput {
@@ -43,6 +43,17 @@ fn line(
         width,
     )
     .build()
+}
+
+fn underline_span(range: TextRange) -> RichTextSpan {
+    RichTextSpan {
+        range,
+        layers: vec![RichTextLayer {
+            kind: RichTextLayerKind::Underline { line: RichTextLinePaint::default() },
+            paints: Vec::new(),
+        }],
+        semantics: Vec::new(),
+    }
 }
 
 #[test]
@@ -361,7 +372,13 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         ])
         .build();
     let result = LayoutResult::with_debug(
-        layout_input("（，中）", 40.0),
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("（，中）")),
+            LayoutConstraints::with_defaults(40.0),
+        )
+        .text_style(TextStyle::builder().font_size(10.0).build())
+        .rich_text(vec![underline_span(text_range(0, 4))])
+        .build(),
         Size {
             width: 40.0,
             height: 20.0,
@@ -403,9 +420,8 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         )],
         debug,
     );
-    let underline = RichTextSpan::new(text_range(0, 4), RichTextRole::Underline);
-    let occupied = positioned_rich_text_segments(&result, &[underline]);
-    let decoration = trimmed_rich_text_decoration_segments(&result, &occupied);
+    let occupied = result.positioned_rich_text_segments();
+    let decoration = result.rich_text_decoration_segments();
 
     assert_eq!(
         Rect {

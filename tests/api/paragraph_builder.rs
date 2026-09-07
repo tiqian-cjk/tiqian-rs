@@ -2,9 +2,26 @@ use tiqian::api::*;
 use tiqian::core::geometry::{LayoutConstraints, TextRange, scalar_offset};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    ColorSpan, DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
-    RichTextPaint, RichTextRole, TextStyle, built_in_layout_profiles,
+    DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment, LineBreakPolicy,
+    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextPaint, RichTextSemantic, TextStyle, built_in_layout_profiles,
 };
+
+fn underline_layer() -> RichTextLayer {
+    RichTextLayer {
+        kind: RichTextLayerKind::Underline {
+            line: RichTextLinePaint::default(),
+        },
+        paints: Vec::new(),
+    }
+}
+
+fn background_layer(background: RichTextBackgroundPaint) -> RichTextLayer {
+    RichTextLayer {
+        kind: RichTextLayerKind::Background { background },
+        paints: Vec::new(),
+    }
+}
 
 #[test]
 fn inline_configuration_values_preserve_core_defaults() {
@@ -38,15 +55,15 @@ fn explicit_text_style_scope_generates_a_complete_style_span() {
     builder.push("结尾");
 
     let output = builder.build().unwrap();
-    assert_eq!("正文强调结尾", output.input.content.text);
-    assert_eq!(1, output.input.content.spans.len());
+    assert_eq!("正文强调结尾", output.content.text);
+    assert_eq!(1, output.content.spans.len());
     assert_eq!(
         TextRange::new(scalar_offset(2), scalar_offset(4)),
-        output.input.content.spans[0].range
+        output.content.spans[0].range
     );
-    assert_eq!(700, output.input.content.spans[0].style.font_weight);
-    assert!(output.input.content.spans[0].style.italic);
-    assert_eq!(15.0, output.input.content.spans[0].style.font_size);
+    assert_eq!(700, output.content.spans[0].style.font_weight);
+    assert!(output.content.spans[0].style.italic);
+    assert_eq!(15.0, output.content.spans[0].style.font_size);
 }
 
 #[test]
@@ -98,15 +115,14 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     builder.with_color(0xFF2563EB_u32 as i32, |builder| {
         builder.with_rich_text(
-            RichTextRole::Underline,
-            RichTextPaint::default(),
+            &[underline_layer()],
             |builder| {
                 builder.with_technical(|builder| {
                     builder.with_inline_code(
                         TextStyleOverride::builder()
                             .font_families(vec!["monospace".to_owned()])
                             .build(),
-                        RichTextPaint::default(),
+                        RichTextBackgroundPaint::default(),
                         |builder| builder.push("code"),
                     );
                 });
@@ -121,77 +137,150 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     let code_range = TextRange::new(scalar_offset(0), scalar_offset(4));
     let link_range = TextRange::new(scalar_offset(4), scalar_offset(14));
 
-    assert_eq!("codetiqian.org", output.input.content.text);
+    assert_eq!("codetiqian.org", output.content.text);
+    assert_eq!(code_range, output.rich_text[0].range);
     assert_eq!(
-        vec![ColorSpan {
-            start: code_range.start(),
-            end: code_range.end(),
+        vec![
+            RichTextLayerKind::Text,
+            RichTextLayerKind::Underline {
+                line: RichTextLinePaint::default(),
+            },
+            RichTextLayerKind::Background {
+                background: RichTextBackgroundPaint::default(),
+            },
+        ],
+        output.rich_text[0]
+            .layers
+            .iter()
+            .map(|layer| layer.kind.clone())
+            .collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec![RichTextPaint::Fill {
             argb: 0xFF2563EB_u32 as i32,
         }],
-        output.colors
+        output.rich_text[0].layers[0].paints,
     );
     assert_eq!(
         vec![
-            RichTextRole::Underline,
-            RichTextRole::InlineCode,
-            RichTextRole::Link {
-                target: "https://tiqian.org".to_owned(),
-            }
+            RichTextSemantic::TechnicalInline,
+            RichTextSemantic::TechnicalInline,
         ],
-        output
-            .rich_text
-            .iter()
-            .map(|span| span.role.clone())
-            .collect::<Vec<_>>()
+        output.rich_text[0].semantics,
     );
     assert_eq!(
-        vec![code_range, link_range],
+        vec![RichTextSemantic::Link {
+                target: "https://tiqian.org".to_owned(),
+            }],
+        output.rich_text[1].semantics,
+    );
+    assert_eq!(
+        vec![
+            LineBreakSpan {
+                range: code_range,
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
+            LineBreakSpan {
+                range: link_range,
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
+        ],
+        output.content.line_break_spans
+    );
+    assert_eq!(
+        vec![code_range],
+        output.content.auto_space_suppressed_ranges
+    );
+    assert!(
+        output.content.source_boundaries.contains(&code_range.start())
+    );
+    assert!(
+        output.content.source_boundaries.contains(&code_range.end())
+    );
+    assert!(
+        output.content.source_boundaries.contains(&link_range.start())
+    );
+    assert!(
+        output.content.source_boundaries.contains(&link_range.end())
+    );
+    assert_eq!(1, output.content.spans.len());
+    assert_eq!(code_range, output.content.spans[0].range);
+    assert_eq!(
+        vec!["monospace".to_owned()],
+        output.content.spans[0].style.font_families
+    );
+}
+
+#[test]
+fn inline_code_generates_line_break_and_auto_space_inputs() {
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_inline_code(
+        TextStyleOverride::default(),
+        RichTextBackgroundPaint::default(),
+        |builder| builder.push("code"),
+    );
+
+    let output = builder.build().unwrap();
+    let range = TextRange::new(scalar_offset(0), scalar_offset(4));
+
+    assert_eq!(
+        vec![LineBreakSpan {
+            range,
+            policy: LineBreakPolicy::ProgressiveTechnical,
+        }],
+        output.content.line_break_spans
+    );
+    assert_eq!(vec![range], output.content.auto_space_suppressed_ranges);
+}
+
+#[test]
+fn padded_background_and_inline_code_generate_narrow_inline_boxes() {
+    let background = RichTextBackgroundPaint::builder().horizontal_padding(4.0).build();
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_rich_text(&[background_layer(background.clone())], |builder| {
+        builder.push("背景");
+    });
+    builder.with_inline_code(TextStyleOverride::default(), background, |builder| {
+        builder.push("code");
+    });
+
+    let output = builder.build().unwrap();
+    assert_eq!(
+        vec![
+            TextRange::new(scalar_offset(0), scalar_offset(2)),
+            TextRange::new(scalar_offset(2), scalar_offset(6)),
+        ],
         output
-            .input
-            .content
-            .line_break_spans
+            .inline_boxes
             .iter()
             .map(|span| span.range)
             .collect::<Vec<_>>()
     );
-    assert_eq!(
-        vec![code_range],
-        output.input.content.auto_space_suppressed_ranges
-    );
-    assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&code_range.start())
-    );
-    assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&code_range.end())
-    );
-    assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&link_range.start())
-    );
-    assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&link_range.end())
-    );
-    assert_eq!(1, output.input.content.spans.len());
-    assert_eq!(code_range, output.input.content.spans[0].range);
-    assert_eq!(
-        vec!["monospace".to_owned()],
-        output.input.content.spans[0].style.font_families
-    );
+    assert!(output.inline_boxes.iter().all(|span| {
+        span.inline_start == 4.0
+            && span.inline_end == 4.0
+            && span.outer_spacing == InlineBoxOuterSpacing::Narrow
+    }));
+}
+
+#[test]
+fn zero_padding_and_non_background_rich_text_do_not_generate_inline_boxes() {
+    let padded_underline = RichTextLayer {
+        kind: RichTextLayerKind::Underline {
+            line: RichTextLinePaint::default(),
+        },
+        paints: vec![RichTextPaint::Fill { argb: 0xFF000000_u32 as i32 }],
+    };
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_rich_text(&[background_layer(RichTextBackgroundPaint::default())], |builder| {
+        builder.push("零");
+    });
+    builder.with_rich_text(&[padded_underline], |builder| {
+        builder.push("线");
+    });
+
+    let output = builder.build().unwrap();
+    assert!(output.inline_boxes.is_empty());
 }
 
 #[test]
@@ -208,17 +297,17 @@ fn decoration_ruby_and_inline_box_lower_to_their_core_spans() {
 
     let output = builder.build().unwrap();
     let range = TextRange::new(scalar_offset(0), scalar_offset(2));
-    assert_eq!(range, output.input.inline_boxes[0].range);
-    assert_eq!(2.0, output.input.inline_boxes[0].inline_start);
-    assert_eq!(3.0, output.input.inline_boxes[0].inline_end);
+    assert_eq!(range, output.inline_boxes[0].range);
+    assert_eq!(2.0, output.inline_boxes[0].inline_start);
+    assert_eq!(3.0, output.inline_boxes[0].inline_end);
     assert_eq!(
         InlineBoxOuterSpacing::Source,
-        output.input.inline_boxes[0].outer_spacing
+        output.inline_boxes[0].outer_spacing
     );
-    assert_eq!(range, output.input.ruby_spans[0].base_range);
-    assert_eq!(Text::from("tíqiàn"), output.input.ruby_spans[0].text);
-    assert_eq!(DecorationKind::Emphasis, output.input.decorations[0].kind);
-    assert_eq!(range, output.input.decorations[0].range);
+    assert_eq!(range, output.ruby_spans[0].base_range);
+    assert_eq!(Text::from("tíqiàn"), output.ruby_spans[0].text);
+    assert_eq!(DecorationKind::Emphasis, output.decorations[0].kind);
+    assert_eq!(range, output.decorations[0].range);
 }
 
 #[test]
@@ -231,10 +320,10 @@ fn position_insertions_preserve_source_and_reject_invalid_ruby_content() {
         .unwrap();
 
     let output = builder.build().unwrap();
-    assert_eq!("甲\nobject", output.input.content.text);
+    assert_eq!("甲\nobject", output.content.text);
     assert_eq!(
         TextRange::new(scalar_offset(2), scalar_offset(8)),
-        output.input.inline_objects[0].range
+        output.inline_objects[0].range
     );
 
     let mut ruby_builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));

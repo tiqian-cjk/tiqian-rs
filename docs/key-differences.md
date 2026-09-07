@@ -26,6 +26,15 @@ fixture 和 golden 不参与 Rust 日常验证。
 
 不同于 Kotlin 版本在仓库中直接维护 Unicode 属性表，tiqian-rs 依赖 ICU4X 的 Unicode 数据源。当前两边均使用对应 Unicode 17 的数据，其不应出现差异。若将来上游版本更新为 Unicode 18，tiqian-rs 也应当同步更新到 ICU4X 的 Unicode 18 版本。
 
+### 统一富文本旁路模型
+
+Rust 已实施 R0002：`ColorSpan` 与单 role 的 `RichTextSpan` 已合并为统一的富文本旁路输出。
+Kotlin 上游仍使用旧模型，因此这是当前实现差异。
+
+模型边界、数据结构与迁移规则见
+[`R0002-unified-rich-text-paint-model.md`](adr/R0002-unified-rich-text-paint-model.md)；实施记录见
+[`2026-09-06-unified-rich-text-paint-model.md`](iteration/2026-09-06-unified-rich-text-paint-model.md)。
+
 ## 关键差异列表（实现差异）
 
 ### 单点交互查询统一到 interaction boundary

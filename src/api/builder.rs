@@ -1,13 +1,14 @@
-use crate::common::HashSet;
+use crate::common::{HashMap, HashSet};
 use crate::core::geometry::{LayoutConstraints, ScalarOffset, TextRange};
 use crate::core::text::Text;
 use crate::core::text_model::{
-    built_in_layout_profiles, ColorSpan, DecorationSpan, InlineBoxSpan, InlineObjectSpan,
-    LayoutInput, LayoutProfileId, LineBreakSpan, ParagraphStyle, RichTextSpan, RubySpan,
-    TextSpan, TextStyle, TiqianTextContent,
+    built_in_layout_profiles, DecorationSpan, InlineBoxOuterSpacing, InlineBoxSpan,
+    InlineObjectSpan, LayoutInput, LayoutProfileId, LineBreakSpan, ParagraphStyle,
+    RichTextLayer, RichTextLayerKind, RichTextPaint, RichTextSpan, RubySpan, TextSpan,
+    TextStyle, TiqianTextContent,
 };
 
-use super::types::{ParagraphBuildError, ParagraphBuildOutput};
+use super::types::ParagraphBuildError;
 
 pub struct ParagraphBuilder {
     pub(super) source: String,
@@ -23,11 +24,11 @@ pub struct ParagraphBuilder {
     pub(super) ruby_spans: Vec<(u64, RubySpan)>,
     pub(super) inline_boxes: Vec<(u64, InlineBoxSpan)>,
     pub(super) inline_objects: Vec<InlineObjectSpan>,
-    pub(super) source_boundaries: HashSet<ScalarOffset>,
-    pub(super) colors: Vec<(u64, ColorSpan)>,
+    pub(super) paints: Vec<RichTextPaint>,
     pub(super) rich_text: Vec<(u64, RichTextSpan)>,
     pub(super) open_scopes: Vec<super::scopes::OpenScope>,
     pub(super) next_scope_sequence: u64,
+    pub(super) next_rich_text_sequence: u64,
     pub(super) first_error: Option<ParagraphBuildError>,
 }
 
@@ -47,11 +48,11 @@ impl ParagraphBuilder {
             ruby_spans: Vec::new(),
             inline_boxes: Vec::new(),
             inline_objects: Vec::new(),
-            source_boundaries: HashSet::new(),
-            colors: Vec::new(),
+            paints: vec![RichTextPaint::default()],
             rich_text: Vec::new(),
             open_scopes: Vec::new(),
             next_scope_sequence: 0,
+            next_rich_text_sequence: 0,
             first_error: None,
         }
     }
@@ -59,6 +60,13 @@ impl ParagraphBuilder {
     pub fn text_style(&mut self, style: TextStyle) -> &mut Self {
         self.assert_paragraph_configuration_is_mutable();
         self.text_style = style;
+        self
+    }
+
+    /// 设置正文默认使用的 paint；文本写入后不能再修改段落级默认值。
+    pub fn paints(&mut self, paints: &[RichTextPaint]) -> &mut Self {
+        self.assert_paragraph_configuration_is_mutable();
+        self.paints = paints.to_vec();
         self
     }
 
@@ -74,6 +82,7 @@ impl ParagraphBuilder {
         self
     }
 
+    /// 追加 source text，并为这一段文本记录当前生效的样式、layer 和语义。
     pub fn push(&mut self, text: &str) {
         if text.is_empty() {
             return;
@@ -94,9 +103,13 @@ impl ParagraphBuilder {
                 self.spans.push(TextSpan { range, style });
             }
         }
+        self.record_text_layers(range);
+        self.record_active_decoration_layers(range);
+        self.record_active_annotation_layers(range);
     }
 
-    pub fn build(self) -> Result<ParagraphBuildOutput, ParagraphBuildError> {
+    /// 校验 builder 状态，并组装携带 rich-text 声明的布局输入。
+    pub fn build(self) -> Result<LayoutInput, ParagraphBuildError> {
         if let Some(error) = self.first_error {
             return Err(error);
         }
@@ -109,30 +122,73 @@ impl ParagraphBuilder {
                     .collect(),
             });
         }
+        let line_break_spans = Self::ordered_line_break_spans(self.line_break_spans);
+        let auto_space_suppressed_ranges =
+            Self::ordered_auto_space_suppressed_ranges(self.auto_space_suppressed_ranges);
+        let rich_text = Self::normalized_rich_text(self.rich_text);
+        let mut source_boundaries = HashSet::new();
+        let mut inline_boxes = self.inline_boxes;
+        // rich-text 声明本身只随 LayoutInput 透传，不参与布局决策；但它的范围端点必须进入
+        // source_boundaries，LayoutResult 才能为渲染和交互保留与声明一致的精确边界。背景的
+        // horizontal_padding 会改变可占用的行内几何，因此转换为现有的 Narrow inline box；
+        // 保留 sequence 则能让这个派生对象与显式 inline box 一起按声明顺序排序。
+        for (sequence, span) in &rich_text {
+            source_boundaries.insert(span.range.start());
+            source_boundaries.insert(span.range.end());
+            for layer in &span.layers {
+                let RichTextLayerKind::Background { background } = &layer.kind else {
+                    continue;
+                };
+                if background.horizontal_padding > 0.0 {
+                    inline_boxes.push((
+                        *sequence,
+                        InlineBoxSpan::with_all(
+                            span.range,
+                            background.horizontal_padding,
+                            background.horizontal_padding,
+                            InlineBoxOuterSpacing::Narrow,
+                        ),
+                    ));
+                }
+            }
+        }
         let content = TiqianTextContent::builder(Text::from(self.source))
             .spans(self.spans)
-            .source_boundaries(self.source_boundaries)
-            .line_break_spans(Self::ordered_values(self.line_break_spans))
-            .auto_space_suppressed_ranges(Self::ordered_values(self.auto_space_suppressed_ranges))
+            .source_boundaries(source_boundaries)
+            .line_break_spans(line_break_spans)
+            .auto_space_suppressed_ranges(auto_space_suppressed_ranges)
             .build();
-        Ok(ParagraphBuildOutput {
-            input: LayoutInput::builder(content, self.constraints)
-                .text_style(self.text_style)
-                .paragraph_style(self.paragraph_style)
-                .profile_id(self.profile_id)
-                .decorations(Self::ordered_values(self.decorations))
-                .ruby_spans(Self::ordered_values(self.ruby_spans))
-                .inline_boxes(Self::ordered_values(self.inline_boxes))
-                .inline_objects(self.inline_objects)
-                .build(),
-            colors: Self::ordered_values(self.colors),
-            rich_text: Self::ordered_values(self.rich_text),
-        })
+        Ok(LayoutInput::builder(content, self.constraints)
+            .text_style(self.text_style)
+            .paragraph_style(self.paragraph_style)
+            .profile_id(self.profile_id)
+            .decorations(Self::ordered_values(self.decorations))
+            .ruby_spans(Self::ordered_values(self.ruby_spans))
+            .inline_boxes(Self::ordered_values(inline_boxes))
+            .inline_objects(self.inline_objects)
+            .rich_text(rich_text.into_iter().map(|(_, span)| span).collect())
+            .build())
     }
 
     pub(super) fn ordered_values<T>(mut values: Vec<(u64, T)>) -> Vec<T> {
         values.sort_by_key(|(sequence, _)| *sequence);
         values.into_iter().map(|(_, value)| value).collect()
+    }
+
+    fn ordered_line_break_spans(values: Vec<(u64, LineBreakSpan)>) -> Vec<LineBreakSpan> {
+        let mut seen = HashSet::new();
+        Self::ordered_values(values)
+            .into_iter()
+            .filter(|span| seen.insert((span.range, span.policy)))
+            .collect()
+    }
+
+    fn ordered_auto_space_suppressed_ranges(values: Vec<(u64, TextRange)>) -> Vec<TextRange> {
+        let mut seen = HashSet::new();
+        Self::ordered_values(values)
+            .into_iter()
+            .filter(|range| seen.insert(*range))
+            .collect()
     }
 
     pub(super) fn current_text_style(&self) -> TextStyle {
@@ -147,6 +203,180 @@ impl ParagraphBuilder {
         })
     }
 
+    /// 返回最近一个 paint scope 的 paint；没有局部 scope 时使用段落默认 paint。
+    pub(super) fn current_paints(&self) -> Vec<RichTextPaint> {
+        self.open_scopes
+            .iter()
+            .rev()
+            .find_map(|scope| match &scope.kind {
+                super::scopes::OpenScopeKind::Paints(paints) => Some(paints.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| self.paints.clone())
+    }
+
+    /// 从最近的 rich-text scope 中筛选指定类型的 layer。
+    pub(super) fn current_layers(&self, kind: &RichTextLayerKind) -> Vec<RichTextLayer> {
+        self.open_scopes
+            .iter()
+            .rev()
+            .find_map(|scope| match &scope.kind {
+                super::scopes::OpenScopeKind::RichText(layers) => {
+                    let matching = layers
+                        .iter()
+                        .filter(|layer| Self::layer_kind_matches(&layer.kind, kind))
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    (!matching.is_empty()).then_some(matching)
+                }
+                _ => None,
+            })
+            .unwrap_or_default()
+    }
+
+    /// 记录一段 rich-text；空范围和没有内容的 span 不进入输出。
+    pub(super) fn record_rich_text(
+        &mut self,
+        range: TextRange,
+        layers: Vec<RichTextLayer>,
+        semantics: Vec<crate::core::text_model::RichTextSemantic>,
+    ) {
+        if range.is_empty() || (layers.is_empty() && semantics.is_empty()) {
+            return;
+        }
+        let sequence = self.next_rich_text_sequence;
+        self.next_rich_text_sequence += 1;
+        self.rich_text.push((
+            sequence,
+            RichTextSpan {
+                range,
+                layers,
+                semantics,
+            },
+        ));
+    }
+
+    /// 为新写入的文本生成正文 layer，并附加当前 scope 声明的背景和线 layer。
+    fn record_text_layers(&mut self, range: TextRange) {
+        let mut layers = self.current_layers(&RichTextLayerKind::Text);
+        if layers.is_empty() {
+            layers.push(RichTextLayer {
+                kind: RichTextLayerKind::Text,
+                paints: self.current_paints(),
+            });
+        }
+        for kind in [
+            RichTextLayerKind::Background {
+                background: crate::core::text_model::RichTextBackgroundPaint::default(),
+            },
+            RichTextLayerKind::Underline {
+                line: crate::core::text_model::RichTextLinePaint::default(),
+            },
+            RichTextLayerKind::LineThrough {
+                line: crate::core::text_model::RichTextLinePaint::default(),
+            },
+        ] {
+            layers.extend(self.current_layers(&kind));
+        }
+        self.record_rich_text(range, layers, Vec::new());
+    }
+
+    /// 把当前打开的 decoration scope 记录为覆盖当前文本范围的 layer。
+    fn record_active_decoration_layers(&mut self, range: TextRange) {
+        let kinds = self
+            .open_scopes
+            .iter()
+            .filter_map(|scope| match scope.kind {
+                super::scopes::OpenScopeKind::Decoration(kind) => Some(kind),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        for kind in kinds {
+            self.record_object_layer(range, RichTextLayerKind::Decoration { kind });
+        }
+    }
+
+    /// 把当前打开的 ruby scope 记录为覆盖当前文本范围的 annotation layer。
+    fn record_active_annotation_layers(&mut self, range: TextRange) {
+        let kinds = self
+            .open_scopes
+            .iter()
+            .filter_map(|scope| match &scope.kind {
+                super::scopes::OpenScopeKind::Ruby(annotation) => Some(annotation.kind),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        for kind in kinds {
+            self.record_object_layer(range, RichTextLayerKind::Annotation { kind });
+        }
+    }
+
+    /// 按声明顺序整理 rich-text，并合并可连续合并的 span 或相同范围的 layer。
+    fn normalized_rich_text(mut values: Vec<(u64, RichTextSpan)>) -> Vec<(u64, RichTextSpan)> {
+        values.sort_by_key(|(sequence, _)| *sequence);
+        let mut merged = Vec::<(u64, RichTextSpan)>::new();
+        let mut index_by_range = HashMap::<TextRange, usize>::new();
+        for (sequence, span) in values {
+            let last_index = merged.len().saturating_sub(1);
+            if let Some((_, previous)) = merged.last_mut()
+                && previous.semantics.is_empty()
+                && span.semantics.is_empty()
+                && previous.layers == span.layers
+                && previous.range.end() == span.range.start()
+            {
+                let previous_range = previous.range;
+                previous.range = TextRange::new(previous.range.start(), span.range.end());
+                index_by_range.remove(&previous_range);
+                index_by_range.insert(previous.range, last_index);
+                continue;
+            }
+            if let Some(&index) = index_by_range.get(&span.range) {
+                let (_, previous) = &mut merged[index];
+                previous.layers.extend(span.layers);
+                previous.semantics.extend(span.semantics);
+                continue;
+            }
+            index_by_range.insert(span.range, merged.len());
+            merged.push((sequence, span));
+        }
+        merged
+    }
+
+    /// 判断两个 layer 是否属于同一类 scope；带 kind 的 layer 还需要匹配具体 kind。
+    fn layer_kind_matches(left: &RichTextLayerKind, right: &RichTextLayerKind) -> bool {
+        matches!(
+            (left, right),
+            (RichTextLayerKind::Text, RichTextLayerKind::Text)
+                | (RichTextLayerKind::Background { .. }, RichTextLayerKind::Background { .. })
+                | (RichTextLayerKind::Underline { .. }, RichTextLayerKind::Underline { .. })
+                | (RichTextLayerKind::LineThrough { .. }, RichTextLayerKind::LineThrough { .. })
+        ) || matches!(
+            (left, right),
+            (
+                RichTextLayerKind::Decoration { kind: left_kind },
+                RichTextLayerKind::Decoration { kind: right_kind },
+            ) if left_kind == right_kind
+        ) || matches!(
+            (left, right),
+            (
+                RichTextLayerKind::Annotation { kind: left_kind },
+                RichTextLayerKind::Annotation { kind: right_kind },
+            ) if left_kind == right_kind
+        )
+    }
+
+    /// 记录 decoration 或 annotation 等非正文 layer，并沿用当前 paint。
+    fn record_object_layer(&mut self, range: TextRange, kind: RichTextLayerKind) {
+        let mut layers = self.current_layers(&kind);
+        if layers.is_empty() {
+            layers.push(RichTextLayer {
+                kind,
+                paints: self.current_paints(),
+            });
+        }
+        self.record_rich_text(range, layers, Vec::new());
+    }
+
     pub(super) fn record_error(&mut self, error: ParagraphBuildError) {
         if self.first_error.is_none() {
             self.first_error = Some(error);
@@ -158,11 +388,6 @@ impl ParagraphBuilder {
             self.scalar_offset == ScalarOffset::ZERO,
             "paragraph defaults cannot change after source text has been appended"
         );
-    }
-
-    pub(super) fn add_source_boundaries(&mut self, range: TextRange) {
-        self.source_boundaries.insert(range.start());
-        self.source_boundaries.insert(range.end());
     }
 
 }
