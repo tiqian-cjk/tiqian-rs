@@ -2,14 +2,14 @@ use tiqian::common::HashSet;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    built_in_layout_profiles, link_address_display, ColorSpan, DecorationKind, DecorationSpan,
+    built_in_layout_profiles, link_address_display, DecorationKind, DecorationSpan,
     InlineAttachment, InlineBoxOuterSpacing, InlineBoxSpan, InlineObjectBoundaryAdjustment,
     InlineObjectPreferredStretch, InlineObjectPreferredStretchKind, InlineObjectSpan,
     LastLineAlignment, LayoutInput, LayoutProfileId, LineBreakPolicy, LineBreakSpan,
-    LineLengthGrid, MeasureAdaptiveFirstLineIndent, ParagraphStyle, RichTextBackgroundDrawStyle,
-    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint,
-    RichTextRole, RichTextSpan, RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle,
-    TiqianTextContent, WritingMode, DEFAULT_EMPHASIS_DOT_GAP_EM,
+    LineLengthGrid, MeasureAdaptiveFirstLineIndent, ParagraphStyle,
+    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextLinePattern, RichTextPaint, RichTextSemantic, RichTextSpan,
+    RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle, TiqianTextContent, WritingMode, DEFAULT_EMPHASIS_DOT_GAP_EM,
     DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM, INLINE_OBJECT_REPLACEMENT_CHAR,
 };
 
@@ -88,25 +88,67 @@ fn test_text_style_and_decorations() {
     let decoration = DecorationSpan { range: text_range(2, 4), kind: DecorationKind::Emphasis };
     assert_eq!(text_range(2, 4), decoration.range);
     assert_eq!(DecorationKind::Emphasis, decoration.kind);
-    assert_eq!(ColorSpan { start: scalar_offset(1), end: scalar_offset(5), argb: 0xFF112233_u32 as i32 }, ColorSpan { start: scalar_offset(1), end: scalar_offset(5), argb: 0xFF112233_u32 as i32 });
 }
 
 #[test]
 fn test_rich_text_spans_and_patterns() {
-    let background = RichTextBackgroundPaint::builder().horizontal_padding(2.0).vertical_padding(3.0).corner_radius(4.0).continuation_corner_radius(1.0).metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle).draw_style(RichTextBackgroundDrawStyle::border(1.5)).build();
-    let paint = RichTextPaint::builder().argb(0xFF000000_u32 as i32).line_pattern(RichTextLinePattern::Solid).background(background.clone()).adjacent_same_style_clearance(1.5).build();
-    assert_eq!(Some(0xFF000000_u32 as i32), paint.argb);
-    assert_eq!(1.5, paint.adjacent_same_style_clearance);
-    assert_eq!(2.0, background.horizontal_padding);
-    assert!(std::panic::catch_unwind(|| RichTextPaint::builder().adjacent_same_style_clearance(-0.1).build()).is_err());
-    assert!(std::panic::catch_unwind(|| RichTextBackgroundPaint::builder().horizontal_padding(-1.0).build()).is_err());
-    assert!(std::panic::catch_unwind(|| RichTextBackgroundDrawStyle::border(0.0)).is_err());
-    assert!(std::panic::catch_unwind(|| RichTextLinePattern::dashed(0.0, 4.0, 2.0)).is_err());
-    assert!(std::panic::catch_unwind(|| RichTextLinePattern::dotted(2.0, 0.0)).is_err());
-    let link = RichTextRole::Link { target: "https://tiqian.org".to_owned() };
-    for role in [RichTextRole::Background, RichTextRole::Underline, RichTextRole::LineThrough, link, RichTextRole::TechnicalInline, RichTextRole::InlineCode] {
-        assert_eq!(role, RichTextSpan::with_paint(text_range(0, 2), role.clone(), paint.clone()).role);
-    }
+    let background = RichTextBackgroundPaint::builder().horizontal_padding(-2.0).vertical_padding(f32::NAN).corner_radius(4.0).metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle).adjacent_same_style_clearance(f32::NEG_INFINITY).build();
+    let line = RichTextLinePaint {
+        thickness: -1.5,
+        pattern: RichTextLinePattern::Dashed { dash_length: f32::NAN, gap_length: -2.0 },
+        adjacent_same_style_clearance: f32::INFINITY,
+    };
+    let paints = vec![
+        RichTextPaint::Fill { argb: 0xFF000000_u32 as i32 },
+        RichTextPaint::Stroke { argb: 0x33000000, width: f32::NEG_INFINITY },
+        RichTextPaint::Shadow { argb: 0x11000000, offset_x: f32::NAN, offset_y: -3.0, blur_radius: f32::INFINITY, spread_radius: -4.0 },
+    ];
+    let span = RichTextSpan {
+        range: text_range(0, 2),
+        layers: vec![
+            RichTextLayer { kind: RichTextLayerKind::Text, paints: paints.clone() },
+            RichTextLayer { kind: RichTextLayerKind::Background { background: background.clone() }, paints: paints.clone() },
+            RichTextLayer { kind: RichTextLayerKind::Underline { line: line.clone() }, paints: paints.clone() },
+            RichTextLayer { kind: RichTextLayerKind::LineThrough { line: line.clone() }, paints: paints.clone() },
+            RichTextLayer { kind: RichTextLayerKind::Decoration { kind: DecorationKind::Emphasis }, paints: paints.clone() },
+            RichTextLayer { kind: RichTextLayerKind::Annotation { kind: RubyKind::Pinyin }, paints: paints.clone() },
+        ],
+        semantics: vec![RichTextSemantic::Link { target: "https://tiqian.org".to_owned() }, RichTextSemantic::TechnicalInline],
+    };
+    let [
+        RichTextPaint::Fill { argb: fill_argb },
+        RichTextPaint::Stroke { argb: stroke_argb, width: stroke_width },
+        RichTextPaint::Shadow { argb: shadow_argb, offset_x, offset_y, blur_radius, spread_radius },
+    ] = span.layers[0].paints.as_slice() else {
+        panic!("text layer must retain all paints");
+    };
+    assert_eq!(0xFF000000_u32 as i32, *fill_argb);
+    assert_eq!(0x33000000, *stroke_argb);
+    assert_eq!(f32::NEG_INFINITY, *stroke_width);
+    assert_eq!(0x11000000, *shadow_argb);
+    assert!(offset_x.is_nan());
+    assert_eq!(-3.0, *offset_y);
+    assert_eq!(f32::INFINITY, *blur_radius);
+    assert_eq!(-4.0, *spread_radius);
+    let RichTextLayerKind::Underline { line: stored_line } = &span.layers[2].kind else {
+        panic!("third layer must remain an underline");
+    };
+    assert_eq!(-1.5, stored_line.thickness);
+    assert_eq!(f32::INFINITY, stored_line.adjacent_same_style_clearance);
+    let RichTextLinePattern::Dashed { dash_length, gap_length } = stored_line.pattern else {
+        panic!("underline pattern must remain dashed");
+    };
+    assert!(dash_length.is_nan());
+    assert_eq!(-2.0, gap_length);
+    assert_eq!(-2.0, background.horizontal_padding);
+    assert!(background.vertical_padding.is_nan());
+    assert_eq!(f32::NEG_INFINITY, background.adjacent_same_style_clearance);
+    let RichTextLinePattern::Dashed { dash_length, gap_length } = line.pattern else {
+        panic!("line pattern must remain dashed");
+    };
+    assert!(dash_length.is_nan());
+    assert_eq!(-2.0, gap_length);
+    assert_eq!(5.0, RichTextBackgroundPaint::builder().corner_radius(5.0).build().continuation_corner_radius);
 }
 
 #[test]

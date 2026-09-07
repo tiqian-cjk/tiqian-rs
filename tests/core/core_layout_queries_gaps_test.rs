@@ -4,13 +4,26 @@ use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LayoutDebugInfo, Layo
 use tiqian::core::layout_queries::{
     get_bounding_boxes, get_bounding_boxes_from_offsets, get_cursor_rect, get_line_for_offset,
     get_offset_for_position, get_selection_offset_for_position, get_selection_word_boundary,
-    positioned_clusters, positioned_rich_text_segments, rich_text_background_segments,
+    positioned_clusters, positioned_rich_text_segments, rich_text_annotation_layers,
+    rich_text_background_segments, rich_text_decoration_layers,
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextPaint, RichTextRole,
-    RichTextSpan, TextStyle, TiqianTextContent, LayoutInput,
+    DecorationKind, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer,
+    RichTextLayerKind, RichTextPaint, RichTextSpan, RubyKind, TextStyle, TiqianTextContent,
+    LayoutInput,
 };
+
+fn background_span(range: TextRange, background: RichTextBackgroundPaint) -> RichTextSpan {
+    RichTextSpan {
+        range,
+        layers: vec![RichTextLayer {
+            kind: RichTextLayerKind::Background { background },
+            paints: Vec::new(),
+        }],
+        semantics: Vec::new(),
+    }
+}
 
 fn input(text: &str, max_width: f32) -> LayoutInput {
     LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(max_width))
@@ -72,14 +85,14 @@ fn get_bounding_boxes_int_delegates_to_text_range() {
 #[test]
 fn rich_text_background_uses_horizontal_padding() {
     let result = latin_result();
-    let span = RichTextSpan::with_paint(text_range(0, 2), RichTextRole::Background, RichTextPaint::builder().background(RichTextBackgroundPaint::builder().horizontal_padding(5.0).build()).build());
+    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().horizontal_padding(5.0).build());
     assert_eq!(1, rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[span])).len());
 }
 
 #[test]
 fn rich_text_background_trailing_padding_when_span_ends_at_segment_end() {
     let result = latin_result();
-    let span = RichTextSpan::with_paint(text_range(0, 2), RichTextRole::Background, RichTextPaint::builder().background(RichTextBackgroundPaint::builder().horizontal_padding(5.0).build()).build());
+    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().horizontal_padding(5.0).build());
     let segments = rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[span]));
     assert_eq!(1, segments.len());
     assert!(segments[0].right > 15.0);
@@ -88,15 +101,47 @@ fn rich_text_background_trailing_padding_when_span_ends_at_segment_end() {
 #[test]
 fn rich_text_background_uniform_paragraph_style_uses_paragraph_style() {
     let result = latin_result();
-    let span = RichTextSpan::with_paint(text_range(0, 2), RichTextRole::Background, RichTextPaint::builder().background(RichTextBackgroundPaint::builder().metric_policy(RichTextBackgroundMetricPolicy::UniformParagraphStyle).build()).build());
+    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().metric_policy(RichTextBackgroundMetricPolicy::UniformParagraphStyle).build());
     assert_eq!(1, rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[span])).len());
 }
 
 #[test]
 fn marked_face_vertical_bounds_uses_fallback_when_no_metric_matches() {
     let result = LayoutResult::with_debug(input("AB", 100.0), Size { width: 20.0, height: 20.0 }, vec![Cluster::new(text_range(0, 2), Text::from("AB"), "latin".to_owned(), 20.0)], Vec::new(), vec![line(text_range(0, 2), IntRange::new(0, 0), 15.0, 0.0, 20.0, 20.0)], LayoutDebugInfo::default());
-    let span = RichTextSpan::new(text_range(0, 2), RichTextRole::Background);
+    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::default());
     assert_eq!(1, rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[span])).len());
+}
+
+#[test]
+fn decoration_and_annotation_layers_match_partially_overlapping_layout_ranges_by_kind() {
+    let spans = [
+        RichTextSpan {
+            range: text_range(1, 2),
+            layers: vec![RichTextLayer {
+                kind: RichTextLayerKind::Decoration { kind: DecorationKind::Emphasis },
+                paints: vec![RichTextPaint::Fill { argb: 0xFF2563EB_u32 as i32 }],
+            }],
+            semantics: Vec::new(),
+        },
+        RichTextSpan {
+            range: text_range(2, 3),
+            layers: vec![RichTextLayer {
+                kind: RichTextLayerKind::Annotation { kind: RubyKind::Pinyin },
+                paints: vec![RichTextPaint::Fill { argb: 0xFFDC2626_u32 as i32 }],
+            }],
+            semantics: Vec::new(),
+        },
+    ];
+
+    let decoration = rich_text_decoration_layers(&spans, text_range(0, 2), DecorationKind::Emphasis);
+    assert_eq!(1, decoration.len());
+    assert_eq!(spans[0].layers[0], *decoration[0]);
+    assert!(rich_text_decoration_layers(&spans, text_range(0, 2), DecorationKind::BookTitle).is_empty());
+
+    let annotation = rich_text_annotation_layers(&spans, text_range(1, 3), RubyKind::Pinyin);
+    assert_eq!(1, annotation.len());
+    assert_eq!(spans[1].layers[0], *annotation[0]);
+    assert!(rich_text_annotation_layers(&spans, text_range(1, 3), RubyKind::Bopomofo).is_empty());
 }
 
 #[test]

@@ -10,14 +10,30 @@ use tiqian::core::layout_queries::{
 };
 use tiqian::core::source_interaction_boundaries::SourceBoundaryBias;
 use tiqian::core::text_model::{
-    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextPaint, RichTextRole,
-    RichTextSpan,
+    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextSpan,
 };
 
 use super::layout_queries_test_support::{
     background_geometry_result, interaction_boundary_result, metric, punctuation_glue_result,
     ruby_selection_result, sample_result, word_boundary_result,
 };
+
+fn span(range: tiqian::core::geometry::TextRange, kind: RichTextLayerKind) -> RichTextSpan {
+    RichTextSpan {
+        range,
+        layers: vec![RichTextLayer { kind, paints: Vec::new() }],
+        semantics: Vec::new(),
+    }
+}
+
+fn background(background: RichTextBackgroundPaint) -> RichTextLayerKind {
+    RichTextLayerKind::Background { background }
+}
+
+fn underline() -> RichTextLayerKind {
+    RichTextLayerKind::Underline { line: RichTextLinePaint::default() }
+}
 
 #[test]
 fn positioned_clusters_follow_line_indent_and_advance() {
@@ -39,7 +55,7 @@ fn positioned_clusters_separate_occupied_box_from_consumed_leading_glue_draw_ori
 #[test]
 fn rich_text_segments_reuse_positioned_cluster_geometry_and_split_lines() {
     let result = sample_result();
-    let span = RichTextSpan::with_paint(text_range(1, 4), RichTextRole::Background, RichTextPaint::builder().argb(0x33FF0000).build());
+    let span = span(text_range(1, 4), background(RichTextBackgroundPaint::default()));
     let segments = positioned_rich_text_segments(&result, &[span]);
     assert_eq!(2, segments.len());
     assert_eq!(text_range(1, 3), segments[0].range);
@@ -51,7 +67,7 @@ fn rich_text_segments_reuse_positioned_cluster_geometry_and_split_lines() {
 #[test]
 fn rich_text_decoration_keeps_punctuation_glue_inside_its_range() {
     let result = punctuation_glue_result(0.0);
-    let span = RichTextSpan::new(text_range(1, 4), RichTextRole::Underline);
+    let span = span(text_range(1, 4), underline());
     let decoration = trimmed_rich_text_decoration_segments(&result, &positioned_rich_text_segments(&result, &[span]));
     assert_eq!(Rect { left: 10.0, top: 0.0, right: 35.0, bottom: 20.0 }, decoration[0].rect());
 }
@@ -59,7 +75,7 @@ fn rich_text_decoration_keeps_punctuation_glue_inside_its_range() {
 #[test]
 fn rich_text_decoration_does_not_trim_already_consumed_opening_glue_twice() {
     let result = punctuation_glue_result(5.0);
-    let span = RichTextSpan::new(text_range(0, 1), RichTextRole::Underline);
+    let span = span(text_range(0, 1), underline());
     let decoration = trimmed_rich_text_decoration_segments(&result, &positioned_rich_text_segments(&result, &[span]));
     assert_eq!(0.0, decoration[0].left);
 }
@@ -67,7 +83,7 @@ fn rich_text_decoration_does_not_trim_already_consumed_opening_glue_twice() {
 #[test]
 fn custom_line_styles_reuse_the_renderer_underline_height() {
     let result = punctuation_glue_result(0.0);
-    let span = RichTextSpan::new(text_range(0, 4), RichTextRole::Underline);
+    let span = span(text_range(0, 4), underline());
     let segment = trimmed_rich_text_decoration_segments(&result, &positioned_rich_text_segments(&result, &[span])).remove(0);
     assert!((segment.baseline + 10.0 * 0.18 - rich_text_decoration_line_y(&result, &segment, 1.0)).abs() < 0.001);
 }
@@ -75,7 +91,7 @@ fn custom_line_styles_reuse_the_renderer_underline_height() {
 #[test]
 fn line_through_bisects_the_ideographic_metric_box() {
     let result = background_geometry_result(vec![metric(text_range(0, 3), 8.0, 2.0, "IdeographicEmBox")]);
-    let span = RichTextSpan::new(text_range(0, 3), RichTextRole::LineThrough);
+    let span = span(text_range(0, 3), RichTextLayerKind::LineThrough { line: RichTextLinePaint::default() });
     let segment = trimmed_rich_text_decoration_segments(&result, &positioned_rich_text_segments(&result, &[span])).remove(0);
     assert!((17.0 - rich_text_decoration_line_y(&result, &segment, 1.0)).abs() < 0.001);
 }
@@ -83,8 +99,8 @@ fn line_through_bisects_the_ideographic_metric_box() {
 #[test]
 fn rich_text_background_keeps_internal_gaps_but_trims_its_outer_layout_space() {
     let result = background_geometry_result(Vec::new());
-    let full = RichTextSpan::new(text_range(0, 3), RichTextRole::Background);
-    let final_character = RichTextSpan::new(text_range(2, 3), RichTextRole::Background);
+    let full = span(text_range(0, 3), background(RichTextBackgroundPaint::default()));
+    let final_character = span(text_range(2, 3), background(RichTextBackgroundPaint::default()));
     let full_segment = rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[full])).remove(0);
     let final_segment = rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[final_character])).remove(0);
     assert_eq!(Rect { left: 0.0, top: 11.2, right: 29.0, bottom: 21.2 }, full_segment.rect());
@@ -94,9 +110,9 @@ fn rich_text_background_keeps_internal_gaps_but_trims_its_outer_layout_space() {
 #[test]
 fn uniform_text_style_background_ignores_fallback_face_height_and_adds_padding() {
     let result = background_geometry_result(vec![metric(text_range(0, 1), 8.0, 2.0, "IdeographicEmBox"), metric(text_range(1, 3), 12.0, 4.0, "RawFontBox")]);
-    let paint = RichTextPaint::builder().background(RichTextBackgroundPaint::builder().vertical_padding(1.0).corner_radius(2.0).metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle).build()).build();
-    let first = RichTextSpan::with_paint(text_range(0, 1), RichTextRole::Background, paint.clone());
-    let mixed = RichTextSpan::with_paint(text_range(0, 3), RichTextRole::Background, paint);
+    let paint = RichTextBackgroundPaint::builder().vertical_padding(1.0).corner_radius(2.0).metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle).build();
+    let first = span(text_range(0, 1), background(paint.clone()));
+    let mixed = span(text_range(0, 3), background(paint));
     let segments = rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &[first, mixed]));
     assert_eq!(2, segments.len());
     assert_eq!(11.0, segments[0].top);
@@ -107,7 +123,7 @@ fn uniform_text_style_background_ignores_fallback_face_height_and_adds_padding()
 
 #[test]
 fn background_continuation_corners_keep_only_true_source_ends_fully_rounded() {
-    let span = Arc::new(RichTextSpan::with_paint(text_range(0, 12), RichTextRole::InlineCode, RichTextPaint::builder().background(RichTextBackgroundPaint::builder().corner_radius(3.0).continuation_corner_radius(1.0).build()).build()));
+    let span = Arc::new(span(text_range(0, 12), background(RichTextBackgroundPaint::builder().corner_radius(3.0).continuation_corner_radius(1.0).build())));
     let segment = |start, end| RichTextLineSegment::new(Arc::clone(&span), 0, text_range(start, end), 0.0, 0.0, 40.0, 20.0, 16.0);
     assert_eq!(RichTextCornerRadii { top_left: 3.0, top_right: 1.0, bottom_right: 1.0, bottom_left: 3.0 }, resolved_background_corner_radii(&segment(0, 4), 0.0));
     assert_eq!(RichTextCornerRadii { top_left: 1.0, top_right: 1.0, bottom_right: 1.0, bottom_left: 1.0 }, resolved_background_corner_radii(&segment(4, 8), 0.0));
@@ -124,8 +140,8 @@ fn background_continuation_radius_defaults_to_the_authored_corner_radius() {
 #[test]
 fn adjacent_backgrounds_with_the_same_style_share_one_clearance() {
     let result = sample_result();
-    let paint = RichTextPaint::builder().adjacent_same_style_clearance(2.0).build();
-    let spans = [RichTextSpan::with_paint(text_range(0, 1), RichTextRole::Background, paint.clone()), RichTextSpan::with_paint(text_range(1, 3), RichTextRole::Background, paint)];
+    let paint = RichTextBackgroundPaint::builder().adjacent_same_style_clearance(2.0).build();
+    let spans = [span(text_range(0, 1), background(paint.clone())), span(text_range(1, 3), background(paint))];
     let segments = rich_text_background_segments(&result, &positioned_rich_text_segments(&result, &spans));
     assert_eq!(2, segments.len());
     assert!((2.0 - (segments[1].left - segments[0].right)).abs() < 0.001);
@@ -134,8 +150,8 @@ fn adjacent_backgrounds_with_the_same_style_share_one_clearance() {
 #[test]
 fn adjacent_line_decorations_with_the_same_style_share_one_clearance() {
     let result = sample_result();
-    let paint = RichTextPaint::builder().adjacent_same_style_clearance(2.0).build();
-    let spans = [RichTextSpan::with_paint(text_range(0, 1), RichTextRole::Underline, paint.clone()), RichTextSpan::with_paint(text_range(1, 3), RichTextRole::Underline, paint)];
+    let line = RichTextLinePaint { adjacent_same_style_clearance: 2.0, ..RichTextLinePaint::default() };
+    let spans = [span(text_range(0, 1), RichTextLayerKind::Underline { line: line.clone() }), span(text_range(1, 3), RichTextLayerKind::Underline { line })];
     let segments = trimmed_rich_text_decoration_segments(&result, &positioned_rich_text_segments(&result, &spans));
     assert_eq!(2, segments.len());
     assert!((2.0 - (segments[1].left - segments[0].right)).abs() < 0.001);
@@ -144,10 +160,9 @@ fn adjacent_line_decorations_with_the_same_style_share_one_clearance() {
 #[test]
 fn adjacent_background_and_underline_do_not_avoid_across_styles() {
     let result = sample_result();
-    let paint = RichTextPaint::builder().adjacent_same_style_clearance(2.0).build();
     let occupied = positioned_rich_text_segments(&result, &[
-        RichTextSpan::with_paint(text_range(0, 1), RichTextRole::Background, paint.clone()),
-        RichTextSpan::with_paint(text_range(1, 3), RichTextRole::Underline, paint),
+        span(text_range(0, 1), background(RichTextBackgroundPaint::builder().adjacent_same_style_clearance(2.0).build())),
+        span(text_range(1, 3), RichTextLayerKind::Underline { line: RichTextLinePaint { adjacent_same_style_clearance: 2.0, ..RichTextLinePaint::default() } }),
     ]);
     let fill = rich_text_background_segments(&result, &occupied).remove(0);
     let line = trimmed_rich_text_decoration_segments(&result, &occupied).remove(0);

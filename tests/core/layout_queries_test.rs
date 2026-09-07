@@ -12,7 +12,8 @@ use tiqian::core::layout_queries::{
 use tiqian::core::source_interaction_boundaries::SourceBoundaryBias;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    InlineObjectSpan, LayoutInput, RichTextRole, RichTextSpan, TextStyle, TiqianTextContent,
+    InlineObjectSpan, LayoutInput, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
+    RichTextSpan, TextStyle, TiqianTextContent,
 };
 
 fn layout_input(text: &str, max_width: f32) -> LayoutInput {
@@ -43,6 +44,17 @@ fn line(
         width,
     )
     .build()
+}
+
+fn underline_span(range: TextRange) -> RichTextSpan {
+    RichTextSpan {
+        range,
+        layers: vec![RichTextLayer {
+            kind: RichTextLayerKind::Underline { line: RichTextLinePaint::default() },
+            paints: Vec::new(),
+        }],
+        semantics: Vec::new(),
+    }
 }
 
 #[test]
@@ -403,7 +415,7 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         )],
         debug,
     );
-    let underline = RichTextSpan::new(text_range(0, 4), RichTextRole::Underline);
+    let underline = underline_span(text_range(0, 4));
     let occupied = positioned_rich_text_segments(&result, &[underline]);
     let decoration = trimmed_rich_text_decoration_segments(&result, &occupied);
 

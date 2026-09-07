@@ -2,10 +2,26 @@ use tiqian::api::*;
 use tiqian::core::geometry::{LayoutConstraints, TextRange, scalar_offset};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    ColorSpan, DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
-    LineBreakPolicy, LineBreakSpan, RichTextPaint, RichTextRole, TextStyle,
-    built_in_layout_profiles,
+    DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment, LineBreakPolicy,
+    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextPaint, RichTextSemantic, TextStyle, built_in_layout_profiles,
 };
+
+fn underline_layer() -> RichTextLayer {
+    RichTextLayer {
+        kind: RichTextLayerKind::Underline {
+            line: RichTextLinePaint::default(),
+        },
+        paints: Vec::new(),
+    }
+}
+
+fn background_layer(background: RichTextBackgroundPaint) -> RichTextLayer {
+    RichTextLayer {
+        kind: RichTextLayerKind::Background { background },
+        paints: Vec::new(),
+    }
+}
 
 #[test]
 fn inline_configuration_values_preserve_core_defaults() {
@@ -99,15 +115,14 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     builder.with_color(0xFF2563EB_u32 as i32, |builder| {
         builder.with_rich_text(
-            RichTextRole::Underline,
-            RichTextPaint::default(),
+            &[underline_layer()],
             |builder| {
                 builder.with_technical(|builder| {
                     builder.with_inline_code(
                         TextStyleOverride::builder()
                             .font_families(vec!["monospace".to_owned()])
                             .build(),
-                        RichTextPaint::default(),
+                        RichTextBackgroundPaint::default(),
                         |builder| builder.push("code"),
                     );
                 });
@@ -123,28 +138,41 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     let link_range = TextRange::new(scalar_offset(4), scalar_offset(14));
 
     assert_eq!("codetiqian.org", output.input.content.text);
+    assert_eq!(code_range, output.rich_text[0].range);
     assert_eq!(
-        vec![ColorSpan {
-            start: code_range.start(),
-            end: code_range.end(),
+        vec![
+            RichTextLayerKind::Text,
+            RichTextLayerKind::Underline {
+                line: RichTextLinePaint::default(),
+            },
+            RichTextLayerKind::Background {
+                background: RichTextBackgroundPaint::default(),
+            },
+        ],
+        output.rich_text[0]
+            .layers
+            .iter()
+            .map(|layer| layer.kind.clone())
+            .collect::<Vec<_>>(),
+    );
+    assert_eq!(
+        vec![RichTextPaint::Fill {
             argb: 0xFF2563EB_u32 as i32,
         }],
-        output.colors
+        output.rich_text[0].layers[0].paints,
     );
     assert_eq!(
         vec![
-            RichTextRole::Underline,
-            RichTextRole::TechnicalInline,
-            RichTextRole::InlineCode,
-            RichTextRole::Link {
-                target: "https://tiqian.org".to_owned(),
-            }
+            RichTextSemantic::TechnicalInline,
+            RichTextSemantic::TechnicalInline,
         ],
-        output
-            .rich_text
-            .iter()
-            .map(|span| span.role.clone())
-            .collect::<Vec<_>>()
+        output.rich_text[0].semantics,
+    );
+    assert_eq!(
+        vec![RichTextSemantic::Link {
+                target: "https://tiqian.org".to_owned(),
+            }],
+        output.rich_text[1].semantics,
     );
     assert_eq!(
         vec![
@@ -204,7 +232,7 @@ fn inline_code_generates_line_break_and_auto_space_inputs() {
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     builder.with_inline_code(
         TextStyleOverride::default(),
-        RichTextPaint::default(),
+        RichTextBackgroundPaint::default(),
         |builder| builder.push("code"),
     );
 
@@ -223,18 +251,12 @@ fn inline_code_generates_line_break_and_auto_space_inputs() {
 
 #[test]
 fn padded_background_and_inline_code_generate_narrow_inline_boxes() {
-    let paint = RichTextPaint::builder()
-        .background(
-            tiqian::core::text_model::RichTextBackgroundPaint::builder()
-                .horizontal_padding(4.0)
-                .build(),
-        )
-        .build();
+    let background = RichTextBackgroundPaint::builder().horizontal_padding(4.0).build();
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
-    builder.with_rich_text(RichTextRole::Background, paint.clone(), |builder| {
+    builder.with_rich_text(&[background_layer(background.clone())], |builder| {
         builder.push("背景");
     });
-    builder.with_inline_code(TextStyleOverride::default(), paint, |builder| {
+    builder.with_inline_code(TextStyleOverride::default(), background, |builder| {
         builder.push("code");
     });
 
@@ -260,18 +282,17 @@ fn padded_background_and_inline_code_generate_narrow_inline_boxes() {
 
 #[test]
 fn zero_padding_and_non_background_rich_text_do_not_generate_inline_boxes() {
-    let padded_paint = RichTextPaint::builder()
-        .background(
-            tiqian::core::text_model::RichTextBackgroundPaint::builder()
-                .horizontal_padding(4.0)
-                .build(),
-        )
-        .build();
+    let padded_underline = RichTextLayer {
+        kind: RichTextLayerKind::Underline {
+            line: RichTextLinePaint::default(),
+        },
+        paints: vec![RichTextPaint::Fill { argb: 0xFF000000_u32 as i32 }],
+    };
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
-    builder.with_rich_text(RichTextRole::Background, RichTextPaint::default(), |builder| {
+    builder.with_rich_text(&[background_layer(RichTextBackgroundPaint::default())], |builder| {
         builder.push("零");
     });
-    builder.with_rich_text(RichTextRole::Underline, padded_paint, |builder| {
+    builder.with_rich_text(&[padded_underline], |builder| {
         builder.push("线");
     });
 

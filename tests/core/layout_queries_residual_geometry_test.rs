@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{scalar_offset, text_range, Rect};
+use tiqian::core::geometry::{scalar_offset, text_range, Rect, TextRange};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyDecisionInfo,
@@ -9,9 +9,17 @@ use tiqian::core::layout_queries::{
     positioned_clusters, positioned_clusters_for_line_box, positioned_rich_text_segments,
 };
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{RichTextRole, RichTextSpan};
+use tiqian::core::text_model::{RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextSpan};
 
 use super::layout_queries_test_support::{cluster, line, result};
+
+fn span(range: TextRange, kind: RichTextLayerKind) -> RichTextSpan {
+    RichTextSpan {
+        range,
+        layers: vec![RichTextLayer { kind, paints: Vec::new() }],
+        semantics: Vec::new(),
+    }
+}
 
 #[test]
 fn positioned_clusters_by_line_rejects_foreign_lines() {
@@ -39,7 +47,7 @@ fn empty_line_results_short_circuit_every_query() {
     assert_eq!(scalar_offset(0), get_offset_for_position(&content, 5.0, 5.0));
     assert_eq!(scalar_offset(0), get_selection_offset_for_position(&content, 5.0, 5.0));
     assert!(get_bounding_boxes(&content, text_range(0, 2)).is_empty());
-    assert!(positioned_rich_text_segments(&content, &[RichTextSpan::new(text_range(0, 1), RichTextRole::Underline)]).is_empty());
+    assert!(positioned_rich_text_segments(&content, &[span(text_range(0, 1), RichTextLayerKind::Underline { line: RichTextLinePaint::default() })]).is_empty());
 }
 
 #[test]
@@ -105,7 +113,7 @@ fn bounding_boxes_slice_zero_width_and_empty_clusters() {
 fn positioned_clusters_and_segments_return_empty_without_lines() {
     let no_lines = result("ab", vec![cluster(text_range(0, 1), "a", 10.0)], Vec::new(), Vec::new(), Vec::new(), LayoutDebugInfo::default());
     assert!(positioned_clusters(&no_lines).is_empty());
-    assert!(positioned_rich_text_segments(&no_lines, &[RichTextSpan::new(text_range(0, 2), RichTextRole::Background)]).is_empty());
+    assert!(positioned_rich_text_segments(&no_lines, &[span(text_range(0, 2), RichTextLayerKind::Background { background: Default::default() })]).is_empty());
 }
 
 #[test]
