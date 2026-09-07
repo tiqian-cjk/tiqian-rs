@@ -206,7 +206,7 @@ builder.with_rich_text(
 );
 ```
 
-两类作用域同时提供 `with_*` / `try_with_*` 与 `push_*` / `pop()` 形式，并复用普通作用域的栈与闭包边界检查。每个非空范围的起止位置自动写入 `source_boundaries`。后续可增加 `background`、`underline` 等便利方法；便利方法只调用这一组通用操作，不建立第二套 scope 语义。
+两类作用域同时提供 `with_*` / `try_with_*` 与 `push_*` / `pop()` 形式，并复用普通作用域的栈与闭包边界检查。每个非空范围的起止位置自动写入 `source_boundaries`。`RichTextRole::Background` 或 `RichTextRole::InlineCode` 的 `RichTextBackgroundPaint.horizontal_padding` 大于零时，builder 同时生成同 range 的 `InlineBoxSpan`：两个边缘均为该 padding，`outer_spacing` 为 `Narrow`。这使背景盒的水平 padding 参与既有断行、两端对齐和 CJK 边界间距，而不只在 renderer 扩大背景矩形。后续可增加 `background`、`underline` 等便利方法；便利方法只调用这一组通用操作，不建立第二套 scope 语义。
 
 空颜色或 rich-text 作用域被忽略，不生成 span 或 `source_boundaries`。这与空 `TextStyleOverride`、`DecorationKind`、`LineBreakPolicy` 和自动间距抑制作用域一致。
 
@@ -234,7 +234,7 @@ builder.with_technical(|builder| {
 });
 ```
 
-技术作用域只表达现有 layout 所需的断行与自动间距策略，不生成 `RichTextSpan`，也不指定字体或视觉样式。空技术作用域被忽略。
+技术作用域还生成 `RichTextRole::TechnicalInline` 的 `RichTextSpan`，供 renderer、frontend 与 accessibility 识别技术范围；它不指定字体或视觉样式。空技术作用域被忽略。
 
 不公开通用的 `with_line_break(policy, ...)` 或 `push_line_break(policy)`。当前 `LineBreakPolicy` 仅有 `ProgressiveTechnical`，因此以 `with_technical` 表达该既有语义；未来新增断行策略时，按实际调用需求单独扩展 builder 接口。
 
@@ -252,7 +252,7 @@ builder.with_inline_code(
 );
 ```
 
-inline code 不隐式生成技术断行或自动间距抑制。调用方需要该布局策略时，将 `with_inline_code` 嵌套在 `with_technical` 中，或反向嵌套；两者对同一非空 source range 分别生成各自既有输入字段。
+inline code 的非空范围还自动生成 `LineBreakSpan { policy: LineBreakPolicy::ProgressiveTechnical }` 与自动间距抑制范围；其 `RichTextBackgroundPaint.horizontal_padding` 大于零时，也生成同 range 的 `InlineBoxSpan`。与 `technical()` 重叠时，相同 range 的同一断行策略和自动间距抑制范围在构建输出中各保留一项。
 
 自动间距抑制也提供 `with_auto_space_suppressed(...)`、`try_with_auto_space_suppressed(...)` 与 `push_auto_space_suppressed()`。非空作用域生成 `auto_space_suppressed_ranges` 中的一个范围，供不需要 `ProgressiveTechnical` 断行策略的逐字文本使用。空作用域被忽略。
 

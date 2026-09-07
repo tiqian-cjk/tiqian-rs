@@ -222,6 +222,64 @@ fn inline_code_generates_line_break_and_auto_space_inputs() {
 }
 
 #[test]
+fn padded_background_and_inline_code_generate_narrow_inline_boxes() {
+    let paint = RichTextPaint::builder()
+        .background(
+            tiqian::core::text_model::RichTextBackgroundPaint::builder()
+                .horizontal_padding(4.0)
+                .build(),
+        )
+        .build();
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_rich_text(RichTextRole::Background, paint.clone(), |builder| {
+        builder.push("背景");
+    });
+    builder.with_inline_code(TextStyleOverride::default(), paint, |builder| {
+        builder.push("code");
+    });
+
+    let output = builder.build().unwrap();
+    assert_eq!(
+        vec![
+            TextRange::new(scalar_offset(0), scalar_offset(2)),
+            TextRange::new(scalar_offset(2), scalar_offset(6)),
+        ],
+        output
+            .input
+            .inline_boxes
+            .iter()
+            .map(|span| span.range)
+            .collect::<Vec<_>>()
+    );
+    assert!(output.input.inline_boxes.iter().all(|span| {
+        span.inline_start == 4.0
+            && span.inline_end == 4.0
+            && span.outer_spacing == InlineBoxOuterSpacing::Narrow
+    }));
+}
+
+#[test]
+fn zero_padding_and_non_background_rich_text_do_not_generate_inline_boxes() {
+    let padded_paint = RichTextPaint::builder()
+        .background(
+            tiqian::core::text_model::RichTextBackgroundPaint::builder()
+                .horizontal_padding(4.0)
+                .build(),
+        )
+        .build();
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_rich_text(RichTextRole::Background, RichTextPaint::default(), |builder| {
+        builder.push("零");
+    });
+    builder.with_rich_text(RichTextRole::Underline, padded_paint, |builder| {
+        builder.push("线");
+    });
+
+    let output = builder.build().unwrap();
+    assert!(output.input.inline_boxes.is_empty());
+}
+
+#[test]
 fn decoration_ruby_and_inline_box_lower_to_their_core_spans() {
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     builder.with_inline_box(

@@ -376,10 +376,19 @@ impl ParagraphBuilder {
             }
             OpenScopeKind::RichText(role, paint) => {
                 if !range.is_empty() {
+                    let horizontal_padding = paint.background.horizontal_padding;
+                    let creates_inline_box = horizontal_padding > 0.0
+                        && matches!(role, RichTextRole::Background | RichTextRole::InlineCode);
                     self.rich_text.push((
                         scope.sequence,
                         RichTextSpan::with_paint(range, role, paint),
                     ));
+                    if creates_inline_box {
+                        self.inline_boxes.push((
+                            scope.sequence,
+                            InlineBoxSpan::with_edges(range, horizontal_padding, horizontal_padding),
+                        ));
+                    }
                     self.add_source_boundaries(range);
                 }
                 Ok(())
@@ -427,10 +436,17 @@ impl ParagraphBuilder {
             }
             OpenScopeKind::InlineCode(_, paint) => {
                 if !range.is_empty() {
+                    let horizontal_padding = paint.background.horizontal_padding;
                     self.rich_text.push((
                         scope.sequence,
                         RichTextSpan::with_paint(range, RichTextRole::InlineCode, paint),
                     ));
+                    if horizontal_padding > 0.0 {
+                        self.inline_boxes.push((
+                            scope.sequence,
+                            InlineBoxSpan::with_edges(range, horizontal_padding, horizontal_padding),
+                        ));
+                    }
                     self.add_source_boundaries(range);
                     self.line_break_spans.push((
                         scope.sequence,
