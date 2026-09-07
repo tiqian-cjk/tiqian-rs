@@ -3,7 +3,8 @@ use tiqian::core::geometry::{LayoutConstraints, TextRange, scalar_offset};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     ColorSpan, DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
-    RichTextPaint, RichTextRole, TextStyle, built_in_layout_profiles,
+    LineBreakPolicy, LineBreakSpan, RichTextPaint, RichTextRole, TextStyle,
+    built_in_layout_profiles,
 };
 
 #[test]
@@ -146,14 +147,17 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
             .collect::<Vec<_>>()
     );
     assert_eq!(
-        vec![code_range, link_range],
-        output
-            .input
-            .content
-            .line_break_spans
-            .iter()
-            .map(|span| span.range)
-            .collect::<Vec<_>>()
+        vec![
+            LineBreakSpan {
+                range: code_range,
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
+            LineBreakSpan {
+                range: link_range,
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
+        ],
+        output.input.content.line_break_spans
     );
     assert_eq!(
         vec![code_range],
@@ -193,6 +197,28 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
         vec!["monospace".to_owned()],
         output.input.content.spans[0].style.font_families
     );
+}
+
+#[test]
+fn inline_code_generates_line_break_and_auto_space_inputs() {
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_inline_code(
+        TextStyleOverride::default(),
+        RichTextPaint::default(),
+        |builder| builder.push("code"),
+    );
+
+    let output = builder.build().unwrap();
+    let range = TextRange::new(scalar_offset(0), scalar_offset(4));
+
+    assert_eq!(
+        vec![LineBreakSpan {
+            range,
+            policy: LineBreakPolicy::ProgressiveTechnical,
+        }],
+        output.input.content.line_break_spans
+    );
+    assert_eq!(vec![range], output.input.content.auto_space_suppressed_ranges);
 }
 
 #[test]

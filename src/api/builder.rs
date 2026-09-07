@@ -109,11 +109,14 @@ impl ParagraphBuilder {
                     .collect(),
             });
         }
+        let line_break_spans = Self::ordered_line_break_spans(self.line_break_spans);
+        let auto_space_suppressed_ranges =
+            Self::ordered_auto_space_suppressed_ranges(self.auto_space_suppressed_ranges);
         let content = TiqianTextContent::builder(Text::from(self.source))
             .spans(self.spans)
             .source_boundaries(self.source_boundaries)
-            .line_break_spans(Self::ordered_values(self.line_break_spans))
-            .auto_space_suppressed_ranges(Self::ordered_values(self.auto_space_suppressed_ranges))
+            .line_break_spans(line_break_spans)
+            .auto_space_suppressed_ranges(auto_space_suppressed_ranges)
             .build();
         Ok(ParagraphBuildOutput {
             input: LayoutInput::builder(content, self.constraints)
@@ -133,6 +136,22 @@ impl ParagraphBuilder {
     pub(super) fn ordered_values<T>(mut values: Vec<(u64, T)>) -> Vec<T> {
         values.sort_by_key(|(sequence, _)| *sequence);
         values.into_iter().map(|(_, value)| value).collect()
+    }
+
+    fn ordered_line_break_spans(values: Vec<(u64, LineBreakSpan)>) -> Vec<LineBreakSpan> {
+        let mut seen = HashSet::new();
+        Self::ordered_values(values)
+            .into_iter()
+            .filter(|span| seen.insert((span.range, span.policy)))
+            .collect()
+    }
+
+    fn ordered_auto_space_suppressed_ranges(values: Vec<(u64, TextRange)>) -> Vec<TextRange> {
+        let mut seen = HashSet::new();
+        Self::ordered_values(values)
+            .into_iter()
+            .filter(|range| seen.insert(*range))
+            .collect()
     }
 
     pub(super) fn current_text_style(&self) -> TextStyle {

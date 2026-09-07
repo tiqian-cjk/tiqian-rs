@@ -95,7 +95,7 @@ pub struct LineBreakSpan {
     pub policy: LineBreakPolicy,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LineBreakPolicy {
     /// 技术行内文本：优先 structural-symbol/camel 边界，然后是不显示连字符的语言音节边界，
     /// 最后是安全的 source-grapheme 紧急边界。

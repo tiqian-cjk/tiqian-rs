@@ -432,6 +432,14 @@ impl ParagraphBuilder {
                         RichTextSpan::with_paint(range, RichTextRole::InlineCode, paint),
                     ));
                     self.add_source_boundaries(range);
+                    self.line_break_spans.push((
+                        scope.sequence,
+                        LineBreakSpan {
+                            range,
+                            policy: LineBreakPolicy::ProgressiveTechnical,
+                        },
+                    ));
+                    self.auto_space_suppressed_ranges.push((scope.sequence, range));
                 }
                 Ok(())
             }
