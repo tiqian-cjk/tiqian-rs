@@ -7,7 +7,6 @@ use tiqian::core::layout_model::{
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
-    positioned_rich_text_segments, trimmed_rich_text_decoration_segments,
 };
 use tiqian::core::source_interaction_boundaries::SourceBoundaryBias;
 use tiqian::core::text::Text;
@@ -373,7 +372,13 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         ])
         .build();
     let result = LayoutResult::with_debug(
-        layout_input("（，中）", 40.0),
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("（，中）")),
+            LayoutConstraints::with_defaults(40.0),
+        )
+        .text_style(TextStyle::builder().font_size(10.0).build())
+        .rich_text(vec![underline_span(text_range(0, 4))])
+        .build(),
         Size {
             width: 40.0,
             height: 20.0,
@@ -415,9 +420,8 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
         )],
         debug,
     );
-    let underline = underline_span(text_range(0, 4));
-    let occupied = positioned_rich_text_segments(&result, &[underline]);
-    let decoration = trimmed_rich_text_decoration_segments(&result, &occupied);
+    let occupied = result.positioned_rich_text_segments();
+    let decoration = result.rich_text_decoration_segments();
 
     assert_eq!(
         Rect {

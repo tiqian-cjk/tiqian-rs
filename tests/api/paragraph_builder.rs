@@ -55,15 +55,15 @@ fn explicit_text_style_scope_generates_a_complete_style_span() {
     builder.push("结尾");
 
     let output = builder.build().unwrap();
-    assert_eq!("正文强调结尾", output.input.content.text);
-    assert_eq!(1, output.input.content.spans.len());
+    assert_eq!("正文强调结尾", output.content.text);
+    assert_eq!(1, output.content.spans.len());
     assert_eq!(
         TextRange::new(scalar_offset(2), scalar_offset(4)),
-        output.input.content.spans[0].range
+        output.content.spans[0].range
     );
-    assert_eq!(700, output.input.content.spans[0].style.font_weight);
-    assert!(output.input.content.spans[0].style.italic);
-    assert_eq!(15.0, output.input.content.spans[0].style.font_size);
+    assert_eq!(700, output.content.spans[0].style.font_weight);
+    assert!(output.content.spans[0].style.italic);
+    assert_eq!(15.0, output.content.spans[0].style.font_size);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     let code_range = TextRange::new(scalar_offset(0), scalar_offset(4));
     let link_range = TextRange::new(scalar_offset(4), scalar_offset(14));
 
-    assert_eq!("codetiqian.org", output.input.content.text);
+    assert_eq!("codetiqian.org", output.content.text);
     assert_eq!(code_range, output.rich_text[0].range);
     assert_eq!(
         vec![
@@ -185,45 +185,29 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
                 policy: LineBreakPolicy::ProgressiveTechnical,
             },
         ],
-        output.input.content.line_break_spans
+        output.content.line_break_spans
     );
     assert_eq!(
         vec![code_range],
-        output.input.content.auto_space_suppressed_ranges
+        output.content.auto_space_suppressed_ranges
     );
     assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&code_range.start())
+        output.content.source_boundaries.contains(&code_range.start())
     );
     assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&code_range.end())
+        output.content.source_boundaries.contains(&code_range.end())
     );
     assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&link_range.start())
+        output.content.source_boundaries.contains(&link_range.start())
     );
     assert!(
-        output
-            .input
-            .content
-            .source_boundaries
-            .contains(&link_range.end())
+        output.content.source_boundaries.contains(&link_range.end())
     );
-    assert_eq!(1, output.input.content.spans.len());
-    assert_eq!(code_range, output.input.content.spans[0].range);
+    assert_eq!(1, output.content.spans.len());
+    assert_eq!(code_range, output.content.spans[0].range);
     assert_eq!(
         vec!["monospace".to_owned()],
-        output.input.content.spans[0].style.font_families
+        output.content.spans[0].style.font_families
     );
 }
 
@@ -244,9 +228,9 @@ fn inline_code_generates_line_break_and_auto_space_inputs() {
             range,
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
-        output.input.content.line_break_spans
+        output.content.line_break_spans
     );
-    assert_eq!(vec![range], output.input.content.auto_space_suppressed_ranges);
+    assert_eq!(vec![range], output.content.auto_space_suppressed_ranges);
 }
 
 #[test]
@@ -267,13 +251,12 @@ fn padded_background_and_inline_code_generate_narrow_inline_boxes() {
             TextRange::new(scalar_offset(2), scalar_offset(6)),
         ],
         output
-            .input
             .inline_boxes
             .iter()
             .map(|span| span.range)
             .collect::<Vec<_>>()
     );
-    assert!(output.input.inline_boxes.iter().all(|span| {
+    assert!(output.inline_boxes.iter().all(|span| {
         span.inline_start == 4.0
             && span.inline_end == 4.0
             && span.outer_spacing == InlineBoxOuterSpacing::Narrow
@@ -297,7 +280,7 @@ fn zero_padding_and_non_background_rich_text_do_not_generate_inline_boxes() {
     });
 
     let output = builder.build().unwrap();
-    assert!(output.input.inline_boxes.is_empty());
+    assert!(output.inline_boxes.is_empty());
 }
 
 #[test]
@@ -314,17 +297,17 @@ fn decoration_ruby_and_inline_box_lower_to_their_core_spans() {
 
     let output = builder.build().unwrap();
     let range = TextRange::new(scalar_offset(0), scalar_offset(2));
-    assert_eq!(range, output.input.inline_boxes[0].range);
-    assert_eq!(2.0, output.input.inline_boxes[0].inline_start);
-    assert_eq!(3.0, output.input.inline_boxes[0].inline_end);
+    assert_eq!(range, output.inline_boxes[0].range);
+    assert_eq!(2.0, output.inline_boxes[0].inline_start);
+    assert_eq!(3.0, output.inline_boxes[0].inline_end);
     assert_eq!(
         InlineBoxOuterSpacing::Source,
-        output.input.inline_boxes[0].outer_spacing
+        output.inline_boxes[0].outer_spacing
     );
-    assert_eq!(range, output.input.ruby_spans[0].base_range);
-    assert_eq!(Text::from("tíqiàn"), output.input.ruby_spans[0].text);
-    assert_eq!(DecorationKind::Emphasis, output.input.decorations[0].kind);
-    assert_eq!(range, output.input.decorations[0].range);
+    assert_eq!(range, output.ruby_spans[0].base_range);
+    assert_eq!(Text::from("tíqiàn"), output.ruby_spans[0].text);
+    assert_eq!(DecorationKind::Emphasis, output.decorations[0].kind);
+    assert_eq!(range, output.decorations[0].range);
 }
 
 #[test]
@@ -337,10 +320,10 @@ fn position_insertions_preserve_source_and_reject_invalid_ruby_content() {
         .unwrap();
 
     let output = builder.build().unwrap();
-    assert_eq!("甲\nobject", output.input.content.text);
+    assert_eq!("甲\nobject", output.content.text);
     assert_eq!(
         TextRange::new(scalar_offset(2), scalar_offset(8)),
-        output.input.inline_objects[0].range
+        output.inline_objects[0].range
     );
 
     let mut ruby_builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));

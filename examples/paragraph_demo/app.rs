@@ -67,17 +67,14 @@ struct DemoPage {
 
 enum DemoPageBlock {
     Text {
-        document: DemoDocument,
         layout: LayoutResult,
         y: f32,
         paint_top: f32,
         paint_bottom: f32,
     },
     ListItem {
-        marker: DemoDocument,
         marker_layout: LayoutResult,
         marker_y: f32,
-        body: DemoDocument,
         body_layout: LayoutResult,
         gutter: f32,
         y: f32,
@@ -215,8 +212,7 @@ impl DesktopParagraphDemo {
         for (index, block) in document.blocks.into_iter().enumerate() {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
-                    let (document, layout) =
-                        self.layout_document(document, physical_content_width as f32);
+                    let layout = self.layout_document(document, physical_content_width as f32);
                     let (left, top, right, bottom) = layout_paint_overhang(&layout);
                     left_overhang = left_overhang.max(left);
                     top_overhang = top_overhang.max(top - y);
@@ -227,7 +223,6 @@ impl DesktopParagraphDemo {
                     let paint_bottom = block_y + layout.size.height + bottom;
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
-                        document,
                         layout,
                         y: block_y,
                         paint_top,
@@ -241,7 +236,7 @@ impl DesktopParagraphDemo {
                     document,
                     max_width,
                 } => {
-                    let (document, layout) = self.layout_document(document, max_width);
+                    let layout = self.layout_document(document, max_width);
                     let (left, top, right, bottom) = layout_paint_overhang(&layout);
                     left_overhang = left_overhang.max(left);
                     top_overhang = top_overhang.max(top - y);
@@ -252,7 +247,6 @@ impl DesktopParagraphDemo {
                     let paint_bottom = block_y + layout.size.height + bottom;
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
-                        document,
                         layout,
                         y: block_y,
                         paint_top,
@@ -264,15 +258,13 @@ impl DesktopParagraphDemo {
                     let mut marker_measurement = marker.clone();
                     marker_measurement.input.paragraph_style.line_length_grid =
                         LineLengthGrid::with_enabled(false);
-                    let (_, marker_measurement_layout) =
-                        self.layout_document(marker_measurement, 100_000.0);
+                    let marker_measurement_layout = self.layout_document(marker_measurement, 100_000.0);
                     let gutter = (marker_measurement_layout.size.width / font_size)
                         .ceil()
                         .max(1.0)
                         * font_size;
-                    let (marker, marker_layout) = self.layout_document(marker, gutter);
-                    let (body, body_layout) = self
-                        .layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
+                    let marker_layout = self.layout_document(marker, gutter);
+                    let body_layout = self.layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
                     let marker_y = body_layout
                         .lines
                         .first()
@@ -300,10 +292,8 @@ impl DesktopParagraphDemo {
                     let paint_bottom = (y + marker_y + marker_layout.size.height + marker_bottom)
                         .max(y + body_layout.size.height + body_bottom);
                     blocks.push(DemoPageBlock::ListItem {
-                        marker,
                         marker_layout,
                         marker_y,
-                        body,
                         body_layout,
                         gutter,
                         y,
@@ -338,11 +328,10 @@ impl DesktopParagraphDemo {
         &mut self,
         mut document: DemoDocument,
         physical_content_width: f32,
-    ) -> (DemoDocument, LayoutResult) {
+    ) -> LayoutResult {
         document.input.constraints =
             LayoutConstraints::with_defaults(physical_content_width.max(1.0));
-        let layout = self.engine.layout(document.input.clone());
-        (document, layout)
+        self.engine.layout(document.input)
     }
 
     fn render(&mut self, physical_size: PhysicalSize<u32>) -> Result<(), String> {
@@ -394,14 +383,12 @@ impl DesktopParagraphDemo {
             }
             match block {
                 DemoPageBlock::Text {
-                    document,
                     layout,
                     y,
                     ..
                 } => {
                     Self::paint_document(
                         &mut self.scene,
-                        document,
                         layout,
                         page_origin_x + page.left_overhang.round() as i32,
                         page_origin_y + (page.top_overhang + y).round() as i32,
@@ -409,10 +396,8 @@ impl DesktopParagraphDemo {
                     )?;
                 }
                 DemoPageBlock::ListItem {
-                    marker,
                     marker_layout,
                     marker_y,
-                    body,
                     body_layout,
                     gutter,
                     y,
@@ -420,7 +405,6 @@ impl DesktopParagraphDemo {
                 } => {
                     Self::paint_document(
                         &mut self.scene,
-                        marker,
                         marker_layout,
                         page_origin_x + page.left_overhang.round() as i32,
                         page_origin_y + (page.top_overhang + y + marker_y).round() as i32,
@@ -428,7 +412,6 @@ impl DesktopParagraphDemo {
                     )?;
                     Self::paint_document(
                         &mut self.scene,
-                        body,
                         body_layout,
                         page_origin_x + (page.left_overhang + gutter).round() as i32,
                         page_origin_y + (page.top_overhang + y).round() as i32,
@@ -502,18 +485,17 @@ impl DesktopParagraphDemo {
 
     fn paint_document(
         scene: &mut Scene,
-        document: &DemoDocument,
         layout: &LayoutResult,
         x: i32,
         y: i32,
         renderer: &DemoRenderer<'_>,
     ) -> Result<(), String> {
         let renderer = renderer.translated(x as f32, y as f32);
-        renderer.paint_rich_text_backgrounds(scene, layout, &document.rich_text)?;
-        renderer.paint_body(scene, layout, &document.rich_text)?;
-        renderer.paint_rich_text_lines(scene, layout, &document.rich_text)?;
-        renderer.paint_decorations(scene, layout, &document.rich_text)?;
-        renderer.paint_annotations(scene, layout, &document.rich_text)?;
+        renderer.paint_rich_text_backgrounds(scene, layout)?;
+        renderer.paint_body(scene, layout)?;
+        renderer.paint_rich_text_lines(scene, layout)?;
+        renderer.paint_decorations(scene, layout)?;
+        renderer.paint_annotations(scene, layout)?;
         Ok(())
     }
 
@@ -682,7 +664,6 @@ mod tests {
     fn assert_replayable(
         catalog: &DemoFontCatalog,
         result: &LayoutResult,
-        document: &DemoDocument,
     ) {
         assert!(
             result
@@ -695,19 +676,19 @@ mod tests {
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut scene, result, &document.rich_text)
+            .paint_rich_text_backgrounds(&mut scene, result)
             .unwrap();
         renderer
-            .paint_body(&mut scene, result, &document.rich_text)
+            .paint_body(&mut scene, result)
             .unwrap();
         renderer
-            .paint_rich_text_lines(&mut scene, result, &document.rich_text)
+            .paint_rich_text_lines(&mut scene, result)
             .unwrap();
         renderer
-            .paint_decorations(&mut scene, result, &document.rich_text)
+            .paint_decorations(&mut scene, result)
             .unwrap();
         renderer
-            .paint_annotations(&mut scene, result, &document.rich_text)
+            .paint_annotations(&mut scene, result)
             .unwrap();
         assert!(!scene.encoding().draw_tags.is_empty());
     }
@@ -740,9 +721,9 @@ mod tests {
             wide.input.content.source_boundaries,
             restored.input.content.source_boundaries
         );
-        assert_replayable(&catalog, &wide, &wide_document);
-        assert_replayable(&catalog, &narrow, &narrow_document);
-        assert_replayable(&catalog, &restored, &restored_document);
+        assert_replayable(&catalog, &wide);
+        assert_replayable(&catalog, &narrow);
+        assert_replayable(&catalog, &restored);
     }
 
     #[test]
@@ -757,7 +738,7 @@ mod tests {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
                     let result = engine.layout(document.input.clone());
-                    assert_replayable(&catalog, &result, &document);
+                    assert_replayable(&catalog, &result);
                 }
                 DemoDocumentDemoBlock::NarrowParagraph {
                     document,
@@ -766,13 +747,13 @@ mod tests {
                     let mut input = document.input.clone();
                     input.constraints = LayoutConstraints::with_defaults(max_width);
                     let result = engine.layout(input);
-                    assert_replayable(&catalog, &result, &document);
+                    assert_replayable(&catalog, &result);
                 }
                 DemoDocumentDemoBlock::ListItem { marker, body } => {
                     let marker_result = engine.layout(marker.input.clone());
                     let body_result = engine.layout(body.input.clone());
-                    assert_replayable(&catalog, &marker_result, &marker);
-                    assert_replayable(&catalog, &body_result, &body);
+                    assert_replayable(&catalog, &marker_result);
+                    assert_replayable(&catalog, &body_result);
                 }
                 DemoDocumentDemoBlock::Section { .. } => {}
             }

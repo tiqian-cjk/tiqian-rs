@@ -10,5 +10,5 @@ pub use style::{
     RubyAnnotation, RubyAnnotationBuilder, TextStyleOverride, TextStyleOverrideBuilder,
 };
 pub use types::{
-    ParagraphBuildError, ParagraphBuildOutput, ParagraphPositionInsertionKind, ParagraphScopeKind,
+    ParagraphBuildError, ParagraphPositionInsertionKind, ParagraphScopeKind,
 };

@@ -1121,6 +1121,9 @@ pub struct LayoutInput {
     pub ruby_spans: Vec<RubySpan>,
     pub inline_boxes: Vec<InlineBoxSpan>,
     pub inline_objects: Vec<InlineObjectSpan>,
+    /// 随布局输入传递并由 `LayoutResult` 保留的绘制声明。
+    /// 布局阶段和仅服务于布局的缓存键不得读取此字段。
+    pub rich_text: Vec<RichTextSpan>,
 }
 
 impl LayoutInput {
@@ -1139,6 +1142,7 @@ impl LayoutInput {
                 ruby_spans: Vec::new(),
                 inline_boxes: Vec::new(),
                 inline_objects: Vec::new(),
+                rich_text: Vec::new(),
             },
         }
     }
@@ -1175,6 +1179,10 @@ impl LayoutInputBuilder {
     }
     pub fn inline_objects(mut self, value: Vec<InlineObjectSpan>) -> Self {
         self.input.inline_objects = value;
+        self
+    }
+    pub fn rich_text(mut self, value: Vec<RichTextSpan>) -> Self {
+        self.input.rich_text = value;
         self
     }
     pub fn build(self) -> LayoutInput {

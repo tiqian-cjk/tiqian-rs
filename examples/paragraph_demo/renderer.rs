@@ -3,14 +3,11 @@ use tiqian::common::HashMap;
 use tiqian::core::geometry::{ScalarOffset, TextRange};
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::{
-    positioned_clusters, positioned_rich_text_segments, resolved_background_corner_radii,
-    rich_text_annotation_layers, rich_text_background_segments, rich_text_decoration_layers,
-    rich_text_decoration_line_y,
-    trimmed_rich_text_decoration_segments,
+    positioned_clusters,
 };
 use tiqian::core::text_model::{
     DecorationKind, RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern,
-    RichTextPaint, RichTextSpan, RubyKind, TextSpan, TextStyle,
+    RichTextPaint, RubyKind, TextSpan, TextStyle,
 };
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Shape, Stroke};
@@ -57,7 +54,6 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        rich_text: &[RichTextSpan],
     ) -> Result<(), String> {
         let positions: HashMap<_, _> = positioned_clusters(result)
             .into_iter()
@@ -77,7 +73,7 @@ impl<'a> DemoRenderer<'a> {
                     glyph.cluster_range.start(),
                 )
                 .font_size;
-                for color in text_fill_colors(rich_text, glyph.cluster_range) {
+                for color in text_fill_colors(result, glyph.cluster_range) {
                     self.catalog.paint_glyph(
                         scene,
                         self.transform(),
@@ -98,10 +94,7 @@ impl<'a> DemoRenderer<'a> {
         }
         for line in &result.lines {
             for glyph in &line.hyphen_glyphs {
-                for color in text_fill_colors(
-                    rich_text,
-                    result.clusters[line.cluster_range.last() as usize].range,
-                ) {
+                for color in text_fill_colors(result, result.clusters[line.cluster_range.last() as usize].range) {
                     self.catalog.paint_glyph(
                         scene,
                         self.transform(),
@@ -128,7 +121,6 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        rich_text: &[RichTextSpan],
     ) -> Result<(), String> {
         for ruby in &result.debug.ruby_decisions {
             let origin_x = ruby.center_x - ruby.width / 2.0;
@@ -140,7 +132,7 @@ impl<'a> DemoRenderer<'a> {
                     cluster_pen_x += cluster_advance;
                     cluster_advance = 0.0;
                 }
-                for color in annotation_fill_colors(rich_text, ruby.base_range, RubyKind::Pinyin) {
+                for color in annotation_fill_colors(result, ruby.base_range, RubyKind::Pinyin) {
                     self.paint_annotation_glyph(
                         scene,
                         glyph,
@@ -157,7 +149,7 @@ impl<'a> DemoRenderer<'a> {
         for bopomofo in &result.debug.bopomofo_decisions {
             for placement in &bopomofo.placements {
                 for glyph in &placement.glyphs {
-                    for color in annotation_fill_colors(rich_text, bopomofo.base_range, RubyKind::Bopomofo) {
+                    for color in annotation_fill_colors(result, bopomofo.base_range, RubyKind::Bopomofo) {
                         self.paint_annotation_glyph(
                             scene,
                             glyph,
@@ -204,7 +196,6 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        rich_text: &[RichTextSpan],
     ) -> Result<(), String> {
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result
@@ -214,7 +205,7 @@ impl<'a> DemoRenderer<'a> {
             .filter(|decision| decision.applied)
         {
             if let Some(kind) = decoration_kind(&decision.kind) {
-                for color in decoration_fill_colors(rich_text, decision.cluster_range, kind) {
+                for color in decoration_fill_colors(result, decision.cluster_range, kind) {
                     scene.fill(
                         Fill::NonZero,
                         self.transform(),
@@ -233,7 +224,7 @@ impl<'a> DemoRenderer<'a> {
             let Some(kind) = decoration_kind(&segment.kind) else {
                 return Err(format!("unsupported decoration segment kind: {}", segment.kind));
             };
-            for color in decoration_fill_colors(rich_text, segment.source_range, kind) {
+            for color in decoration_fill_colors(result, segment.source_range, kind) {
                 match kind {
                     DecorationKind::Mourning => self.stroke_mourning_segment(scene, segment, color, stroke_width)?,
                     DecorationKind::ProperNoun => {
@@ -258,11 +249,9 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        spans: &[RichTextSpan],
     ) -> Result<(), String> {
-        let occupied = positioned_rich_text_segments(result, spans);
-        for segment in rich_text_background_segments(result, &occupied) {
-            let radii = resolved_background_corner_radii(&segment, 0.0);
+        for segment in result.rich_text_background_segments() {
+            let radii = result.rich_text_background_corner_radii(&segment, 0.0);
             let path = rounded_rect_path(
                 segment.left,
                 segment.top,
@@ -286,10 +275,8 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
-        spans: &[RichTextSpan],
     ) -> Result<(), String> {
-        let occupied = positioned_rich_text_segments(result, spans);
-        for segment in trimmed_rich_text_decoration_segments(result, &occupied) {
+        for segment in result.rich_text_decoration_segments() {
             let Some(line) = segment_line_paint(&segment) else {
                 continue;
             };
@@ -312,7 +299,7 @@ impl<'a> DemoRenderer<'a> {
                         *gap_length,
                     )?,
                     RichTextLinePattern::Dotted { gap_length } => {
-                        let y = rich_text_decoration_line_y(result, &segment, line.thickness);
+                        let y = result.rich_text_decoration_line_y(&segment, line.thickness);
                         let centers = fitted_dotted_line_centers(
                             segment.left,
                             segment.right,
@@ -355,7 +342,7 @@ impl<'a> DemoRenderer<'a> {
         if segment_line_paint(segment).is_none() {
             return Err("rich-text line segment has a non-line role".to_owned());
         }
-        let y = rich_text_decoration_line_y(result, segment, stroke_width);
+        let y = result.rich_text_decoration_line_y(segment, stroke_width);
         for (left, right) in
             self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width)
         {
@@ -374,7 +361,7 @@ impl<'a> DemoRenderer<'a> {
         dash_length: f32,
         gap_length: f32,
     ) -> Result<(), String> {
-        let y = rich_text_decoration_line_y(result, segment, stroke_width);
+        let y = result.rich_text_decoration_line_y(segment, stroke_width);
         let stroke = Stroke::new(stroke_width as f64).with_caps(Cap::Round);
         let dashes =
             fitted_dashed_line_segments(segment.left, segment.right, dash_length, gap_length);
@@ -821,8 +808,10 @@ fn text_style_at(spans: &[TextSpan], base: &TextStyle, offset: ScalarOffset) -> 
         .unwrap_or_else(|| base.clone())
 }
 
-fn text_fill_colors(spans: &[RichTextSpan], range: TextRange) -> Vec<AlphaColor<Srgb>> {
-    spans
+fn text_fill_colors(result: &LayoutResult, range: TextRange) -> Vec<AlphaColor<Srgb>> {
+    result
+        .input
+        .rich_text
         .iter()
         .filter(|span| span.range.start() <= range.start() && span.range.end() > range.start())
         .flat_map(|span| span.layers.iter())
@@ -833,11 +822,12 @@ fn text_fill_colors(spans: &[RichTextSpan], range: TextRange) -> Vec<AlphaColor<
 
 /// 查询 decoration layer 的填充色；范围匹配由 layout query 统一处理。
 fn decoration_fill_colors(
-    spans: &[RichTextSpan],
+    result: &LayoutResult,
     range: TextRange,
     kind: DecorationKind,
 ) -> Vec<AlphaColor<Srgb>> {
-    rich_text_decoration_layers(spans, range, kind)
+    result
+        .rich_text_decoration_layers(range, kind)
         .into_iter()
         .flat_map(layer_fill_colors)
         .collect()
@@ -845,11 +835,12 @@ fn decoration_fill_colors(
 
 /// 查询 ruby 或 bopomofo annotation layer 的填充色。
 fn annotation_fill_colors(
-    spans: &[RichTextSpan],
+    result: &LayoutResult,
     base_range: TextRange,
     kind: RubyKind,
 ) -> Vec<AlphaColor<Srgb>> {
-    rich_text_annotation_layers(spans, base_range, kind)
+    result
+        .rich_text_annotation_layers(base_range, kind)
         .into_iter()
         .flat_map(layer_fill_colors)
         .collect()
@@ -942,18 +933,15 @@ mod tests {
                 TiqianTextContent::new(Text::from("中文 English")),
                 LayoutConstraints::with_defaults(160.0),
             )
+            .rich_text(vec![span(
+                text_range(0, 10),
+                vec![layer(RichTextLayerKind::Text, 0xFF1E1E23_u32 as i32)],
+            )])
             .build(),
         );
         let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(
-                &mut scene,
-                &result,
-                &[span(
-                    text_range(0, 10),
-                    vec![layer(RichTextLayerKind::Text, 0xFF1E1E23_u32 as i32)],
-                )],
-            )
+            .paint_body(&mut scene, &result)
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
@@ -982,6 +970,26 @@ mod tests {
                 RubySpan::builder(text_range(1, 2), Text::from("ㄨㄣˊ"))
                     .kind(RubyKind::Bopomofo)
                     .build(),
+            ])
+            .rich_text(vec![
+                span(
+                    text_range(0, 1),
+                    vec![layer(
+                        RichTextLayerKind::Annotation {
+                            kind: RubyKind::Pinyin,
+                        },
+                        0xFF1E1E23_u32 as i32,
+                    )],
+                ),
+                span(
+                    text_range(1, 2),
+                    vec![layer(
+                        RichTextLayerKind::Annotation {
+                            kind: RubyKind::Bopomofo,
+                        },
+                        0xFF1E1E23_u32 as i32,
+                    )],
+                ),
             ])
             .build(),
         );
@@ -1040,30 +1048,7 @@ mod tests {
         let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
             .translated(0.0, ruby_top_bleed)
-            .paint_annotations(
-                &mut scene,
-                &result,
-                &[
-                    span(
-                        text_range(0, 1),
-                        vec![layer(
-                            RichTextLayerKind::Annotation {
-                                kind: RubyKind::Pinyin,
-                            },
-                            0xFF1E1E23_u32 as i32,
-                        )],
-                    ),
-                    span(
-                        text_range(1, 2),
-                        vec![layer(
-                            RichTextLayerKind::Annotation {
-                                kind: RubyKind::Bopomofo,
-                            },
-                            0xFF1E1E23_u32 as i32,
-                        )],
-                    ),
-                ],
-            )
+            .paint_annotations(&mut scene, &result)
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
@@ -1109,6 +1094,10 @@ mod tests {
                             .font_families(vec!["Inter".to_owned()])
                             .build(),
                     )
+                    .rich_text(vec![span(
+                        text_range(0, 14),
+                        vec![layer(RichTextLayerKind::Text, 0xFF1E1E23_u32 as i32)],
+                    )])
                     .build(),
                 )
             })
@@ -1122,14 +1111,7 @@ mod tests {
         result.glyph_runs.clear();
         let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(
-                &mut scene,
-                &result,
-                &[span(
-                    text_range(0, 14),
-                    vec![layer(RichTextLayerKind::Text, 0xFF1E1E23_u32 as i32)],
-                )],
-            )
+            .paint_body(&mut scene, &result)
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
@@ -1171,93 +1153,93 @@ mod tests {
                     kind: DecorationKind::BookTitle,
                 },
             ])
+            .rich_text(vec![
+                span(
+                    text_range(0, 1),
+                    vec![
+                        layer(
+                            RichTextLayerKind::Background {
+                                background: RichTextBackgroundPaint::builder()
+                                    .horizontal_padding(1.0)
+                                    .vertical_padding(1.0)
+                                    .corner_radius(2.0)
+                                    .build(),
+                            },
+                            0xFFE0F2FE_u32 as i32,
+                        ),
+                        layer(
+                            RichTextLayerKind::Decoration {
+                                kind: DecorationKind::Emphasis,
+                            },
+                            0xFF1E1E23_u32 as i32,
+                        ),
+                    ],
+                ),
+                span(
+                    text_range(1, 2),
+                    vec![
+                        layer(
+                            RichTextLayerKind::Underline {
+                                line: RichTextLinePaint::default(),
+                            },
+                            0xFF2563EB_u32 as i32,
+                        ),
+                        layer(
+                            RichTextLayerKind::Decoration {
+                                kind: DecorationKind::Mourning,
+                            },
+                            0xFF1E1E23_u32 as i32,
+                        ),
+                    ],
+                ),
+                span(
+                    text_range(2, 3),
+                    vec![
+                        layer(
+                            RichTextLayerKind::Underline {
+                                line: RichTextLinePaint {
+                                    thickness: 1.0,
+                                    pattern: RichTextLinePattern::Dashed {
+                                        dash_length: 3.0,
+                                        gap_length: 2.0,
+                                    },
+                                    adjacent_same_style_clearance: 0.0,
+                                },
+                            },
+                            0xFF7C3AED_u32 as i32,
+                        ),
+                        layer(
+                            RichTextLayerKind::Decoration {
+                                kind: DecorationKind::ProperNoun,
+                            },
+                            0xFF1E1E23_u32 as i32,
+                        ),
+                    ],
+                ),
+                span(
+                    text_range(3, 4),
+                    vec![
+                        layer(
+                            RichTextLayerKind::LineThrough {
+                                line: RichTextLinePaint {
+                                    thickness: 1.5,
+                                    pattern: RichTextLinePattern::Dotted { gap_length: 1.5 },
+                                    adjacent_same_style_clearance: 0.0,
+                                },
+                            },
+                            0xFFDC2626_u32 as i32,
+                        ),
+                        layer(
+                            RichTextLayerKind::Decoration {
+                                kind: DecorationKind::BookTitle,
+                            },
+                            0xFF1E1E23_u32 as i32,
+                        ),
+                    ],
+                ),
+            ])
             .build(),
         );
-        let rich_text = vec![
-            span(
-                text_range(0, 1),
-                vec![
-                    layer(
-                        RichTextLayerKind::Background {
-                            background: RichTextBackgroundPaint::builder()
-                                .horizontal_padding(1.0)
-                                .vertical_padding(1.0)
-                                .corner_radius(2.0)
-                                .build(),
-                        },
-                        0xFFE0F2FE_u32 as i32,
-                    ),
-                    layer(
-                        RichTextLayerKind::Decoration {
-                            kind: DecorationKind::Emphasis,
-                        },
-                        0xFF1E1E23_u32 as i32,
-                    ),
-                ],
-            ),
-            span(
-                text_range(1, 2),
-                vec![
-                    layer(
-                        RichTextLayerKind::Underline {
-                            line: RichTextLinePaint::default(),
-                        },
-                        0xFF2563EB_u32 as i32,
-                    ),
-                    layer(
-                        RichTextLayerKind::Decoration {
-                            kind: DecorationKind::Mourning,
-                        },
-                        0xFF1E1E23_u32 as i32,
-                    ),
-                ],
-            ),
-            span(
-                text_range(2, 3),
-                vec![
-                    layer(
-                        RichTextLayerKind::Underline {
-                            line: RichTextLinePaint {
-                                thickness: 1.0,
-                                pattern: RichTextLinePattern::Dashed {
-                                    dash_length: 3.0,
-                                    gap_length: 2.0,
-                                },
-                                adjacent_same_style_clearance: 0.0,
-                            },
-                        },
-                        0xFF7C3AED_u32 as i32,
-                    ),
-                    layer(
-                        RichTextLayerKind::Decoration {
-                            kind: DecorationKind::ProperNoun,
-                        },
-                        0xFF1E1E23_u32 as i32,
-                    ),
-                ],
-            ),
-            span(
-                text_range(3, 4),
-                vec![
-                    layer(
-                        RichTextLayerKind::LineThrough {
-                            line: RichTextLinePaint {
-                                thickness: 1.5,
-                                pattern: RichTextLinePattern::Dotted { gap_length: 1.5 },
-                                adjacent_same_style_clearance: 0.0,
-                            },
-                        },
-                        0xFFDC2626_u32 as i32,
-                    ),
-                    layer(
-                        RichTextLayerKind::Decoration {
-                            kind: DecorationKind::BookTitle,
-                        },
-                        0xFF1E1E23_u32 as i32,
-                    ),
-                ],
-            ),
-        ];
         assert!(
             result
                 .debug
@@ -1289,14 +1271,14 @@ mod tests {
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
         renderer
-            .paint_rich_text_backgrounds(&mut scene, &result, &rich_text)
+            .paint_rich_text_backgrounds(&mut scene, &result)
             .unwrap();
-        renderer.paint_body(&mut scene, &result, &rich_text).unwrap();
+        renderer.paint_body(&mut scene, &result).unwrap();
         renderer
-            .paint_rich_text_lines(&mut scene, &result, &rich_text)
+            .paint_rich_text_lines(&mut scene, &result)
             .unwrap();
         renderer
-            .paint_decorations(&mut scene, &result, &rich_text)
+            .paint_decorations(&mut scene, &result)
             .unwrap();
         assert!(!scene.encoding().is_empty());
 
@@ -1308,7 +1290,7 @@ mod tests {
             .unwrap();
         let mut decoration_scene = Scene::new();
         renderer
-            .paint_decorations(&mut decoration_scene, &result, &rich_text)
+            .paint_decorations(&mut decoration_scene, &result)
             .unwrap();
         assert!(mourning.right > mourning.left && mourning.bottom > mourning.top);
         assert!(decoration_scene.encoding().n_paths > 0);

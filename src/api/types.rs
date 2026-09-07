@@ -1,13 +1,5 @@
 use std::fmt;
 
-use crate::core::text_model::{LayoutInput, RichTextSpan};
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ParagraphBuildOutput {
-    pub input: LayoutInput,
-    pub rich_text: Vec<RichTextSpan>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParagraphScopeKind {
     TextStyle,

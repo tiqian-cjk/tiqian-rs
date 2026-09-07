@@ -201,15 +201,17 @@ impl RichTextCornerRadii {
     }
 }
 
-/// Resolves `RichTextBackgroundContinuationCorners` from source-continuation geometry. A true
-/// source endpoint keeps `RichTextBackgroundPaint.cornerRadius`; an edge split by line breaking uses
-/// `RichTextBackgroundPaint.continuationCornerRadius`. `inset` mirrors a centered border stroke that
-/// is moved inside the measured box. Renderers consume these four values instead of independently
-/// deciding whether a fragment is open or closed.
-pub fn resolved_background_corner_radii(
-    segment: &RichTextLineSegment,
-    inset: f32,
-) -> RichTextCornerRadii {
+impl LayoutResult {
+    /// Resolves `RichTextBackgroundContinuationCorners` from source-continuation geometry. A true
+    /// source endpoint keeps `RichTextBackgroundPaint.cornerRadius`; an edge split by line breaking uses
+    /// `RichTextBackgroundPaint.continuationCornerRadius`. `inset` mirrors a centered border stroke that
+    /// is moved inside the measured box. Renderers consume these four values instead of independently
+    /// deciding whether a fragment is open or closed.
+    pub fn rich_text_background_corner_radii(
+        &self,
+        segment: &RichTextLineSegment,
+        inset: f32,
+    ) -> RichTextCornerRadii {
     assert!(inset.is_finite() && inset >= 0.0);
     let box_width = (segment.width() - inset * 2.0).max(0.0);
     let box_height = (segment.height() - inset * 2.0).max(0.0);
@@ -233,11 +235,12 @@ pub fn resolved_background_corner_radii(
     } else {
         background.corner_radius
     });
-    RichTextCornerRadii {
-        top_left: left,
-        top_right: right,
-        bottom_right: right,
-        bottom_left: left,
+        RichTextCornerRadii {
+            top_left: left,
+            top_right: right,
+            bottom_right: right,
+            bottom_left: left,
+        }
     }
 }
 
@@ -432,20 +435,18 @@ pub fn get_bounding_boxes_from_offsets(
     get_bounding_boxes(result, TextRange::new(start, end))
 }
 
-/// Returns continuous line-local geometry for rich-text spans. A span crossing lines is split at
-/// line boundaries; a span cutting through a multi-code-unit display cluster uses the same
-/// proportional source split as `get_bounding_boxes`.
-pub fn positioned_rich_text_segments(
-    result: &LayoutResult,
-    spans: &[RichTextSpan],
-) -> Vec<RichTextLineSegment> {
-    if spans.is_empty() || result.lines.is_empty() {
+impl LayoutResult {
+    /// Returns continuous line-local geometry for rich-text spans. A span crossing lines is split at
+    /// line boundaries; a span cutting through a multi-code-unit display cluster uses the same
+    /// proportional source split as `get_bounding_boxes`.
+    pub fn positioned_rich_text_segments(&self) -> Vec<RichTextLineSegment> {
+    if self.input.rich_text.is_empty() || self.lines.is_empty() {
         return Vec::new();
     }
-    let clusters = positioned_clusters(result);
-    let text_length = result.input.content.text.scalar_len();
+    let clusters = positioned_clusters(self);
+    let text_length = self.input.content.text.scalar_len();
     let mut out = Vec::new();
-    for span in spans {
+    for span in &self.input.rich_text {
         let start = span.range.start().min(text_length);
         let end = span.range.end().min(text_length).max(start);
         if start == end {
@@ -499,7 +500,7 @@ pub fn positioned_rich_text_segments(
                     {
                         // Source-contiguous occupied slices merge into one continuous rect, so a decoration
                         // or background never acquires an internal sliver (涂). Outer punctuation glue is
-                        // removed afterwards by trimmed_rich_text_decoration_segments, not here.
+                        // removed afterwards by rich_text_decoration_segments, not here.
                         pending = Some(RichTextLineSegment {
                             span: current.span,
                             line_index: current.line_index,
@@ -524,30 +525,31 @@ pub fn positioned_rich_text_segments(
         }
     }
     out
-}
+    }
 
-/// 返回与既有 decoration layout 输出关联的 layer。关联只要求 source range 相交且
-/// `DecorationKind` 相同；layer 不必覆盖生成该几何的完整 `DecorationSpan` range。
-pub fn rich_text_decoration_layers<'a>(
-    spans: &'a [RichTextSpan],
-    range: TextRange,
-    kind: DecorationKind,
-) -> Vec<&'a RichTextLayer> {
-    matching_layers(spans, range, |layer_kind| {
+    /// 返回与既有 decoration layout 输出关联的 layer。关联只要求 source range 相交且
+    /// `DecorationKind` 相同；layer 不必覆盖生成该几何的完整 `DecorationSpan` range。
+    pub fn rich_text_decoration_layers(
+        &self,
+        range: TextRange,
+        kind: DecorationKind,
+    ) -> Vec<&RichTextLayer> {
+    matching_layers(&self.input.rich_text, range, |layer_kind| {
         matches!(layer_kind, RichTextLayerKind::Decoration { kind: layer_kind } if *layer_kind == kind)
     })
-}
+    }
 
-/// 返回与既有 ruby 或 bopomofo layout 输出关联的 layer。关联只要求 base source range
-/// 相交且 `RubyKind` 相同；layer 不必覆盖生成该 placement 的完整 `RubySpan.base_range`。
-pub fn rich_text_annotation_layers<'a>(
-    spans: &'a [RichTextSpan],
-    base_range: TextRange,
-    kind: RubyKind,
-) -> Vec<&'a RichTextLayer> {
-    matching_layers(spans, base_range, |layer_kind| {
+    /// 返回与既有 ruby 或 bopomofo layout 输出关联的 layer。关联只要求 base source range
+    /// 相交且 `RubyKind` 相同；layer 不必覆盖生成该 placement 的完整 `RubySpan.base_range`。
+    pub fn rich_text_annotation_layers(
+        &self,
+        base_range: TextRange,
+        kind: RubyKind,
+    ) -> Vec<&RichTextLayer> {
+    matching_layers(&self.input.rich_text, base_range, |layer_kind| {
         matches!(layer_kind, RichTextLayerKind::Annotation { kind: layer_kind } if *layer_kind == kind)
     })
+    }
 }
 
 fn matching_layers<'a>(
@@ -569,15 +571,14 @@ fn ranges_intersect(left: TextRange, right: TextRange) -> bool {
     left.start() < right.end() && right.start() < left.end()
 }
 
-/// Returns underline/strike-through segments with punctuation glue removed at the decoration's outer
-/// source edges. `RichTextDecorationPunctuationGlueTrim` removes punctuation glue, which lives in
-/// the recorded occupied geometry rather than the glyph. It keeps the occupied geometry unchanged for
-/// backgrounds, links, selection and hit testing; glue between two decorated clusters also remains
-/// covered so a continuous decoration does not acquire an internal gap.
-pub fn trimmed_rich_text_decoration_segments(
-    result: &LayoutResult,
-    occupied_segments: &[RichTextLineSegment],
-) -> Vec<RichTextLineSegment> {
+impl LayoutResult {
+    /// Returns underline/strike-through segments with punctuation glue removed at the decoration's outer
+    /// source edges. `RichTextDecorationPunctuationGlueTrim` removes punctuation glue, which lives in
+    /// the recorded occupied geometry rather than the glyph. It keeps the occupied geometry unchanged for
+    /// backgrounds, links, selection and hit testing; glue between two decorated clusters also remains
+    /// covered so a continuous decoration does not acquire an internal gap.
+    pub fn rich_text_decoration_segments(&self) -> Vec<RichTextLineSegment> {
+    let occupied_segments = self.positioned_rich_text_segments();
     if occupied_segments.is_empty() {
         return Vec::new();
     }
@@ -597,18 +598,16 @@ pub fn trimmed_rich_text_decoration_segments(
     if decoration_segments.is_empty() {
         return Vec::new();
     }
-    with_adjacent_same_style_clearance(trim_outer_punctuation_glue(result, &decoration_segments))
-}
+    with_adjacent_same_style_clearance(trim_outer_punctuation_glue(self, &decoration_segments))
+    }
 
-/// Returns one continuous paint box per visual line for background roles. The horizontal box keeps
-/// every authored/internal gap between the first and last marked clusters, while its two outer edges
-/// exclude autospace, justification and punctuation glue owned by neighbouring text. Vertically it
-/// uses the marked clusters' typographic faces rather than the complete line box, so paragraph
-/// leading does not inflate a short highlight.
-pub fn rich_text_background_segments(
-    result: &LayoutResult,
-    occupied_segments: &[RichTextLineSegment],
-) -> Vec<RichTextLineSegment> {
+    /// Returns one continuous paint box per visual line for background roles. The horizontal box keeps
+    /// every authored/internal gap between the first and last marked clusters, while its two outer edges
+    /// exclude autospace, justification and punctuation glue owned by neighbouring text. Vertically it
+    /// uses the marked clusters' typographic faces rather than the complete line box, so paragraph
+    /// leading does not inflate a short highlight.
+    pub fn rich_text_background_segments(&self) -> Vec<RichTextLineSegment> {
+    let occupied_segments = self.positioned_rich_text_segments();
     if occupied_segments.is_empty() {
         return Vec::new();
     }
@@ -628,8 +627,8 @@ pub fn rich_text_background_segments(
     if backgrounds.is_empty() {
         return Vec::new();
     }
-    let positioned = positioned_clusters(result);
-    let trimmed = trim_outer_punctuation_glue(result, &backgrounds);
+    let positioned = positioned_clusters(self);
+    let trimmed = trim_outer_punctuation_glue(self, &backgrounds);
     let segments = trimmed
         .into_iter()
         .map(|segment| {
@@ -669,7 +668,7 @@ pub fn rich_text_background_segments(
                 .left
                 .max(first.draw_x - leading_padding)
                 .min(segment.right);
-            let natural_last_right = result
+            let natural_last_right = self
                 .glyph_runs
                 .iter()
                 .flat_map(|run| run.glyphs.iter())
@@ -684,22 +683,22 @@ pub fn rich_text_background_segments(
 
             let (face_top, face_bottom) = match background.metric_policy {
                 RichTextBackgroundMetricPolicy::MarkedFaces => {
-                    marked_face_vertical_bounds(result, &covered, &result.debug.metric_decisions)
+                    marked_face_vertical_bounds(self, &covered, &self.debug.metric_decisions)
                 }
                 RichTextBackgroundMetricPolicy::UniformTextStyle => {
                     uniform_text_style_vertical_bounds(
-                        result,
+                        self,
                         &segment,
-                        &result.debug.metric_decisions,
-                        &resolved_text_style_at(result, segment.range.start()),
+                        &self.debug.metric_decisions,
+                        &resolved_text_style_at(self, segment.range.start()),
                     )
                 }
                 RichTextBackgroundMetricPolicy::UniformParagraphStyle => {
                     uniform_text_style_vertical_bounds(
-                        result,
+                        self,
                         &segment,
-                        &result.debug.metric_decisions,
-                        &result.input.text_style,
+                        &self.debug.metric_decisions,
+                        &self.input.text_style,
                     )
                 }
             };
@@ -714,6 +713,7 @@ pub fn rich_text_background_segments(
         })
         .collect();
     with_adjacent_same_style_clearance(segments)
+    }
 }
 
 /// `AdjacentSameStyleRichTextClearance`: two source-adjacent runs with the same role and visible
@@ -958,13 +958,14 @@ fn trim_outer_punctuation_glue(
         .collect()
 }
 
-/// Resolves the physical center line used by Tiqian's underline/strike-through renderers.
-/// Consumers drawing a custom stroke style reuse this query instead of guessing from a line box.
-pub fn rich_text_decoration_line_y(
-    result: &LayoutResult,
-    segment: &RichTextLineSegment,
-    stroke_width: f32,
-) -> f32 {
+impl LayoutResult {
+    /// Resolves the physical center line used by Tiqian's underline/strike-through renderers.
+    /// Consumers drawing a custom stroke style reuse this query instead of guessing from a line box.
+    pub fn rich_text_decoration_line_y(
+        &self,
+        segment: &RichTextLineSegment,
+        stroke_width: f32,
+    ) -> f32 {
     assert!(
         stroke_width.is_finite() && stroke_width >= 0.0,
         "strokeWidth must be finite and non-negative"
@@ -976,7 +977,7 @@ pub fn rich_text_decoration_line_y(
         matches!(kind, RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. }),
         "richTextDecorationLineY only supports underline and line-through segments"
     );
-    let style = resolved_text_style_at(result, segment.range.start());
+    let style = resolved_text_style_at(self, segment.range.start());
     let raw_line_y = if matches!(kind, RichTextLayerKind::Underline { .. }) {
         segment.baseline + style.font_size * INTERLINEAR_UNDERLINE_OFFSET_EM
     } else {
@@ -984,9 +985,9 @@ pub fn rich_text_decoration_line_y(
         // resolved style's declared 字身框. Prefer its real ideographic metric decision; the
         // shared 0.88/0.12 em fallback is used only when the platform supplied no metrics.
         let (face_top, face_bottom) = uniform_text_style_vertical_bounds(
-            result,
+            self,
             segment,
-            &result.debug.metric_decisions,
+            &self.debug.metric_decisions,
             &style,
         );
         (face_top + face_bottom) / 2.0
@@ -995,6 +996,7 @@ pub fn rich_text_decoration_line_y(
         segment.top + stroke_width / 2.0,
         segment.bottom - stroke_width / 2.0,
     )
+    }
 }
 
 /// Returns a caret rectangle for `offset`. The x position is derived from Tiqian's cluster advances;

@@ -8,7 +8,7 @@ use crate::core::text_model::{
     TextStyle, TiqianTextContent,
 };
 
-use super::types::{ParagraphBuildError, ParagraphBuildOutput};
+use super::types::ParagraphBuildError;
 
 pub struct ParagraphBuilder {
     pub(super) source: String,
@@ -108,8 +108,8 @@ impl ParagraphBuilder {
         self.record_active_annotation_layers(range);
     }
 
-    /// 校验 builder 状态，并将 source、layout 输入和 rich-text side channel 分别组装完成。
-    pub fn build(self) -> Result<ParagraphBuildOutput, ParagraphBuildError> {
+    /// 校验 builder 状态，并组装携带 rich-text 声明的布局输入。
+    pub fn build(self) -> Result<LayoutInput, ParagraphBuildError> {
         if let Some(error) = self.first_error {
             return Err(error);
         }
@@ -128,8 +128,10 @@ impl ParagraphBuilder {
         let rich_text = Self::normalized_rich_text(self.rich_text);
         let mut source_boundaries = HashSet::new();
         let mut inline_boxes = self.inline_boxes;
-        // rich-text 本身保留在 side channel 中供渲染使用；这里只提取会影响布局几何的
-        // 范围边界和背景水平 padding，将后者转换为布局可处理的 inline box。
+        // rich-text 声明本身只随 LayoutInput 透传，不参与布局决策；但它的范围端点必须进入
+        // source_boundaries，LayoutResult 才能为渲染和交互保留与声明一致的精确边界。背景的
+        // horizontal_padding 会改变可占用的行内几何，因此转换为现有的 Narrow inline box；
+        // 保留 sequence 则能让这个派生对象与显式 inline box 一起按声明顺序排序。
         for (sequence, span) in &rich_text {
             source_boundaries.insert(span.range.start());
             source_boundaries.insert(span.range.end());
@@ -156,18 +158,16 @@ impl ParagraphBuilder {
             .line_break_spans(line_break_spans)
             .auto_space_suppressed_ranges(auto_space_suppressed_ranges)
             .build();
-        Ok(ParagraphBuildOutput {
-            input: LayoutInput::builder(content, self.constraints)
-                .text_style(self.text_style)
-                .paragraph_style(self.paragraph_style)
-                .profile_id(self.profile_id)
-                .decorations(Self::ordered_values(self.decorations))
-                .ruby_spans(Self::ordered_values(self.ruby_spans))
-                .inline_boxes(Self::ordered_values(inline_boxes))
-                .inline_objects(self.inline_objects)
-                .build(),
-            rich_text: rich_text.into_iter().map(|(_, span)| span).collect(),
-        })
+        Ok(LayoutInput::builder(content, self.constraints)
+            .text_style(self.text_style)
+            .paragraph_style(self.paragraph_style)
+            .profile_id(self.profile_id)
+            .decorations(Self::ordered_values(self.decorations))
+            .ruby_spans(Self::ordered_values(self.ruby_spans))
+            .inline_boxes(Self::ordered_values(inline_boxes))
+            .inline_objects(self.inline_objects)
+            .rich_text(rich_text.into_iter().map(|(_, span)| span).collect())
+            .build())
     }
 
     pub(super) fn ordered_values<T>(mut values: Vec<(u64, T)>) -> Vec<T> {

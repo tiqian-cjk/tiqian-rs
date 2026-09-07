@@ -6,12 +6,12 @@ use tiqian::core::layout_model::{
 use tiqian::core::layout_queries::{
     get_bounding_box, get_bounding_boxes, get_cursor_rect, get_line_for_offset,
     get_offset_for_position, get_selection_offset_for_position, glyph_ink_bounds,
-    positioned_clusters, positioned_clusters_for_line_box, positioned_rich_text_segments,
+    positioned_clusters, positioned_clusters_for_line_box,
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextSpan};
 
-use super::layout_queries_test_support::{cluster, line, result};
+use super::layout_queries_test_support::{cluster, line, result, result_with_rich_text};
 
 fn span(range: TextRange, kind: RichTextLayerKind) -> RichTextSpan {
     RichTextSpan {
@@ -40,14 +40,14 @@ fn glyph_ink_bounds_skips_unmatched_glyphs_and_returns_null_without_ink() {
 
 #[test]
 fn empty_line_results_short_circuit_every_query() {
-    let content = result("ab", Vec::new(), Vec::new(), Vec::new(), Vec::new(), LayoutDebugInfo::default());
+    let content = result_with_rich_text("ab", Vec::new(), Vec::new(), Vec::new(), Vec::new(), vec![span(text_range(0, 1), RichTextLayerKind::Underline { line: RichTextLinePaint::default() })], LayoutDebugInfo::default());
     assert_eq!(-1, get_line_for_offset(&content, scalar_offset(0)));
     assert_eq!(Rect { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 }, get_bounding_box(&content, scalar_offset(0)));
     assert_eq!(Rect { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 }, get_cursor_rect(&content, scalar_offset(0)));
     assert_eq!(scalar_offset(0), get_offset_for_position(&content, 5.0, 5.0));
     assert_eq!(scalar_offset(0), get_selection_offset_for_position(&content, 5.0, 5.0));
     assert!(get_bounding_boxes(&content, text_range(0, 2)).is_empty());
-    assert!(positioned_rich_text_segments(&content, &[span(text_range(0, 1), RichTextLayerKind::Underline { line: RichTextLinePaint::default() })]).is_empty());
+    assert!(content.positioned_rich_text_segments().is_empty());
 }
 
 #[test]
@@ -111,9 +111,9 @@ fn bounding_boxes_slice_zero_width_and_empty_clusters() {
 
 #[test]
 fn positioned_clusters_and_segments_return_empty_without_lines() {
-    let no_lines = result("ab", vec![cluster(text_range(0, 1), "a", 10.0)], Vec::new(), Vec::new(), Vec::new(), LayoutDebugInfo::default());
+    let no_lines = result_with_rich_text("ab", vec![cluster(text_range(0, 1), "a", 10.0)], Vec::new(), Vec::new(), Vec::new(), vec![span(text_range(0, 2), RichTextLayerKind::Background { background: Default::default() })], LayoutDebugInfo::default());
     assert!(positioned_clusters(&no_lines).is_empty());
-    assert!(positioned_rich_text_segments(&no_lines, &[span(text_range(0, 2), RichTextLayerKind::Background { background: Default::default() })]).is_empty());
+    assert!(no_lines.positioned_rich_text_segments().is_empty());
 }
 
 #[test]

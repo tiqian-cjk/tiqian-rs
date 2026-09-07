@@ -1,10 +1,10 @@
 use tiqian::api::{
-    ParagraphBuildOutput, ParagraphBuilder, RubyAnnotation, TextStyleOverride,
+    ParagraphBuilder, RubyAnnotation, TextStyleOverride,
 };
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text_model::{
     LastLineAlignment, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer,
-    RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint, RichTextSpan,
+    RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
     RubyLineHeightMode, TextStyle,
 };
 use tiqian::core::units::Ic;
@@ -12,7 +12,6 @@ use tiqian::core::units::Ic;
 #[derive(Clone)]
 pub struct DemoDocument {
     pub input: tiqian::core::text_model::LayoutInput,
-    pub rich_text: Vec<RichTextSpan>,
 }
 
 /// Private block model for the desktop demo sample.
@@ -559,14 +558,10 @@ fn paragraph(
         .text_style(text_style)
         .paragraph_style(paragraph_style);
     content(&mut builder);
-    let ParagraphBuildOutput {
-        input,
-        rich_text,
-    } = builder.build().expect("paragraph demo builder input must be valid");
-    DemoDocument {
-        input,
-        rich_text,
-    }
+    let input = builder
+        .build()
+        .expect("paragraph demo builder input must be valid");
+    DemoDocument { input }
 }
 
 fn inter_style(font_size: f32) -> TextStyleOverride {
