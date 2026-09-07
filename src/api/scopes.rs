@@ -3,7 +3,7 @@ use crate::core::text::Text;
 use crate::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LineBreakPolicy,
     LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextPaint,
-    RichTextSemantic, RubySpan,
+    RichTextLinePaint, RichTextSemantic, RubySpan,
 };
 
 use super::builder::ParagraphBuilder;
@@ -80,6 +80,42 @@ impl ParagraphBuilder {
 
     pub fn push_rich_text(&mut self, layers: &[RichTextLayer]) -> Result<(), ParagraphBuildError> {
         self.push_scope(OpenScopeKind::RichText(layers.to_vec()));
+        Ok(())
+    }
+
+    /// 开始一个使用指定 paint 的背景 layer scope。
+    pub fn push_background(
+        &mut self,
+        background: RichTextBackgroundPaint,
+        paints: &[RichTextPaint],
+    ) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
+            kind: RichTextLayerKind::Background { background },
+            paints: paints.to_vec(),
+        }]));
+        Ok(())
+    }
+
+    /// 开始一个沿用当前 paint 的下划线 layer scope。
+    pub fn push_underline(&mut self, line: RichTextLinePaint) -> Result<(), ParagraphBuildError> {
+        let paints = self.current_paints();
+        self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
+            kind: RichTextLayerKind::Underline { line },
+            paints,
+        }]));
+        Ok(())
+    }
+
+    /// 开始一个沿用当前 paint 的删除线 layer scope。
+    pub fn push_line_through(
+        &mut self,
+        line: RichTextLinePaint,
+    ) -> Result<(), ParagraphBuildError> {
+        let paints = self.current_paints();
+        self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
+            kind: RichTextLayerKind::LineThrough { line },
+            paints,
+        }]));
         Ok(())
     }
 
@@ -248,6 +284,102 @@ impl ParagraphBuilder {
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
         self.try_with_scope(OpenScopeKind::RichText(layers.to_vec()), content)
+    }
+
+    /// 在内容范围上声明背景 layer；背景 paint 与当前正文 paint 独立。
+    pub fn with_background(
+        &mut self,
+        background: RichTextBackgroundPaint,
+        paints: &[RichTextPaint],
+        content: impl FnOnce(&mut Self),
+    ) {
+        self.with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::Background { background },
+                paints: paints.to_vec(),
+            }]),
+            content,
+        );
+    }
+
+    /// 在内容范围上声明背景 layer；背景 paint 与当前正文 paint 独立。
+    pub fn try_with_background(
+        &mut self,
+        background: RichTextBackgroundPaint,
+        paints: &[RichTextPaint],
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        self.try_with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::Background { background },
+                paints: paints.to_vec(),
+            }]),
+            content,
+        )
+    }
+
+    /// 在内容范围上声明下划线 layer，并在进入 scope 时复制当前 paint。
+    pub fn with_underline(
+        &mut self,
+        line: RichTextLinePaint,
+        content: impl FnOnce(&mut Self),
+    ) {
+        let paints = self.current_paints();
+        self.with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::Underline { line },
+                paints,
+            }]),
+            content,
+        );
+    }
+
+    /// 在内容范围上声明下划线 layer，并在进入 scope 时复制当前 paint。
+    pub fn try_with_underline(
+        &mut self,
+        line: RichTextLinePaint,
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        let paints = self.current_paints();
+        self.try_with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::Underline { line },
+                paints,
+            }]),
+            content,
+        )
+    }
+
+    /// 在内容范围上声明删除线 layer，并在进入 scope 时复制当前 paint。
+    pub fn with_line_through(
+        &mut self,
+        line: RichTextLinePaint,
+        content: impl FnOnce(&mut Self),
+    ) {
+        let paints = self.current_paints();
+        self.with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::LineThrough { line },
+                paints,
+            }]),
+            content,
+        );
+    }
+
+    /// 在内容范围上声明删除线 layer，并在进入 scope 时复制当前 paint。
+    pub fn try_with_line_through(
+        &mut self,
+        line: RichTextLinePaint,
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        let paints = self.current_paints();
+        self.try_with_scope(
+            OpenScopeKind::RichText(vec![RichTextLayer {
+                kind: RichTextLayerKind::LineThrough { line },
+                paints,
+            }]),
+            content,
+        )
     }
 
     pub fn with_link(&mut self, target: String, content: impl FnOnce(&mut Self)) {

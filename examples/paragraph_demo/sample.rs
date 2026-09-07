@@ -3,8 +3,8 @@ use tiqian::api::{
 };
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text_model::{
-    ColorSpan, LastLineAlignment, ParagraphStyle,
-    RichTextBackgroundPaint, RichTextLinePattern, RichTextPaint, RichTextRole, RichTextSpan,
+    LastLineAlignment, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer,
+    RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint, RichTextSpan,
     RubyLineHeightMode, TextStyle,
 };
 use tiqian::core::units::Ic;
@@ -12,7 +12,6 @@ use tiqian::core::units::Ic;
 #[derive(Clone)]
 pub struct DemoDocument {
     pub input: tiqian::core::text_model::LayoutInput,
-    pub colors: Vec<ColorSpan>,
     pub rich_text: Vec<RichTextSpan>,
 }
 
@@ -47,16 +46,15 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
         body,
         ParagraphStyle::default(),
         |builder| {
-            builder.with_rich_text(
-                RichTextRole::Background,
+            builder.with_background(
                 background_paint(physical_scale),
+                &[RichTextPaint::Fill { argb: 0xFFFDE68A_u32 as i32 }],
                 |builder| builder.push("中文"),
             );
             builder.push("，。……——");
             builder.with_text_style(inter_style(16.0 * physical_scale), |builder| {
                 builder.with_color(0xFF2563EB_u32 as i32, |builder| {
-                    builder.with_rich_text(
-                        RichTextRole::Underline,
+                    builder.with_underline(
                         dashed_paint(physical_scale),
                         |builder| builder.push("English"),
                     );
@@ -121,7 +119,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
         .build();
 
     let proof = paragraph(physical_content_width, body.clone(), indented.clone(), |builder| {
-        builder.with_rich_text(RichTextRole::Underline, RichTextPaint::default(), |builder| {
+        builder.with_underline(RichTextLinePaint::default(), |builder| {
             builder.push("「第三次校样」");
         });
         builder.push("据编辑批注修订，日期为二〇二六年八月二十六日。");
@@ -280,9 +278,9 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             body.clone(),
             indented.clone(),
             |builder| {
-                builder.with_rich_text(
-                    RichTextRole::Background,
+                builder.with_background(
                     background_paint(physical_scale),
+                    &[RichTextPaint::Fill { argb: 0xFFFDE68A_u32 as i32 }],
                     |builder| builder.push("校样状态"),
                 );
                 builder.push("分为：");
@@ -292,13 +290,13 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
                 builder.push("、");
                 builder.color(0xFFB00020_u32 as i32, "旁注");
                 builder.push("与撤销。已核内容可以绿色标示；待校内容使用蓝色；旁注使用红色。");
-                builder.rich_text(RichTextRole::Underline, RichTextPaint::default(), "新增词句");
+                builder.underline(RichTextLinePaint::default(), "新增词句");
                 builder.push("加实线下划线，");
-                builder.rich_text(RichTextRole::Underline, dashed_paint(physical_scale), "存疑内容");
+                builder.underline(dashed_paint(physical_scale), "存疑内容");
                 builder.push("加虚线下划线，");
-                builder.rich_text(RichTextRole::Underline, dotted_paint(physical_scale), "补充说明");
+                builder.underline(dotted_paint(physical_scale), "补充说明");
                 builder.push("加点线下划线，");
-                builder.rich_text(RichTextRole::LineThrough, RichTextPaint::default(), "已经撤销的文字");
+                builder.line_through(RichTextLinePaint::default(), "已经撤销的文字");
                 builder.push("则保留删除线，以便追溯修改过程。");
             },
         )),
@@ -308,18 +306,28 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
             indented.clone(),
             |builder| {
                 builder.push("本次校样依据 ");
-                builder.inline_code(
-                    TextStyleOverride::builder()
-                        .font_families(vec!["monospace".to_owned()])
-                        .build(),
-                    code_paint(physical_scale),
-                    "editorial-notes.md",
-                );
+                builder.with_paints(&[RichTextPaint::Fill { argb: 0xFFE5E7EB_u32 as i32 }], |builder| {
+                    builder.with_rich_text(
+                        &[RichTextLayer {
+                            kind: RichTextLayerKind::Text,
+                            paints: vec![RichTextPaint::default()],
+                        }],
+                        |builder| {
+                            builder.inline_code(
+                                TextStyleOverride::builder()
+                                    .font_families(vec!["monospace".to_owned()])
+                                    .build(),
+                                code_paint(physical_scale),
+                                "editorial-notes.md",
+                            );
+                        },
+                    );
+                });
                 builder.push(" 整理，参考版本为 ");
                 builder.with_color(0xFF7E22CE_u32 as i32, |builder| {
-                    builder.with_rich_text(
-                        RichTextRole::Background,
+                    builder.with_background(
                         background_paint(physical_scale),
+                        &[RichTextPaint::Fill { argb: 0xFFFDE68A_u32 as i32 }],
                         |builder| builder.push("Review 3"),
                     );
                 });
@@ -553,12 +561,10 @@ fn paragraph(
     content(&mut builder);
     let ParagraphBuildOutput {
         input,
-        colors,
         rich_text,
     } = builder.build().expect("paragraph demo builder input must be valid");
     DemoDocument {
         input,
-        colors,
         rich_text,
     }
 }
@@ -570,47 +576,44 @@ fn inter_style(font_size: f32) -> TextStyleOverride {
         .build()
 }
 
-fn background_paint(physical_scale: f32) -> RichTextPaint {
-    RichTextPaint::builder()
-        .argb(0xFFFDE68A_u32 as i32)
-        .background(
-            RichTextBackgroundPaint::builder()
-                .horizontal_padding(2.0 * physical_scale)
-                .vertical_padding(physical_scale)
-                .corner_radius(3.0 * physical_scale)
-                .build(),
-        )
+/// 构造普通文本背景的几何参数；数值按 demo 的物理缩放统一换算。
+fn background_paint(physical_scale: f32) -> RichTextBackgroundPaint {
+    RichTextBackgroundPaint::builder()
+        .horizontal_padding(2.0 * physical_scale)
+        .vertical_padding(physical_scale)
+        .corner_radius(3.0 * physical_scale)
         .build()
 }
 
-fn code_paint(physical_scale: f32) -> RichTextPaint {
-    RichTextPaint::builder()
-        .argb(0xFFE5E7EB_u32 as i32)
-        .background(
-            RichTextBackgroundPaint::builder()
-                .horizontal_padding(2.0 * physical_scale)
-                .vertical_padding(physical_scale)
-                .corner_radius(2.0 * physical_scale)
-                .build(),
-        )
+/// 构造 inline-code 背景的几何参数。
+fn code_paint(physical_scale: f32) -> RichTextBackgroundPaint {
+    RichTextBackgroundPaint::builder()
+        .horizontal_padding(2.0 * physical_scale)
+        .vertical_padding(physical_scale)
+        .corner_radius(2.0 * physical_scale)
         .build()
 }
 
-fn dashed_paint(physical_scale: f32) -> RichTextPaint {
-    RichTextPaint::builder()
-        .line_pattern(RichTextLinePattern::dashed(
-            physical_scale,
-            3.0 * physical_scale,
-            2.0 * physical_scale,
-        ))
-        .build()
+/// 构造 demo 使用的虚线参数。
+fn dashed_paint(physical_scale: f32) -> RichTextLinePaint {
+    RichTextLinePaint {
+        thickness: physical_scale,
+        pattern: RichTextLinePattern::Dashed {
+            dash_length: 3.0 * physical_scale,
+            gap_length: 2.0 * physical_scale,
+        },
+        adjacent_same_style_clearance: 0.0,
+    }
 }
 
-fn dotted_paint(physical_scale: f32) -> RichTextPaint {
-    RichTextPaint::builder()
-        .line_pattern(RichTextLinePattern::dotted(
-            1.5 * physical_scale,
-            1.5 * physical_scale,
-        ))
-        .build()
+/// 构造 demo 使用的点线参数。
+fn dotted_paint(physical_scale: f32) -> RichTextLinePaint {
+    RichTextLinePaint {
+        thickness: 1.5 * physical_scale,
+        pattern: RichTextLinePattern::Dotted {
+            gap_length: 1.5 * physical_scale,
+        },
+        adjacent_same_style_clearance: 0.0,
+    }
 }
+

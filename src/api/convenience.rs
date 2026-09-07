@@ -1,5 +1,5 @@
 use crate::core::text_model::{
-    DecorationKind, RichTextBackgroundPaint, RichTextLayer,
+    DecorationKind, RichTextBackgroundPaint, RichTextLayer, RichTextLinePaint, RichTextPaint,
 };
 
 use super::builder::ParagraphBuilder;
@@ -50,6 +50,29 @@ impl ParagraphBuilder {
         text: &str,
     ) -> &mut Self {
         self.with_rich_text(layers, |builder| builder.push(text));
+        self
+    }
+
+    /// 以独立的背景 paint 为文本添加背景。
+    pub fn background(
+        &mut self,
+        background: RichTextBackgroundPaint,
+        paints: &[RichTextPaint],
+        text: &str,
+    ) -> &mut Self {
+        self.with_background(background, paints, |builder| builder.push(text));
+        self
+    }
+
+    /// 使用当前 paint 为文本添加下划线。
+    pub fn underline(&mut self, line: RichTextLinePaint, text: &str) -> &mut Self {
+        self.with_underline(line, |builder| builder.push(text));
+        self
+    }
+
+    /// 使用当前 paint 为文本添加删除线。
+    pub fn line_through(&mut self, line: RichTextLinePaint, text: &str) -> &mut Self {
+        self.with_line_through(line, |builder| builder.push(text));
         self
     }
 

@@ -510,10 +510,10 @@ impl DesktopParagraphDemo {
     ) -> Result<(), String> {
         let renderer = renderer.translated(x as f32, y as f32);
         renderer.paint_rich_text_backgrounds(scene, layout, &document.rich_text)?;
-        renderer.paint_body(scene, layout, &document.colors)?;
+        renderer.paint_body(scene, layout, &document.rich_text)?;
         renderer.paint_rich_text_lines(scene, layout, &document.rich_text)?;
-        renderer.paint_decorations(scene, layout, &document.colors)?;
-        renderer.paint_annotations(scene, layout)?;
+        renderer.paint_decorations(scene, layout, &document.rich_text)?;
+        renderer.paint_annotations(scene, layout, &document.rich_text)?;
         Ok(())
     }
 
@@ -698,15 +698,17 @@ mod tests {
             .paint_rich_text_backgrounds(&mut scene, result, &document.rich_text)
             .unwrap();
         renderer
-            .paint_body(&mut scene, result, &document.colors)
+            .paint_body(&mut scene, result, &document.rich_text)
             .unwrap();
         renderer
             .paint_rich_text_lines(&mut scene, result, &document.rich_text)
             .unwrap();
         renderer
-            .paint_decorations(&mut scene, result, &document.colors)
+            .paint_decorations(&mut scene, result, &document.rich_text)
             .unwrap();
-        renderer.paint_annotations(&mut scene, result).unwrap();
+        renderer
+            .paint_annotations(&mut scene, result, &document.rich_text)
+            .unwrap();
         assert!(!scene.encoding().draw_tags.is_empty());
     }
 
