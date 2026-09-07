@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-06
+- Amended: 2026-09-08
 - Implementation: Complete
 - Relates: [2026-09-06 统一富文本旁路模型](../iteration/2026-09-06-unified-rich-text-paint-model.md)
 
@@ -26,10 +27,11 @@ ruby / bopomofo 则固定使用默认正文色。因此删除 `ColorSpan` 后，
 
 ## Decision
 
-### 统一旁路输出
+### 统一输入与结果输出
 
-删除独立的 `ColorSpan` 输出。`ParagraphBuildOutput` 保留 `input: LayoutInput` 与一个统一的
-`rich_text: Vec<RichTextSpan>` 字段。
+删除独立的 `ColorSpan` 输出。`RichTextSpan` 作为 `LayoutInput.rich_text` 的字段随段落输入传入，
+`LayoutResult` 持有该 input，因此 result 自身包含 renderer 与交互层消费 rich-text 所需的全部声明。
+`ParagraphBuilder::build()` 直接返回 `LayoutInput`，不再提供独立的构建输出类型。
 
 `RichTextSpan` 继续以一个半开 Unicode scalar `TextRange` 绑定 source text。它包含视觉 layer 和
 非视觉语义：
@@ -42,10 +44,15 @@ RichTextSpan
 ```
 
 颜色、背景、下划线、删除线、CLREQ decoration、ruby / bopomofo 和链接均从同一组 range
-旁路记录产生。`inline_code()` 的视觉部分也使用同 range 的 Background layer。ruby / bopomofo layer 的
+记录产生。`inline_code()` 的视觉部分也使用同 range 的 Background layer。ruby / bopomofo layer 的
 `range` 是其 `RubySpan.base_range`；它只为 layout 产出的注文
 glyph placement 指定 paint，不承载注文文本、字体或几何。builder 继续为每个非空 rich-text range 将首尾
 写入 `LayoutInput.content.source_boundaries`，使 layout 输出精确的范围几何。
+
+`rich_text` 随 `LayoutInput` 传递，供结果输出使用。shaping、字体 fallback、度量、断行、行调整、
+两端对齐和 annotation geometry 不读取它；它也不进入只服务于布局决策的缓存 key。
+`LayoutInput` 的 clone、调试输出和 `LayoutResult.input` 仍完整保留该字段，使同一个 result 可以在不持有
+第二份 span 列表的情况下被重绘、命中测试或交给其他 renderer。
 
 `ParagraphBuilder::new()` 初始化顶级 paints 为 `Fill { argb: 0xFF1E1E23 }`。`.paints(&[RichTextPaint])`
 与 `.text_style(...)` 一样只能在追加 source text 前设置，用新的完整集合替换该顶级默认值。
@@ -183,6 +190,28 @@ rich-text renderer 决定。
 Background layer 查找规则处理。需要专用背景 paint 时，调用方使用 `with_paints` / `try_with_paints` 或外层
 `Background` layer 声明。
 
+### LayoutResult 查询责任
+
+rich-text 的逐行绘制几何必须在调用 `LayoutResult` 查询时派生。它依赖最终 cluster、line、glyph run、
+字体度量和 layout decision，不能由 builder 预先计算，也不在 `LayoutResult` 中缓存。当前绘制一次通常只会
+消费部分 layer；不缓存可以避免未使用的背景、线条、annotation 或语义范围产生额外分配。
+
+以下查询属于 `LayoutResult` 方法，调用方不得再传入外部 `&[RichTextSpan]`：
+
+- 按 layer 和 visual line 划分的占用范围片段；
+- 背景的可绘制片段、外侧标点 glue 裁剪、padding、垂直 metric box 与 continuation corner；
+- 下划线与删除线的可绘制片段、外侧 glue 裁剪与最终中心线位置；
+- decoration 与 ruby / bopomofo annotation 按 range 和 kind 取得的 layer；
+- 文本、背景、线条、decoration 与 annotation layer 的 range 筛选。
+
+方法可接受由同一 result 产生的 line segment，以及 renderer 的 stroke width 等绘制参数；这些参数不属于
+布局结果，且不会让调用方重新提供 rich-text 声明。`RichTextLineSegment` 继续带有其对应的单 layer span，
+以便 renderer 从该 segment 直接读取 paints 和对象几何。segment 必须从 `result.input.rich_text` 派生；
+实现可按既有逐 layer 分段语义构造只含一个 layer 的规范化 span，不读取调用方持有的外部列表。
+
+现有 rich-text 范围查询应收敛为 `LayoutResult` 方法；其内部算法、返回类型和几何语义不因移动而改变。
+自由函数不保留同名转发版本，避免同一 rich-text 查询存在两条公开调用路径。
+
 ### Renderer 责任
 
 renderer 根据自身能力选择 layer 的绘制顺序、同类 paint 的合成方式及不支持效果的处理方式。core
@@ -202,13 +231,10 @@ renderer 对每个 paint 独立判断是否支持。不支持的 `Fill`、`Strok
 
 ### 迁移边界
 
-本次变更调整输入构造与 layout 后的范围绘制旁路模型。`LayoutInput` 仍是 layout pipeline 的唯一输入；
-统一 rich-text 记录不新增或改变 layout 算法规则。`Decoration` 与 `Annotation` layer 通过 range 与 kind
-引用既有 layout 输入产生的结果。`LayoutResult` 暂不持有 rich-text 记录，调用方继续在 renderer 调用时
-同时持有 `LayoutResult` 与构造输出中的 `rich_text`。
-
-本迭代实现 core 类型、builder lowering、现有颜色和 rich-text 迁移、查询适配与测试。demo 对新增的
-stroke 和 shadow 可暂时不绘制，但不得用另一种视觉效果替代或将其作为 layout 参数处理。
+本决策调整 rich-text 的输入归属和 layout 后查询 API，不改变其对 layout 算法的影响范围。
+`Decoration` 与 `Annotation` layer 仍通过 range 与 kind 引用既有 layout input 产生的结果；它们不替代
+`LayoutInput.decorations` 或 `LayoutInput.ruby_spans`。demo 对新增的 stroke 和 shadow 可暂时不绘制，
+但不得用另一种视觉效果替代或将其作为 layout 参数处理。
 
 ### Invariants
 
@@ -243,6 +269,10 @@ stroke 和 shadow 可暂时不绘制，但不得用另一种视觉效果替代�
 - `.paints(...)`、`with_paints` 与 `try_with_paints` 的当前 paints 完整替换外层集合；未查找到 `Text` layer
   的正文 range 使用当时的副本生成 `Text` layer；
 - `*_rich_text` 使用 `&[RichTextLayer]`，不再接收 `RichTextRole`；
+- `LayoutInput.rich_text` 保存 builder 规范化后的 span；它不参与 layout policy 或 layout-only cache key；
+- `ParagraphBuilder::build()` 直接产出 `LayoutInput`，`LayoutResult` 经由其 input 提供唯一的 rich-text 输出；
+- rich-text 范围与绘制几何查询由 `LayoutResult` 方法提供，调用方不再向查询传入独立 span 列表；
+- rich-text 逐行几何在查询时基于最终 `LayoutResult` 派生，不建立结果内缓存；
 - rich-text layer 自身不新增或改变 layout 规则；`Decoration` 与 `Annotation` 的布局效果仍仅由对应的
   `LayoutInput` 记录产生；
 - renderer 必须基于 `LayoutResult` 的现有几何重放范围，不能重新 shaping 或自行推导断行；
@@ -257,13 +287,13 @@ stroke 和 shadow 可暂时不绘制，但不得用另一种视觉效果替代�
   各对象使用不同绘制定义；
 - stroke 与 shadow 的模型可先进入 core，不依赖某一 renderer 已实现全部绘制能力；
 - renderer 能按平台能力和策略决定 layer 的绘制及合成顺序；
-- 后续若为富文本增加 core 查询，查询可以面向统一 `RichTextSpan`，不需要同时接受颜色与富文本列表。
+- result 可独立交给 renderer、交互层和异步绘制队列，不再需要并行保存构建输出中的第二份 span 列表。
 
 ### 需要接受的变化
 
 - `ColorSpan`、旧的单 role `RichTextSpan` 和旧 `RichTextPaint` 字段模型将被替换；
-- 所有 renderer、demo 和测试须改为消费统一 `rich_text` 列表；
-- 现有背景、下划线和删除线查询须从 role 单值模型调整为按 layer 筛选；
+- 所有 renderer、demo 和测试须从 `LayoutResult` 消费统一 rich-text 声明与范围查询；
+- 现有背景、下划线和删除线查询须作为 `LayoutResult` 方法按 layer 筛选；
 - decoration 与 annotation renderer 须按 range 和 kind 从统一 layer 取得 paint，同时继续消费 core 已解析的
   装饰几何和注文 glyph placement；
 - renderer 需要按 paint 独立跳过不支持的 stroke、shadow 或彩色 emoji 效果。
@@ -278,20 +308,26 @@ stroke 和 shadow 可暂时不绘制，但不得用另一种视觉效果替代�
   并会将 renderer 的合成策略固定到 core 数据结构中。
 - **由 core 规定 layer 与 paint 的全局绘制顺序。** 否决：不同 renderer 的能力和策略不同，core 只提供
   调用方提供的绘制定义与布局几何。
-- **将 rich-text 记录直接加入 `LayoutInput`。** 否决：这些记录不影响当前 layout 算法；保留在构建输出
-  可维持 layout 输入边界。
+- **在 `LayoutResult` 构造时缓存所有 rich-text 几何。** 否决：最终几何可由 result 无状态派生，而 renderer
+  经常只消费部分 layer。先按查询时派生；只有 profile 证明重复派生为瓶颈时，才在新的 ADR 中决定缓存范围与
+  失效语义。
+- **继续让 renderer 同时持有 `LayoutResult` 和构建输出的 span 列表。** 否决：两份对象共同定义一次绘制的
+  完整输入，异步绘制、跨 API 传递和测试都容易丢失或错配其中一份。span 应随 layout input 保留并由 result
+  统一暴露。
 
 ## Verification
 
 实施完成时至少验证：
 
 1. `ParagraphBuilder` 的颜色便利方法生成文本 layer 的 `Fill`，且不再生成 `ColorSpan`；
-2. builder 对所有非空 rich-text layer 和语义范围维护 `source_boundaries`；
+2. builder 将规范化后的 rich-text 直接写入 `LayoutInput`，并对所有非空 layer 和语义范围维护
+  `source_boundaries`；
 3. 嵌套和相交 span 可保留多个 layer，文本 fill 的后声明覆盖语义与当前颜色范围一致；连续且相同的文本
   layer 收敛后只保留合并范围的 `source_boundaries`；
-4. 背景、下划线、删除线继续从 `LayoutResult` 的范围几何生成逐行绘制片段；
+4. `LayoutResult` 的 rich-text 方法在不接收外部 span 列表时，继续生成背景、下划线和删除线的逐行绘制片段；
 5. decoration 与 ruby / bopomofo 可分别取得不同于正文和通用线条的 paint，且其 layout 结果保持不变；
 6. `Stroke` 与 `Shadow` 不改变 layout dump、`LayoutResult.size`、line、cluster 或 glyph bounds；
 7. demo 继续重放现有 fill、背景、线条、CLREQ decoration 和注文；尚未支持的 stroke 与 shadow 只跳过
   对应 paint，同 layer 的受支持 paint 继续绘制；
-8. `cargo test --all-targets`、`cargo check`、`git diff --check` 和相关文档风格检查通过。
+8. demo 只传入 `LayoutResult` 仍可重放文本、背景、线条、decoration 和 annotation；
+9. `cargo test --all-targets`、`cargo check`、`git diff --check` 和相关文档风格检查通过。
