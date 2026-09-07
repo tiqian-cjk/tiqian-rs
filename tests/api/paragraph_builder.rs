@@ -133,6 +133,7 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     assert_eq!(
         vec![
             RichTextRole::Underline,
+            RichTextRole::TechnicalInline,
             RichTextRole::InlineCode,
             RichTextRole::Link {
                 target: "https://tiqian.org".to_owned(),

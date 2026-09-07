@@ -409,6 +409,11 @@ impl ParagraphBuilder {
             }
             OpenScopeKind::Technical => {
                 if !range.is_empty() {
+                    self.rich_text.push((
+                        scope.sequence,
+                        RichTextSpan::new(range, RichTextRole::TechnicalInline),
+                    ));
+                    self.add_source_boundaries(range);
                     self.line_break_spans.push((
                         scope.sequence,
                         LineBreakSpan {
