@@ -205,29 +205,26 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                 displayed_face_selection_text = prep.text.slice(decision.range).to_owned();
             }
             let style = (prep.style_at)(decision.range.start());
-            let metric_request = FontMetricsRequest::builder(
-                decision.candidate.key.clone(),
-                (prep.font_size_at)(decision.range.start()),
-                decision.role,
-                prep.input.text_style.locale.clone(),
-            )
-            .font_weight(style.font_weight)
-            .italic(style.italic)
-            .face_selection_text(Text::from(displayed_face_selection_text))
-            .font_families(style.font_families)
-            .build();
+            let metric_request = FontMetricsRequest {
+                font_key: decision.candidate.key.clone(),
+                font_size: (prep.font_size_at)(decision.range.start()),
+                role: decision.role,
+                locale: prep.input.text_style.locale.clone(),
+                font_weight: style.font_weight,
+                italic: style.italic,
+                face_selection_text: Text::from(displayed_face_selection_text),
+                font_families: style.font_families,
+            };
             let raw_metrics = request.font_metrics_resolver.resolve(&metric_request);
-            let layout_metrics =
-                request
-                    .font_metrics_normalizer
-                    .normalize(&FontMetricsNormalizationInput {
-                        request: metric_request.clone(),
-                        raw_metrics,
-                    });
+            let normalization_input = FontMetricsNormalizationInput {
+                request: metric_request,
+                raw_metrics,
+            };
+            let layout_metrics = request.font_metrics_normalizer.normalize(&normalization_input);
             ClusterMetricDecision {
                 range: decision.range,
                 source_text: prep.text.slice_text(decision.range),
-                request: metric_request,
+                request: normalization_input.request,
                 raw_metrics,
                 layout_metrics,
             }

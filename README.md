@@ -44,6 +44,30 @@ TIQIAN_UPDATE_LAYOUT_GOLDENS=1 cargo test --test tiqian layout_fixture_golden_te
 
 ## 本地检查
 
+### 无界面布局性能测量
+
+`paragraph-layout-bench` 复用 desktop demo 的复杂文字 sample 和 HarfRust 字体后端，
+按固定宽度序列重复布局，无需窗口或 GPU。默认运行首次序列、20 轮预热和 200 轮测量，
+每轮依次使用 672、360、960 物理像素宽度，缩放为 1。
+
+```shell
+cargo run --release --example paragraph-layout-bench
+cargo run --release --example paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
+```
+
+输出按整份 sample 页面统计，`layout` 是所有 `engine.layout()` 的累计耗时，
+包含 HarfRust shaping、字体度量与完整 debug 数据；`result_drop` 是结果集中析构时间；
+`total` 还包含输入准备、列表宽度计算和输出数量统计。
+各项报告 min、median、p95、mean、max（ms），同时检查预热后的调用数、行数、
+cluster 数和正文 glyph 数与首次序列一致。首次序列的后续宽度会复用前面的引擎缓存。
+比较优化前后时保持参数与构建配置一致，以各宽度的 `layout` median 为主要指标。
+
+采样时使用 `cargo flamegraph --example paragraph-layout-bench -- --iterations 1000`。
+火焰图覆盖整个进程，包含启动、预热、输入准备和析构；分析核心时筛选 `engine.layout`
+的调用树。采样运行的耗时不与普通 release 运行直接比较。
+
+### 编译与测试
+
 Rust 侧常规编译与测试：
 
 ```shell

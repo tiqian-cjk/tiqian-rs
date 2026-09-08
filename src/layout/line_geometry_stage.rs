@@ -443,14 +443,14 @@ pub fn line_metrics(
     }
 }
 
-pub fn renderable_glyph_run_clusters(
-    clusters: &[Cluster],
+pub fn renderable_glyph_run_clusters<'a>(
+    clusters: &'a [Cluster],
     open_type_features_by_cluster_range: &HashMap<
         super::super::core::geometry::TextRange,
         Vec<String>,
     >,
-) -> Vec<Vec<Cluster>> {
-    let mut groups: Vec<Vec<Cluster>> = Vec::new();
+) -> Vec<Vec<&'a Cluster>> {
+    let mut groups: Vec<Vec<&'a Cluster>> = Vec::new();
     for cluster in clusters
         .iter()
         .filter(|cluster| !cluster.display_text.is_empty() && !is_inline_object_cluster(cluster))
@@ -469,9 +469,9 @@ pub fn renderable_glyph_run_clusters(
                             .unwrap_or(&[])
             })
         {
-            current.push(cluster.clone());
+            current.push(cluster);
         } else {
-            groups.push(vec![cluster.clone()]);
+            groups.push(vec![cluster]);
         }
     }
     groups

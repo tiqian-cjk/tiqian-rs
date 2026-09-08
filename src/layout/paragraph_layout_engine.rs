@@ -116,7 +116,7 @@ impl ExplainableStubParagraphLayoutEngine {
             self.line_breaker.as_ref(),
         ));
         match finish_paragraph_layout(LineAdjustmentRequest {
-            prep: &prep,
+            prep,
             plan: &plan,
             justifier: &self.justifier,
             line_breaker_strategy_name: self.line_breaker.strategy_name(),

@@ -36,7 +36,7 @@ pub enum LineAdjustmentStageOutcome {
 }
 
 pub struct LineAdjustmentRequest<'a> {
-    pub prep: &'a ParagraphLayoutPrep,
+    pub prep: ParagraphLayoutPrep,
     pub plan: &'a LineBreakPlanningStageResult,
     pub justifier: &'a Justifier,
     pub line_breaker_strategy_name: &'a str,
@@ -45,7 +45,7 @@ pub struct LineAdjustmentRequest<'a> {
 }
 
 pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjustmentStageOutcome {
-    let prep = request.prep;
+    let prep = &request.prep;
     let plan = request.plan;
     let line_solution = &plan.line_solution;
     let applied_hanging_clusters: HashSet<_> = line_solution
@@ -499,15 +499,20 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
             plan.base_line_metrics.height
         }
     });
+    let size = Size {
+        width: widest_line.min(prep.input.constraints.max_width()),
+        height: total_height,
+    };
+    let prep = request.prep;
     let debug = build_layout_debug_info(LayoutDebugStageInput {
         text: &prep.text,
         font_decisions: &prep.font_decisions,
         punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
         substitution_rollbacks: &prep.substitution_rollbacks,
-        shaping_decisions: &prep.shaping_decisions,
+        shaping_decisions: prep.shaping_decisions,
         metric_decisions: &plan.metric_decisions,
         punctuation_atoms: &prep.punctuation_atoms,
-        geometry_decisions: &geometry_decisions,
+        geometry_decisions,
         spacing_plan: &prep.spacing_plan,
         attached_punctuation_boundary: &prep.attached_punctuation_boundary,
         role_override_infos: &prep.role_override_infos,
@@ -517,18 +522,18 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         clusters: &prep.clusters,
         justification_plans: &justification_plans,
         auto_space_decisions: &prep.auto_space_decisions,
-        edge_trim_decisions: &edge_trim_decisions,
-        decoration_decisions: &annotation.decoration_decisions,
-        decoration_segments: &annotation.decoration_segments,
-        ruby_decisions: &annotation.ruby_decisions,
-        bopomofo_decisions: &annotation.bopomofo_decisions,
+        edge_trim_decisions,
+        decoration_decisions: annotation.decoration_decisions,
+        decoration_segments: annotation.decoration_segments,
+        ruby_decisions: annotation.ruby_decisions,
+        bopomofo_decisions: annotation.bopomofo_decisions,
         mandatory_break_decisions: &prep.mandatory_break_decisions,
         max_lines_decision: line_boxes.max_lines_decision,
         line_spacing_decision: plan.line_spacing_decision.clone(),
         ruby_line_height_decision: vertical_geometry.ruby_line_height_decision,
         inline_object_line_height_decision: vertical_geometry.inline_object_line_height_decision,
         kinsoku_decision: plan.kinsoku_decision.clone(),
-        contextual_kinsoku_decisions: &contextual_kinsoku_decisions,
+        contextual_kinsoku_decisions,
         line_length_grid_decision: prep.line_length_grid_decision.clone(),
         first_line_indent_decision: plan.first_line_indent_decision.clone(),
         inline_box_decisions: &prep.inline_box_result.decisions,
@@ -541,11 +546,8 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         progressive_break_opportunities: &plan.progressive_break_opportunities,
     });
     LineAdjustmentStageOutcome::Finished(Box::new(LayoutResult::with_debug(
-        prep.input.clone(),
-        Size {
-            width: widest_line.min(prep.input.constraints.max_width()),
-            height: total_height,
-        },
+        prep.input,
+        size,
         final_clusters,
         glyph_runs,
         lines,

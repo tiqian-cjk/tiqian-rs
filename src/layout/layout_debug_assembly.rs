@@ -18,7 +18,8 @@ use super::super::core::layout_model::{
     SpacingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
-use super::super::font::font_policy::{FontDecision, FontRoleClassifier, FontRoleContext};
+use super::super::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
+use super::super::font::font_policy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
 use super::justifier::JustificationPlan;
 use super::line_geometry_stage::ClusterMetricDecision;
 use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
@@ -32,10 +33,10 @@ pub struct LayoutDebugStageInput<'a> {
     pub font_decisions: &'a [FontDecision],
     pub punctuation_glyph_substitutor: &'a ClreqPunctuationGlyphSubstitutor,
     pub substitution_rollbacks: &'a HashMap<TextRange, String>,
-    pub shaping_decisions: &'a [ShapingDecisionInfo],
+    pub shaping_decisions: Vec<ShapingDecisionInfo>,
     pub metric_decisions: &'a [ClusterMetricDecision],
     pub punctuation_atoms: &'a [PunctuationAtom],
-    pub geometry_decisions: &'a [ClusterGeometryDecisionInfo],
+    pub geometry_decisions: Vec<ClusterGeometryDecisionInfo>,
     pub spacing_plan: &'a PunctuationSpacingCompressionResult,
     pub attached_punctuation_boundary: &'a AttachedInlinePunctuationBoundaryResult,
     pub role_override_infos: &'a [RoleOverrideInfo],
@@ -45,18 +46,18 @@ pub struct LayoutDebugStageInput<'a> {
     pub clusters: &'a [Cluster],
     pub justification_plans: &'a [Option<JustificationPlan>],
     pub auto_space_decisions: &'a [AutoSpaceDecisionInfo],
-    pub edge_trim_decisions: &'a [LineEdgeTrimDecisionInfo],
-    pub decoration_decisions: &'a [DecorationDecisionInfo],
-    pub decoration_segments: &'a [DecorationSegmentInfo],
-    pub ruby_decisions: &'a [RubyDecisionInfo],
-    pub bopomofo_decisions: &'a [BopomofoDecisionInfo],
+    pub edge_trim_decisions: Vec<LineEdgeTrimDecisionInfo>,
+    pub decoration_decisions: Vec<DecorationDecisionInfo>,
+    pub decoration_segments: Vec<DecorationSegmentInfo>,
+    pub ruby_decisions: Vec<RubyDecisionInfo>,
+    pub bopomofo_decisions: Vec<BopomofoDecisionInfo>,
     pub mandatory_break_decisions: &'a [MandatoryBreakDecisionInfo],
     pub max_lines_decision: Option<MaxLinesDecisionInfo>,
     pub line_spacing_decision: Option<LineSpacingDecisionInfo>,
     pub ruby_line_height_decision: Option<RubyLineHeightDecisionInfo>,
     pub inline_object_line_height_decision: Option<InlineObjectLineHeightDecisionInfo>,
     pub kinsoku_decision: KinsokuDecisionInfo,
-    pub contextual_kinsoku_decisions: &'a [ContextualKinsokuDecisionInfo],
+    pub contextual_kinsoku_decisions: Vec<ContextualKinsokuDecisionInfo>,
     pub line_length_grid_decision: LineLengthGridDecisionInfo,
     pub first_line_indent_decision: super::super::core::layout_model::FirstLineIndentDecisionInfo,
     pub inline_box_decisions: &'a [InlineBoxDecisionInfo],
@@ -92,7 +93,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 } else {
                     substitution.display_text
                 },
-                role: format!("{:?}", decision.role),
+                role: font_role_name(decision.role).to_owned(),
                 font_key: decision.candidate.key.clone(),
                 reason: decision.reason.clone(),
                 substitution_reason: if let Some(cause) = rollback_cause {
@@ -109,17 +110,28 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .map(|decision| MetricDecisionInfo {
             range: decision.range,
             source_text: decision.source_text.clone(),
-            role: format!("{:?}", decision.request.role),
+            role: font_role_name(decision.request.role).to_owned(),
             font_key: decision.request.font_key.clone(),
             raw_ascent: decision.raw_metrics.ascent,
             raw_descent: decision.raw_metrics.descent,
             raw_leading: decision.raw_metrics.leading,
-            raw_source: format!("{:?}", decision.raw_metrics.source),
+            raw_source: font_metric_source_name(decision.raw_metrics.source).to_owned(),
             layout_ascent: decision.layout_metrics.ascent,
             layout_descent: decision.layout_metrics.descent,
-            baseline_class: format!("{:?}", decision.layout_metrics.baseline_class),
-            metric_box: format!("{:?}", decision.layout_metrics.metric_box),
-            layout_source: format!("{:?}", decision.layout_metrics.source),
+            baseline_class: match decision.layout_metrics.baseline_class {
+                BaselineClass::Roman => "Roman",
+                BaselineClass::IdeographicCentered => "IdeographicCentered",
+                BaselineClass::IdeographicLow => "IdeographicLow",
+                BaselineClass::Math => "Math",
+                BaselineClass::Hanging => "Hanging",
+            }.to_owned(),
+            metric_box: match decision.layout_metrics.metric_box {
+                MetricBox::RawFontBox => "RawFontBox",
+                MetricBox::IdeographicEmBox => "IdeographicEmBox",
+                MetricBox::IdeographicCharacterFace => "IdeographicCharacterFace",
+                MetricBox::SampledInkBox => "SampledInkBox",
+            }.to_owned(),
+            layout_source: font_metric_source_name(decision.layout_metrics.source).to_owned(),
             reason: decision.layout_metrics.reason.clone(),
         })
         .collect();
@@ -258,27 +270,27 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .collect();
     LayoutDebugInfo::builder()
         .font_decisions(font_decisions)
-        .shaping_decisions(stage.shaping_decisions.to_vec())
+        .shaping_decisions(stage.shaping_decisions)
         .metric_decisions(metric_decisions)
         .punctuation_decisions(punctuation_decisions)
-        .geometry_decisions(stage.geometry_decisions.to_vec())
+        .geometry_decisions(stage.geometry_decisions)
         .spacing_decisions(spacing_decisions)
         .role_overrides(stage.role_override_infos.to_vec())
         .line_decisions(line_decisions)
         .justification_decisions(justification_decisions)
         .auto_space_decisions(stage.auto_space_decisions.to_vec())
-        .line_edge_trim_decisions(stage.edge_trim_decisions.to_vec())
-        .decoration_decisions(stage.decoration_decisions.to_vec())
-        .decoration_segments(stage.decoration_segments.to_vec())
-        .ruby_decisions(stage.ruby_decisions.to_vec())
-        .bopomofo_decisions(stage.bopomofo_decisions.to_vec())
+        .line_edge_trim_decisions(stage.edge_trim_decisions)
+        .decoration_decisions(stage.decoration_decisions)
+        .decoration_segments(stage.decoration_segments)
+        .ruby_decisions(stage.ruby_decisions)
+        .bopomofo_decisions(stage.bopomofo_decisions)
         .mandatory_break_decisions(stage.mandatory_break_decisions.to_vec())
         .max_lines_decision(stage.max_lines_decision)
         .line_spacing_decision(stage.line_spacing_decision)
         .ruby_line_height_decision(stage.ruby_line_height_decision)
         .inline_object_line_height_decision(stage.inline_object_line_height_decision)
         .kinsoku_decision(Some(stage.kinsoku_decision))
-        .contextual_kinsoku_decisions(stage.contextual_kinsoku_decisions.to_vec())
+        .contextual_kinsoku_decisions(stage.contextual_kinsoku_decisions)
         .line_length_grid_decision(Some(stage.line_length_grid_decision))
         .first_line_indent_decision(Some(stage.first_line_indent_decision))
         .inline_box_decisions(stage.inline_box_decisions.to_vec())
@@ -313,8 +325,8 @@ pub fn quote_role_decisions_to_role_override_infos(
             RoleOverrideInfo {
                 range,
                 source_text,
-                original_role: format!("{:?}", original_role),
-                overridden_role: format!("{:?}", decision.role),
+                original_role: font_role_name(original_role).to_owned(),
+                overridden_role: font_role_name(decision.role).to_owned(),
                 source: decision.source,
                 reason: decision.reason,
             }
@@ -434,4 +446,25 @@ fn repair_name(repair: &RepairOption) -> String {
 
 fn is_inside(inner: TextRange, outer: TextRange) -> bool {
     inner.start() >= outer.start() && inner.end() <= outer.end()
+}
+
+fn font_role_name(role: FontRole) -> &'static str {
+    match role {
+        FontRole::CjkText => "CjkText",
+        FontRole::CjkPunctuation => "CjkPunctuation",
+        FontRole::LatinText => "LatinText",
+        FontRole::Symbol => "Symbol",
+        FontRole::Emoji => "Emoji",
+        FontRole::Unknown => "Unknown",
+    }
+}
+
+fn font_metric_source_name(source: FontMetricSource) -> &'static str {
+    match source {
+        FontMetricSource::RawTables => "RawTables",
+        FontMetricSource::OpenTypeBase => "OpenTypeBase",
+        FontMetricSource::GlyphSampling => "GlyphSampling",
+        FontMetricSource::ManualOverride => "ManualOverride",
+        FontMetricSource::SynthesizedIdeographicBox => "SynthesizedIdeographicBox",
+    }
 }

@@ -678,8 +678,9 @@ pub fn build_paragraph_layout_prep(
                 && offset < decoration.range.end()
         })
     };
+    let dynamic_shaping_stage;
     let shaping_stage = if needs_dynamic {
-        shape_paragraph(
+        dynamic_shaping_stage = shape_paragraph(
             text_shaper,
             hyphenator,
             input,
@@ -695,14 +696,15 @@ pub fn build_paragraph_layout_prep(
             rejected,
             &annotation.segment_shaping_cache,
             &annotation.substitution_rollbacks,
-        )
+        );
+        &dynamic_shaping_stage
     } else {
-        annotation.base_shaping_stage.clone()
+        &annotation.base_shaping_stage
     };
     let shaping_results = &shaping_stage.shaping_results;
     let raw_natural: Vec<Cluster> = shaping_results
         .iter()
-        .flat_map(|result| result.clusters.clone())
+        .flat_map(|result| result.clusters.iter().cloned())
         .collect();
     let mut shaped_glyphs: HashMap<TextRange, Vec<super::super::core::layout_model::Glyph>> =
         HashMap::new();
@@ -947,7 +949,8 @@ pub fn build_paragraph_layout_prep(
         .filter(|(_, value)| value.prevents_line_break)
         .map(|(index, _)| IntRange::new(*index, *index + 1))
         .collect();
-    let auto_space_decisions = [auto_space.decisions.clone(), verbatim_decisions].concat();
+    let mut auto_space_decisions = auto_space.decisions;
+    auto_space_decisions.extend(verbatim_decisions);
     let cluster_roles: Vec<FontRole> =
         containing_items(&natural, &annotation.font_decisions, |decision| {
             decision.range
@@ -1254,19 +1257,19 @@ pub fn build_paragraph_layout_prep(
         quote_pairs: annotation.quote_pairs.clone(),
         role_override_infos: annotation.role_override_infos.clone(),
         font_decisions: annotation.font_decisions.clone(),
-        hyphen_offsets: shaping_stage.hyphen_offsets,
+        hyphen_offsets: shaping_stage.hyphen_offsets.clone(),
         hyphen_advance: shaping_stage.hyphen_advance,
-        hyphen_glyphs: shaping_stage.hyphen_glyphs,
-        substitution_rollbacks: shaping_stage.substitution_rollbacks,
-        break_opportunity_decisions: shaping_stage.break_opportunity_decisions,
+        hyphen_glyphs: shaping_stage.hyphen_glyphs.clone(),
+        substitution_rollbacks: shaping_stage.substitution_rollbacks.clone(),
+        break_opportunity_decisions: shaping_stage.break_opportunity_decisions.clone(),
         emergency_tracking_eligibility_decisions: shaping_stage
-            .emergency_tracking_eligibility_decisions,
-        progressive_break_offsets: shaping_stage.progressive_break_offsets,
+            .emergency_tracking_eligibility_decisions.clone(),
+        progressive_break_offsets: shaping_stage.progressive_break_offsets.clone(),
         shaped_glyphs_by_cluster_range: shaped_glyphs,
         open_type_features_by_cluster_range: features,
         shaping_decisions: shaping_results
             .iter()
-            .flat_map(|result| result.decisions.clone())
+            .flat_map(|result| result.decisions.iter().cloned())
             .collect(),
         east_asian_spacing_edges,
         auto_space_decisions,

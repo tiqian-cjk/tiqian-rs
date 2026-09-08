@@ -116,19 +116,32 @@ pub mod unicode_east_asian_spacing {
             };
         }
         let text_length = text.scalar_len();
+        if text_length == ScalarOffset::new(1) {
+            let value = resolved_for_grapheme_cluster(text, locale);
+            return EastAsianSpacingEdges {
+                leading: value,
+                trailing: value,
+                contains_wide: value == EastAsianSpacingValue::Wide,
+            };
+        }
         let boundaries = interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
-        let values: Vec<EastAsianSpacingValue> = boundaries
+        let mut values = boundaries
             .windows(2)
             .map(|boundary| {
                 let cluster = text.slice_text(TextRange::new(boundary[0], boundary[1]));
                 resolved_for_grapheme_cluster(&cluster, locale)
-            })
-            .collect();
-        EastAsianSpacingEdges {
-            leading: values[0],
-            trailing: values[values.len() - 1],
-            contains_wide: values.contains(&EastAsianSpacingValue::Wide),
+            });
+        let leading = values.next().expect("非空文本必须包含交互单元");
+        let mut edges = EastAsianSpacingEdges {
+            leading,
+            trailing: leading,
+            contains_wide: leading == EastAsianSpacingValue::Wide,
+        };
+        for value in values {
+            edges.trailing = value;
+            edges.contains_wide |= value == EastAsianSpacingValue::Wide;
         }
+        edges
     }
 }
 

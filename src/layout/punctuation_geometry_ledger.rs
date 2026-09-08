@@ -12,11 +12,12 @@ use super::punctuation_model::{
 };
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::HashMap;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationGeometryLedger {
-    natural_clusters: Vec<Cluster>,
-    geometries: HashMap<i32, PunctuationClusterGeometry>,
+    natural_clusters: Arc<Vec<Cluster>>,
+    geometries: Arc<HashMap<i32, PunctuationClusterGeometry>>,
     budgets: HashMap<i32, GlueBudget>,
     justification_delta_by_cluster: HashMap<i32, f32>,
     raw_edge_trim_by_cluster: HashMap<i32, f32>,
@@ -46,8 +47,8 @@ impl PunctuationGeometryLedger {
             })
             .collect();
         Self {
-            natural_clusters,
-            geometries,
+            natural_clusters: Arc::new(natural_clusters),
+            geometries: Arc::new(geometries),
             budgets,
             justification_delta_by_cluster: HashMap::new(),
             raw_edge_trim_by_cluster: HashMap::new(),
@@ -613,6 +614,38 @@ mod tests {
     use crate::core::text::Text;
     use crate::layout::punctuation_geometry_stage::punctuation_atoms;
     use crate::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressionResult};
+
+    #[test]
+    fn derived_ledger_shares_geometry_and_preserves_original_budget() {
+        let clusters = vec![
+            Cluster::new(text_range(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
+        ];
+        let atoms = punctuation_atoms(
+            &clusters[0],
+            16.0,
+            &PunctuationAtomBuilder::default(),
+            &[],
+            PunctuationGluePlacement::MainlandSimplified,
+            PunctuationWidthPolicy::default(),
+        );
+        let ledger = PunctuationGeometryLedger::from(
+            clusters,
+            &atoms,
+            &PunctuationSpacingCompressionResult::new(Vec::new()),
+        );
+        let original = ledger.resolve_clusters();
+        let budget = ledger.budgets[&0];
+        let derived = ledger
+            .consume_leading_by_cluster(&HashMap::from([(0, 100.0)]))
+            .consume_trailing_by_cluster(&HashMap::from([(0, 100.0)]));
+        assert!(Arc::ptr_eq(&ledger.natural_clusters, &derived.natural_clusters));
+        assert!(Arc::ptr_eq(&ledger.geometries, &derived.geometries));
+        assert_eq!(ledger.resolve_clusters(), original);
+        assert_eq!(ledger.budgets[&0], budget);
+        assert_eq!(derived.budgets[&0].leading_remaining(), 0.0);
+        assert_eq!(derived.budgets[&0].trailing_remaining(), 0.0);
+        assert!(derived.resolve_clusters()[0].advance < original[0].advance);
+    }
 
     #[test]
     fn geometry_without_budget_falls_back_to_body_width() {
