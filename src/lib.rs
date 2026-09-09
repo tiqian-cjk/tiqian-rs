@@ -12,10 +12,13 @@ mod mimalloc;
 pub mod core {
     pub mod east_asian_spacing;
     pub mod east_asian_spacing_data;
+    pub mod fitted_line_pattern_geometry;
     pub mod geometry;
     pub mod int_range;
+    pub mod layout_paint_bounds;
     pub mod layout_model;
     pub mod layout_queries;
+    pub mod layout_result_replay_index;
     pub mod source_interaction_boundaries;
     pub mod text;
     pub mod text_model;

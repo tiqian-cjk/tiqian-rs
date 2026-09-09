@@ -1403,7 +1403,7 @@ fn nearest_line_for_offset(result: &LayoutResult, offset: ScalarOffset) -> i32 {
         .expect("nearest line requires a non-empty LayoutResult")
 }
 
-fn nearest_line_for_position(result: &LayoutResult, y: f32) -> usize {
+pub(crate) fn nearest_line_for_position(result: &LayoutResult, y: f32) -> usize {
     result
         .lines
         .iter()
@@ -1424,7 +1424,7 @@ fn nearest_line_for_position(result: &LayoutResult, y: f32) -> usize {
         .expect("nearest line requires a non-empty LayoutResult")
 }
 
-fn x_for_offset(cluster: &PositionedCluster, offset: ScalarOffset) -> f32 {
+pub(crate) fn x_for_offset(cluster: &PositionedCluster, offset: ScalarOffset) -> f32 {
     if cluster.range.length() <= 0 {
         return cluster.left;
     }
@@ -1435,7 +1435,7 @@ fn x_for_offset(cluster: &PositionedCluster, offset: ScalarOffset) -> f32 {
     cluster.left + cluster.width() * index as f32 / cluster.range.length() as f32
 }
 
-fn offset_for_x(cluster: &PositionedCluster, x: f32) -> ScalarOffset {
+pub(crate) fn offset_for_x(cluster: &PositionedCluster, x: f32) -> ScalarOffset {
     if cluster.range.length() <= 0 {
         return cluster.range.start();
     }
