@@ -1,10 +1,9 @@
-use tiqian::common::HashMap;
-
 use tiqian::core::geometry::{ScalarOffset, TextRange};
-use tiqian::core::layout_model::LayoutResult;
-use tiqian::core::layout_queries::{
-    positioned_clusters,
+use tiqian::core::fitted_line_pattern_geometry::{
+    fitted_dashed_line_segments, fitted_dotted_line_centers,
 };
+use tiqian::core::layout_model::LayoutResult;
+use tiqian::core::layout_result_replay_index::LayoutResultReplayIndex;
 use tiqian::core::text_model::{
     DecorationKind, RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern,
     RichTextPaint, RubyKind, TextSpan, TextStyle,
@@ -54,19 +53,13 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
-        let positions: HashMap<_, _> = positioned_clusters(result)
-            .into_iter()
-            .map(|position| (position.range, position))
-            .collect();
-        for run in &result.glyph_runs {
-            for glyph in &run.glyphs {
-                let position = positions.get(&glyph.cluster_range).ok_or_else(|| {
-                    format!(
-                        "LayoutResult has no positioned cluster for glyph source range {:?}",
-                        glyph.cluster_range
-                    )
-                })?;
+        for position in &replay_index.positioned_clusters {
+            let Some(glyphs) = replay_index.glyphs_by_cluster_range.get(&position.range) else {
+                continue;
+            };
+            for glyph in glyphs {
                 let font_size = text_style_at(
                     &result.input.content.spans,
                     &result.input.text_style,
@@ -196,6 +189,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result
@@ -228,11 +222,11 @@ impl<'a> DemoRenderer<'a> {
                 match kind {
                     DecorationKind::Mourning => self.stroke_mourning_segment(scene, segment, color, stroke_width)?,
                     DecorationKind::ProperNoun => {
-                        self.stroke_interlinear_segment(scene, result, segment, color, stroke_width)?
+                        self.stroke_interlinear_segment(scene, result, replay_index, segment, color, stroke_width)?
                     }
                     DecorationKind::BookTitle => self.stroke_book_title_segment(
                         scene,
-                        result,
+                        replay_index,
                         segment,
                         color,
                         result.input.text_style.font_size,
@@ -249,8 +243,9 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
-        for segment in result.rich_text_background_segments() {
+        for segment in &replay_index.rich_text_background_segments {
             let radii = result.rich_text_background_corner_radii(&segment, 0.0);
             let path = rounded_rect_path(
                 segment.left,
@@ -275,8 +270,9 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
-        for segment in result.rich_text_decoration_segments() {
+        for segment in &replay_index.rich_text_decoration_segments {
             let Some(line) = segment_line_paint(&segment) else {
                 continue;
             };
@@ -285,6 +281,7 @@ impl<'a> DemoRenderer<'a> {
                     RichTextLinePattern::Solid => self.stroke_rich_line(
                         scene,
                         result,
+                        replay_index,
                         &segment,
                         color,
                         line.thickness,
@@ -292,6 +289,7 @@ impl<'a> DemoRenderer<'a> {
                     RichTextLinePattern::Dashed { dash_length, gap_length } => self.stroke_fitted_dashed_rich_line(
                         scene,
                         result,
+                        replay_index,
                         &segment,
                         color,
                         line.thickness,
@@ -300,20 +298,17 @@ impl<'a> DemoRenderer<'a> {
                     )?,
                     RichTextLinePattern::Dotted { gap_length } => {
                         let y = result.rich_text_decoration_line_y(&segment, line.thickness);
-                        let centers = fitted_dotted_line_centers(
-                            segment.left,
-                            segment.right,
-                            line.thickness,
-                            *gap_length,
-                        );
                         for (left, right) in
-                            self.kept_intervals_for_rich_text_line(result, &segment, y, line.thickness)
+                            self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, line.thickness)
                         {
-                            for x in centers
-                                .iter()
-                                .copied()
-                                .filter(|x| *x >= left && *x <= right)
-                            {
+                            for x in fitted_dotted_line_centers(
+                                segment.left,
+                                segment.right,
+                                left,
+                                right,
+                                line.thickness,
+                                *gap_length,
+                            ) {
                                 scene.fill(
                                     Fill::NonZero,
                                     self.transform(),
@@ -335,6 +330,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         segment: &tiqian::core::layout_queries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
@@ -344,7 +340,7 @@ impl<'a> DemoRenderer<'a> {
         }
         let y = result.rich_text_decoration_line_y(segment, stroke_width);
         for (left, right) in
-            self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width)
+            self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, stroke_width)
         {
             self.stroke_horizontal_line(scene, left, right, y, color, stroke_width)?;
         }
@@ -355,6 +351,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         segment: &tiqian::core::layout_queries::RichTextLineSegment,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
@@ -363,16 +360,21 @@ impl<'a> DemoRenderer<'a> {
     ) -> Result<(), String> {
         let y = result.rich_text_decoration_line_y(segment, stroke_width);
         let stroke = Stroke::new(stroke_width as f64).with_caps(Cap::Round);
-        let dashes =
-            fitted_dashed_line_segments(segment.left, segment.right, dash_length, gap_length);
+        let dashes = fitted_dashed_line_segments(
+            segment.left,
+            segment.right,
+            dash_length,
+            gap_length,
+        );
         for (kept_left, kept_right) in
-            self.kept_intervals_for_rich_text_line(result, segment, y, stroke_width)
+            self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, stroke_width)
         {
-            for (left, right) in dashes
-                .iter()
-                .map(|&(left, right)| (left.max(kept_left), right.min(kept_right)))
-                .filter(|(left, right)| right > left)
-            {
+            for pair in dashes.chunks_exact(2) {
+                let left = pair[0].max(kept_left);
+                let right = pair[1].min(kept_right);
+                if right <= left {
+                    continue;
+                }
                 let cap_inset = (stroke_width / 2.0).min((right - left) / 2.0);
                 let mut path = BezPath::new();
                 path.move_to(((left + cap_inset) as f64, y as f64));
@@ -386,7 +388,7 @@ impl<'a> DemoRenderer<'a> {
     fn stroke_book_title_segment(
         &self,
         scene: &mut Scene,
-        result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         segment: &tiqian::core::layout_model::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         font_size: f32,
@@ -396,7 +398,7 @@ impl<'a> DemoRenderer<'a> {
             segment.left,
             segment.right,
             line_ink_skip_intervals(
-                result,
+                replay_index,
                 segment.line_index,
                 segment.top - stroke_width.max(1.0),
                 segment.top + stroke_width.max(1.0),
@@ -463,6 +465,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         segment: &tiqian::core::layout_model::DecorationSegmentInfo,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
@@ -477,7 +480,7 @@ impl<'a> DemoRenderer<'a> {
             segment.left,
             segment.right,
             line_ink_skip_intervals(
-                result,
+                replay_index,
                 segment.line_index,
                 segment.top - stroke_width.max(1.0),
                 segment.top + stroke_width.max(1.0),
@@ -492,6 +495,7 @@ impl<'a> DemoRenderer<'a> {
     fn kept_intervals_for_rich_text_line(
         &self,
         result: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         segment: &tiqian::core::layout_queries::RichTextLineSegment,
         line_y: f32,
         stroke_width: f32,
@@ -512,7 +516,7 @@ impl<'a> DemoRenderer<'a> {
             segment.left,
             segment.right,
             line_ink_skip_intervals(
-                result,
+                replay_index,
                 segment.line_index,
                 line_y - stroke_width.max(1.0),
                 line_y + stroke_width.max(1.0),
@@ -587,73 +591,29 @@ fn color_from_argb(argb: i32) -> AlphaColor<Srgb> {
     )
 }
 
-fn fitted_dashed_line_segments(
-    left: f32,
-    right: f32,
-    dash_length: f32,
-    gap_length: f32,
-) -> Vec<(f32, f32)> {
-    if right <= left || dash_length <= 0.0 || gap_length < 0.0 {
-        return Vec::new();
-    }
-    let width = right - left;
-    if width < dash_length * 2.0 {
-        return vec![(left, right)];
-    }
-    let fitted_count = ((width + gap_length) / (dash_length + gap_length))
-        .round()
-        .max(2.0) as usize;
-    let count = fitted_count.min((width / dash_length).floor().max(2.0) as usize);
-    let gap = (width - count as f32 * dash_length) / (count - 1) as f32;
-    (0..count)
-        .map(|index| {
-            let dash_left = left + index as f32 * (dash_length + gap);
-            (dash_left, dash_left + dash_length)
-        })
-        .collect()
-}
-
-fn fitted_dotted_line_centers(
-    left: f32,
-    right: f32,
-    dot_diameter: f32,
-    gap_length: f32,
-) -> Vec<f32> {
-    if right <= left || dot_diameter <= 0.0 || gap_length < 0.0 {
-        return Vec::new();
-    }
-    let width = right - left;
-    let target_pitch = dot_diameter + gap_length;
-    let fitted_count = ((width + gap_length) / target_pitch).round().max(1.0) as usize;
-    let count = fitted_count.min((width / dot_diameter).floor().max(1.0) as usize);
-    if count == 1 {
-        return vec![(left + right) / 2.0];
-    }
-    let first = left + dot_diameter / 2.0;
-    let pitch = (width - dot_diameter) / (count - 1) as f32;
-    (0..count)
-        .map(|index| first + index as f32 * pitch)
-        .collect()
-}
-
 fn line_ink_skip_intervals(
-    result: &LayoutResult,
+    replay_index: &LayoutResultReplayIndex,
     line_index: i32,
     band_top: f32,
     band_bottom: f32,
 ) -> Vec<(f32, f32)> {
-    let positions: HashMap<_, _> = positioned_clusters(result)
-        .into_iter()
-        .filter(|position| position.line_index == line_index)
-        .map(|position| (position.range, position))
-        .collect();
-    let mut intervals: Vec<_> = result
-        .glyph_runs
+    let Some(positions) = replay_index
+        .positioned_clusters_by_line
+        .get(line_index as usize)
+    else {
+        return Vec::new();
+    };
+    let mut intervals: Vec<_> = positions
         .iter()
-        .flat_map(|run| &run.glyphs)
-        .filter_map(|glyph| {
+        .flat_map(|position| {
+            replay_index
+                .glyphs_by_cluster_range
+                .get(&position.range)
+                .into_iter()
+                .flat_map(move |glyphs| glyphs.iter().map(move |glyph| (position, glyph)))
+        })
+        .filter_map(|(position, glyph)| {
             let bounds = glyph.bounds?;
-            let position = positions.get(&glyph.cluster_range)?;
             let top = position.baseline + glyph.y + bounds.top;
             let bottom = position.baseline + glyph.y + bounds.bottom;
             (top < band_bottom && bottom > band_top).then_some((
@@ -940,8 +900,9 @@ mod tests {
             .build(),
         );
         let mut scene = Scene::new();
+        let replay_index = tiqian::core::layout_result_replay_index::to_replay_index(&result);
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut scene, &result)
+            .paint_body(&mut scene, &result, &replay_index)
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
@@ -1109,9 +1070,10 @@ mod tests {
             })
             .expect("English hyphenation should provide a usable shape-once line-end hyphen");
         result.glyph_runs.clear();
+        let replay_index = tiqian::core::layout_result_replay_index::to_replay_index(&result);
         let mut scene = Scene::new();
         DemoRenderer::new(&catalog, 1.0)
-            .paint_body(&mut scene, &result)
+            .paint_body(&mut scene, &result, &replay_index)
             .unwrap();
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
@@ -1270,15 +1232,16 @@ mod tests {
         );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
+        let replay_index = tiqian::core::layout_result_replay_index::to_replay_index(&result);
         renderer
-            .paint_rich_text_backgrounds(&mut scene, &result)
+            .paint_rich_text_backgrounds(&mut scene, &result, &replay_index)
             .unwrap();
-        renderer.paint_body(&mut scene, &result).unwrap();
+        renderer.paint_body(&mut scene, &result, &replay_index).unwrap();
         renderer
-            .paint_rich_text_lines(&mut scene, &result)
+            .paint_rich_text_lines(&mut scene, &result, &replay_index)
             .unwrap();
         renderer
-            .paint_decorations(&mut scene, &result)
+            .paint_decorations(&mut scene, &result, &replay_index)
             .unwrap();
         assert!(!scene.encoding().is_empty());
 
@@ -1290,7 +1253,7 @@ mod tests {
             .unwrap();
         let mut decoration_scene = Scene::new();
         renderer
-            .paint_decorations(&mut decoration_scene, &result)
+            .paint_decorations(&mut decoration_scene, &result, &replay_index)
             .unwrap();
         assert!(mourning.right > mourning.left && mourning.bottom > mourning.top);
         assert!(decoration_scene.encoding().n_paths > 0);

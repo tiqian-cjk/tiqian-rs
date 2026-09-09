@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
-use tiqian::core::layout_queries::positioned_clusters;
+use tiqian::core::layout_result_replay_index::{LayoutResultReplayIndex, to_replay_index};
 use tiqian::core::text_model::LineLengthGrid;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
@@ -68,14 +68,17 @@ struct DemoPage {
 enum DemoPageBlock {
     Text {
         layout: LayoutResult,
+        replay_index: LayoutResultReplayIndex,
         y: f32,
         paint_top: f32,
         paint_bottom: f32,
     },
     ListItem {
         marker_layout: LayoutResult,
+        marker_replay_index: LayoutResultReplayIndex,
         marker_y: f32,
         body_layout: LayoutResult,
+        body_replay_index: LayoutResultReplayIndex,
         gutter: f32,
         y: f32,
         paint_top: f32,
@@ -83,9 +86,12 @@ enum DemoPageBlock {
     },
 }
 
-fn layout_paint_overhang(layout: &LayoutResult) -> (f32, f32, f32, f32) {
+fn layout_paint_overhang(
+    layout: &LayoutResult,
+    replay_index: &LayoutResultReplayIndex,
+) -> (f32, f32, f32, f32) {
     let width = layout.input.constraints.max_width();
-    let positions = positioned_clusters(layout);
+    let positions = &replay_index.positioned_clusters;
     let mut left = 0.0_f32;
     let mut top = 0.0_f32;
     let mut right = 0.0_f32;
@@ -213,7 +219,8 @@ impl DesktopParagraphDemo {
             match block {
                 DemoDocumentDemoBlock::Paragraph(document) => {
                     let layout = self.layout_document(document, physical_content_width as f32);
-                    let (left, top, right, bottom) = layout_paint_overhang(&layout);
+                    let replay_index = to_replay_index(&layout);
+                    let (left, top, right, bottom) = layout_paint_overhang(&layout, &replay_index);
                     left_overhang = left_overhang.max(left);
                     top_overhang = top_overhang.max(top - y);
                     right_overhang = right_overhang.max(right);
@@ -224,6 +231,7 @@ impl DesktopParagraphDemo {
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
                         layout,
+                        replay_index,
                         y: block_y,
                         paint_top,
                         paint_bottom,
@@ -237,7 +245,8 @@ impl DesktopParagraphDemo {
                     max_width,
                 } => {
                     let layout = self.layout_document(document, max_width);
-                    let (left, top, right, bottom) = layout_paint_overhang(&layout);
+                    let replay_index = to_replay_index(&layout);
+                    let (left, top, right, bottom) = layout_paint_overhang(&layout, &replay_index);
                     left_overhang = left_overhang.max(left);
                     top_overhang = top_overhang.max(top - y);
                     right_overhang = right_overhang.max(right);
@@ -248,6 +257,7 @@ impl DesktopParagraphDemo {
                     y += layout.size.height;
                     blocks.push(DemoPageBlock::Text {
                         layout,
+                        replay_index,
                         y: block_y,
                         paint_top,
                         paint_bottom,
@@ -265,15 +275,17 @@ impl DesktopParagraphDemo {
                         * font_size;
                     let marker_layout = self.layout_document(marker, gutter);
                     let body_layout = self.layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
+                    let marker_replay_index = to_replay_index(&marker_layout);
+                    let body_replay_index = to_replay_index(&body_layout);
                     let marker_y = body_layout
                         .lines
                         .first()
                         .zip(marker_layout.lines.first())
                         .map_or(0.0, |(body, marker)| body.baseline - marker.baseline);
                     let (marker_left, marker_top, marker_right, marker_bottom) =
-                        layout_paint_overhang(&marker_layout);
+                        layout_paint_overhang(&marker_layout, &marker_replay_index);
                     let (body_left, body_top, body_right, body_bottom) =
-                        layout_paint_overhang(&body_layout);
+                        layout_paint_overhang(&body_layout, &body_replay_index);
                     left_overhang = left_overhang.max(marker_left);
                     left_overhang = left_overhang.max(body_left - gutter);
                     top_overhang = top_overhang.max(marker_top - (y + marker_y));
@@ -293,8 +305,10 @@ impl DesktopParagraphDemo {
                         .max(y + body_layout.size.height + body_bottom);
                     blocks.push(DemoPageBlock::ListItem {
                         marker_layout,
+                        marker_replay_index,
                         marker_y,
                         body_layout,
+                        body_replay_index,
                         gutter,
                         y,
                         paint_top,
@@ -384,12 +398,14 @@ impl DesktopParagraphDemo {
             match block {
                 DemoPageBlock::Text {
                     layout,
+                    replay_index,
                     y,
                     ..
                 } => {
                     Self::paint_document(
                         &mut self.scene,
                         layout,
+                        replay_index,
                         page_origin_x + page.left_overhang.round() as i32,
                         page_origin_y + (page.top_overhang + y).round() as i32,
                         &renderer,
@@ -397,8 +413,10 @@ impl DesktopParagraphDemo {
                 }
                 DemoPageBlock::ListItem {
                     marker_layout,
+                    marker_replay_index,
                     marker_y,
                     body_layout,
+                    body_replay_index,
                     gutter,
                     y,
                     ..
@@ -406,6 +424,7 @@ impl DesktopParagraphDemo {
                     Self::paint_document(
                         &mut self.scene,
                         marker_layout,
+                        marker_replay_index,
                         page_origin_x + page.left_overhang.round() as i32,
                         page_origin_y + (page.top_overhang + y + marker_y).round() as i32,
                         &renderer,
@@ -413,6 +432,7 @@ impl DesktopParagraphDemo {
                     Self::paint_document(
                         &mut self.scene,
                         body_layout,
+                        body_replay_index,
                         page_origin_x + (page.left_overhang + gutter).round() as i32,
                         page_origin_y + (page.top_overhang + y).round() as i32,
                         &renderer,
@@ -486,15 +506,16 @@ impl DesktopParagraphDemo {
     fn paint_document(
         scene: &mut Scene,
         layout: &LayoutResult,
+        replay_index: &LayoutResultReplayIndex,
         x: i32,
         y: i32,
         renderer: &DemoRenderer<'_>,
     ) -> Result<(), String> {
         let renderer = renderer.translated(x as f32, y as f32);
-        renderer.paint_rich_text_backgrounds(scene, layout)?;
-        renderer.paint_body(scene, layout)?;
-        renderer.paint_rich_text_lines(scene, layout)?;
-        renderer.paint_decorations(scene, layout)?;
+        renderer.paint_rich_text_backgrounds(scene, layout, replay_index)?;
+        renderer.paint_body(scene, layout, replay_index)?;
+        renderer.paint_rich_text_lines(scene, layout, replay_index)?;
+        renderer.paint_decorations(scene, layout, replay_index)?;
         renderer.paint_annotations(scene, layout)?;
         Ok(())
     }
@@ -675,17 +696,18 @@ mod tests {
         );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
+        let replay_index = to_replay_index(result);
         renderer
-            .paint_rich_text_backgrounds(&mut scene, result)
+            .paint_rich_text_backgrounds(&mut scene, result, &replay_index)
             .unwrap();
         renderer
-            .paint_body(&mut scene, result)
+            .paint_body(&mut scene, result, &replay_index)
             .unwrap();
         renderer
-            .paint_rich_text_lines(&mut scene, result)
+            .paint_rich_text_lines(&mut scene, result, &replay_index)
             .unwrap();
         renderer
-            .paint_decorations(&mut scene, result)
+            .paint_decorations(&mut scene, result, &replay_index)
             .unwrap();
         renderer
             .paint_annotations(&mut scene, result)
