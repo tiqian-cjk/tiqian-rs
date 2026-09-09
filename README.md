@@ -66,6 +66,16 @@ cluster 数和正文 glyph 数与首次序列一致。首次序列的后续宽�
 火焰图覆盖整个进程，包含启动、预热、输入准备和析构；分析核心时筛选 `engine.layout`
 的调用树。采样运行的耗时不与普通 release 运行直接比较。
 
+添加 `--replay` 可测量 demo 使用的整页重放索引构造与析构：
+
+```shell
+cargo run --release --example paragraph-layout-bench -- --replay
+```
+
+每个宽度额外输出 `replay` 与 `replay_drop`，`total` 也包含这两项。
+列表临时标记测量结果不构造索引。此模式仍不执行 overhang 查询、绘制或 GPU 提交，
+因此其 total 不能作为完整 demo 帧耗时。
+
 ### 编译与测试
 
 Rust 侧常规编译与测试：

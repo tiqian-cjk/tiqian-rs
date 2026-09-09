@@ -35,6 +35,21 @@ Kotlin 上游仍使用旧模型，因此这是当前实现差异。
 [`R0002-unified-rich-text-paint-model.md`](adr/R0002-unified-rich-text-paint-model.md)；实施记录见
 [`2026-09-06-unified-rich-text-paint-model.md`](iteration/2026-09-06-unified-rich-text-paint-model.md)。
 
+#### R0002 附注：rich-text layout projection 在 builder scope 内完成
+
+Kotlin 的 `RichTextLayoutProjection` 对旧的单 role `RichTextSpan` 列表提供独立的 projection API：它将
+render-only range 的边界、link/inline-code/technical 的断行策略、自动空格抑制与背景水平 padding 分别转为
+`LayoutInput` 的 source boundary、`LineBreakSpan`、suppressed range 和 `InlineBoxSpan`。
+
+Rust 的统一富文本旁路模型不提供这组一对一的公开 projection 函数。`ParagraphBuilder` 在关闭 `Link`、
+`Technical`、`InlineCode` 和 `RichText` scope 时直接记录等价的布局输入；`build()` 再把 rich-text range
+endpoint 写入 source boundary，并把 Background layer 的 horizontal padding lower 为 `InlineBoxSpan`。Rust 的
+`RichTextSpan` 可以携带多个 layer 与独立 semantic，不能机械映射为 Kotlin 的单 role span。
+
+因此，builder 主路径中的可观察布局行为已同步；独立 projection API 是 R0002 的有意实现差异。仅在出现
+“外部富文本 AST 直接生成 Rust `RichTextSpan`，并需要由核心统一 lower”为实际使用场景时，再设计一个以 Rust
+layer/semantic 模型为输入的单一 projection 入口，不能同时保留第二套 lowering 规则。
+
 ## 关键差异列表（实现差异）
 
 ### 单点交互查询统一到 interaction boundary

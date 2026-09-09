@@ -19,6 +19,7 @@ Kotlin 仓库的 ADR 是同步 Kotlin 算法与架构取舍的重要来源。Rus
 
 - `docs/` 中与 engine 取舍直接相关的 ADR、规则审计和路线记录；
 - `engine/src/` 中 `commonMain` 的排版核心与 `commonTest` 的行为测试；
+- Compose 平台相关变更与我们内置的 lowering 层（`src/api`）；
 - 对应的 Rust `src/`、`tests/fixture_layout/` 与 `tools/`。
 
 默认不把前端、demo、平台 adapter、发布脚本和无关文档带入 Rust 核心同步。上游变动如果影响
@@ -118,12 +119,14 @@ Kotlin 审计区间的两端。文件记录审计范围、上游依据、映射�
 | --- | --- |
 | 上游仓库 | `<tiqian-kotlin-repository>` |
 | Rust 仓库 | 本仓库 |
-| 最近审计区间 | `eb26f889c57d50e52e41d3a76185cdb6a3bdba45..2fae0df461819932dc9ef0153b79be9ad0038959` |
+| 最近审计区间 | `59fca3597a072362c49ce1bade6401efc2d6063d..f8ba83d1eba5f31ae881122a3663703e1dcb2b41` |
 | Rust 基线 | `b8ed5d75c646053f7aad0fdf3ca2af4c96586736` |
 | 同步状态 | 同步完成 |
-| 已跟进终点 |  |
+| 已跟进终点 | `f8ba83d1eba5f31ae881122a3663703e1dcb2b41` |
 
 ## 日志摘要
+
+- [2026-09-09 `59fca35..f8ba83d1`](tracking/2026-09-09-59fca35-f8ba83d1.md)：同步 replay index、可见 paint overhang 与 dotted / dashed 图样拟合；desktop demo 复用 index 与线型函数；记录 R0002 rich-text projection 的有意差异，以及 logical document 和 Android 前端边界。
 
 - [2026-08-31 `2fae0df..59fca35`](tracking/2026-08-31-2fae0df-59fca35.md)：同步算法改动和大量测试用例。
 
