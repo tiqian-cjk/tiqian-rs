@@ -15,6 +15,9 @@ fn replay_index_keeps_selection_and_rich_text_on_engine_geometry() {
         layers: vec![RichTextLayer {
             kind: RichTextLayerKind::Underline { line: Default::default() },
             paints: Vec::new(),
+        }, RichTextLayer {
+            kind: RichTextLayerKind::Background { background: Default::default() },
+            paints: Vec::new(),
         }],
         semantics: Vec::new(),
     }];
@@ -33,6 +36,13 @@ fn replay_index_keeps_selection_and_rich_text_on_engine_geometry() {
     );
 
     let index = to_replay_index(&result);
+
+    assert_eq!(tiqian::core::layout_queries::positioned_clusters(&result), index.positioned_clusters);
+    assert_eq!(result.positioned_rich_text_segments(), index.rich_text_segments);
+    assert_eq!(result.rich_text_background_segments(), index.rich_text_background_segments);
+    assert_eq!(result.rich_text_decoration_segments(), index.rich_text_decoration_segments);
+    assert_eq!(1, index.rich_text_background_segments.len());
+    assert_eq!(1, index.rich_text_decoration_segments.len());
 
     assert_eq!(3, index.positioned_clusters.len());
     assert_eq!(text_range(1, 3), index.rich_text_segments[0].range);

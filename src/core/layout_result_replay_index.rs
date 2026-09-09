@@ -31,9 +31,11 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             line.push(positioned.clone());
         }
     }
-    let rich_text_segments = result.positioned_rich_text_segments();
-    let rich_text_background_segments = result.rich_text_background_segments();
-    let rich_text_decoration_segments = result.rich_text_decoration_segments();
+    let rich_text_segments = result.positioned_rich_text_segments_from_clusters(&positioned_clusters);
+    let rich_text_background_segments = result.rich_text_background_segments_from_occupied(
+        &rich_text_segments, &positioned_clusters,
+    );
+    let rich_text_decoration_segments = result.rich_text_decoration_segments_from_occupied(&rich_text_segments);
     let mut glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>> = HashMap::new();
     for glyph in result.glyph_runs.iter().flat_map(|run| &run.glyphs) {
         glyphs_by_cluster_range

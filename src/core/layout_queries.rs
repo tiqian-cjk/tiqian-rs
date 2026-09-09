@@ -1,11 +1,12 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutQueries.kt
 
 use std::sync::Arc;
+use crate::common::HashMap;
 
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
-use super::layout_model::{LayoutResult, LineBox, MetricDecisionInfo};
+use super::layout_model::{Glyph, LayoutResult, LineBox, MetricDecisionInfo};
 use super::source_interaction_boundaries::{
     SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
 };
@@ -299,12 +300,13 @@ pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> Text {
 /// Returns each cluster's occupied rectangle using the same line/cluster advances consumed by
 /// renderers. This is the geometry bridge for links, selection, and accessibility.
 pub fn positioned_clusters(result: &LayoutResult) -> Vec<PositionedCluster> {
+    let lookup = PositionedClusterLookup::new(result);
     result
         .lines
         .iter()
         .enumerate()
         .flat_map(|(line_index, line)| {
-            positioned_clusters_for_line(result, line_index as i32, line)
+            positioned_clusters_for_line_with_lookup(result, line_index as i32, line, &lookup)
         })
         .collect()
 }
@@ -444,6 +446,13 @@ impl LayoutResult {
         return Vec::new();
     }
     let clusters = positioned_clusters(self);
+    self.positioned_rich_text_segments_from_clusters(&clusters)
+    }
+
+    pub(crate) fn positioned_rich_text_segments_from_clusters(
+        &self,
+        clusters: &[PositionedCluster],
+    ) -> Vec<RichTextLineSegment> {
     let text_length = self.input.content.text.scalar_len();
     let mut out = Vec::new();
     for span in &self.input.rich_text {
@@ -579,6 +588,13 @@ impl LayoutResult {
     /// covered so a continuous decoration does not acquire an internal gap.
     pub fn rich_text_decoration_segments(&self) -> Vec<RichTextLineSegment> {
     let occupied_segments = self.positioned_rich_text_segments();
+    self.rich_text_decoration_segments_from_occupied(&occupied_segments)
+    }
+
+    pub(crate) fn rich_text_decoration_segments_from_occupied(
+        &self,
+        occupied_segments: &[RichTextLineSegment],
+    ) -> Vec<RichTextLineSegment> {
     if occupied_segments.is_empty() {
         return Vec::new();
     }
@@ -607,7 +623,19 @@ impl LayoutResult {
     /// uses the marked clusters' typographic faces rather than the complete line box, so paragraph
     /// leading does not inflate a short highlight.
     pub fn rich_text_background_segments(&self) -> Vec<RichTextLineSegment> {
-    let occupied_segments = self.positioned_rich_text_segments();
+    if self.input.rich_text.is_empty() || self.lines.is_empty() {
+        return Vec::new();
+    }
+    let positioned = positioned_clusters(self);
+    let occupied_segments = self.positioned_rich_text_segments_from_clusters(&positioned);
+    self.rich_text_background_segments_from_occupied(&occupied_segments, &positioned)
+    }
+
+    pub(crate) fn rich_text_background_segments_from_occupied(
+        &self,
+        occupied_segments: &[RichTextLineSegment],
+        positioned: &[PositionedCluster],
+    ) -> Vec<RichTextLineSegment> {
     if occupied_segments.is_empty() {
         return Vec::new();
     }
@@ -627,7 +655,6 @@ impl LayoutResult {
     if backgrounds.is_empty() {
         return Vec::new();
     }
-    let positioned = positioned_clusters(self);
     let trimmed = trim_outer_punctuation_glue(self, &backgrounds);
     let segments = trimmed
         .into_iter()
@@ -1301,39 +1328,63 @@ fn is_han_ideograph(code_point: i32) -> bool {
 const SELECTION_WORD_CONNECTORS: [char; 3] = ['_', '\'', '\u{2019}'];
 const SELECTION_MANDATORY_BREAKS: [i32; 5] = [0x000A, 0x000D, 0x0085, 0x2028, 0x2029];
 
+/// 一次查询共用的只读索引；重复 range 保留原查询的首次匹配和 glyph 顺序。
+struct PositionedClusterLookup<'a> {
+    glyphs: HashMap<TextRange, Vec<&'a Glyph>>,
+    leading_consumed: HashMap<TextRange, f32>,
+    leading_gap: HashMap<TextRange, f32>,
+}
+
+impl<'a> PositionedClusterLookup<'a> {
+    fn new(result: &'a LayoutResult) -> Self {
+        let mut glyphs: HashMap<TextRange, Vec<&Glyph>> = HashMap::new();
+        for glyph in result.glyph_runs.iter().flat_map(|run| &run.glyphs) {
+            if glyph.cluster_range.length() > 1 {
+                glyphs.entry(glyph.cluster_range).or_default().push(glyph);
+            }
+        }
+        let mut leading_consumed = HashMap::new();
+        for decision in &result.debug.geometry_decisions {
+            if decision.leading_glue_consumed > 0.0 {
+                leading_consumed.entry(decision.range).or_insert(decision.leading_glue_consumed);
+            }
+        }
+        let mut leading_gap = HashMap::new();
+        for decision in &result.debug.auto_space_decisions {
+            if decision.side == "leading" {
+                leading_gap.entry(decision.cluster_range).or_insert(-decision.total_reduction);
+            }
+        }
+        Self { glyphs, leading_consumed, leading_gap }
+    }
+}
+
 fn positioned_clusters_for_line(
     result: &LayoutResult,
     line_index: i32,
     line: &LineBox,
 ) -> Vec<PositionedCluster> {
+    positioned_clusters_for_line_with_lookup(result, line_index, line, &PositionedClusterLookup::new(result))
+}
+
+fn positioned_clusters_for_line_with_lookup(
+    result: &LayoutResult,
+    line_index: i32,
+    line: &LineBox,
+    lookup: &PositionedClusterLookup<'_>,
+) -> Vec<PositionedCluster> {
     let mut x = line.indent;
     let mut positioned = Vec::new();
     for (index_in_line, cluster_index) in line.cluster_range.into_iter().enumerate() {
         let cluster = &result.clusters[cluster_index as usize];
-        let leading_consumed = result
-            .debug
-            .geometry_decisions
-            .iter()
-            .find(|decision| {
-                decision.range == cluster.range && decision.leading_glue_consumed > 0.0
-            })
-            .map(|decision| decision.leading_glue_consumed)
-            .unwrap_or(0.0);
+        let leading_consumed = lookup.leading_consumed.get(&cluster.range).copied().unwrap_or(0.0);
         // The applied autospace width is recorded on the decision (an Insert gap is a
         // negative reduction, `AutoSpacePolicy.gapEm` at apply time) — geometry reads
         // the recorded value instead of re-deriving a constant (ADR 0009 amendment).
         let leading_gap = if index_in_line == 0 {
             0.0
         } else {
-            result
-                .debug
-                .auto_space_decisions
-                .iter()
-                .find(|decision| {
-                    decision.side == "leading" && decision.cluster_range == cluster.range
-                })
-                .map(|decision| -decision.total_reduction)
-                .unwrap_or(0.0)
+            lookup.leading_gap.get(&cluster.range).copied().unwrap_or(0.0)
         };
         let draw_x = x + cluster.leading_layout_advance + cluster.glyph_inline_shift + leading_gap
             - leading_consumed;
@@ -1343,12 +1394,7 @@ fn positioned_clusters_for_line(
         // callers interpolate linearly. The two ends are always the occupied box edges — a
         // full-width punctuation glyph advancing past its compressed cluster box must not overshoot.
         let right = x + cluster.advance;
-        let glyphs: Vec<_> = result
-            .glyph_runs
-            .iter()
-            .flat_map(|run| run.glyphs.iter())
-            .filter(|glyph| glyph.cluster_range == cluster.range)
-            .collect();
+        let glyphs = lookup.glyphs.get(&cluster.range).map(Vec::as_slice).unwrap_or_default();
         let source_stops =
             if cluster.range.length() > 1 && glyphs.len() == cluster.range.length() as usize {
                 let mut stops = Vec::with_capacity(cluster.range.length() as usize + 1);

@@ -16,6 +16,7 @@ mod font_backend;
 mod sample;
 
 struct Options {
+    replay: bool,
     iterations: usize,
     warmup: usize,
     widths: Vec<f32>,
@@ -25,6 +26,7 @@ struct Options {
 impl Options {
     fn parse() -> Result<Option<Self>, String> {
         let mut options = Self {
+            replay: false,
             iterations: 200,
             warmup: 20,
             widths: vec![672.0, 360.0, 960.0],
@@ -32,8 +34,12 @@ impl Options {
         };
         let mut args = std::env::args().skip(1);
         while let Some(flag) = args.next() {
+            if flag == "--replay" {
+                options.replay = true;
+                continue;
+            }
             if flag == "--help" || flag == "-h" {
-                println!("paragraph-layout-bench [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1]");
+                println!("paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1]");
                 println!("One iteration visits every width in order. Widths are physical pixels.");
                 return Ok(None);
             }
@@ -67,6 +73,8 @@ impl Options {
 
 #[derive(Default)]
 struct PageMeasurement {
+    replay: Duration,
+    drop_replay: Duration,
     layout: Duration,
     drop_results: Duration,
     total: Duration,
@@ -93,11 +101,13 @@ fn measure_page(
     engine: &mut ExplainableStubParagraphLayoutEngine,
     width: f32,
     scale: f32,
+    replay: bool,
 ) -> PageMeasurement {
     let start = Instant::now();
     let document = sample::build_document_demo(width, scale);
     let mut results = Vec::with_capacity(document.blocks.len() * 3);
     let mut measurement = PageMeasurement::default();
+    let mut measurement_only = std::collections::HashSet::new();
     for block in document.blocks {
         match block {
             sample::DemoDocumentDemoBlock::Paragraph(document) => {
@@ -114,6 +124,7 @@ fn measure_page(
                 marker_input.constraints = LayoutConstraints::with_defaults(100_000.0);
                 let marker_measurement = timed_layout(engine, marker_input, &mut measurement);
                 let gutter = (marker_measurement.size.width / font_size).ceil().max(1.0) * font_size;
+                measurement_only.insert(results.len());
                 results.push(marker_measurement);
                 marker.input.constraints = LayoutConstraints::with_defaults(gutter);
                 body.input.constraints = LayoutConstraints::with_defaults((width - gutter).max(1.0));
@@ -127,6 +138,17 @@ fn measure_page(
         measurement.lines += result.lines.len();
         measurement.clusters += result.clusters.len();
         measurement.glyphs += result.glyph_runs.iter().map(|run| run.glyphs.len()).sum::<usize>();
+    }
+    if replay {
+        let replay_start = Instant::now();
+        let indices: Vec<_> = results.iter().enumerate()
+            .filter(|(index, _)| !measurement_only.contains(index))
+            .map(|(_, result)| tiqian::core::layout_result_replay_index::to_replay_index(black_box(result)))
+            .collect();
+        measurement.replay = replay_start.elapsed();
+        let drop_start = Instant::now();
+        drop(black_box(indices));
+        measurement.drop_replay = drop_start.elapsed();
     }
     let drop_start = Instant::now();
     drop(black_box(results));
@@ -167,10 +189,13 @@ fn main() -> Result<(), String> {
         if cfg!(debug_assertions) { "debug" } else { "release" }, std::env::consts::ARCH);
     println!("Times are per sample page, not per paragraph. Layout includes full debug output and font backend calls.");
     println!("Total includes input preparation, layout, output counting and result drop; no GUI or rendering.");
+    if options.replay {
+        println!("Replay enabled: total also includes replay construction and drop, excluding temporary marker measurements.");
+    }
     println!("First sequence (shared engine; later widths may reuse caches):");
     let mut expected = Vec::new();
     for &width in &options.widths {
-        let page = measure_page(&mut engine, width, options.scale);
+        let page = measure_page(&mut engine, width, options.scale, options.replay);
         println!("width={width} layout={:.3} drop={:.3} total={:.3} ms calls={} lines={} clusters={} body_glyphs={}",
             page.layout.as_secs_f64() * 1000.0, page.drop_results.as_secs_f64() * 1000.0,
             page.total.as_secs_f64() * 1000.0, page.calls, page.lines, page.clusters, page.glyphs);
@@ -178,14 +203,14 @@ fn main() -> Result<(), String> {
     }
     for _ in 0..options.warmup {
         for &width in &options.widths {
-            black_box(measure_page(&mut engine, width, options.scale));
+            black_box(measure_page(&mut engine, width, options.scale, options.replay));
         }
     }
     let mut samples: Vec<Vec<PageMeasurement>> = options.widths.iter()
         .map(|_| Vec::with_capacity(options.iterations)).collect();
     for _ in 0..options.iterations {
         for (index, &width) in options.widths.iter().enumerate() {
-            let page = measure_page(&mut engine, width, options.scale);
+            let page = measure_page(&mut engine, width, options.scale, options.replay);
             if (page.calls, page.lines, page.clusters, page.glyphs) != expected[index] {
                 return Err(format!("layout workload changed after warmup at width {width}"));
             }
@@ -195,6 +220,10 @@ fn main() -> Result<(), String> {
     for (index, &width) in options.widths.iter().enumerate() {
         println!("Measured width={width}:");
         print_stats("layout", samples[index].iter().map(|page| page.layout));
+        if options.replay {
+            print_stats("replay", samples[index].iter().map(|page| page.replay));
+            print_stats("replay_drop", samples[index].iter().map(|page| page.drop_replay));
+        }
         print_stats("result_drop", samples[index].iter().map(|page| page.drop_results));
         print_stats("total", samples[index].iter().map(|page| page.total));
     }
