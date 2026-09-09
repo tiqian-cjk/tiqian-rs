@@ -120,7 +120,7 @@ pub struct ParagraphLayoutPrep {
 #[derive(Clone, Debug)]
 pub struct LineBreakPlanningStageResult {
     pub metric_decisions: Vec<ClusterMetricDecision>,
-    pub metric_decision_by_range: HashMap<TextRange, ClusterMetricDecision>,
+    pub metric_decision_index_by_range: HashMap<TextRange, usize>,
     pub base_ascent: f32,
     pub base_descent: f32,
     pub base_box_descent: f32,
@@ -282,7 +282,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         default_body_line_height,
         interlinear_spacing_floor,
     );
-    let metric_decision_by_range = prep
+    let metric_decision_index_by_range = prep
         .natural_clusters
         .iter()
         .zip(containing_items(
@@ -291,7 +291,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             |decision| decision.range,
         ))
         .filter_map(|(cluster, decision)| {
-            decision.map(|index| (cluster.range, metric_decisions[index].clone()))
+            decision.map(|index| (cluster.range, index))
         })
         .collect();
     let base_face_height = base_ascent + base_descent;
@@ -729,7 +729,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
     };
     LineBreakPlanningStageResult {
         metric_decisions,
-        metric_decision_by_range,
+        metric_decision_index_by_range,
         base_ascent,
         base_descent,
         base_box_descent,

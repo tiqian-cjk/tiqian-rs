@@ -411,7 +411,8 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         .resolve_clusters()
         .into_iter()
         .map(|mut cluster| {
-            if let Some(metric) = plan.metric_decision_by_range.get(&cluster.range) {
+            if let Some(&index) = plan.metric_decision_index_by_range.get(&cluster.range) {
+                let metric = &plan.metric_decisions[index];
                 let metric_shift = if metric.layout_metrics.baseline_class == BaselineClass::Roman {
                     0.0
                 } else {
