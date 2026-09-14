@@ -332,6 +332,33 @@ pub fn line_gap_count(range: IntRange, gap_boundaries: &HashSet<i32>) -> i32 {
         .count() as i32
 }
 
+struct GapPrefix {
+    counts: Vec<i32>,
+}
+
+impl GapPrefix {
+    fn new(cluster_count: usize, gap_boundaries: &HashSet<i32>) -> Self {
+        let mut counts = vec![0; cluster_count + 1];
+        for index in 0..cluster_count {
+            counts[index + 1] = counts[index]
+                + if gap_boundaries.contains(&(index as i32)) {
+                    1
+                } else {
+                    0
+                };
+        }
+        Self { counts }
+    }
+
+    fn count(&self, range: IntRange) -> i32 {
+        if range.is_empty() {
+            0
+        } else {
+            self.counts[range.last() as usize] - self.counts[range.first() as usize]
+        }
+    }
+}
+
 pub fn line_adjustment_density(
     line: &LineCandidate,
     limit: f32,
@@ -342,6 +369,22 @@ pub fn line_adjustment_density(
         return 0.0;
     }
     let gaps = line_gap_count(line.in_measure_cluster_range(), gap_boundaries);
+    if gaps == 0 {
+        return 0.0;
+    }
+    (limit - line.adjusted_width).max(0.0) / gaps as f32
+}
+
+fn line_adjustment_density_with_gap_prefix(
+    line: &LineCandidate,
+    limit: f32,
+    is_last: bool,
+    gap_prefix: &GapPrefix,
+) -> f32 {
+    if is_last || line.end_reason != LineEndReason::AutoWrap {
+        return 0.0;
+    }
+    let gaps = gap_prefix.count(line.in_measure_cluster_range());
     if gaps == 0 {
         return 0.0;
     }
@@ -613,7 +656,7 @@ impl LookaheadLineBreaker {
         segment_end_exclusive: i32,
         previous_density: f32,
         previous_synthetic_hyphen_run: i32,
-        gap_boundaries: &HashSet<i32>,
+        gap_prefix: &GapPrefix,
         reference_density: f32,
         config: &LineBreakerConfig,
     ) -> f32 {
@@ -651,7 +694,7 @@ impl LookaheadLineBreaker {
                 max_width,
                 is_last,
                 previous,
-                gap_boundaries,
+                gap_prefix,
                 reference_density,
                 config,
             );
@@ -666,7 +709,7 @@ impl LookaheadLineBreaker {
                 config.first_line_indent,
                 line.cluster_range.first(),
             );
-            previous = line_adjustment_density(line, limit, is_last, gap_boundaries);
+            previous = line_adjustment_density_with_gap_prefix(line, limit, is_last, gap_prefix);
         }
         score
     }
@@ -677,7 +720,7 @@ impl LookaheadLineBreaker {
         max_width: f32,
         is_last: bool,
         previous_density: f32,
-        gap_boundaries: &HashSet<i32>,
+        gap_prefix: &GapPrefix,
         reference_density: f32,
         config: &LineBreakerConfig,
     ) -> f32 {
@@ -692,9 +735,9 @@ impl LookaheadLineBreaker {
             (limit - line.adjusted_width).max(0.0)
         };
         let in_measure = line.in_measure_cluster_range();
-        let gaps = line_gap_count(in_measure, gap_boundaries);
+        let gaps = gap_prefix.count(in_measure);
         let residual = if gaps == 0 { ragged } else { 0.0 };
-        let density = line_adjustment_density(line, limit, is_last, gap_boundaries);
+        let density = line_adjustment_density_with_gap_prefix(line, limit, is_last, gap_prefix);
         let orphan =
             if !is_last && !in_measure.is_empty() && in_measure.first() == in_measure.last() {
                 self.leave_ragged_penalty as f32
@@ -738,6 +781,7 @@ impl LineBreaker for LookaheadLineBreaker {
         let mut line_start = 0i32;
         let mut gap_boundaries = config.cjk_inter_char_boundaries.clone();
         gap_boundaries.extend(&config.sino_western_boundaries);
+        let gap_prefix = GapPrefix::new(adjusted.len(), &gap_boundaries);
         let reference_density = config.max_cjk_stretch_per_gap;
         let mut committed_density = 0.0;
         let mut committed_synthetic_hyphen_run = 0;
@@ -868,7 +912,7 @@ impl LineBreaker for LookaheadLineBreaker {
                     segment_end_exclusive,
                     committed_density,
                     committed_synthetic_hyphen_run,
-                    &gap_boundaries,
+                    &gap_prefix,
                     reference_density,
                     config,
                 );
@@ -921,7 +965,7 @@ impl LineBreaker for LookaheadLineBreaker {
                 line.cluster_range.first(),
             );
             committed_density =
-                line_adjustment_density(line, line_limit_value, false, &gap_boundaries);
+                line_adjustment_density_with_gap_prefix(line, line_limit_value, false, &gap_prefix);
             committed_synthetic_hyphen_run =
                 if ends_with_synthetic_hyphen(line, &config.hyphen_break_clusters) {
                     committed_synthetic_hyphen_run + 1
