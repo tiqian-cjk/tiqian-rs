@@ -1,94 +1,89 @@
-# 提椠 Tíqiàn (Rust Port)
+# 提椠 Tíqiàn（Rust）
 
-`tiqian-rs` 是 [提椠 Tíqiàn](https://github.com/tiqian-cjk/tiqian) 中文横排排版核心的 Rust 移植。当前使用确定性 stub shaping、stub font metrics 和 Rust 本地 layout fixture golden 验证移植行为。
+[English](README_EN.md)
 
-## 开发环境
+[![crates.io](https://img.shields.io/crates/v/tiqian.svg)](https://crates.io/crates/tiqian)
+[![docs.rs](https://docs.rs/tiqian/badge.svg)](https://docs.rs/tiqian)
+[![GitHub](https://img.shields.io/github/stars/tiqian-cjk/tiqian-rs?style=flat&logo=github)](https://github.com/tiqian-cjk/tiqian-rs)
 
-- Rust toolchain（Cargo，edition 2024）
+提椠是专注于中日韩文本的文字排印引擎，同时兼容拉丁、希腊、西里尔等文本的排版。`tiqian-rs` 是[提椠 Tíqiàn](https://github.com/tiqian-cjk/tiqian) 核心的 Rust 实现。
 
-## 段落构造
+当前实现重点覆盖简体中文横排，并提供字体 fallback、字体度量、文本 shaping、中文断行、避头尾、标点空间、两端对齐、行间注、装饰和布局查询等核心能力。可用于任意自定义渲染和 UI 实现。
 
-`api::ParagraphBuilder` 按文本顺序追加内容，并生成现有 `LayoutInput`、颜色和 rich-text 范围。调用方无需计算 `TextRange` 或维护纯绘制范围的 `source_boundaries`：
+## 当前状态
+
+Rust 版本持续跟随上游迭代，并根据 Rust 特性作一定的优化和改进。当前支持的能力请参考上游仓库。
+
+若想要了解与上游版本的差异，请参考 [docs/key-differences.md](docs/key-differences.md)。
+
+## 安装
+
+在 Cargo 项目的 `Cargo.toml` 中加入：
+
+```toml
+tiqian = "0.1"
+```
+
+## 使用
+
+相比于上游版本，Rust 版本的 API 接入路径更为简洁。
+
+使用 `ParagraphBuilder` 按内容顺序构造段落。它会为文本样式、行间注、装饰和富文本等生成 `LayoutInput`，调用方不需要手动维护这些范围的源文本边界。
 
 ```rust
 use tiqian::api::{ParagraphBuilder, RubyAnnotation, TextStyleOverride};
 use tiqian::core::geometry::LayoutConstraints;
+use tiqian::layout::paragraph_layout_engine::{
+	ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
+};
 
-let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
-builder.push("欢迎使用");
-builder.with_ruby(RubyAnnotation::pinyin("tíqiàn"), |builder| {
-	builder.styled(TextStyleOverride::builder().font_weight(700).build(), "提椠");
-});
-let output = builder.build()?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+	let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+	builder.push("欢迎使用");
+	builder.with_ruby(RubyAnnotation::pinyin("tíqiàn"), |builder| {
+		builder.styled(
+			TextStyleOverride::builder().font_weight(700).build(),
+			"提椠",
+		);
+	});
+	builder.emphasis("中文排版");
+
+	let input = builder.build()?;
+	let mut engine = ExplainableStubParagraphLayoutEngine::default();
+	let result = engine.layout(input);
+
+	println!("段落大小：{} × {}", result.size.width, result.size.height);
+	println!("行数：{}", result.lines.len());
+	Ok(())
+}
 ```
 
-将 `output.input` 传入现有 `ParagraphLayoutEngine`；当前 renderer 额外读取 `output.colors` 与 `output.rich_text` 重放颜色和富文本几何。
+示例中的 `ExplainableStubParagraphLayoutEngine` 使用确定性的 stub shaping 和字体度量，适合快速试用、测试和排版行为验证。接入平台字体时，需要实现并注入 `FallbackResolver`、`FontMetricsResolver` 和 `TextShaper`；`examples/paragraph-demo.rs` 展示了使用 HarfRust、SkRifa 和 Vello 的桌面接入路径。
 
-## Fixture 验证
+`LayoutResult` 包含行、cluster、glyph replay 数据、注音和装饰几何，以及结构化的布局决策。宿主应用可以据此绘制字形、背景和装饰，也可以使用布局查询实现选择、复制和命中测试。测量与绘制应使用同一字体后端，避免重新 shaping 造成几何差异。
 
-本仓库在 `tests/fixture_layout/` 保存全部 52 项 deterministic stub fixture 与对应 golden。每项 fixture 都使用 greedy、lookahead、paragraph-DP 三种 breaker，并比较完整 layout decision dump。
+所有 source range 和布局查询 offset 使用 Unicode scalar value，不使用 UTF-8 byte offset。手动构造底层输入时，需要遵守这一坐标约定。
 
-运行本地 fixture golden 测试：
+## 能力范围
 
-```shell
-cargo test --test tiqian layout_fixture_golden_test
-```
+核心目前以简体中文横排为主要目标，支持：
 
-默认模式只读取 golden，缺少、额外或不匹配的 golden 都会失败。更新预期输出时显式设置环境变量：
+- 中文正文的断行、避头尾、标点几何、字距调整和两端对齐；
+- CJK、Latin、数字、标点和 emoji 的字体角色与 shaping 接口；
+- 拼音、注音、着重号、示亡号、专名号和书名号；
+- 颜色、背景、下划线、删除线、链接、技术文本和行内代码等富文本声明；
+- 布局结果的 glyph 重放、范围几何、caret、选择、复制和命中查询。
 
-```shell
-TIQIAN_UPDATE_LAYOUT_GOLDENS=1 cargo test --test tiqian layout_fixture_golden_test
-```
+Rust crate 提供排版核心和平台后端接口，不绑定窗口系统、GPU 或特定 UI 框架。宿主应用需要负责字体资源、字形绘制、交互事件和最终呈现。
 
-更新会重新生成全部 52 个 Rust 本地 golden，不会删除未知文件；结束时仍检查 fixture ID 与 golden 文件名集合相等。更新后逐项审阅文本 diff。Kotlin 的 fixture 定义和普通 golden 仅在上游同步时作为对照来源，不参与日常 Rust 测试。
+## 文档
 
-## 本地检查
+- [API 文档](https://docs.rs/tiqian)：公开模块、类型和方法。
+- [开发与调试指南](docs/dev-guide.md)：开发环境、测试、fixture、golden 和性能测量。
+- [API 设计报告](docs/api-design-report.md)：当前外部接入路径和 API 边界分析。
+- [关键差异](docs/key-differences.md)：Rust 实现与 Kotlin 上游的有意差异。
+- [上游同步状态](docs/tracking.md)：与 Kotlin 版本的同步范围和记录。
 
-### 无界面布局性能测量
+## 协议
 
-`paragraph-layout-bench` 复用 desktop demo 的复杂文字 sample 和 HarfRust 字体后端，
-按固定宽度序列重复布局，无需窗口或 GPU。默认运行首次序列、20 轮预热和 200 轮测量，
-每轮依次使用 672、360、960 物理像素宽度，缩放为 1。
-
-```shell
-cargo run --release --example paragraph-layout-bench
-cargo run --release --example paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
-```
-
-输出按整份 sample 页面统计，`layout` 是所有 `engine.layout()` 的累计耗时，
-包含 HarfRust shaping、字体度量与完整 debug 数据；`result_drop` 是结果集中析构时间；
-`total` 还包含输入准备、列表宽度计算和输出数量统计。
-各项报告 min、median、p95、mean、max（ms），同时检查预热后的调用数、行数、
-cluster 数和正文 glyph 数与首次序列一致。首次序列的后续宽度会复用前面的引擎缓存。
-比较优化前后时保持参数与构建配置一致，以各宽度的 `layout` median 为主要指标。
-
-采样时使用 `cargo flamegraph --example paragraph-layout-bench -- --iterations 1000`。
-火焰图覆盖整个进程，包含启动、预热、输入准备和析构；分析核心时筛选 `engine.layout`
-的调用树。采样运行的耗时不与普通 release 运行直接比较。
-
-添加 `--replay` 可测量 demo 使用的整页重放索引构造与析构：
-
-```shell
-cargo run --release --example paragraph-layout-bench -- --replay
-```
-
-每个宽度额外输出 `replay` 与 `replay_drop`，`total` 也包含这两项。
-列表临时标记测量结果不构造索引。此模式仍不执行 overhang 查询、绘制或 GPU 提交，
-因此其 total 不能作为完整 demo 帧耗时。
-
-### 编译与测试
-
-Rust 侧常规编译与测试：
-
-```shell
-cargo check
-cargo test
-```
-
-运行全部 Rust target 并生成 HTML 覆盖率报告：
-
-```shell
-bash tools/coverage.sh
-```
-
-报告入口位于 `target/llvm-cov/html/index.html`。覆盖率路径只依赖 Rust toolchain。
+提椠以 [Mozilla Public License 2.0](LICENSE) 发布。

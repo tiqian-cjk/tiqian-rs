@@ -10,6 +10,7 @@
 
 详细现状优先参考：
 
+- `docs/dev-guide.md`：开发环境、测试、fixture、golden、性能测量与 API 接入注意事项。
 - `docs/tracking.md`：跟踪与上游 tiqian 的同步情况。包含同步策略、变更记录等。
 - `docs/key-differences.md`：记录与上游 tiqian 的主要差异，包括设计、实现和行为上的不同。
 - `docs/adr/*.md`：架构决策记录，通常记录了某个与上游差异相关的重要设计决策。
