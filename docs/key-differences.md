@@ -58,11 +58,11 @@ Kotlin 的 `getCursorRect`、`getLineForOffset`、`getBoundingBox` 与
 `getOffsetForPosition` 保留原始 UTF-16 offset；只有
 `coerceSelectionOffset` 和 `getSelectionOffsetForPosition` 保证返回 interaction boundary。
 
-Rust 的对应单点查询采用更严格的公开 API 契约：
+Rust 的对应单点查询采用更严格的公开 API 约定：
 
 - `get_cursor_rect`、`get_line_for_offset` 与单点 `get_bounding_box` 收到 interaction unit
-	内的 scalar offset 时，先按最近边界归一化；等距时取后一个边界；
-- `get_offset_for_position` 返回按最近边界归一化后的 offset；
+	内的 scalar offset 时，先调整到最近边界；等距时取后一个边界；
+- `get_offset_for_position` 返回调整到最近边界后的 offset；
 - `coerce_selection_offset` 与 `get_selection_offset_for_position` 继续提供显式方向或几何距离驱动的
 	caret 吸附；
 - `get_selection_word_boundary` 保留原始 scalar offset，用它定位所属 interaction unit 后再返回完整
@@ -71,7 +71,7 @@ Rust 的对应单点查询采用更严格的公开 API 契约：
 因此 Rust 不会通过普通单点查询暴露组合标记、CRLF、区域指示符对、Hangul 序列、emoji modifier
 或 ZWJ emoji 序列内部的位置。该取舍已由
 `docs/iteration/2026-09-03-feat-unicode-scalar-source-coordinates.md` 的交互查询设计确认，作为 Rust
-scalar source coordinate API 的安全不变量，不是待同步项。
+scalar source coordinate API 的安全不变量，当前无需同步。
 
 ## 关键差异列表（其他）
 
