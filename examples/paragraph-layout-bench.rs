@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid};
+use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
@@ -21,6 +22,7 @@ struct Options {
     warmup: usize,
     widths: Vec<f32>,
     scale: f32,
+    strategy: String,
 }
 
 impl Options {
@@ -31,6 +33,7 @@ impl Options {
             warmup: 20,
             widths: vec![672.0, 360.0, 960.0],
             scale: 1.0,
+            strategy: "greedy".to_owned(),
         };
         let mut args = std::env::args().skip(1);
         while let Some(flag) = args.next() {
@@ -39,11 +42,11 @@ impl Options {
                 continue;
             }
             if flag == "--help" || flag == "-h" {
-                println!("paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1]");
+                println!("paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1] [--strategy greedy|lookahead]");
                 println!("One iteration visits every width in order. Widths are physical pixels.");
                 return Ok(None);
             }
-            if !matches!(flag.as_str(), "--iterations" | "--warmup" | "--widths" | "--scale") {
+            if !matches!(flag.as_str(), "--iterations" | "--warmup" | "--widths" | "--scale" | "--strategy") {
                 return Err(format!("unknown option: {flag}"));
             }
             let value = args.next().ok_or_else(|| format!("missing value for {flag}"))?;
@@ -56,6 +59,7 @@ impl Options {
                     }).collect::<Result<_, _>>()?;
                 }
                 "--scale" => options.scale = value.parse().map_err(|_| "invalid scale")?,
+                "--strategy" => options.strategy = value,
                 _ => unreachable!(),
             }
         }
@@ -66,6 +70,9 @@ impl Options {
             || options.widths.iter().any(|width| !width.is_finite() || *width <= 0.0)
         {
             return Err("widths and scale must be finite and positive".to_owned());
+        }
+        if !matches!(options.strategy.as_str(), "greedy" | "lookahead") {
+            return Err("strategy must be greedy or lookahead".to_owned());
         }
         Ok(Some(options))
     }
@@ -180,12 +187,15 @@ fn main() -> Result<(), String> {
     let catalog = font_backend::DemoFontCatalog::load()?;
     catalog.validate_demo_faces()?;
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    if options.strategy == "lookahead" {
+        engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    }
     engine.fallback_resolver = Box::new(catalog.clone());
     engine.font_metrics_resolver = Box::new(catalog.clone());
     engine.text_shaper = Box::new(catalog);
     println!("font/engine setup: {:.3} ms", start.elapsed().as_secs_f64() * 1000.0);
-    println!("widths={:?} scale={} warmup={} iterations={} profile={} arch={}",
-        options.widths, options.scale, options.warmup, options.iterations,
+    println!("widths={:?} scale={} strategy={} warmup={} iterations={} profile={} arch={}",
+        options.widths, options.scale, options.strategy, options.warmup, options.iterations,
         if cfg!(debug_assertions) { "debug" } else { "release" }, std::env::consts::ARCH);
     println!("Times are per sample page, not per paragraph. Layout includes full debug output and font backend calls.");
     println!("Total includes input preparation, layout, output counting and result drop; no GUI or rendering.");

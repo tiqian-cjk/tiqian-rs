@@ -226,40 +226,43 @@ fn progressive_candidate_stretch_density(
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
 ) -> f32 {
-    let width: f32 = (line_start..boundary)
-        .map(|index| adjusted_clusters[index as usize].advance)
-        .sum();
-    let deficit = (line_limit - width).max(0.0);
+    let active_span = opportunities
+        .get(&boundary)
+        .map(|opportunity| opportunity.span_range);
     // `ProgressiveTechnicalWhitespaceBreakPricing`：k boundary 处的 Whitespace opportunity 拥有真实的
     // source space cluster k-1；行若在 k 结束，该 space 作为 trailing line-edge whitespace 被折叠。
-    let technical_whitespace_capacity: f32 = ((line_start + 1)..boundary)
-        .filter_map(|candidate| opportunities.get(&candidate))
-        .filter(|opportunity| opportunity.tier == ProgressiveBreakTier::Whitespace)
-        .map(|opportunity| opportunity.preceding_whitespace_stretch_capacity)
-        .sum();
-    let sino_western_gap_count = ((line_start + 1)..boundary)
-        .filter(|candidate| sino_western_boundaries.contains(candidate))
-        .count() as f32;
+    let mut width = 0.0;
+    let mut technical_whitespace_capacity = 0.0;
+    let mut sino_western_gap_count = 0.0;
+    let mut terminal_technical_source_units = 0;
+    for index in line_start..boundary {
+        let cluster = &adjusted_clusters[index as usize];
+        width += cluster.advance;
+        if index > line_start {
+            if let Some(opportunity) = opportunities.get(&index)
+                && opportunity.tier == ProgressiveBreakTier::Whitespace
+            {
+                technical_whitespace_capacity += opportunity.preceding_whitespace_stretch_capacity;
+            }
+            if sino_western_boundaries.contains(&index) {
+                sino_western_gap_count += 1.0;
+            }
+        }
+        if active_span.is_some_and(|span| {
+            cluster.range.start() >= span.start()
+                && cluster.range.end() <= span.end()
+                && !cluster.text.chars().any(char::is_whitespace)
+        }) {
+            terminal_technical_source_units += cluster.text.scalar_len().value();
+        }
+    }
+    let deficit = (line_limit - width).max(0.0);
     let cjk_deficit = (deficit
         - technical_whitespace_capacity
         - sino_western_gap_count * sino_western_stretch_cap)
         .max(0.0);
-    let active_span = opportunities
-        .get(&boundary)
-        .map(|opportunity| opportunity.span_range);
-    let terminal_technical_source_units = active_span.map_or(0, |span| {
-        (line_start..boundary)
-            .map(|index| &adjusted_clusters[index as usize])
-            .filter(|cluster| {
-                cluster.range.start() >= span.start()
-                    && cluster.range.end() <= span.end()
-                    && !cluster.text.chars().any(char::is_whitespace)
-            })
-                .map(|cluster| cluster.text.scalar_len().value())
-            .sum()
-    });
     // `TerminalTechnicalTrackingDensityEstimate`：技术 prefix 到达行末时，最终可用的 tracking 是其自身
-            // scalar source-unit gap，而不是无关的 CJK body gap。当前技术分段面向 Latin/ASCII，scalar 与其 grapheme cut 一致。
+    // scalar source-unit gap，而不是无关的 CJK body gap。当前技术分段面向 Latin/ASCII，scalar 与其 grapheme cut 一致。
     let terminal_technical_gap_count = (terminal_technical_source_units - 1).max(0);
     if terminal_technical_gap_count > 0 {
         return cjk_deficit / terminal_technical_gap_count as f32;
