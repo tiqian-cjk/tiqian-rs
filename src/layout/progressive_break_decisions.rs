@@ -295,16 +295,18 @@ pub fn decide_hyphen_break(
     if whole_word_end <= line_start {
         return overflow_at;
     }
-    let width: f32 = (line_start..whole_word_end)
-        .map(|index| adjusted_clusters[index as usize].advance)
-        .sum();
+    let mut width = 0.0;
+    let mut sino_western = 0.0;
+    for index in line_start..whole_word_end {
+        width += adjusted_clusters[index as usize].advance;
+        if index > line_start && sino_western_boundaries.contains(&index) {
+            sino_western += 1.0;
+        }
+    }
     let deficit = line_limit - width;
     if deficit <= 0.0 {
         return whole_word_end;
     }
-    let sino_western = ((line_start + 1)..whole_word_end)
-        .filter(|index| sino_western_boundaries.contains(index))
-        .count() as f32;
     let cjk_deficit = (deficit - sino_western * sino_western_stretch_cap).max(0.0);
     if cjk_deficit <= 0.0 {
         return whole_word_end;
