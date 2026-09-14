@@ -33,7 +33,7 @@ Kotlin 上游仍使用旧模型，因此这是当前实现差异。
 
 模型边界、数据结构与迁移规则见
 [`R0002-unified-rich-text-paint-model.md`](adr/R0002-unified-rich-text-paint-model.md)；实施记录见
-[`2026-09-06-unified-rich-text-paint-model.md`](iteration/2026-09-06-unified-rich-text-paint-model.md)。
+[`2026-09-06-feat-unified-rich-text-paint-model.md`](iteration/2026-09-06-feat-unified-rich-text-paint-model.md)。
 
 #### R0002 附注：rich-text layout projection 在 builder scope 内完成
 
@@ -70,7 +70,7 @@ Rust 的对应单点查询采用更严格的公开 API 契约：
 
 因此 Rust 不会通过普通单点查询暴露组合标记、CRLF、区域指示符对、Hangul 序列、emoji modifier
 或 ZWJ emoji 序列内部的位置。该取舍已由
-`docs/iteration/2026-09-03-unicode-scalar-source-coordinates.md` 的交互查询设计确认，作为 Rust
+`docs/iteration/2026-09-03-feat-unicode-scalar-source-coordinates.md` 的交互查询设计确认，作为 Rust
 scalar source coordinate API 的安全不变量，不是待同步项。
 
 ## 关键差异列表（其他）

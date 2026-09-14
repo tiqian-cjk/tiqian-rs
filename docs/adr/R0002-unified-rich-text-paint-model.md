@@ -4,7 +4,7 @@
 - Date: 2026-09-06
 - Amended: 2026-09-08
 - Implementation: Complete
-- Relates: [2026-09-06 统一富文本旁路模型](../iteration/2026-09-06-unified-rich-text-paint-model.md)
+- Relates: [2026-09-06 统一富文本旁路模型](../iteration/2026-09-06-feat-unified-rich-text-paint-model.md)
 
 ## Context
 

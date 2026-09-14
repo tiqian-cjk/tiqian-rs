@@ -127,7 +127,7 @@ cluster、glyph、line、size 或 debug decision 改变，撤回本迭代，因�
   `pub(crate)`，供 replay index 与原有查询共享；
 - 新增 replay index、paint bounds 与 line pattern 的 core 回归测试。所有 source offset 与 range 保持
   R0001 的 Unicode scalar coordinate；
-- `docs/iteration/2026-09-09-desktop-demo-replay-geometry.md` 后续将 replay index 与 line pattern
+- `docs/iteration/2026-09-09-refactor-desktop-demo-replay-geometry.md` 后续将 replay index 与 line pattern
   geometry 接入 Vello demo；该 demo 迭代不使用有限裁切矩形的 `visible_paint_overhang` 代替整页绘制范围计算。
 
 2026-09-09 已通过：

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-03
 - Implementation: Completed 2026-09-04
-- Relates: [2026-09-03 Unicode scalar source coordinate 迁移](../iteration/2026-09-03-unicode-scalar-source-coordinates.md)
+- Relates: [2026-09-03 Unicode scalar source coordinate 迁移](../iteration/2026-09-03-feat-unicode-scalar-source-coordinates.md)
 
 ## Context
 
