@@ -71,7 +71,7 @@ pub fn decide_progressive_break(
     let Some(active) = opportunities.get(&overflow_at) else {
         return overflow_at;
     };
-    let best_priority = progressive_break_priority_for_line(
+    progressive_break_selection_for_line(
         line_start,
         overflow_at,
         *active,
@@ -82,15 +82,8 @@ pub fn decide_progressive_break(
         max_cjk_stretch_per_gap,
         sino_western_boundaries,
         sino_western_stretch_cap,
-    );
-    ((line_start + 1)..=overflow_at)
-        .rfind(|boundary| {
-            opportunities.get(boundary).is_some_and(|opportunity| {
-                opportunity.span_range == active.span_range
-                    && opportunity.tier.priority() == best_priority
-            })
-        })
-        .unwrap_or(overflow_at)
+    )
+    .1
 }
 
 pub const PROGRESSIVE_TECHNICAL_VISIBLE_STRETCH_FRACTION: f32 = 0.0;
@@ -142,7 +135,7 @@ pub fn progressive_candidate_allowed(
         )
 }
 
-fn progressive_break_priority_for_line(
+fn progressive_break_selection_for_line(
     line_start: i32,
     overflow_at: i32,
     active: ProgressiveBreakOpportunity,
@@ -153,35 +146,31 @@ fn progressive_break_priority_for_line(
     max_cjk_stretch_per_gap: f32,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
-) -> i32 {
-    let mut priorities: Vec<i32> = ((line_start + 1)..=overflow_at)
-        .filter_map(|index| opportunities.get(&index))
-        .filter(|opportunity| opportunity.span_range == active.span_range)
-        .map(|opportunity| opportunity.tier.priority())
-        .collect();
-    priorities.sort_unstable();
-    priorities.dedup();
-    if priorities.is_empty() {
-        return active.tier.priority();
+) -> (i32, i32) {
+    let mut rightmost_boundaries = [None; 5];
+    for index in (line_start + 1)..=overflow_at {
+        if let Some(opportunity) = opportunities.get(&index)
+            && opportunity.span_range == active.span_range
+        {
+            rightmost_boundaries[opportunity.tier.priority() as usize] = Some(index);
+        }
     }
+    let Some(first_priority) = rightmost_boundaries.iter().position(Option::is_some) else {
+        return (active.tier.priority(), overflow_at);
+    };
     let Some(clusters) = adjusted_clusters else {
-        return priorities[0];
+        return (first_priority as i32, rightmost_boundaries[first_priority].unwrap());
     };
     if !line_limit.is_finite() || !max_cjk_stretch_per_gap.is_finite() {
-        return priorities[0];
+        return (first_priority as i32, rightmost_boundaries[first_priority].unwrap());
     }
     let progressive_stretch_limit =
         max_cjk_stretch_per_gap * PROGRESSIVE_TECHNICAL_VISIBLE_STRETCH_FRACTION;
-    let mut least_loose_priority = priorities[0];
+    let mut least_loose_priority = first_priority as i32;
     let mut least_loose_density = f32::INFINITY;
-    let mut least_loose_boundary = line_start + 1;
-    for priority in &priorities {
-        let Some(boundary) = ((line_start + 1)..=overflow_at).rfind(|candidate| {
-            opportunities.get(candidate).is_some_and(|opportunity| {
-                opportunity.span_range == active.span_range
-                    && opportunity.tier.priority() == *priority
-            })
-        }) else {
+    let mut least_loose_boundary = rightmost_boundaries[first_priority].unwrap();
+    for (priority, boundary) in rightmost_boundaries.iter().copied().enumerate() {
+        let Some(boundary) = boundary else {
             continue;
         };
         let density = progressive_candidate_stretch_density(
@@ -196,23 +185,22 @@ fn progressive_break_priority_for_line(
         );
         if density < least_loose_density {
             least_loose_density = density;
-            least_loose_priority = *priority;
+            least_loose_priority = priority as i32;
             least_loose_boundary = boundary;
         }
         if density <= progressive_stretch_limit {
-            return *priority;
+            return (priority as i32, boundary);
         }
     }
-    let emergency_boundary = ((line_start + 1)..=overflow_at).rfind(|candidate| {
-        opportunities.get(candidate).is_some_and(|opportunity| {
-            opportunity.span_range == active.span_range
-                && opportunity.tier == ProgressiveBreakTier::Emergency
-        })
-    });
-    if emergency_boundary.is_some_and(|boundary| boundary >= least_loose_boundary) {
-        ProgressiveBreakTier::Emergency.priority()
+    if rightmost_boundaries[ProgressiveBreakTier::Emergency.priority() as usize]
+        .is_some_and(|boundary| boundary >= least_loose_boundary)
+    {
+        (
+            ProgressiveBreakTier::Emergency.priority(),
+            rightmost_boundaries[ProgressiveBreakTier::Emergency.priority() as usize].unwrap(),
+        )
     } else {
-        least_loose_priority
+        (least_loose_priority, least_loose_boundary)
     }
 }
 
