@@ -7,16 +7,11 @@ use super::super::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfi
 use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::layout_model::LayoutResult;
 use super::super::core::text_model::LayoutInput;
-use super::super::font::font_metrics::{
-    FontMetricsNormalizer, FontMetricsResolver, ScriptAwareFontMetricsNormalizer,
-    StubFontMetricsResolver,
-};
-use super::super::font::font_policy::{
-    CjkFontRoleClassifier, FallbackResolver, FontRoleClassifier,
-    PreferCjkForAmbiguousPunctuationResolver,
-};
+use super::super::font::font_metrics::{FontMetricsNormalizer, ScriptAwareFontMetricsNormalizer};
+use super::super::font::font_policy::{CjkFontRoleClassifier, FontRoleClassifier};
 use super::super::linebreak::hyphenation::Hyphenator;
-use super::super::shaping::text_shaper::{ExplainableStubTextShaper, TextShaper};
+use super::super::shaping::font_backend::FontBackend;
+use super::super::shaping::stub_font_backend::DeterministicStubFontBackend;
 use super::default_hyphenator::default_hyphenator;
 use super::justifier::Justifier;
 use super::line_adjustment_stage::{
@@ -33,24 +28,20 @@ use super::width_independent_annotation_cache::{
     to_width_independent_annotation_key,
 };
 
-pub const MANDATORY_BREAK_FONT_KEY: &str = "mandatory-break";
-
 pub trait ParagraphLayoutEngine {
     fn layout(&mut self, input: LayoutInput) -> LayoutResult;
 }
 
 pub struct ExplainableStubParagraphLayoutEngine {
     pub font_role_classifier: Box<dyn FontRoleClassifier>,
-    pub fallback_resolver: Box<dyn FallbackResolver>,
+    pub font_backend: Box<dyn FontBackend>,
     pub clreq_profile_resolver: Box<dyn ClreqProfileResolver>,
-    pub font_metrics_resolver: Box<dyn FontMetricsResolver>,
     pub font_metrics_normalizer: Box<dyn FontMetricsNormalizer>,
     pub punctuation_atom_builder: PunctuationAtomBuilder,
     pub punctuation_spacing_compressor: PunctuationSpacingCompressor,
     pub quote_pair_analyzer: QuotePairAnalyzer,
     pub line_breaker: Box<dyn LineBreaker>,
     pub justifier: Justifier,
-    pub text_shaper: Box<dyn TextShaper>,
     pub hyphenator: &'static dyn Hyphenator,
     pub annotation_cache: Box<dyn WidthIndependentAnnotationCache>,
 }
@@ -59,16 +50,14 @@ impl Default for ExplainableStubParagraphLayoutEngine {
     fn default() -> Self {
         Self {
             font_role_classifier: Box::new(CjkFontRoleClassifier),
-            fallback_resolver: Box::new(PreferCjkForAmbiguousPunctuationResolver::default()),
+            font_backend: Box::new(DeterministicStubFontBackend::default()),
             clreq_profile_resolver: Box::new(BuiltInClreqProfileResolver),
-            font_metrics_resolver: Box::new(StubFontMetricsResolver),
             font_metrics_normalizer: Box::new(ScriptAwareFontMetricsNormalizer),
             punctuation_atom_builder: PunctuationAtomBuilder::default(),
             punctuation_spacing_compressor: PunctuationSpacingCompressor,
             quote_pair_analyzer: QuotePairAnalyzer,
             line_breaker: Box::new(GreedyLineBreaker::default()),
             justifier: Justifier::default(),
-            text_shaper: Box::new(ExplainableStubTextShaper),
             hyphenator: default_hyphenator(),
             annotation_cache: Box::new(LruWidthIndependentAnnotationCache::default()),
         }
@@ -90,10 +79,8 @@ impl ExplainableStubParagraphLayoutEngine {
                 &rejected_technical_tiers_by_span,
                 self.clreq_profile_resolver.as_ref(),
                 self.font_role_classifier.as_ref(),
-                self.fallback_resolver.as_ref(),
-                self.font_metrics_resolver.as_ref(),
+                self.font_backend.as_ref(),
                 &self.quote_pair_analyzer,
-                self.text_shaper.as_ref(),
                 self.hyphenator,
             ));
             self.annotation_cache.put(cache_key, annotation.clone());
@@ -103,14 +90,14 @@ impl ExplainableStubParagraphLayoutEngine {
             &input,
             annotation.as_ref(),
             &rejected_technical_tiers_by_span,
-            self.text_shaper.as_ref(),
+            self.font_backend.as_ref(),
             self.hyphenator,
             &self.punctuation_atom_builder,
             &self.punctuation_spacing_compressor,
         );
         let plan = plan_paragraph_lines(LineBreakPlanningRequest::new(
             &prep,
-            self.font_metrics_resolver.as_ref(),
+            self.font_backend.as_ref(),
             self.font_metrics_normalizer.as_ref(),
             &self.justifier,
             self.line_breaker.as_ref(),
@@ -120,8 +107,7 @@ impl ExplainableStubParagraphLayoutEngine {
             plan: &plan,
             justifier: &self.justifier,
             line_breaker_strategy_name: self.line_breaker.strategy_name(),
-            fallback_resolver: self.fallback_resolver.as_ref(),
-            text_shaper: self.text_shaper.as_ref(),
+            font_backend: self.font_backend.as_ref(),
         }) {
             LineAdjustmentStageOutcome::Finished(result) => *result,
             LineAdjustmentStageOutcome::Retry {

@@ -31,8 +31,8 @@ pub fn to_prepared_paragraph_json(
                     }
                 }
             }
-            if let Some(render_font_key) = &glyph.render_font_key {
-                render_font_family.insert(glyph.cluster_range, render_font_key.clone());
+            if let Some(render_font_face) = &glyph.render_font_face {
+                render_font_family.insert(glyph.cluster_range, render_font_face.to_string());
             }
             glyph_ids_by_range
                 .entry(glyph.cluster_range)
@@ -282,9 +282,9 @@ fn append_cell_render_evidence(
             out.push_str(",\"shapingLanguage\":");
             append_json_string(out, language);
         }
-        if let Some(resolved_face) = shaping_decision.and_then(|decision| decision.resolved_face.as_ref()) {
+        if let Some(resolved_face) = shaping_decision.and_then(|decision| decision.font_face.as_ref()) {
             out.push_str(",\"resolvedFace\":");
-            append_json_string(out, resolved_face);
+            append_json_string(out, &resolved_face.to_string());
         }
         if let Some(glyph_ids) = glyph_ids.filter(|glyph_ids| !glyph_ids.is_empty()) {
             out.push_str(",\"glyphIds\":");

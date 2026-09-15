@@ -13,6 +13,7 @@ pub mod core {
     pub mod east_asian_spacing;
     pub mod east_asian_spacing_data;
     pub mod fitted_line_pattern_geometry;
+    pub mod font_face;
     pub mod geometry;
     pub mod int_range;
     pub mod layout_paint_bounds;
@@ -47,7 +48,9 @@ pub mod linebreak {
 }
 
 pub mod shaping {
+    pub mod font_backend;
     pub mod replayable_font_backend;
+    pub mod stub_font_backend;
     pub mod text_shaper;
 }
 

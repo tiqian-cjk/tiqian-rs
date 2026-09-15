@@ -549,7 +549,12 @@ mod tests {
                 .debug
                 .shaping_decisions
                 .iter()
-                .filter(|decision| decision.font_key == "symbol-fallback")
+                .filter(|decision| {
+                    decision
+                        .font_face
+                        .as_ref()
+                        .is_some_and(|face| face.resource_id() == "symbol-fallback")
+                })
                 .map(|decision| (decision.range, decision.source_text.as_str()))
                 .collect::<Vec<_>>(),
             vec![

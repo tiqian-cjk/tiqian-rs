@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/shaping/TextShaper.kt
 
+use super::super::core::font_face::{FontFaceId, FontVariationInstance};
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use super::super::core::text::Text;
@@ -130,11 +131,16 @@ impl TextShaper for ExplainableStubTextShaper {
         let source_text = input.text.slice_text(input.range);
         let glyph_count = input.display_text.chars().count().max(1) as i32;
         let advance = input.style.font_size * nominal_advance_em(&source_text, &input.display_text);
+        let font_face = FontFaceId::new(
+            input.font_decision.candidate.key.clone(),
+            0,
+            FontVariationInstance::default(),
+        );
         let cluster = Cluster::with_display_text(
             input.range,
             source_text.clone(),
             input.display_text.clone(),
-            input.font_decision.candidate.key.clone(),
+            font_face.clone(),
             advance,
         );
         let glyph_advance = advance / glyph_count as f32;
@@ -147,7 +153,7 @@ impl TextShaper for ExplainableStubTextShaper {
             .collect();
         let run = GlyphRun::new(
             input.range,
-            input.font_decision.candidate.key.clone(),
+            font_face.clone(),
             glyphs,
             advance,
         );
@@ -155,7 +161,7 @@ impl TextShaper for ExplainableStubTextShaper {
             input.range,
             source_text,
             input.display_text.clone(),
-            input.font_decision.candidate.key.clone(),
+            Some(font_face),
             glyph_count,
             advance,
             "Stub".to_owned(),
@@ -168,7 +174,7 @@ impl TextShaper for ExplainableStubTextShaper {
     }
 }
 
-fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32 {
+pub(crate) fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32 {
     if source_text == "⸺" || display_text == "⸺" {
         2.0
     // 简体中文网格中的 U+0020 是二分空（半 em），而不是全宽空白。deterministic stub 将每个

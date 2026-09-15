@@ -9,8 +9,7 @@ use super::super::core::layout_model::{
     LineEdgeTrimDecisionInfo, LineEndReason,
 };
 use super::super::font::font_metrics::BaselineClass;
-use super::super::font::font_policy::FallbackResolver;
-use super::super::shaping::text_shaper::TextShaper;
+use super::super::shaping::font_backend::FontBackend;
 use super::annotation_geometry_stage::{AnnotationGeometryRequest, resolve_annotation_geometry};
 use super::justifier::{JustificationRequest, Justifier};
 use super::layout_debug_assembly::{LayoutDebugStageInput, build_layout_debug_info};
@@ -40,8 +39,7 @@ pub struct LineAdjustmentRequest<'a> {
     pub plan: &'a LineBreakPlanningStageResult,
     pub justifier: &'a Justifier,
     pub line_breaker_strategy_name: &'a str,
-    pub fallback_resolver: &'a dyn FallbackResolver,
-    pub text_shaper: &'a dyn TextShaper,
+    pub font_backend: &'a dyn FontBackend,
 }
 
 pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjustmentStageOutcome {
@@ -485,8 +483,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         ruby_font_weight: prep.ruby_font_weight,
         base_descent: plan.base_descent,
         bopomofo_font_weight_at: prep.bopomofo_font_weight_at.as_ref(),
-        fallback_resolver: request.fallback_resolver,
-        text_shaper: request.text_shaper,
+        font_backend: request.font_backend,
     });
     let lines = line_boxes.visible_lines;
     let widest_line = lines
@@ -507,7 +504,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
     let prep = request.prep;
     let debug = build_layout_debug_info(LayoutDebugStageInput {
         text: &prep.text,
-        font_decisions: &prep.font_decisions,
+        font_resolutions: &prep.font_resolutions,
         punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
         substitution_rollbacks: &prep.substitution_rollbacks,
         shaping_decisions: prep.shaping_decisions,
@@ -689,7 +686,10 @@ fn build_glyph_runs(prep: &ParagraphLayoutPrep, final_clusters: &[Cluster]) -> V
                     clusters.first().unwrap().range.start(),
                     clusters.last().unwrap().range.end(),
                 ),
-                clusters[0].font_key.clone(),
+                clusters[0]
+                    .font_face
+                    .clone()
+                    .expect("renderable glyph runs must have a font face"),
                 glyphs,
                 clusters.iter().map(|cluster| cluster.advance).sum(),
                 open_type_features,

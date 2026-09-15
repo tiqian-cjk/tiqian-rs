@@ -610,10 +610,11 @@ fn is_space_run(c: &Cluster) -> bool {
     !c.text.is_empty() && c.text.chars().all(|x| x == ' ')
 }
 fn is_inline_object_cluster(c: &Cluster) -> bool {
-    c.font_key == "inline-object"
+    c.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::InlineObject)
 }
 fn is_mandatory_break_cluster(c: &Cluster) -> bool {
-    c.font_key == "mandatory-break" && c.display_text.is_empty()
+    c.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::MandatoryBreak)
+        && c.display_text.is_empty()
 }
 fn display_char_source_range(c: &Cluster, i: usize) -> TextRange {
     if c.display_text.scalar_len() == c.text.scalar_len() {
@@ -663,6 +664,7 @@ fn auto_decision(
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::font_face::FontFaceId;
     use crate::core::geometry::text_range;
     use crate::core::text::Text;
 
@@ -671,7 +673,7 @@ mod tests {
             range,
             Text::from(""),
             Text::from(display_text),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             16.0,
         )
     }
@@ -711,13 +713,13 @@ mod tests {
         assert!(is_space_run(&Cluster::new(
             text_range(0, 1),
             Text::from(" "),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             16.0,
         )));
         assert!(is_space_run(&Cluster::new(
             text_range(0, 2),
             Text::from("  "),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             16.0,
         )));
         assert!(!is_space_run(&textless_display_cluster(
@@ -727,13 +729,13 @@ mod tests {
         assert!(!is_space_run(&Cluster::new(
             text_range(0, 3),
             Text::from("a b"),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             16.0,
         )));
         assert!(!is_space_run(&Cluster::new(
             text_range(0, 1),
             Text::from("中"),
-            "cjk".to_owned(),
+            FontFaceId::with_resource_id("cjk"),
             16.0,
         )));
     }

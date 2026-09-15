@@ -457,7 +457,7 @@ pub fn renderable_glyph_run_clusters<'a>(
     {
         if let Some(current) = groups.last_mut()
             && current.last().is_some_and(|previous| {
-                previous.font_key == cluster.font_key
+                previous.font_face == cluster.font_face
                     && previous.range.end() == cluster.range.start()
                     && open_type_features_by_cluster_range
                         .get(&previous.range)

@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutModel.kt
 
+use super::font_face::FontFaceId;
 use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;
 use super::text::Text;
@@ -10,7 +11,8 @@ pub struct Cluster {
     pub range: TextRange,
     pub text: Text,
     pub display_text: Text,
-    pub font_key: String,
+    pub font_face: Option<FontFaceId>,
+    pub synthetic_kind: Option<SyntheticClusterKind>,
     pub advance: f32,
     /// 绘制此 cluster 时添加到 line baseline 的垂直偏移（px，+down），使 non-Roman mixed font/size
     /// 按其**字身框底部**对齐。Roman cluster 保留来自 base CJK metrics 的共享 alphabetic baseline，
@@ -25,12 +27,13 @@ pub struct Cluster {
 }
 
 impl Cluster {
-    pub fn new(range: TextRange, text: Text, font_key: String, advance: f32) -> Self {
+    pub fn new(range: TextRange, text: Text, font_face: FontFaceId, advance: f32) -> Self {
         Self {
             display_text: text.clone(),
             range,
             text,
-            font_key,
+            font_face: Some(font_face),
+            synthetic_kind: None,
             advance,
             baseline_shift: 0.0,
             leading_layout_advance: 0.0,
@@ -41,14 +44,15 @@ impl Cluster {
         range: TextRange,
         text: Text,
         display_text: Text,
-        font_key: String,
+        font_face: FontFaceId,
         advance: f32,
     ) -> Self {
         Self {
             range,
             text,
             display_text,
-            font_key,
+            font_face: Some(font_face),
+            synthetic_kind: None,
             advance,
             baseline_shift: 0.0,
             leading_layout_advance: 0.0,
@@ -59,7 +63,7 @@ impl Cluster {
         range: TextRange,
         text: Text,
         display_text: Text,
-        font_key: String,
+        font_face: FontFaceId,
         advance: f32,
         baseline_shift: f32,
     ) -> Self {
@@ -67,18 +71,47 @@ impl Cluster {
             range,
             text,
             display_text,
-            font_key,
+            font_face: Some(font_face),
+            synthetic_kind: None,
             advance,
             baseline_shift,
             leading_layout_advance: 0.0,
             glyph_inline_shift: 0.0,
         }
     }
-    pub fn builder(range: TextRange, text: Text, font_key: String, advance: f32) -> ClusterBuilder {
+    pub fn builder(range: TextRange, text: Text, font_face: FontFaceId, advance: f32) -> ClusterBuilder {
         ClusterBuilder {
-            cluster: Self::new(range, text, font_key, advance),
+            cluster: Self::new(range, text, font_face, advance),
         }
     }
+
+    pub fn synthetic(
+        range: TextRange,
+        text: Text,
+        display_text: Text,
+        synthetic_kind: SyntheticClusterKind,
+        advance: f32,
+    ) -> Self {
+        Self {
+            range,
+            text,
+            display_text,
+            font_face: None,
+            synthetic_kind: Some(synthetic_kind),
+            advance,
+            baseline_shift: 0.0,
+            leading_layout_advance: 0.0,
+            glyph_inline_shift: 0.0,
+        }
+    }
+}
+
+/// 由布局拥有、不包含字体面或字形回放信息的合成 cluster。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SyntheticClusterKind {
+    MandatoryBreak,
+    ZeroWidthSoftBreak,
+    InlineObject,
 }
 
 pub struct ClusterBuilder {
@@ -109,7 +142,7 @@ impl ClusterBuilder {
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlyphRun {
     pub range: TextRange,
-    pub font_key: String,
+    pub font_face: FontFaceId,
     pub glyphs: Vec<Glyph>,
     pub advance: f32,
     /// 当前端从 source text 而不是 glyph id 绘制此 run 时必须重放的 OpenType feature。这是 shaping output，
@@ -117,10 +150,10 @@ pub struct GlyphRun {
     pub open_type_features: Vec<String>,
 }
 impl GlyphRun {
-    pub fn new(range: TextRange, font_key: String, glyphs: Vec<Glyph>, advance: f32) -> Self {
+    pub fn new(range: TextRange, font_face: FontFaceId, glyphs: Vec<Glyph>, advance: f32) -> Self {
         Self {
             range,
-            font_key,
+            font_face,
             glyphs,
             advance,
             open_type_features: Vec::new(),
@@ -128,14 +161,14 @@ impl GlyphRun {
     }
     pub fn with_open_type_features(
         range: TextRange,
-        font_key: String,
+        font_face: FontFaceId,
         glyphs: Vec<Glyph>,
         advance: f32,
         open_type_features: Vec<String>,
     ) -> Self {
         Self {
             range,
-            font_key,
+            font_face,
             glyphs,
             advance,
             open_type_features,
@@ -156,9 +189,8 @@ pub struct Glyph {
     pub x: f32,
     /// 相对 cluster baseline 的 glyph origin y。horizontal text 通常为 0；platform shaper 可提供非零 glyph placement。
     pub y: f32,
-    /// 供能按 glyph id 绘制的 backend 使用的不透明、进程内 platform font key（例如 Android Canvas.drawGlyphs）。
-    /// core/layout code 不解释它。
-    pub render_font_key: Option<String>,
+    /// 用于 glyph id 回放的受控字体面标识。core/layout 代码不解析该标识。
+    pub render_font_face: Option<FontFaceId>,
     pub bounds: Option<Rect>,
     /// 此 glyph 在 OpenType `halt`（alternate half-width metrics）下的 advance，由单独 feature-tagged shaping pass
     /// 测量。当 shaper 无法测量 feature（AWT、stub），或 font 不提供 alternate（`halt` advance == default advance）时为 None。
@@ -176,7 +208,7 @@ impl Glyph {
                 advance,
                 x: 0.0,
                 y: 0.0,
-                render_font_key: None,
+                render_font_face: None,
                 bounds: None,
                 halt_advance: None,
                 halt_placement_x: None,
@@ -196,8 +228,8 @@ impl GlyphBuilder {
         self.glyph.y = value;
         self
     }
-    pub fn render_font_key(mut self, value: Option<String>) -> Self {
-        self.glyph.render_font_key = value;
+    pub fn render_font_face(mut self, value: Option<FontFaceId>) -> Self {
+        self.glyph.render_font_face = value;
         self
     }
     pub fn bounds(mut self, value: Option<Rect>) -> Self {
@@ -1428,7 +1460,8 @@ pub struct FontDecisionInfo {
     pub source_text: Text,
     pub display_text: Text,
     pub role: String,
-    pub font_key: String,
+    pub candidate_key: String,
+    pub resolved_face: Option<FontFaceId>,
     pub reason: String,
     pub substitution_reason: String,
 }
@@ -1438,7 +1471,7 @@ pub struct ShapingDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub display_text: Text,
-    pub font_key: String,
+    pub font_face: Option<FontFaceId>,
     pub glyph_count: i32,
     pub advance: f32,
     pub source: String,
@@ -1450,8 +1483,6 @@ pub struct ShapingDecisionInfo {
     /// `SubstitutionRollbackOnMissingGlyph`：engine 改以 source text shape 而非显示 tofu（例如 `⸺` 在
     /// PingFang SC / Hiragino / Heiti 中不存在）。
     pub missing_glyphs: i32,
-    /// shaper 可观察该 identity 时选择的精确 platform face。
-    pub resolved_face: Option<String>,
     /// 显式时提供给 shaping engine 的 script 与 language。
     pub script: Option<String>,
     pub language: Option<String>,
@@ -1467,7 +1498,7 @@ impl ShapingDecisionInfo {
         range: TextRange,
         source_text: Text,
         display_text: Text,
-        font_key: String,
+        font_face: Option<FontFaceId>,
         glyph_count: i32,
         advance: f32,
         source: String,
@@ -1478,14 +1509,13 @@ impl ShapingDecisionInfo {
                 range,
                 source_text,
                 display_text,
-                font_key,
+                font_face,
                 glyph_count,
                 advance,
                 source,
                 reason,
                 glyphs_without_ink_bounds: 0,
                 missing_glyphs: 0,
-                resolved_face: None,
                 script: None,
                 language: None,
                 strategy: None,
@@ -1505,10 +1535,6 @@ impl ShapingDecisionInfoBuilder {
     }
     pub fn missing_glyphs(mut self, value: i32) -> Self {
         self.decision.missing_glyphs = value;
-        self
-    }
-    pub fn resolved_face(mut self, value: Option<String>) -> Self {
-        self.decision.resolved_face = value;
         self
     }
     pub fn script(mut self, value: Option<String>) -> Self {
@@ -1541,7 +1567,7 @@ pub struct MetricDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub role: String,
-    pub font_key: String,
+    pub font_face: FontFaceId,
     pub raw_ascent: f32,
     pub raw_descent: f32,
     pub raw_leading: f32,

@@ -23,9 +23,10 @@ use super::super::core::text_model::{
 };
 use super::super::core::units::Ic;
 use super::super::font::font_metrics::{
-    FontMetricsNormalizationInput, FontMetricsNormalizer, FontMetricsRequest, FontMetricsResolver,
+    FontMetricsNormalizationInput, FontMetricsNormalizer, FontMetricsRequest,
 };
-use super::super::font::font_policy::{FontDecision, FontRole};
+use super::super::font::font_policy::FontRole;
+use super::super::shaping::font_backend::{FontBackend, FontResolution};
 use super::annotation_geometry_stage::RubyFontGeometry;
 use super::kinsoku_rule::ClreqKinsokuRule;
 use super::kinsoku_rule::KinsokuRule;
@@ -72,7 +73,7 @@ pub struct ParagraphLayoutPrep {
     pub line_length_grid_decision: super::super::core::layout_model::LineLengthGridDecisionInfo,
     pub quote_pairs: Vec<QuotePair>,
     pub role_override_infos: Vec<RoleOverrideInfo>,
-    pub font_decisions: Vec<FontDecision>,
+    pub font_resolutions: HashMap<TextRange, FontResolution>,
     pub hyphen_offsets: HashSet<ScalarOffset>,
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
@@ -150,7 +151,7 @@ pub struct LineBreakPlanningStageResult {
 
 pub struct LineBreakPlanningRequest<'a> {
     pub prep: &'a ParagraphLayoutPrep,
-    pub font_metrics_resolver: &'a dyn FontMetricsResolver,
+    pub font_backend: &'a dyn FontBackend,
     pub font_metrics_normalizer: &'a dyn FontMetricsNormalizer,
     pub justifier: &'a super::justifier::Justifier,
     pub line_breaker: &'a dyn LineBreaker,
@@ -159,14 +160,14 @@ pub struct LineBreakPlanningRequest<'a> {
 impl<'a> LineBreakPlanningRequest<'a> {
     pub fn new(
         prep: &'a ParagraphLayoutPrep,
-        font_metrics_resolver: &'a dyn FontMetricsResolver,
+        font_backend: &'a dyn FontBackend,
         font_metrics_normalizer: &'a dyn FontMetricsNormalizer,
         justifier: &'a super::justifier::Justifier,
         line_breaker: &'a dyn LineBreaker,
     ) -> Self {
         Self {
             prep,
-            font_metrics_resolver,
+            font_backend,
             font_metrics_normalizer,
             justifier,
             line_breaker,
@@ -176,54 +177,26 @@ impl<'a> LineBreakPlanningRequest<'a> {
 
 pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakPlanningStageResult {
     let prep = request.prep;
-    let mut metric_cluster_index = 0usize;
-    let metric_decisions: Vec<_> = prep
-        .font_decisions
-        .iter()
-        .map(|decision| {
-            while metric_cluster_index < prep.natural_clusters.len()
-                && prep.natural_clusters[metric_cluster_index].range.end() <= decision.range.start()
-            {
-                metric_cluster_index += 1;
-            }
-            let mut displayed_face_selection_text = String::new();
-            while metric_cluster_index < prep.natural_clusters.len()
-                && prep.natural_clusters[metric_cluster_index].range.start() < decision.range.end()
-            {
-                let cluster = &prep.natural_clusters[metric_cluster_index];
-                assert!(
-                    cluster.range.start() >= decision.range.start()
-                        && cluster.range.end() <= decision.range.end(),
-                    "Shaped cluster {:?} crosses font decision {:?}",
-                    cluster.range,
-                    decision.range
-                );
-                displayed_face_selection_text.push_str(cluster.display_text.as_str());
-                metric_cluster_index += 1;
-            }
-            if displayed_face_selection_text.is_empty() {
-                displayed_face_selection_text = prep.text.slice(decision.range).to_owned();
-            }
-            let style = (prep.style_at)(decision.range.start());
-            let metric_request = FontMetricsRequest {
-                font_key: decision.candidate.key.clone(),
-                font_size: (prep.font_size_at)(decision.range.start()),
-                role: decision.role,
-                locale: prep.input.text_style.locale.clone(),
-                font_weight: style.font_weight,
-                italic: style.italic,
-                face_selection_text: Text::from(displayed_face_selection_text),
-                font_families: style.font_families,
-            };
-            let raw_metrics = request.font_metrics_resolver.resolve(&metric_request);
+    let mut font_resolutions: Vec<_> = prep.font_resolutions.values().collect();
+    font_resolutions.sort_by_key(|resolution| (resolution.range.start(), resolution.range.end()));
+    let metric_decisions: Vec<_> = font_resolutions
+        .into_iter()
+        .map(|resolution| {
+            let metric_request = FontMetricsRequest::new(
+                resolution.face.clone(),
+                (prep.font_size_at)(resolution.range.start()),
+                resolution.role,
+                prep.input.text_style.locale.clone(),
+            );
+            let raw_metrics = request.font_backend.metrics(&metric_request);
             let normalization_input = FontMetricsNormalizationInput {
                 request: metric_request,
                 raw_metrics,
             };
             let layout_metrics = request.font_metrics_normalizer.normalize(&normalization_input);
             ClusterMetricDecision {
-                range: decision.range,
-                source_text: prep.text.slice_text(decision.range),
+                range: resolution.range,
+                source_text: prep.text.slice_text(resolution.range),
                 request: normalization_input.request,
                 raw_metrics,
                 layout_metrics,

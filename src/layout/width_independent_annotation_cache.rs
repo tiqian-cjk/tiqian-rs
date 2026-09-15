@@ -25,17 +25,14 @@ use super::super::core::text_model::{
     InlineObjectSpan, LastLineAlignment, LayoutInput, LayoutProfileId, LineBreakPolicy,
     LineBreakSpan, RubyKind, RubySpan, TextSpan, TextStyle,
 };
-use super::super::font::font_metrics::{FontMetricsRequest, FontMetricsResolver};
-use super::super::font::font_policy::{
-    FallbackResolver, FontDecision, FontRequest, FontRole, FontRoleClassifier, FontRoleContext,
-};
+use super::super::font::font_metrics::FontMetricsRequest;
+use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::linebreak::hyphenation::Hyphenator;
+use super::super::shaping::font_backend::{FontBackend, FontBackendRequest, FontResolution};
 use super::super::shaping::text_shaper::ShapingResult;
-use super::super::shaping::text_shaper::{ShapingInput, TextShaper};
 use super::annotation_geometry_stage::RubyFontGeometry;
 use super::cluster_role_resolution::{
     ClusterRoleRangeOptions, ResolvedClusterRange, cluster_role_ranges_with_options,
-    require_covered_by,
 };
 use super::contextual_dash_ellipsis_role_resolver::{
     ContextualDashEllipsisAwareFontRoleClassifier, ContextualDashEllipsisRoleResolver,
@@ -108,11 +105,10 @@ pub struct WidthIndependentParagraphAnnotation {
     pub punctuation_glyph_substitutor: ClreqPunctuationGlyphSubstitutor,
     pub quote_pairs: Vec<QuotePair>,
     pub role_override_infos: Vec<RoleOverrideInfo>,
-    pub font_decisions: Vec<FontDecision>,
     pub cluster_ranges: Vec<ResolvedClusterRange>,
-    pub font_decision_by_range: HashMap<TextRange, FontDecision>,
     pub inline_object_by_range: HashMap<TextRange, InlineObjectSpan>,
     pub segment_shaping_cache: HashMap<TextRange, ShapingResult>,
+    pub segment_font_resolutions: HashMap<TextRange, FontResolution>,
     pub substitution_rollbacks: HashMap<TextRange, String>,
     pub ruby_font_geometry_by_span: HashMap<RubySpan, RubyFontGeometry>,
     pub base_shaping_stage: ParagraphShapingStageResult,
@@ -238,10 +234,8 @@ pub fn prepare_width_independent_annotation(
     rejected: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     clreq_profile_resolver: &dyn ClreqProfileResolver,
     font_role_classifier: &dyn FontRoleClassifier,
-    fallback_resolver: &dyn FallbackResolver,
-    font_metrics_resolver: &dyn FontMetricsResolver,
+    font_backend: &dyn FontBackend,
     quote_pair_analyzer: &QuotePairAnalyzer,
-    text_shaper: &dyn TextShaper,
     hyphenator: &dyn Hyphenator,
 ) -> WidthIndependentParagraphAnnotation {
     let text = input.content.text.clone();
@@ -448,43 +442,14 @@ pub fn prepare_width_independent_annotation(
             .filter_map(|range| range.role_override.clone()),
     );
     role_override_infos.sort_by_key(|info| info.range.start());
-    let shapeable: Vec<_> = cluster_ranges
-        .iter()
-        .filter(|range| {
-            !range.mandatory_break
-                && !range.zero_width_soft_break
-                && !inline_object_by_range.contains_key(&range.range)
-        })
-        .cloned()
-        .collect();
-    let font_decisions: Vec<_> = shapeable
-        .iter()
-        .map(|range| {
-            fallback_resolver.resolve(
-                &text,
-                range.range,
-                &FontRequest {
-                    preferred_families: input.text_style.font_families.clone(),
-                    locale: input.text_style.locale.clone(),
-                    role: range.role,
-                },
-            )
-        })
-        .collect();
-    let font_decision_by_range: HashMap<_, _> = shapeable
-        .into_iter()
-        .zip(font_decisions.iter().cloned())
-        .map(|(range, decision)| (range.range, decision))
-        .collect();
     let base = shape_paragraph(
-        text_shaper,
+        font_backend,
         hyphenator,
         input,
         &text,
         font_size,
         f32::INFINITY,
         &cluster_ranges,
-        &font_decision_by_range,
         &inline_object_by_range,
         &substitutor,
         &*style_at,
@@ -492,66 +457,55 @@ pub fn prepare_width_independent_annotation(
         rejected,
         &HashMap::new(),
         &HashMap::new(),
+        &HashMap::new(),
     );
     let mut ruby_geometry = HashMap::new();
     for ruby in &pinyin_spans {
-        let empty_metric = Text::from("x");
-        let metric = if ruby.text.is_empty() {
-            &empty_metric
-        } else {
-            &ruby.text
-        };
         let locale = ruby
             .locale
             .clone()
             .unwrap_or_else(|| input.text_style.locale.clone());
-        let range = TextRange::new(ScalarOffset::ZERO, metric.scalar_len());
-        let decision = fallback_resolver.resolve(
-            metric,
-            range,
-            &FontRequest {
-                preferred_families: ruby.font_families.clone(),
-                locale: locale.clone(),
-                role: FontRole::LatinText,
-            },
-        );
-        let raw = font_metrics_resolver.resolve(
-            &FontMetricsRequest::builder(
-                decision.candidate.key.clone(),
-                ruby_font_size,
-                FontRole::LatinText,
-                locale.clone(),
-            )
-            .font_families(ruby.font_families.clone())
-            .font_weight(ruby_font_weight)
-            .italic(input.text_style.italic)
-            .face_selection_text(metric.clone())
-            .build(),
-        );
+        let mut style = input.text_style.clone();
+        style.font_size = ruby_font_size;
+        style.font_families = ruby.font_families.clone();
+        style.font_weight = ruby_font_weight;
+        style.locale = locale.clone();
         let shaped = (!ruby.text.is_empty()).then(|| {
-            let mut style = input.text_style.clone();
-            style.font_size = ruby_font_size;
-            style.font_families = ruby.font_families.clone();
-            style.font_weight = ruby_font_weight;
-            style.locale = locale;
-            text_shaper.shape(
-                &ShapingInput::builder(
+            font_backend.shape(
+                &FontBackendRequest::builder(
                     ruby.text.clone(),
                     TextRange::new(ScalarOffset::ZERO, ruby.text.scalar_len()),
-                    style,
-                    decision,
+                    style.clone(),
+                    FontRole::LatinText,
                 )
                 .display_text(ruby.text.clone())
                 .build(),
             )
         });
-        let ascent = raw.typo_ascent.unwrap_or(raw.ascent);
-        let descent = raw.typo_descent.unwrap_or(raw.descent);
+        let raw = shaped.as_ref().map(|result| {
+            font_backend.metrics(&FontMetricsRequest::new(
+                result.face.clone(),
+                ruby_font_size,
+                FontRole::LatinText,
+                locale.clone(),
+            ))
+        });
+        let ascent = raw
+            .as_ref()
+            .map_or(0., |metrics| metrics.typo_ascent.unwrap_or(metrics.ascent));
+        let descent = raw.as_ref().map_or(0., |metrics| {
+            metrics.typo_descent.unwrap_or(metrics.descent)
+        });
         ruby_geometry.insert(
             ruby.clone(),
             RubyFontGeometry {
                 width: shaped.as_ref().map_or(0., |result| {
-                    result.clusters.iter().map(|cluster| cluster.advance).sum()
+                    result
+                        .shaping
+                        .clusters
+                        .iter()
+                        .map(|cluster| cluster.advance)
+                        .sum()
                 }),
                 ascent: if ruby.text.is_empty() { 0. } else { ascent },
                 descent: if ruby.text.is_empty() { 0. } else { descent },
@@ -562,7 +516,7 @@ pub fn prepare_width_independent_annotation(
                 },
                 glyphs: shaped
                     .into_iter()
-                    .flat_map(|result| result.glyph_runs)
+                    .flat_map(|result| result.shaping.glyph_runs)
                     .flat_map(|run| run.glyphs)
                     .collect(),
             },
@@ -582,11 +536,10 @@ pub fn prepare_width_independent_annotation(
         punctuation_glyph_substitutor: substitutor,
         quote_pairs: pairs,
         role_override_infos,
-        font_decisions,
         cluster_ranges,
-        font_decision_by_range,
         inline_object_by_range,
         segment_shaping_cache: base.segment_shaping_cache.clone(),
+        segment_font_resolutions: base.segment_font_resolutions.clone(),
         substitution_rollbacks: base.substitution_rollbacks.clone(),
         ruby_font_geometry_by_span: ruby_geometry,
         base_shaping_stage: base,
@@ -602,7 +555,7 @@ pub fn build_paragraph_layout_prep(
     input: &LayoutInput,
     annotation: &WidthIndependentParagraphAnnotation,
     rejected: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
-    text_shaper: &dyn TextShaper,
+    font_backend: &dyn FontBackend,
     hyphenator: &dyn Hyphenator,
     punctuation_atom_builder: &PunctuationAtomBuilder,
     punctuation_spacing_compressor: &PunctuationSpacingCompressor,
@@ -681,20 +634,20 @@ pub fn build_paragraph_layout_prep(
     let dynamic_shaping_stage;
     let shaping_stage = if needs_dynamic {
         dynamic_shaping_stage = shape_paragraph(
-            text_shaper,
+            font_backend,
             hyphenator,
             input,
             text,
             font_size,
             measure,
             &annotation.cluster_ranges,
-            &annotation.font_decision_by_range,
             &annotation.inline_object_by_range,
             &annotation.punctuation_glyph_substitutor,
             &*annotation.style_at,
             &emphasis,
             rejected,
             &annotation.segment_shaping_cache,
+            &annotation.segment_font_resolutions,
             &annotation.substitution_rollbacks,
         );
         &dynamic_shaping_stage
@@ -727,7 +680,25 @@ pub fn build_paragraph_layout_prep(
             }
         }
     }
-    require_covered_by(&raw_natural, &annotation.font_decisions);
+    let mut font_resolutions: Vec<_> = shaping_stage.segment_font_resolutions.values().collect();
+    font_resolutions.sort_by_key(|resolution| (resolution.range.start(), resolution.range.end()));
+    for cluster in raw_natural
+        .iter()
+        .filter(|cluster| cluster.font_face.is_some())
+    {
+        let resolution_index = font_resolutions
+            .partition_point(|resolution| resolution.range.start() <= cluster.range.start());
+        assert!(
+            font_resolutions
+                .get(resolution_index.saturating_sub(1))
+                .is_some_and(|resolution| {
+                    cluster.range.start() >= resolution.range.start()
+                        && cluster.range.end() <= resolution.range.end()
+                }),
+            "FontBackend returned a cluster without resolved font evidence: {:?}",
+            cluster.range
+        );
+    }
     let inline_ranges: Vec<TextRange> = input
         .inline_objects
         .iter()
@@ -952,16 +923,14 @@ pub fn build_paragraph_layout_prep(
     let mut auto_space_decisions = auto_space.decisions;
     auto_space_decisions.extend(verbatim_decisions);
     let cluster_roles: Vec<FontRole> =
-        containing_items(&natural, &annotation.font_decisions, |decision| {
-            decision.range
-        })
-        .into_iter()
-        .map(|decision| {
-            decision.map_or(FontRole::Unknown, |index| {
-                annotation.font_decisions[index].role
+        containing_items(&natural, &annotation.cluster_ranges, |range| range.range)
+            .into_iter()
+            .map(|decision| {
+                decision.map_or(FontRole::Unknown, |index| {
+                    annotation.cluster_ranges[index].role
+                })
             })
-        })
-        .collect();
+            .collect();
     let attached_marks = inline_object_attached_marks(
         &natural,
         &cluster_roles,
@@ -1256,14 +1225,15 @@ pub fn build_paragraph_layout_prep(
         line_length_grid_decision,
         quote_pairs: annotation.quote_pairs.clone(),
         role_override_infos: annotation.role_override_infos.clone(),
-        font_decisions: annotation.font_decisions.clone(),
+        font_resolutions: shaping_stage.segment_font_resolutions.clone(),
         hyphen_offsets: shaping_stage.hyphen_offsets.clone(),
         hyphen_advance: shaping_stage.hyphen_advance,
         hyphen_glyphs: shaping_stage.hyphen_glyphs.clone(),
         substitution_rollbacks: shaping_stage.substitution_rollbacks.clone(),
         break_opportunity_decisions: shaping_stage.break_opportunity_decisions.clone(),
         emergency_tracking_eligibility_decisions: shaping_stage
-            .emergency_tracking_eligibility_decisions.clone(),
+            .emergency_tracking_eligibility_decisions
+            .clone(),
         progressive_break_offsets: shaping_stage.progressive_break_offsets.clone(),
         shaped_glyphs_by_cluster_range: shaped_glyphs,
         open_type_features_by_cluster_range: features,

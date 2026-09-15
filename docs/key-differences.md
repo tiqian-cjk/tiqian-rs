@@ -26,6 +26,17 @@ fixture 和 golden 不参与 Rust 日常验证。
 
 不同于 Kotlin 版本在仓库中直接维护 Unicode 属性表，tiqian-rs 依赖 ICU4X 的 Unicode 数据源。当前两边均使用对应 Unicode 17 的数据，其不应出现差异。若将来上游版本更新为 Unicode 18，tiqian-rs 也应当同步更新到 ICU4X 的 Unicode 18 版本。
 
+### 统一字体后端
+
+Kotlin 上游在普通布局路径中分别使用 fallback、文本 shaping 与字体度量接口。Rust 已接受 R0003：普通
+`ParagraphLayoutEngine` 接入一个统一字体后端，由它按候选顺序执行完整 shaping，并返回最终
+`FontFaceId`、glyph、metrics 和候选尝试信息。
+
+该差异确保 layout、metrics 与 glyph replay 使用同一个已解析 face，避免在调用方预先查询 cmap。Rust
+当前保持一次 backend shaping request 对应一个最终 face；段落内部不同 request 可以独立选择 face，适用范围为简体中文横排的 CJK、Latin 与 emoji。详细模型与
+验证要求见 [`R0003-unified-font-backend.md`](adr/R0003-unified-font-backend.md) 与
+[`2026-09-15-feat-unified-font-backend.md`](iteration/2026-09-15-feat-unified-font-backend.md)。
+
 ### 统一富文本旁路模型
 
 Rust 已实施 R0002：`ColorSpan` 与单 role 的 `RichTextSpan` 已合并为统一的富文本旁路输出。

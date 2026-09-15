@@ -19,7 +19,8 @@ use super::super::core::layout_model::{
 };
 use super::super::core::text::Text;
 use super::super::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
-use super::super::font::font_policy::{FontDecision, FontRole, FontRoleClassifier, FontRoleContext};
+use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
+use super::super::shaping::font_backend::FontResolution;
 use super::justifier::JustificationPlan;
 use super::line_geometry_stage::ClusterMetricDecision;
 use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
@@ -30,7 +31,7 @@ use super::quote_pair_analyzer::QuoteRoleDecision;
 
 pub struct LayoutDebugStageInput<'a> {
     pub text: &'a Text,
-    pub font_decisions: &'a [FontDecision],
+    pub font_resolutions: &'a HashMap<TextRange, FontResolution>,
     pub punctuation_glyph_substitutor: &'a ClreqPunctuationGlyphSubstitutor,
     pub substitution_rollbacks: &'a HashMap<TextRange, String>,
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
@@ -72,30 +73,32 @@ pub struct LayoutDebugStageInput<'a> {
 
 /// Materializes the structured decision stream without owning layout policy.
 pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugInfo {
-    let font_decisions = stage
-        .font_decisions
-        .iter()
-        .map(|decision| {
-            let cluster_text = stage.text.slice_text(decision.range);
+    let mut resolutions: Vec<_> = stage.font_resolutions.values().collect();
+    resolutions.sort_by_key(|resolution| (resolution.range.start(), resolution.range.end()));
+    let font_decisions = resolutions
+        .into_iter()
+        .map(|resolution| {
+            let cluster_text = stage.text.slice_text(resolution.range);
             let substitution = stage
                 .punctuation_glyph_substitutor
-                .substitute_for_role(&cluster_text, decision.role);
+                .substitute_for_role(&cluster_text, resolution.role);
             let rollback_cause = stage
                 .substitution_rollbacks
                 .iter()
-                .find(|(range, _)| is_inside(**range, decision.range))
+                .find(|(range, _)| is_inside(**range, resolution.range))
                 .map(|(_, cause)| cause);
             FontDecisionInfo {
-                range: decision.range,
+                range: resolution.range,
                 source_text: cluster_text.clone(),
                 display_text: if rollback_cause.is_some() {
                     cluster_text
                 } else {
                     substitution.display_text
                 },
-                role: font_role_name(decision.role).to_owned(),
-                font_key: decision.candidate.key.clone(),
-                reason: decision.reason.clone(),
+                role: font_role_name(resolution.role).to_owned(),
+                candidate_key: resolution.selected_attempt().candidate_key.clone(),
+                resolved_face: Some(resolution.face.clone()),
+                reason: "FontBackendCompleteShapingSelection".to_owned(),
                 substitution_reason: if let Some(cause) = rollback_cause {
                     format!("{}:{cause}", substitution.reason)
                 } else {
@@ -111,7 +114,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
             range: decision.range,
             source_text: decision.source_text.clone(),
             role: font_role_name(decision.request.role).to_owned(),
-            font_key: decision.request.font_key.clone(),
+            font_face: decision.request.face.clone(),
             raw_ascent: decision.raw_metrics.ascent,
             raw_descent: decision.raw_metrics.descent,
             raw_leading: decision.raw_metrics.leading,
@@ -124,13 +127,15 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 BaselineClass::IdeographicLow => "IdeographicLow",
                 BaselineClass::Math => "Math",
                 BaselineClass::Hanging => "Hanging",
-            }.to_owned(),
+            }
+            .to_owned(),
             metric_box: match decision.layout_metrics.metric_box {
                 MetricBox::RawFontBox => "RawFontBox",
                 MetricBox::IdeographicEmBox => "IdeographicEmBox",
                 MetricBox::IdeographicCharacterFace => "IdeographicCharacterFace",
                 MetricBox::SampledInkBox => "SampledInkBox",
-            }.to_owned(),
+            }
+            .to_owned(),
             layout_source: font_metric_source_name(decision.layout_metrics.source).to_owned(),
             reason: decision.layout_metrics.reason.clone(),
         })

@@ -6,16 +6,15 @@ use super::super::clreq::clreq_profile::{
 use super::super::core::geometry::{ScalarOffset, TextRange, text_range};
 use super::super::core::layout_model::{
     BreakOpportunityDecisionInfo, Cluster, EmergencyTrackingEligibilityDecisionInfo, Glyph,
-    ShapingDecisionInfo,
+    ShapingDecisionInfo, SyntheticClusterKind,
 };
 use super::super::core::source_interaction_boundaries::source_grapheme_boundaries;
 use super::super::core::text::Text;
 use super::super::core::text_model::{InlineObjectSpan, LayoutInput, LineBreakPolicy, TextStyle};
-use super::super::font::font_policy::{FontDecision, FontRole};
+use super::super::font::font_policy::FontRole;
 use super::super::linebreak::hyphenation::Hyphenator;
-use super::super::shaping::text_shaper::{
-    ShapingInput, ShapingResult, TextShaper, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
-};
+use super::super::shaping::font_backend::{FontBackend, FontBackendRequest, FontResolution};
+use super::super::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
 use super::cluster_role_resolution::ResolvedClusterRange;
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use crate::common::{HashMap, HashSet};
@@ -32,59 +31,67 @@ pub struct ParagraphShapingStageResult {
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
     pub segment_shaping_cache: HashMap<TextRange, ShapingResult>,
+    pub segment_font_resolutions: HashMap<TextRange, FontResolution>,
 }
 
 /// 宽度相关的 shaping stage：先解析 display substitution 与西文 token 断点，再返回保持 source range 的 cluster/glyph evidence。
 #[allow(clippy::too_many_arguments)]
 pub fn shape_paragraph(
-    text_shaper: &dyn TextShaper,
+    font_backend: &dyn FontBackend,
     hyphenator: &dyn Hyphenator,
     input: &LayoutInput,
     text: &Text,
     font_size: f32,
     measure: f32,
     cluster_ranges: &[ResolvedClusterRange],
-    font_decision_by_range: &HashMap<TextRange, FontDecision>,
     inline_object_by_range: &HashMap<TextRange, InlineObjectSpan>,
     punctuation_glyph_substitutor: &ClreqPunctuationGlyphSubstitutor,
     style_at: &dyn Fn(ScalarOffset) -> TextStyle,
     emphasis_italic_at: &dyn Fn(ScalarOffset) -> bool,
     rejected_technical_tiers_by_span: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     cached_segment_shaping: &HashMap<TextRange, ShapingResult>,
+    cached_segment_font_resolutions: &HashMap<TextRange, FontResolution>,
     cached_substitution_rollbacks: &HashMap<TextRange, String>,
 ) -> ParagraphShapingStageResult {
     let mut segment_cache = cached_segment_shaping.clone();
+    let mut segment_font_resolutions = cached_segment_font_resolutions.clone();
     let mut rollbacks = cached_substitution_rollbacks.clone();
-    let mut shape_segment = |decision: &FontDecision, range: TextRange| -> ShapingResult {
+    let mut shape_segment = |role: FontRole, range: TextRange| -> ShapingResult {
         if let Some(cached) = segment_cache.get(&range) {
-            return cached.clone();
+            if segment_font_resolutions.contains_key(&range) {
+                return cached.clone();
+            }
         }
         let source = text.slice_text(range);
         let substitution =
-            punctuation_glyph_substitutor.substitute_for_role(&source, decision.role);
+            punctuation_glyph_substitutor.substitute_for_role(&source, role);
         let base = style_at(range.start());
         let mut style = base.clone();
-        if decision.role == FontRole::LatinText && emphasis_italic_at(range.start()) {
+        if role == FontRole::LatinText && emphasis_italic_at(range.start()) {
             style.italic = true;
         }
-        let shaped = text_shaper.shape(
-            &ShapingInput::builder(text.clone(), range, style.clone(), decision.clone())
+        let shaped = font_backend.shape(
+            &FontBackendRequest::builder(text.clone(), range, style.clone(), role)
                 .display_text(substitution.display_text.clone())
                 .open_type_features(cjk_punctuation_full_width_features(
-                    decision.role,
+                    role,
                     &substitution.display_text,
                 ))
                 .build(),
         );
         let rollback = if substitution.display_text == source {
             None
-        } else if shaped.decisions.iter().any(|it| {
+        } else if shaped.shaping.decisions.iter().any(|it| {
             it.capability_issue.as_deref() == Some(UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE)
         }) {
             Some("SubstitutionRollbackOnUnverifiedGlyphCoverage")
-        } else if shaped.decisions.iter().any(|it| it.missing_glyphs > 0) {
+        } else if shaped.shaping.decisions.iter().any(|it| it.missing_glyphs > 0) {
             Some("SubstitutionRollbackOnMissingGlyph")
-        } else if dash_ink_coverage_deficient(&shaped, &substitution.display_text, style.font_size)
+        } else if dash_ink_coverage_deficient(
+            &shaped.shaping,
+            &substitution.display_text,
+            style.font_size,
+        )
         {
             Some("DashSubstitutionInkCoverageRollback")
         } else {
@@ -92,11 +99,11 @@ pub fn shape_paragraph(
         };
         let result = if let Some(cause) = rollback {
             rollbacks.insert(range, cause.to_owned());
-            text_shaper.shape(
-                &ShapingInput::builder(text.clone(), range, style, decision.clone())
+            font_backend.shape(
+                &FontBackendRequest::builder(text.clone(), range, style, role)
                     .display_text(source)
                     .open_type_features(cjk_punctuation_full_width_features(
-                        decision.role,
+                        role,
                         &text.slice_text(range),
                     ))
                     .build(),
@@ -104,8 +111,10 @@ pub fn shape_paragraph(
         } else {
             shaped
         };
-        segment_cache.insert(range, result.clone());
-        result
+        let resolution = result.resolution(range, role);
+        segment_font_resolutions.insert(range, resolution);
+        segment_cache.insert(range, result.shaping.clone());
+        result.shaping
     };
     let mut hyphen_offsets = HashSet::new();
     let mut hyphen_advance = None;
@@ -124,13 +133,11 @@ pub fn shape_paragraph(
         if resolved.mandatory_break || resolved.zero_width_soft_break {
             continue;
         }
-        let decision = font_decision_by_range
-            .get(&resolved.range)
-            .expect("shapeable range must have font decision");
-        for segment in shaping_segments(decision, text) {
-            let shaped = shape_segment(decision, segment);
+        let role = resolved.role;
+        for segment in shaping_segments(role, resolved.range, text) {
+            let shaped = shape_segment(role, segment);
             let word = text.slice_text(segment);
-            let latin = decision.role == FontRole::LatinText && !segment.is_empty();
+            let latin = role == FontRole::LatinText && !segment.is_empty();
             let progressive_span = input.content.line_break_spans.iter().find(|span| {
                 span.policy == LineBreakPolicy::ProgressiveTechnical
                     && segment.start() >= span.range.start()
@@ -201,15 +208,12 @@ pub fn shape_paragraph(
                         {
                             continue;
                         }
-                        let candidate_decision = font_decision_by_range
-                            .get(&range.range)
-                            .expect("shapeable range must have font decision");
-                        for candidate in shaping_segments(candidate_decision, text) {
+                        for candidate in shaping_segments(range.role, range.range, text) {
                             let start = candidate.start().max(span.range.start());
                             let end = candidate.end().min(span.range.end());
                             if start < end {
                                 total +=
-                                    shape_segment(candidate_decision, TextRange::new(start, end))
+                                    shape_segment(range.role, TextRange::new(start, end))
                                         .clusters
                                         .iter()
                                         .map(|cluster| cluster.advance)
@@ -229,7 +233,7 @@ pub fn shape_paragraph(
                 bounds.dedup();
                 for pair in bounds.windows(2) {
                     let piece = TextRange::new(pair[0], pair[1]);
-                    let piece_advance: f32 = shape_segment(decision, piece)
+                    let piece_advance: f32 = shape_segment(role, piece)
                         .clusters
                         .iter()
                         .map(|cluster| cluster.advance)
@@ -426,7 +430,7 @@ pub fn shape_paragraph(
                     &syllable,
                     measure,
                     &mut shape_segment,
-                    decision,
+                    role,
                 )
             } else {
                 Vec::new()
@@ -443,7 +447,7 @@ pub fn shape_paragraph(
                     measure,
                     long_opaque,
                     &mut shape_segment,
-                    decision,
+                    role,
                 )
             } else {
                 Vec::new()
@@ -486,22 +490,23 @@ pub fn shape_paragraph(
                     hyphen_offsets.insert(*offset);
                 }
                 if hyphen_advance.is_none() {
-                    let h = text_shaper.shape(
-                        &ShapingInput::builder(
+                    let h = font_backend.shape(
+                        &FontBackendRequest::builder(
                             Text::from("-"),
                             text_range(0, 1),
                             input.text_style.clone(),
-                            decision.clone(),
+                            role,
                         )
                         .display_text(Text::from("-"))
                         .build(),
                     );
-                    hyphen_advance = Some(if h.clusters.len() == 1 {
-                        h.clusters[0].advance
+                    hyphen_advance = Some(if h.shaping.clusters.len() == 1 {
+                        h.shaping.clusters[0].advance
                     } else {
                         0.5 * font_size
                     });
                     hyphen_glyphs = h
+                        .shaping
                         .glyph_runs
                         .into_iter()
                         .flat_map(|run| run.glyphs)
@@ -524,19 +529,17 @@ pub fn shape_paragraph(
             shaping_results.push(zero_width_soft_break_shaping_result(text, resolved.range));
             continue;
         }
-        let decision = font_decision_by_range
-            .get(&resolved.range)
-            .expect("shapeable range must have font decision");
-        for segment in shaping_segments(decision, text) {
+        let role = resolved.role;
+        for segment in shaping_segments(role, resolved.range, text) {
             let cuts = cuts_by_segment.get(&segment).cloned().unwrap_or_default();
             if cuts.is_empty() {
-                shaping_results.push(shape_segment(decision, segment));
+                shaping_results.push(shape_segment(role, segment));
             } else {
                 let bounds = [vec![segment.start()], cuts, vec![segment.end()]].concat();
                 for pair in bounds.windows(2) {
                     for range in point_mark_prefixed_ranges(text, TextRange::new(pair[0], pair[1]))
                     {
-                        shaping_results.push(shape_segment(decision, range));
+                        shaping_results.push(shape_segment(role, range));
                     }
                 }
             }
@@ -552,6 +555,7 @@ pub fn shape_paragraph(
         emergency_tracking_eligibility_decisions: emergency,
         progressive_break_offsets: progressive,
         segment_shaping_cache: segment_cache,
+        segment_font_resolutions,
     }
 }
 fn cjk_punctuation_full_width_features(role: FontRole, text: &Text) -> Vec<String> {
@@ -583,15 +587,15 @@ fn dash_ink_coverage_deficient(result: &ShapingResult, display: &Text, size: f32
     };
     ink.right - ink.left < DASH_SUBSTITUTION_TARGET_EM * size * DASH_SUBSTITUTION_MIN_INK_COVERAGE
 }
-fn shaping_segments(decision: &FontDecision, text: &Text) -> Vec<TextRange> {
-    if decision.role != FontRole::LatinText {
-        return vec![decision.range];
+fn shaping_segments(role: FontRole, range: TextRange, text: &Text) -> Vec<TextRange> {
+    if role != FontRole::LatinText {
+        return vec![range];
     }
     let mut out = Vec::new();
-    let mut start = decision.range.start();
+    let mut start = range.start();
     let mut in_space = text.code_point_at_or_none(start) == Some(' ' as i32);
-    for (local_offset, _) in text.slice_text(decision.range).scalar_indices().skip(1) {
-        let offset = decision.range.start() + local_offset.value();
+    for (local_offset, _) in text.slice_text(range).scalar_indices().skip(1) {
+        let offset = range.start() + local_offset.value();
         let space = text.code_point_at_or_none(offset) == Some(' ' as i32);
         if space != in_space {
             out.push(TextRange::new(start, offset));
@@ -599,7 +603,7 @@ fn shaping_segments(decision: &FontDecision, text: &Text) -> Vec<TextRange> {
             in_space = space;
         }
     }
-    out.push(TextRange::new(start, decision.range.end()));
+    out.push(TextRange::new(start, range.end()));
     out
 }
 fn point_mark_prefixed_ranges(text: &Text, range: TextRange) -> Vec<TextRange> {
@@ -626,13 +630,13 @@ fn latin_word_cuts(
     range: TextRange,
     syllable: &[i32],
     measure: f32,
-    shape: &mut dyn FnMut(&FontDecision, TextRange) -> ShapingResult,
-    decision: &FontDecision,
+    shape: &mut dyn FnMut(FontRole, TextRange) -> ShapingResult,
+    role: FontRole,
 ) -> Vec<ScalarOffset> {
     let mut cuts: HashSet<_> = syllable.iter().map(|x| range.start() + *x).collect();
     for pair in syllable_bounds(syllable, range.length()).windows(2) {
         let piece = TextRange::new(range.start() + pair[0], range.start() + pair[1]);
-        let shaped = shape(decision, piece);
+        let shaped = shape(role, piece);
         if shaped.clusters.len() == 1 && shaped.clusters[0].advance > measure {
             let lo = pair[0] + HYPHEN_MIN_LEFT;
             let hi = pair[1] - HYPHEN_MIN_RIGHT;
@@ -825,8 +829,8 @@ fn opaque_hard_cuts(
     clean: &[ScalarOffset],
     measure: f32,
     force: bool,
-    shape: &mut dyn FnMut(&FontDecision, TextRange) -> ShapingResult,
-    decision: &FontDecision,
+    shape: &mut dyn FnMut(FontRole, TextRange) -> ShapingResult,
+    role: FontRole,
 ) -> Vec<ScalarOffset> {
     let mut bounds = vec![range.start()];
     bounds.extend_from_slice(clean);
@@ -836,7 +840,7 @@ fn opaque_hard_cuts(
     let mut out = Vec::new();
     for pair in bounds.windows(2) {
         let piece = TextRange::new(pair[0], pair[1]);
-        let shaped = shape(decision, piece);
+        let shaped = shape(role, piece);
         let piece_advance = if shaped.clusters.len() == 1 {
             shaped.clusters[0].advance
         } else {
@@ -979,11 +983,11 @@ fn is_decimal_digit(character: char) -> bool {
 }
 fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
     ShapingResult::new(
-        vec![Cluster::with_display_text(
+        vec![Cluster::synthetic(
             range,
             text.slice_text(range),
             Text::new(),
-            "mandatory-break".to_owned(),
+            SyntheticClusterKind::MandatoryBreak,
             0.,
         )],
         Vec::new(),
@@ -992,11 +996,11 @@ fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResul
 fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
     let source = text.slice_text(range);
     ShapingResult::with_decisions(
-        vec![Cluster::with_display_text(
+        vec![Cluster::synthetic(
             range,
             source.clone(),
             Text::new(),
-            "zero-width-space".to_owned(),
+            SyntheticClusterKind::ZeroWidthSoftBreak,
             0.,
         )],
         Vec::new(),
@@ -1005,7 +1009,7 @@ fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> Shapin
                 range,
                 source,
                 Text::new(),
-                "zero-width-space".to_owned(),
+                None,
                 0,
                 0.,
                 "StructuralControl".to_owned(),
@@ -1018,11 +1022,11 @@ fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> Shapin
 fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> ShapingResult {
     let source = text.slice_text(object.range);
     ShapingResult::with_decisions(
-        vec![Cluster::with_display_text(
+        vec![Cluster::synthetic(
             object.range,
             source.clone(),
             Text::new(),
-            "inline-object".to_owned(),
+            SyntheticClusterKind::InlineObject,
             object.advance,
         )],
         Vec::new(),
@@ -1031,7 +1035,7 @@ fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> Shapi
                 object.range,
                 source,
                 Text::new(),
-                "inline-object".to_owned(),
+                None,
                 0,
                 object.advance,
                 "InlineObject".to_owned(),
@@ -1042,13 +1046,13 @@ fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> Shapi
     )
 }
 pub fn is_mandatory_break_cluster(cluster: &Cluster) -> bool {
-    cluster.font_key == "mandatory-break" && cluster.display_text.is_empty()
+    cluster.synthetic_kind == Some(SyntheticClusterKind::MandatoryBreak)
 }
 pub fn is_zero_width_soft_break_cluster(cluster: &Cluster) -> bool {
-    cluster.font_key == "zero-width-space" && cluster.display_text.is_empty()
+    cluster.synthetic_kind == Some(SyntheticClusterKind::ZeroWidthSoftBreak)
 }
 pub fn is_inline_object_cluster(cluster: &Cluster) -> bool {
-    cluster.font_key == "inline-object"
+    cluster.synthetic_kind == Some(SyntheticClusterKind::InlineObject)
 }
 pub fn map_to_cluster_range(glyphs: &[Glyph], cluster: &Cluster) -> Vec<Glyph> {
     let sum: f32 = glyphs.iter().map(|glyph| glyph.advance).sum();

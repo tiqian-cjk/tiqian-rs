@@ -74,7 +74,9 @@ HTML 报告位于 `target/llvm-cov/html/index.html`。
 - 优先使用 `api::ParagraphBuilder` 按内容顺序构造段落；`build()` 返回 `LayoutInput`。
 - `TextRange` 和布局查询使用 Unicode scalar offset；UTF-8 byte offset 仅用于 Rust 字符串的底层索引。
 - 默认的 `ExplainableStubParagraphLayoutEngine` 使用确定性 stub shaping 和字体度量，适合测试与行为验证。
-- 接入平台字体时，需要让 `FallbackResolver`、`FontMetricsResolver` 和 `TextShaper` 使用一致的字体 catalog 与 face identity；桌面示例中的 `DemoFontCatalog` 提供了参考实现。
+- 接入平台字体时，实现一个 `FontBackend`，由它统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
+	段落 shaping 的每个 backend request 都是独立的字体选择原子范围；同一个旧 range 被内部切分后，不应在调用方
+	重新合并 `FontResolution`。桌面示例中的字体 backend 提供了参考实现。
 - `LayoutResult` 同时包含行、cluster、glyph replay 数据和结构化 debug 信息。renderer 应重放布局结果，不应自行重新计算断行或标点几何。
 
 ## 文档与同步

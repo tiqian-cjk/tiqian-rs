@@ -447,7 +447,9 @@ impl PunctuationGeometryLedger {
     }
     fn is_mandatory_break(&self, index: i32) -> bool {
         let c = &self.natural_clusters[index as usize];
-        c.font_key == "mandatory-break" && c.display_text.is_empty()
+        c.synthetic_kind
+            == Some(super::super::core::layout_model::SyntheticClusterKind::MandatoryBreak)
+            && c.display_text.is_empty()
     }
 }
 #[derive(Clone, Debug, PartialEq)]
@@ -610,6 +612,7 @@ fn consume_by_range(
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::core::font_face::{FontFaceId, FontVariationInstance};
     use crate::core::geometry::text_range;
     use crate::core::text::Text;
     use crate::layout::punctuation_geometry_stage::punctuation_atoms;
@@ -618,7 +621,7 @@ mod tests {
     #[test]
     fn derived_ledger_shares_geometry_and_preserves_original_budget() {
         let clusters = vec![
-            Cluster::new(text_range(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
         ];
         let atoms = punctuation_atoms(
             &clusters[0],
@@ -650,8 +653,8 @@ mod tests {
     #[test]
     fn geometry_without_budget_falls_back_to_body_width() {
         let clusters = vec![
-            Cluster::new(text_range(0, 1), Text::from("「"), "cjk".to_owned(), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("中"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
         ];
         let builder = PunctuationAtomBuilder::default();
         let atoms = punctuation_atoms(
@@ -680,13 +683,13 @@ mod tests {
     #[test]
     fn attached_boundary_records_null_characters_for_empty_text_clusters() {
         let textless_next = vec![
-            Cluster::new(text_range(0, 1), Text::from("」"), "cjk".to_owned(), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("r"), "latin".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("」"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("r"), FontFaceId::with_resource_id("latin"), 16.0),
             Cluster::with_display_text(
                 text_range(2, 2),
                 Text::from(""),
                 Text::from("a"),
-                "latin".to_owned(),
+                FontFaceId::with_resource_id("latin"),
                 16.0,
             ),
         ];
@@ -722,11 +725,11 @@ mod tests {
                 text_range(0, 0),
                 Text::from(""),
                 Text::from("」"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 16.0,
             ),
-            Cluster::new(text_range(0, 1), Text::from("r"), "latin".to_owned(), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("「"), "cjk".to_owned(), 16.0),
+            Cluster::new(text_range(0, 1), Text::from("r"), FontFaceId::with_resource_id("latin"), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
         ];
         let previous_atoms: Vec<_> = textless_previous
             .iter()

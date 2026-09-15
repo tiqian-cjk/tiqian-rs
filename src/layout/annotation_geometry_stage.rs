@@ -16,8 +16,8 @@ use super::super::core::text_model::{
     DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment, InlineObjectSpan, LayoutInput,
     RubyKind, RubySpan, TextStyle,
 };
-use super::super::font::font_policy::{FallbackResolver, FontRequest, FontRole};
-use super::super::shaping::text_shaper::{ShapingInput, TextShaper};
+use super::super::font::font_policy::FontRole;
+use super::super::shaping::font_backend::{FontBackend, FontBackendRequest};
 use super::line_break_planning_stage::CJK_FACE_DESCENT_FALLBACK_EM;
 use super::line_geometry_stage::ClusterMetricDecision;
 use super::line_optimization::LineSolution;
@@ -64,8 +64,7 @@ pub struct AnnotationGeometryRequest<'a> {
     pub ruby_font_weight: i32,
     pub base_descent: f32,
     pub bopomofo_font_weight_at: &'a dyn Fn(ScalarOffset) -> i32,
-    pub fallback_resolver: &'a dyn FallbackResolver,
-    pub text_shaper: &'a dyn TextShaper,
+    pub font_backend: &'a dyn FontBackend,
 }
 
 pub fn resolve_annotation_geometry(
@@ -222,8 +221,7 @@ pub fn resolve_annotation_geometry(
         request.font_size,
         request.bopomofo_font_weight_at,
         &request.input.text_style,
-        request.fallback_resolver,
-        request.text_shaper,
+        request.font_backend,
     );
     AnnotationGeometryStageResult {
         inline_object_decisions,
@@ -531,8 +529,7 @@ fn compute_bopomofo_decisions(
     font_size: f32,
     bopomofo_font_weight_at: &dyn Fn(ScalarOffset) -> i32,
     base_text_style: &TextStyle,
-    fallback_resolver: &dyn FallbackResolver,
-    text_shaper: &dyn TextShaper,
+    font_backend: &dyn FontBackend,
 ) -> Vec<BopomofoDecisionInfo> {
     let h_unit = font_size / 30.0;
     let v_unit = (base_ascent + base_descent) / 30.0;
@@ -643,8 +640,7 @@ fn compute_bopomofo_decisions(
                         weight,
                         font_size,
                         base_text_style,
-                        fallback_resolver,
-                        text_shaper,
+                        font_backend,
                     )
                 })
                 .collect();
@@ -672,8 +668,7 @@ fn replay_bopomofo_placement(
     weight: i32,
     font_size: f32,
     base_text_style: &TextStyle,
-    fallback_resolver: &dyn FallbackResolver,
-    text_shaper: &dyn TextShaper,
+    font_backend: &dyn FontBackend,
 ) -> BopomofoGlyphPlacement {
     let replay_size = if placement.role == BopomofoGlyphRole::Neutral {
         placement.width
@@ -681,33 +676,30 @@ fn replay_bopomofo_placement(
         font_size * BOPOMOFO_ANNOTATION_FONT_EM
     };
     let range = TextRange::new(ScalarOffset::ZERO, placement.text.scalar_len());
-    let decision = fallback_resolver.resolve(
-        &placement.text,
-        range,
-        &FontRequest {
-            preferred_families: ruby.font_families.clone(),
-            locale: locale.to_owned(),
-            role: FontRole::CjkText,
-        },
-    );
     let mut style = base_text_style.clone();
     style.font_size = replay_size;
     style.font_families = ruby.font_families.clone();
     style.font_weight = weight;
     style.italic = false;
     style.locale = locale.to_owned();
-    let shaped = text_shaper.shape(
-        &ShapingInput::builder(placement.text.clone(), range, style, decision)
+    let shaped = font_backend.shape(
+        &FontBackendRequest::builder(placement.text.clone(), range, style, FontRole::CjkText)
             .display_text(placement.text.clone())
             .open_type_features(vec!["vert=1".to_owned()])
             .build(),
     );
     let glyphs: Vec<_> = shaped
+        .shaping
         .glyph_runs
         .iter()
         .flat_map(|run| run.glyphs.iter().cloned())
         .collect();
-    let advance: f32 = shaped.clusters.iter().map(|cluster| cluster.advance).sum();
+    let advance: f32 = shaped
+        .shaping
+        .clusters
+        .iter()
+        .map(|cluster| cluster.advance)
+        .sum();
     let ink = union_ink_bounds(&glyphs);
     let draw_x = match placement.role {
         BopomofoGlyphRole::Symbol | BopomofoGlyphRole::Neutral => {
