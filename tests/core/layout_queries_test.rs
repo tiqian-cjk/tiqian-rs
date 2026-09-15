@@ -1,4 +1,5 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect, Size, TextRange};
+use tiqian::core::font_face::FontFaceId;
+use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     AutoSpaceDecisionInfo, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph,
@@ -49,7 +50,9 @@ fn underline_span(range: TextRange) -> RichTextSpan {
     RichTextSpan {
         range,
         layers: vec![RichTextLayer {
-            kind: RichTextLayerKind::Underline { line: RichTextLinePaint::default() },
+            kind: RichTextLayerKind::Underline {
+                line: RichTextLinePaint::default(),
+            },
             paints: Vec::new(),
         }],
         semantics: Vec::new(),
@@ -94,10 +97,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
         "提椠（tíqiàn）与您（ㄋㄧㄣˊ）",
         get_text_for_copy(&result, text_range(0, 4)).as_str()
     );
-    assert_eq!(
-        "提",
-        get_text_for_copy(&result, text_range(0, 1)).as_str()
-    );
+    assert_eq!("提", get_text_for_copy(&result, text_range(0, 1)).as_str());
     assert_eq!(
         "提椠（tíqiàn）",
         get_text_for_copy(&result, text_range(0, 2)).as_str()
@@ -132,13 +132,13 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
             Cluster::new(
                 text_range(0, 1),
                 Text::from("中"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
             Cluster::new(
                 text_range(1, 3),
                 Text::from("Hi"),
-                "latin".to_owned(),
+                FontFaceId::with_resource_id("latin"),
                 22.5,
             ),
         ],
@@ -174,7 +174,10 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
         },
         get_bounding_box(&result, scalar_offset(1))
     );
-    assert_eq!(scalar_offset(1), get_offset_for_position(&result, 11.0, 5.0));
+    assert_eq!(
+        scalar_offset(1),
+        get_offset_for_position(&result, 11.0, 5.0)
+    );
 }
 
 #[test]
@@ -188,12 +191,12 @@ fn glyph_ink_bounds_keep_overhang_separate_from_occupied_geometry() {
         vec![Cluster::new(
             text_range(0, 1),
             Text::from("f"),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             10.0,
         )],
         vec![GlyphRun::new(
             text_range(0, 1),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             vec![
                 Glyph::builder(1, text_range(0, 1), 10.0)
                     .bounds(Some(Rect {
@@ -271,19 +274,19 @@ fn selection_hit_testing_keeps_emoji_and_combining_sequences_atomic() {
             Cluster::new(
                 text_range(0, 1),
                 Text::from("😀"),
-                "emoji".to_owned(),
+                FontFaceId::with_resource_id("emoji"),
                 20.0,
             ),
             Cluster::new(
                 text_range(1, 3),
                 Text::from("é"),
-                "latin".to_owned(),
+                FontFaceId::with_resource_id("latin"),
                 20.0,
             ),
             Cluster::new(
                 text_range(3, 6),
                 Text::from("👩‍👩"),
-                "emoji".to_owned(),
+                FontFaceId::with_resource_id("emoji"),
                 50.0,
             ),
         ],
@@ -387,25 +390,25 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
             Cluster::new(
                 text_range(0, 1),
                 Text::from("（"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
             Cluster::new(
                 text_range(1, 2),
                 Text::from("，"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
             Cluster::new(
                 text_range(2, 3),
                 Text::from("中"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
             Cluster::new(
                 text_range(3, 4),
                 Text::from("）"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
         ],
@@ -454,20 +457,20 @@ fn sample_multiline_result() -> LayoutResult {
             Cluster::new(
                 text_range(0, 1),
                 Text::from("甲"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
             Cluster::with_display_text(
                 text_range(1, 3),
                 Text::from("——"),
                 Text::from("⸺"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 20.0,
             ),
             Cluster::new(
                 text_range(3, 4),
                 Text::from("乙"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 10.0,
             ),
         ],

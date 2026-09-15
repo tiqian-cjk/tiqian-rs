@@ -1,10 +1,11 @@
 use std::cell::Cell;
 
 use tiqian::common::HashMap;
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LineBox,
+    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, LineBox,
     LineEndReason,
 };
 use tiqian::core::text::Text;
@@ -25,121 +26,53 @@ use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{
     BaselinePolicy, FontMetricsPolicy, FontRole, LayoutFontMetrics, RawFontMetrics,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
-struct InkBoundsTextShaper;
+use super::font_backend_test_support::stub_backend_with_transform;
 
-impl TextShaper for InkBoundsTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
-                .glyph_runs
-                .into_iter()
-                .map(|run| {
-                    GlyphRun::new(
-                        run.range,
-                        run.font_key,
-                        run.glyphs
-                            .into_iter()
-                            .map(|glyph| {
-                                Glyph::builder(glyph.id, glyph.cluster_range, glyph.advance)
-                                    .x(glyph.x)
-                                    .y(glyph.y)
-                                    .render_font_key(glyph.render_font_key)
-                                    .bounds(Some(Rect { left: 1.0, top: 2.0, right: 9.0, bottom: 10.0 }))
-                                    .halt_advance(glyph.halt_advance)
-                                    .halt_placement_x(glyph.halt_placement_x)
-                                    .build()
-                            })
-                            .collect(),
-                        run.advance,
-                    )
-                })
-                .collect(),
-            result.decisions,
-        )
-    }
+fn ink_bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|_: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        for run in &mut result.shaping.glyph_runs {
+            for glyph in &mut run.glyphs {
+                glyph.bounds = Some(Rect { left: 1.0, top: 2.0, right: 9.0, bottom: 10.0 });
+            }
+        }
+        result
+    })
 }
 
-struct MultiGlyphTextShaper;
-
-impl TextShaper for MultiGlyphTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
-                .glyph_runs
-                .into_iter()
-                .map(|run| {
-                    GlyphRun::new(
-                        run.range,
-                        run.font_key,
-                        vec![
-                            Glyph::builder(1, input.range, 4.0)
-                                .x(0.0)
-                                .bounds(Some(Rect { left: 5.0, top: 5.0, right: 5.0, bottom: 5.0 }))
-                                .build(),
-                            Glyph::builder(2, input.range, 4.0)
-                                .x(4.0)
-                                .bounds(Some(Rect { left: 0.0, top: 0.0, right: 10.0, bottom: 10.0 }))
-                                .build(),
-                            Glyph::builder(3, input.range, 4.0)
-                                .x(8.0)
-                                .bounds(Some(Rect { left: 10.0, top: 10.0, right: 0.0, bottom: 0.0 }))
-                                .build(),
-                        ],
-                        run.advance,
-                    )
-                })
-                .collect(),
-            result.decisions,
-        )
-    }
+fn multi_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        for run in &mut result.shaping.glyph_runs {
+            let face = run.font_face.clone();
+            run.glyphs = vec![
+                Glyph::builder(1, input.range, 4.0).render_font_face(Some(face.clone())).x(0.0).bounds(Some(Rect { left: 5.0, top: 5.0, right: 5.0, bottom: 5.0 })).build(),
+                Glyph::builder(2, input.range, 4.0).render_font_face(Some(face.clone())).x(4.0).bounds(Some(Rect { left: 0.0, top: 0.0, right: 10.0, bottom: 10.0 })).build(),
+                Glyph::builder(3, input.range, 4.0).render_font_face(Some(face)).x(8.0).bounds(Some(Rect { left: 10.0, top: 10.0, right: 0.0, bottom: 0.0 })).build(),
+            ];
+        }
+        result
+    })
 }
 
-struct AlternatingGlyphTextShaper {
-    call_count: Cell<i32>,
-}
-
-impl TextShaper for AlternatingGlyphTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
-        let call_count = self.call_count.get() + 1;
-        self.call_count.set(call_count);
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
-                .glyph_runs
-                .into_iter()
-                .map(|run| {
-                    let glyphs = if call_count % 2 == 0 {
-                        vec![
-                            Glyph::builder(1, input.range, 5.0)
-                                .bounds(Some(Rect { left: 10.0, top: 10.0, right: 20.0, bottom: 20.0 }))
-                                .build(),
-                            Glyph::builder(2, input.range, 5.0)
-                                .x(5.0)
-                                .bounds(Some(Rect { left: 5.0, top: 5.0, right: 25.0, bottom: 25.0 }))
-                                .build(),
-                            Glyph::builder(3, input.range, 6.0)
-                                .x(10.0)
-                                .bounds(Some(Rect { left: 15.0, top: 15.0, right: 15.0, bottom: 15.0 }))
-                                .build(),
-                        ]
-                    } else {
-                        Vec::new()
-                    };
-                    GlyphRun::new(run.range, run.font_key, glyphs, run.advance)
-                })
-                .collect(),
-            result.decisions,
-        )
-    }
+fn alternating_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    let call_count = Cell::new(0);
+    stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        call_count.set(call_count.get() + 1);
+        for run in &mut result.shaping.glyph_runs {
+            let face = run.font_face.clone();
+            run.glyphs = if call_count.get() % 2 == 0 {
+                vec![
+                    Glyph::builder(1, input.range, 5.0).render_font_face(Some(face.clone())).bounds(Some(Rect { left: 10.0, top: 10.0, right: 20.0, bottom: 20.0 })).build(),
+                    Glyph::builder(2, input.range, 5.0).render_font_face(Some(face.clone())).x(5.0).bounds(Some(Rect { left: 5.0, top: 5.0, right: 25.0, bottom: 25.0 })).build(),
+                    Glyph::builder(3, input.range, 6.0).render_font_face(Some(face)).x(10.0).bounds(Some(Rect { left: 15.0, top: 15.0, right: 15.0, bottom: 15.0 })).build(),
+                ]
+            } else {
+                Vec::new()
+            };
+        }
+        result
+    })
 }
 
 #[test]
@@ -246,7 +179,7 @@ fn bopomofo_decisions_all_tones_and_symbol_counts() {
         })
         .collect();
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(InkBoundsTextShaper);
+    engine.font_backend = Box::new(ink_bounds_backend());
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八九十甲乙丙丁戊己庚辛")), LayoutConstraints::with_defaults(300.0))
             .ruby_spans(ruby_spans)
@@ -271,10 +204,10 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
     ])
     .build();
     let clusters = vec![
-        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), "k".to_owned(), 32.0),
-        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), "k".to_owned(), 16.0),
-        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), "k".to_owned(), 32.0),
-        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), "k".to_owned(), 56.0),
+        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), FontFaceId::with_resource_id("k"), 32.0),
+        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), FontFaceId::with_resource_id("k"), 16.0),
+        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), FontFaceId::with_resource_id("k"), 32.0),
+        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), FontFaceId::with_resource_id("k"), 56.0),
     ];
     let line_solution = LineSolution::new(vec![
         LineCandidate::new(IntRange::new(0, 2), text_range(0, 5), 80.0, 80.0),
@@ -339,15 +272,14 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        fallback_resolver: engine.fallback_resolver.as_ref(),
-        text_shaper: engine.text_shaper.as_ref(),
+        font_backend: engine.font_backend.as_ref(),
     });
     assert_eq!(3, result.inline_object_decisions.len());
     assert_eq!(-1, result.inline_object_decisions.last().unwrap().line_index);
     let metric = ClusterMetricDecision {
         range: text_range(0, 2),
         source_text: Text::from("汉字"),
-        request: FontMetricsRequest::new("k".to_owned(), 16.0, FontRole::CjkText, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 16.0, FontRole::CjkText, "zh-Hans".to_owned()),
         raw_metrics: RawFontMetrics::new(14.0, 4.0),
         layout_metrics: LayoutFontMetrics::new(14.0, 4.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
     };
@@ -378,8 +310,7 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        fallback_resolver: engine.fallback_resolver.as_ref(),
-        text_shaper: engine.text_shaper.as_ref(),
+        font_backend: engine.font_backend.as_ref(),
     });
     assert!(!second.ruby_decisions.is_empty());
 }
@@ -397,10 +328,10 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
     ])
     .build();
     let clusters = vec![
-        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), "k".to_owned(), 32.0),
-        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), "k".to_owned(), 16.0),
-        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), "k".to_owned(), 32.0),
-        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), "k".to_owned(), 56.0),
+        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), FontFaceId::with_resource_id("k"), 32.0),
+        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), FontFaceId::with_resource_id("k"), 16.0),
+        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), FontFaceId::with_resource_id("k"), 32.0),
+        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), FontFaceId::with_resource_id("k"), 56.0),
     ];
     let line_solution = LineSolution::new(vec![
         LineCandidate::new(IntRange::EMPTY, text_range(0, 0), 0.0, 0.0),
@@ -422,14 +353,14 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
     let metric_cjk = ClusterMetricDecision {
         range: text_range(0, 2),
         source_text: Text::from("汉字"),
-        request: FontMetricsRequest::new("k".to_owned(), 24.0, FontRole::CjkText, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 24.0, FontRole::CjkText, "zh-Hans".to_owned()),
         raw_metrics: RawFontMetrics::new(18.0, 6.0),
         layout_metrics: LayoutFontMetrics::new(18.0, 6.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
     };
     let metric_punctuation = ClusterMetricDecision {
         range: text_range(2, 3),
         source_text: Text::from("，"),
-        request: FontMetricsRequest::new("k".to_owned(), 24.0, FontRole::CjkPunctuation, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 24.0, FontRole::CjkPunctuation, "zh-Hans".to_owned()),
         raw_metrics: RawFontMetrics::new(18.0, 6.0),
         layout_metrics: LayoutFontMetrics::new(18.0, 6.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
     };
@@ -481,8 +412,7 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        fallback_resolver: engine.fallback_resolver.as_ref(),
-        text_shaper: engine.text_shaper.as_ref(),
+        font_backend: engine.font_backend.as_ref(),
     });
     assert!(!result.decoration_decisions.is_empty());
 }
@@ -490,7 +420,7 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
 #[test]
 fn bopomofo_decisions_multi_glyph_min_max_and_empty_placements() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(MultiGlyphTextShaper);
+    engine.font_backend = Box::new(multi_glyph_backend());
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八")), LayoutConstraints::with_defaults(300.0))
             .ruby_spans(vec![
@@ -509,7 +439,7 @@ fn bopomofo_decisions_multi_glyph_min_max_and_empty_placements() {
 #[test]
 fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(AlternatingGlyphTextShaper { call_count: Cell::new(0) });
+    engine.font_backend = Box::new(alternating_glyph_backend());
     let input = LayoutInput::builder(TiqianTextContent::new(Text::from("中文English")), LayoutConstraints::with_defaults(500.0))
         .decorations(vec![
             DecorationSpan { range: text_range(0, 7), kind: DecorationKind::ProperNoun },

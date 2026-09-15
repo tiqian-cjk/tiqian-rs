@@ -1,5 +1,4 @@
 use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
-use tiqian::core::layout_model::GlyphRun;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, RubyLineHeightMode, RubySpan, TiqianTextContent,
@@ -8,9 +7,11 @@ use tiqian::core::units::Ic;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
+use tiqian::shaping::font_backend::{
+    FontBackend, FontBackendRequest, FontBackendShapingResult,
 };
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(
     text: &str,
@@ -29,11 +30,8 @@ fn layout(
     )
 }
 
-struct ContradictoryRubyInkTextShaper;
-
-impl TextShaper for ContradictoryRubyInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
+fn contradictory_ruby_ink_backend() -> impl FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         let bounds = if input.display_text == "pg" {
             Rect {
                 left: 0.0,
@@ -49,39 +47,13 @@ impl TextShaper for ContradictoryRubyInkTextShaper {
                 bottom: 1.0,
             }
         };
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
-                .glyph_runs
-                .into_iter()
-                .map(|run| {
-                    GlyphRun::new(
-                        run.range,
-                        run.font_key,
-                        run.glyphs
-                            .into_iter()
-                            .map(|glyph| {
-                                tiqian::core::layout_model::Glyph::builder(
-                                    glyph.id,
-                                    glyph.cluster_range,
-                                    glyph.advance,
-                                )
-                                .x(glyph.x)
-                                .y(glyph.y)
-                                .render_font_key(glyph.render_font_key)
-                                .bounds(Some(bounds))
-                                .halt_advance(glyph.halt_advance)
-                                .halt_placement_x(glyph.halt_placement_x)
-                                .build()
-                            })
-                            .collect(),
-                        run.advance,
-                    )
-                })
-                .collect(),
-            result.decisions,
-        )
-    }
+        for run in &mut result.shaping.glyph_runs {
+            for glyph in &mut run.glyphs {
+                glyph.bounds = Some(bounds);
+            }
+        }
+        result
+    })
 }
 
 #[test]
@@ -195,7 +167,7 @@ fn ruby_vertical_geometry_uses_metrics_not_reading_ink() {
         .build();
     let layout_with_ink = |reading| {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.text_shaper = Box::new(ContradictoryRubyInkTextShaper);
+        engine.font_backend = Box::new(contradictory_ruby_ink_backend());
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("甲乙丙丁")),

@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tiqian::common::HashMap;
 
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -9,6 +10,8 @@ use tiqian::core::text_model::{
     TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
+use tiqian::font::font_metrics::FontMetricsRequest;
+use tiqian::font::font_policy::RawFontMetrics;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
@@ -17,18 +20,41 @@ use tiqian::layout::width_independent_annotation_cache::{
     WidthIndependentAnnotationKey, WidthIndependentParagraphAnnotation,
     to_width_independent_annotation_key,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
+use tiqian::shaping::font_backend::{
+    FontBackend, FontBackendRequest, FontBackendShapingResult,
 };
+use tiqian::shaping::replayable_font_backend::{
+    FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
+};
+use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
 
-struct CountingTextShaper {
+struct CountingFontBackend {
     count: Arc<AtomicUsize>,
+    fallback: DeterministicStubFontBackend,
 }
 
-impl TextShaper for CountingTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
+impl ReplayableFontCatalog for CountingFontBackend {
+    fn faces(&self) -> &[ReplayableFontFaceDescriptor] {
+        self.fallback.faces()
+    }
+
+    fn capability_report(&self) -> &FontBackendCapabilityReport {
+        self.fallback.capability_report()
+    }
+
+    fn face(&self, id: &FontFaceId) -> Option<&ReplayableFontFaceDescriptor> {
+        self.fallback.face(id)
+    }
+}
+
+impl FontBackend for CountingFontBackend {
+    fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult {
         self.count.fetch_add(1, Ordering::SeqCst);
-        ExplainableStubTextShaper.shape(input)
+        self.fallback.shape(request)
+    }
+
+    fn metrics(&self, request: &FontMetricsRequest) -> RawFontMetrics {
+        self.fallback.metrics(request)
     }
 }
 
@@ -103,8 +129,9 @@ fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
     let calls = Arc::new(AtomicUsize::new(0));
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(64)));
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(CountingTextShaper {
+    engine.font_backend = Box::new(CountingFontBackend {
         count: calls.clone(),
+        fallback: DeterministicStubFontBackend::default(),
     });
     engine.annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),

@@ -13,7 +13,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::linebreak::hyphenation::NoHyphenator;
-use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn input(text: &str) -> LayoutInput {
     LayoutInput::builder(
@@ -184,58 +186,67 @@ fn mandatory_break_line_is_not_justified() {
         .all(|decision| decision.line_range != mandatory_line.range));
 }
 
-struct BoundsTextShaper;
-
-impl TextShaper for BoundsTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let bounds = Rect {
-            left: 1.0,
-            top: -10.0,
-            right: 12.0,
-            bottom: 2.0,
-        };
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
+fn bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let face = result.face.clone();
+            let bounds = Rect {
+                left: 1.0,
+                top: -10.0,
+                right: 12.0,
+                bottom: 2.0,
+            };
+            result.shaping.clusters = vec![Cluster::with_display_text(
                 input.range,
                 input.display_text.clone(),
                 input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
+                face.clone(),
                 20.0,
-            )],
-            vec![GlyphRun::new(
+            )];
+            result.shaping.glyph_runs = vec![GlyphRun::new(
                 input.range,
-                input.font_decision.candidate.key.clone(),
+                face.clone(),
                 vec![
                     Glyph::builder(42, input.range, 20.0)
+                        .render_font_face(Some(face))
                         .bounds(Some(bounds))
                         .build(),
                 ],
                 20.0,
-            )],
-        )
-    }
+            )];
+            result
+        },
+    )
 }
 
 #[test]
-#[should_panic(expected = "TextShaper must return clusters covering")]
-fn rejects_shaper_clusters_that_do_not_cover_font_decision_range() {
-    struct EmptyTextShaper;
+fn font_resolution_and_cluster_faces_remain_consistent() {
+    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("提椠"));
+    let mut checked_cluster = false;
 
-    impl TextShaper for EmptyTextShaper {
-        fn shape(&self, _: &ShapingInput) -> ShapingResult {
-            ShapingResult::new(Vec::new(), Vec::new())
-        }
+    for cluster in result
+        .clusters
+        .iter()
+        .filter(|cluster| cluster.synthetic_kind.is_none())
+    {
+        let decision = result
+            .debug
+            .font_decisions
+            .iter()
+            .find(|decision| decision.range.start() <= cluster.range.start()
+                && decision.range.end() >= cluster.range.end())
+            .expect("every non-synthetic cluster must have a covering font decision");
+        assert_eq!(decision.resolved_face.as_ref(), cluster.font_face.as_ref());
+        checked_cluster = true;
     }
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(EmptyTextShaper);
-    engine.layout(input("提椠"));
+    assert!(checked_cluster);
 }
 
 #[test]
 fn preserves_shaper_glyph_bounds_in_layout_glyph_runs() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(BoundsTextShaper);
+    engine.font_backend = Box::new(bounds_backend());
     let result = engine.layout(input("A"));
 
     let glyph = &result.glyph_runs[0].glyphs[0];
@@ -262,12 +273,12 @@ fn records_fallback_decisions_per_cluster() {
         decision.source_text == "……"
             && decision.display_text == "⋯⋯"
             && decision.role == "CjkPunctuation"
-            && decision.font_key == "cjk-primary"
+            && decision.candidate_key == "cjk-primary"
     }));
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "English"
             && decision.role == "LatinText"
-            && decision.font_key == "latin-primary"
+            && decision.candidate_key == "latin-primary"
     }));
     assert!(result.debug.shaping_decisions.iter().any(|decision| {
         decision.source_text == "——"
@@ -278,7 +289,7 @@ fn records_fallback_decisions_per_cluster() {
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "English"
             && decision.role == "LatinText"
-            && decision.font_key == "latin-primary"
+            && decision.candidate_key == "latin-primary"
     }));
     assert_eq!(
         "English",
@@ -379,7 +390,14 @@ fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
             .debug
             .shaping_decisions
             .iter()
-            .filter(|decision| decision.font_key == "symbol-fallback")
+            .filter(|decision| {
+                decision
+                    .font_face
+                    .as_ref()
+                    .expect("shaping decision must have a font face")
+                    .resource_id()
+                    == "symbol-fallback"
+            })
             .map(|decision| decision.source_text.as_str())
             .collect::<Vec<_>>(),
     );

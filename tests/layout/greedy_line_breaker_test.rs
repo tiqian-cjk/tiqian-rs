@@ -1,5 +1,6 @@
 use tiqian::common::HashSet;
 
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
@@ -13,7 +14,7 @@ fn cluster(start: i32, end: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
         text_range(start, end),
         Text::from(text),
-        "test".to_owned(),
+        FontFaceId::with_resource_id("test"),
         advance,
     )
 }
@@ -394,7 +395,7 @@ fn mandatory_break_closes_line_and_preserves_trailing_empty_line() {
             text_range(1, 2),
             Text::from("\n"),
             Text::new(),
-            "test".to_owned(),
+            FontFaceId::with_resource_id("test"),
             0.0,
         ),
     ];
@@ -417,7 +418,7 @@ fn mandatory_break_blocks_kinsoku_repair_across_boundary() {
             text_range(1, 2),
             Text::from("\n"),
             Text::new(),
-            "test".to_owned(),
+            FontFaceId::with_resource_id("test"),
             0.0,
         ),
         cluster(2, 3, "。", 16.0),

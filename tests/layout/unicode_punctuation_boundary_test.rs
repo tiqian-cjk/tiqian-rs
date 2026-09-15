@@ -1,6 +1,7 @@
 use tiqian::common::HashSet;
 
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -15,6 +16,7 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_western_brack
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 struct KinsokuNoneProfile;
+
 
 impl ClreqProfileResolver for KinsokuNoneProfile {
     fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
@@ -89,9 +91,9 @@ fn western_brackets_touching_cjk_expose_all_inter_char_boundaries() {
                 text_range(index as i32, index as i32 + 1),
                 Text::from(character.to_string()),
                 if matches!(character, '(' | ')') {
-                    "latin".to_owned()
+                    FontFaceId::with_resource_id("latin")
                 } else {
-                    "cjk".to_owned()
+                    FontFaceId::with_resource_id("cjk")
                 },
                 16.0,
             )
@@ -177,7 +179,14 @@ fn attached_ascii_point_mark_remains_latin_and_cannot_start_wrapped_line() {
             .iter()
             .find(|cluster| cluster.text == ",")
             .unwrap();
-        assert_eq!("latin-primary", comma.font_key);
+        assert_eq!(
+            "latin-primary",
+            comma
+                .font_face
+                .as_ref()
+                .expect("comma must have a final font face")
+                .resource_id()
+        );
         assert!(
             result
                 .debug

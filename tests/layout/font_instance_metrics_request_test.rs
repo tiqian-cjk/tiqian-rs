@@ -1,39 +1,82 @@
 use std::sync::{Arc, Mutex};
 
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent};
-use tiqian::font::font_metrics::{
-    FontMetricsRequest, FontMetricsResolver, StubFontMetricsResolver,
-};
+use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{FontRole, RawFontMetrics};
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
+use tiqian::shaping::font_backend::{
+    FontBackend, FontBackendRequest, FontBackendShapingResult,
+};
+use tiqian::shaping::replayable_font_backend::{
+    FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
+};
+use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
 
-struct RecordingMetricsResolver {
-    requests: Arc<Mutex<Vec<FontMetricsRequest>>>,
+#[derive(Clone, Debug)]
+struct ShapingRecord {
+    request: FontBackendRequest,
+    face: FontFaceId,
 }
 
-impl FontMetricsResolver for RecordingMetricsResolver {
-    fn resolve(&self, request: &FontMetricsRequest) -> RawFontMetrics {
-        self.requests.lock().unwrap().push(request.clone());
-        StubFontMetricsResolver.resolve(request)
+struct RecordingFontBackend {
+    fallback: DeterministicStubFontBackend,
+    shaping: Arc<Mutex<Vec<ShapingRecord>>>,
+    metrics: Arc<Mutex<Vec<FontMetricsRequest>>>,
+}
+
+impl ReplayableFontCatalog for RecordingFontBackend {
+    fn faces(&self) -> &[ReplayableFontFaceDescriptor] {
+        self.fallback.faces()
+    }
+
+    fn capability_report(&self) -> &FontBackendCapabilityReport {
+        self.fallback.capability_report()
+    }
+
+    fn face(&self, id: &FontFaceId) -> Option<&ReplayableFontFaceDescriptor> {
+        self.fallback.face(id)
+    }
+}
+
+impl FontBackend for RecordingFontBackend {
+    fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult {
+        let result = self.fallback.shape(request);
+        self.shaping.lock().unwrap().push(ShapingRecord {
+            request: request.clone(),
+            face: result.face.clone(),
+        });
+        result
+    }
+
+    fn metrics(&self, request: &FontMetricsRequest) -> RawFontMetrics {
+        self.metrics.lock().unwrap().push(request.clone());
+        self.fallback.metrics(request)
     }
 }
 
 fn engine_with_requests(
-    requests: Arc<Mutex<Vec<FontMetricsRequest>>>,
+    shaping: Arc<Mutex<Vec<ShapingRecord>>>,
+    metrics: Arc<Mutex<Vec<FontMetricsRequest>>>,
 ) -> ExplainableStubParagraphLayoutEngine {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_metrics_resolver = Box::new(RecordingMetricsResolver { requests });
+    engine.font_backend = Box::new(RecordingFontBackend {
+        fallback: DeterministicStubFontBackend::default(),
+        shaping,
+        metrics,
+    });
     engine
 }
 
 #[test]
-fn per_span_weight_and_italic_reach_metrics_resolver() {
-    let requests = Arc::new(Mutex::new(Vec::new()));
-    let mut engine = engine_with_requests(requests.clone());
+fn per_span_weight_and_italic_reach_the_font_backend_before_metrics() {
+    let shaping = Arc::new(Mutex::new(Vec::new()));
+    let metrics = Arc::new(Mutex::new(Vec::new()));
+    let mut engine = engine_with_requests(shaping.clone(), metrics.clone());
     let base = TextStyle::builder()
         .font_families(vec!["Fixture Sans".to_owned()])
         .font_size(18.0)
@@ -59,29 +102,36 @@ fn per_span_weight_and_italic_reach_metrics_resolver() {
         .build(),
     );
 
-    let requests = requests.lock().unwrap();
+    let shaping = shaping.lock().unwrap();
     assert!(
-        requests
+        shaping
             .iter()
-            .any(|request| request.role == FontRole::CjkText
-                && request.font_weight == 400
-                && !request.italic
-                && request.face_selection_text == "中")
+            .any(|record| record.request.role == FontRole::CjkText
+                && record.request.style.font_weight == 400
+                && !record.request.style.italic
+                && record.request.display_text == "中")
     );
     assert!(
-        requests
+        shaping
             .iter()
-            .any(|request| request.role == FontRole::LatinText
-                && request.font_weight == 700
-                && request.italic
-                && request.face_selection_text == "A")
+            .any(|record| record.request.role == FontRole::LatinText
+                && record.request.style.font_weight == 700
+                && record.request.style.italic
+                && record.request.display_text == "A")
     );
+    let selected_faces: Vec<_> = shaping.iter().map(|record| record.face.clone()).collect();
+    assert!(metrics
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|request| selected_faces.contains(&request.face)));
 }
 
 #[test]
-fn face_selection_uses_the_display_text_that_was_actually_shaped() {
-    let requests = Arc::new(Mutex::new(Vec::new()));
-    let mut engine = engine_with_requests(requests.clone());
+fn display_substitution_selects_before_metrics_are_resolved() {
+    let shaping = Arc::new(Mutex::new(Vec::new()));
+    let metrics = Arc::new(Mutex::new(Vec::new()));
+    let mut engine = engine_with_requests(shaping.clone(), metrics.clone());
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("——")),
@@ -96,18 +146,25 @@ fn face_selection_uses_the_display_text_that_was_actually_shaped() {
         .build(),
     );
 
-    let requests = requests.lock().unwrap();
+    let shaping = shaping.lock().unwrap();
     assert!(
-        requests
+        shaping
             .iter()
-            .any(|request| request.face_selection_text == "⸺")
+            .any(|record| record.request.display_text == "⸺")
     );
+    let selected_faces: Vec<_> = shaping.iter().map(|record| record.face.clone()).collect();
+    assert!(metrics
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|request| selected_faces.contains(&request.face)));
 }
 
 #[test]
-fn ruby_metrics_use_the_same_italic_instance_as_ruby_shaping() {
-    let requests = Arc::new(Mutex::new(Vec::new()));
-    let mut engine = engine_with_requests(requests.clone());
+fn ruby_metrics_use_the_same_final_face_as_ruby_shaping() {
+    let shaping = Arc::new(Mutex::new(Vec::new()));
+    let metrics = Arc::new(Mutex::new(Vec::new()));
+    let mut engine = engine_with_requests(shaping.clone(), metrics.clone());
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中")),
@@ -127,12 +184,17 @@ fn ruby_metrics_use_the_same_italic_instance_as_ruby_shaping() {
         .build(),
     );
 
-    let requests = requests.lock().unwrap();
+    let shaping = shaping.lock().unwrap();
+    let ruby_shaping = shaping
+        .iter()
+        .find(|record| record.request.role == FontRole::LatinText && record.request.display_text == "zhōng")
+        .expect("ruby text must be shaped by the font backend");
     assert!(
-        requests
+        metrics
+            .lock()
+            .unwrap()
             .iter()
             .any(|request| request.role == FontRole::LatinText
-                && request.face_selection_text == "zhōng"
-                && request.italic)
+                && request.face == ruby_shaping.face)
     );
 }

@@ -60,15 +60,28 @@ font 6-7 role=CjkText key=cjk-primary display='等' sub=CjkPunctuationGlyphPolic
 font 7-8 role=CjkPunctuation key=cjk-primary display='⋯' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:U+2026->U+22EF
 font 8-9 role=CjkText key=cjk-primary display='真' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 9-10 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 10-19 role=LatinText key=latin-primary display=' English ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-18 role=LatinText key=latin-primary display='English' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 19-20 role=LatinText key=latin-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 20-35 role=LatinText key=latin-primary display=' next; ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-26 role=LatinText key=latin-primary display='next;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-35 role=LatinText key=latin-primary display='ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 35-36 role=LatinText key=latin-primary display='…' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 36-47 role=LatinText key=latin-primary display=' / slash. A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 36-37 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 37-38 role=LatinText key=latin-primary display='/' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 38-39 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 39-45 role=LatinText key=latin-primary display='slash.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 45-46 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-49 role=LatinText key=latin-primary display='——' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 49-56 role=LatinText key=latin-primary display='B; Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-51 role=LatinText key=latin-primary display='B;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 51-52 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 52-56 role=LatinText key=latin-primary display='Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-58 role=LatinText key=latin-primary display='……' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 58-64 role=LatinText key=latin-primary display='what? ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 58-63 role=LatinText key=latin-primary display='what?' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 63-64 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 64-65 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=CjkPunctuation key=cjk-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -164,15 +177,28 @@ font 6-7 role=CjkText key=cjk-primary display='等' sub=CjkPunctuationGlyphPolic
 font 7-8 role=CjkPunctuation key=cjk-primary display='⋯' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:U+2026->U+22EF
 font 8-9 role=CjkText key=cjk-primary display='真' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 9-10 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 10-19 role=LatinText key=latin-primary display=' English ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-18 role=LatinText key=latin-primary display='English' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 19-20 role=LatinText key=latin-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 20-35 role=LatinText key=latin-primary display=' next; ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-26 role=LatinText key=latin-primary display='next;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-35 role=LatinText key=latin-primary display='ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 35-36 role=LatinText key=latin-primary display='…' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 36-47 role=LatinText key=latin-primary display=' / slash. A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 36-37 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 37-38 role=LatinText key=latin-primary display='/' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 38-39 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 39-45 role=LatinText key=latin-primary display='slash.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 45-46 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-49 role=LatinText key=latin-primary display='——' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 49-56 role=LatinText key=latin-primary display='B; Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-51 role=LatinText key=latin-primary display='B;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 51-52 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 52-56 role=LatinText key=latin-primary display='Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-58 role=LatinText key=latin-primary display='……' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 58-64 role=LatinText key=latin-primary display='what? ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 58-63 role=LatinText key=latin-primary display='what?' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 63-64 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 64-65 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=CjkPunctuation key=cjk-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -268,15 +294,28 @@ font 6-7 role=CjkText key=cjk-primary display='等' sub=CjkPunctuationGlyphPolic
 font 7-8 role=CjkPunctuation key=cjk-primary display='⋯' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:U+2026->U+22EF
 font 8-9 role=CjkText key=cjk-primary display='真' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 9-10 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 10-19 role=LatinText key=latin-primary display=' English ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-18 role=LatinText key=latin-primary display='English' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 19-20 role=LatinText key=latin-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 20-35 role=LatinText key=latin-primary display=' next; ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-26 role=LatinText key=latin-primary display='next;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-35 role=LatinText key=latin-primary display='ellipsis' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 35-36 role=LatinText key=latin-primary display='…' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 36-47 role=LatinText key=latin-primary display=' / slash. A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 36-37 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 37-38 role=LatinText key=latin-primary display='/' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 38-39 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 39-45 role=LatinText key=latin-primary display='slash.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 45-46 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-49 role=LatinText key=latin-primary display='——' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 49-56 role=LatinText key=latin-primary display='B; Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-51 role=LatinText key=latin-primary display='B;' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 51-52 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 52-56 role=LatinText key=latin-primary display='Wait' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-58 role=LatinText key=latin-primary display='……' sub=CjkRoleGatedDisplaySubstitution:preserve-role-LatinText
-font 58-64 role=LatinText key=latin-primary display='what? ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 58-63 role=LatinText key=latin-primary display='what?' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 63-64 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 64-65 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=CjkPunctuation key=cjk-primary display='—' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve

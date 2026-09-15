@@ -9,9 +9,9 @@ use tiqian::core::units::Ic;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 struct PreserveInputProfile;
 
@@ -23,30 +23,28 @@ impl ClreqProfileResolver for PreserveInputProfile {
     }
 }
 
-struct HaltInkTextShaper;
-
-impl TextShaper for HaltInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
-        let source_text = input.text.slice_text(input.range);
-        let is_interpunct = source_text == "·" || source_text == "・";
-        let is_ellipsis = source_text == "…";
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
+fn halt_ink_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let source_text = input.text.slice_text(input.range);
+            let is_interpunct = source_text == "·" || source_text == "・";
+            let is_ellipsis = source_text == "…";
+            result.shaping.glyph_runs = result
+                .shaping
                 .glyph_runs
                 .into_iter()
                 .map(|run| {
+                    let face = run.font_face.clone();
                     GlyphRun::new(
                         run.range,
-                        run.font_key,
+                        run.font_face,
                         run.glyphs
                             .into_iter()
                             .map(|glyph| {
                                 Glyph::builder(glyph.id, glyph.cluster_range, glyph.advance)
                                     .x(glyph.x)
                                     .y(glyph.y)
-                                    .render_font_key(glyph.render_font_key)
+                                    .render_font_face(Some(face.clone()))
                                     .bounds(Some(if is_ellipsis {
                                         Rect {
                                             left: 2.0,
@@ -80,15 +78,15 @@ impl TextShaper for HaltInkTextShaper {
                         run.advance,
                     )
                 })
-                .collect(),
-            result.decisions,
-        )
-    }
+                .collect();
+            result
+        },
+    )
 }
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(HaltInkTextShaper);
+    engine.font_backend = Box::new(halt_ink_backend());
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -131,7 +129,7 @@ fn interpunct_ink_evidence_frees_paired_glue_for_tier_three_shrink() {
 fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.clreq_profile_resolver = Box::new(PreserveInputProfile);
-    engine.text_shaper = Box::new(HaltInkTextShaper);
+    engine.font_backend = Box::new(halt_ink_backend());
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("正文・间隔・后文")),

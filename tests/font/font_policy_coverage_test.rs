@@ -1,15 +1,17 @@
+use tiqian::core::font_face::{FontFaceId, FontVariationInstance};
 use tiqian::core::geometry::{text_range};
 use tiqian::core::text::Text;
 use tiqian::font::font_metrics::{
     BaselineClass, FontMetricSource, FontMetricsNormalizationInput, FontMetricsNormalizer,
-    FontMetricsRequest, FontMetricsResolver, MetricBox, ScriptAwareFontMetricsNormalizer,
-    StubFontMetricsResolver,
+    FontMetricsRequest, MetricBox, ScriptAwareFontMetricsNormalizer,
 };
 use tiqian::font::font_policy::{
     BaselinePolicy, FallbackResolver, FontCandidate, FontDecision, FontMetricsPolicy, FontRequest,
     FontRole, FontRoleContext, LayoutFontMetrics, PreferCjkForAmbiguousPunctuationResolver,
     RawFontMetrics, font_role_name_uses_latin_face,
 };
+use tiqian::shaping::font_backend::FontBackend;
+use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
 
 #[test]
 fn test_font_request_and_roles() {
@@ -151,29 +153,20 @@ fn test_font_enums_and_models() {
 }
 
 #[test]
-fn test_font_metrics_request_and_resolvers() {
-    let request = FontMetricsRequest::builder(
-        "key1".to_owned(),
+fn test_font_metrics_request_and_backend() {
+    let request = FontMetricsRequest::new(
+        FontFaceId::new("key1".to_owned(), 0, FontVariationInstance::default()),
         16.0,
         FontRole::CjkText,
         "zh-Hans".to_owned(),
-    )
-    .font_families(vec!["FontA".to_owned()])
-    .font_weight(700)
-    .italic(true)
-    .face_selection_text(Text::from("测试"))
-    .build();
-    assert_eq!("key1", request.font_key);
+    );
+    assert_eq!("key1", request.face.resource_id());
     assert_eq!(16.0, request.font_size);
     assert_eq!(FontRole::CjkText, request.role);
     assert_eq!("zh-Hans", request.locale);
-    assert_eq!(vec!["FontA"], request.font_families);
-    assert_eq!(700, request.font_weight);
-    assert!(request.italic);
-    assert_eq!(Text::from("测试"), request.face_selection_text);
 
-    let resolver = StubFontMetricsResolver;
-    let cjk_raw = resolver.resolve(&request);
+    let backend = DeterministicStubFontBackend::default();
+    let cjk_raw = backend.metrics(&request);
     assert_eq!(16.0 * 1.16, cjk_raw.ascent);
     assert_eq!(Some(16.0 * 0.88), cjk_raw.typo_ascent);
 
@@ -184,7 +177,7 @@ fn test_font_metrics_request_and_resolvers() {
         (FontRole::Emoji, 16.0 * 0.9),
         (FontRole::Unknown, 16.0 * 0.9),
     ] {
-        let raw = resolver.resolve(&FontMetricsRequest {
+        let raw = backend.metrics(&FontMetricsRequest {
             role,
             ..request.clone()
         });
@@ -195,8 +188,12 @@ fn test_font_metrics_request_and_resolvers() {
 #[test]
 fn test_script_aware_font_metrics_normalizer_branches() {
     let normalizer = ScriptAwareFontMetricsNormalizer;
-    let base_request =
-        FontMetricsRequest::new("key".to_owned(), 16.0, FontRole::CjkText, "zh-Hans".to_owned());
+    let base_request = FontMetricsRequest::new(
+        FontFaceId::new("key".to_owned(), 0, FontVariationInstance::default()),
+        16.0,
+        FontRole::CjkText,
+        "zh-Hans".to_owned(),
+    );
 
     let with_typo = normalizer.normalize(&FontMetricsNormalizationInput {
         request: base_request.clone(),

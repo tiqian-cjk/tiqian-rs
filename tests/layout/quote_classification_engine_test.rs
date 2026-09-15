@@ -1,6 +1,6 @@
 use tiqian::common::HashSet;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
-use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
+use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -12,9 +12,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::linebreak::hyphenation::NoHyphenator;
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
@@ -47,7 +47,14 @@ fn latin_technical_punctuation_stays_in_latin_run() {
         result
             .clusters
             .iter()
-            .all(|cluster| cluster.font_key == "latin-primary")
+            .all(|cluster| {
+                cluster
+                    .font_face
+                    .as_ref()
+                    .expect("cluster must have a final font face")
+                    .resource_id()
+                    == "latin-primary"
+            })
     );
     assert!(
         result
@@ -67,7 +74,15 @@ fn ascii_brackets_remain_latin_inside_cjk_text() {
             .iter()
             .find(|cluster| cluster.text == bracket)
             .unwrap();
-        assert_eq!("latin-primary", cluster.font_key, "{bracket}");
+        assert_eq!(
+            "latin-primary",
+            cluster
+                .font_face
+                .as_ref()
+                .expect("cluster must have a final font face")
+                .resource_id(),
+            "{bracket}"
+        );
         let decision = result
             .debug
             .font_decisions
@@ -84,7 +99,14 @@ fn western_quote_pair_reaches_latin_font_pipeline_without_cjk_geometry() {
 
     assert_eq!(3, result.clusters.len());
     assert_eq!("“Hello”", result.clusters[0].text);
-    assert_eq!("latin-primary", result.clusters[0].font_key);
+    assert_eq!(
+        "latin-primary",
+        result.clusters[0]
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
+    );
     let overrides = result
         .debug
         .role_overrides
@@ -174,7 +196,7 @@ fn contraction_apostrophe_stays_latin_inside_cjk_single_quotes() {
         .find(|decision| decision.source_text == "that’s")
         .unwrap();
     assert_eq!("LatinText", contraction.role);
-    assert_eq!("latin-primary", contraction.font_key);
+    assert_eq!("latin-primary", contraction.candidate_key);
     assert!(
         result
             .debug
@@ -193,7 +215,14 @@ fn latin_word_internal_curly_quotes_stay_in_latin_run_inside_mixed_paragraph() {
         .iter()
         .find(|cluster| cluster.text == "le“t”ters")
         .unwrap();
-    assert_eq!("latin-primary", word.font_key);
+    assert_eq!(
+        "latin-primary",
+        word
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
+    );
     let overrides = result
         .debug
         .role_overrides
@@ -353,7 +382,10 @@ fn quote_roles_survive_style_and_source_boundaries() {
             .iter()
             .find(|cluster| cluster.range.start().value() == 6)
             .unwrap()
-            .font_key
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
     );
     assert_eq!(
         text,
@@ -506,7 +538,14 @@ fn skips_neutral_dash_before_latin_quote_pair_in_layout() {
         .iter()
         .find(|cluster| cluster.text.as_str().contains("“hello”"))
         .unwrap();
-    assert_eq!("latin-primary", quoted.font_key);
+    assert_eq!(
+        "latin-primary",
+        quoted
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
+    );
 }
 
 #[test]
@@ -543,7 +582,7 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         .find(|decision| decision.range.start().value() == 2)
         .unwrap();
     assert_eq!("CjkPunctuation", opening.role);
-    assert_eq!("cjk-primary", opening.font_key);
+    assert_eq!("cjk-primary", opening.candidate_key);
 
     let override_info = result
         .debug
@@ -608,30 +647,29 @@ fn keeps_decade_style_apostrophe_with_letter_flank_latin() {
     assert_eq!("NonCjkInWordApostrophe", apostrophe.source);
 }
 
-struct ProportionalQuoteTextShaper;
-
-impl TextShaper for ProportionalQuoteTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.as_str() != "“" && input.display_text.as_str() != "”" {
-            return result;
-        }
-        assert_eq!(vec!["fwid=1"], input.open_type_features);
-        let advance = 6.0;
-        ShapingResult::with_decisions(
-            result
+fn proportional_quote_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            if input.display_text.as_str() != "“" && input.display_text.as_str() != "”" {
+                return result;
+            }
+            assert_eq!(vec!["fwid=1"], input.open_type_features);
+            let advance = 6.0;
+            result.shaping.clusters = result
+                .shaping
                 .clusters
                 .iter()
                 .cloned()
                 .map(|cluster| Cluster { advance, ..cluster })
-                .collect(),
-            result
+                .collect();
+            result.shaping.glyph_runs = result
+                .shaping
                 .glyph_runs
                 .iter()
                 .map(|run| {
                     GlyphRun::new(
                         run.range,
-                        run.font_key.clone(),
+                        run.font_face.clone(),
                         run.glyphs
                             .iter()
                             .map(|glyph| {
@@ -642,30 +680,30 @@ impl TextShaper for ProportionalQuoteTextShaper {
                                         right: 5.0,
                                         bottom: 0.0,
                                     }))
+                                    .render_font_face(Some(run.font_face.clone()))
                                     .build()
                             })
                             .collect(),
                         advance,
                     )
                 })
-                .collect(),
-            result
+                .collect();
+            result.shaping.decisions = result
+                .shaping
                 .decisions
                 .iter()
                 .cloned()
-                .map(|decision| tiqian::core::layout_model::ShapingDecisionInfo {
-                    advance,
-                    ..decision
-                })
-                .collect(),
-        )
-    }
+                .map(|decision| ShapingDecisionInfo { advance, ..decision })
+                .collect();
+            result
+        },
+    )
 }
 
 #[test]
 fn requests_full_width_cjk_quotes_and_synthesizes_cell_for_proportional_glyphs() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(ProportionalQuoteTextShaper);
+    engine.font_backend = Box::new(proportional_quote_backend());
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中“文”中")),

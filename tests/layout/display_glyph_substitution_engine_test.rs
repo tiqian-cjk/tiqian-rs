@@ -84,7 +84,14 @@ fn recommended_display_glyphs_preserve_source_text() {
         result
             .clusters
             .iter()
-            .all(|cluster| cluster.font_key == "cjk-primary")
+            .all(|cluster| {
+                cluster
+                    .font_face
+                    .as_ref()
+                    .expect("cluster must have a final font face")
+                    .resource_id()
+                    == "cjk-primary"
+            })
     );
 }
 

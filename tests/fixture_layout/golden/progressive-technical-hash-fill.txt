@@ -47,7 +47,43 @@ cluster 32-33 'c' adv=16.0
 cluster 33-34 'd' adv=16.0
 cluster 34-35 'e' adv=16.0
 cluster 35-36 'f' adv=16.0
+font 0-1 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 0-36 role=LatinText key=latin-primary display='deadbeefcafebabefeedfaceabcdefabcdef' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 1-2 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 14-15 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-16 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-17 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-18 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-22 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 22-23 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 23-24 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 30-31 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 31-32 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-34 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 34-35 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-36 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
 size 173.0x96.0
@@ -95,7 +131,43 @@ cluster 32-33 'c' adv=16.0
 cluster 33-34 'd' adv=16.0
 cluster 34-35 'e' adv=16.0
 cluster 35-36 'f' adv=16.0
+font 0-1 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 0-36 role=LatinText key=latin-primary display='deadbeefcafebabefeedfaceabcdefabcdef' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 1-2 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 14-15 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-16 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-17 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-18 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-22 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 22-23 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 23-24 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 30-31 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 31-32 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-34 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 34-35 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-36 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
 size 173.0x96.0
@@ -143,5 +215,41 @@ cluster 32-33 'c' adv=16.0
 cluster 33-34 'd' adv=16.0
 cluster 34-35 'e' adv=16.0
 cluster 35-36 'f' adv=16.0
+font 0-1 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 0-36 role=LatinText key=latin-primary display='deadbeefcafebabefeedfaceabcdefabcdef' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 1-2 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 14-15 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-16 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-17 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-18 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 18-19 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-21 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 21-22 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 22-23 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 23-24 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 30-31 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 31-32 role=LatinText key=latin-primary display='b' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-34 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 34-35 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-36 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

@@ -8,7 +8,9 @@ use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::paragraph_layout_engine::{ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine};
 use tiqian::linebreak::hyphenation::NoHyphenator;
-use tiqian::shaping::text_shaper::{ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     ExplainableStubParagraphLayoutEngine::default().layout(
@@ -40,7 +42,7 @@ fn curly_quote_indices(text: &str) -> HashSet<ScalarOffset> {
 fn keeps_latin_technical_punctuation_in_latin_run() {
     let result = layout("well-known/path");
     assert_eq!("well-known/path", result.clusters.iter().map(|cluster| cluster.text.as_str()).collect::<String>());
-    assert!(result.clusters.iter().all(|cluster| cluster.font_key == "latin-primary"));
+    assert!(result.clusters.iter().all(|cluster| cluster.font_face.as_ref().expect("cluster must have a final font face").resource_id() == "latin-primary"));
     assert!(result.clusters.iter().any(|cluster| cluster.text == "well-"));
 }
 
@@ -48,7 +50,7 @@ fn keeps_latin_technical_punctuation_in_latin_run() {
 fn classifies_ascii_brackets_as_latin_regardless_of_surrounding_context() {
     let result = layout("中文(English)中文");
     let latin_cluster = result.clusters.iter().find(|cluster| cluster.text == "(English)").unwrap();
-    assert_eq!("latin-primary", latin_cluster.font_key);
+    assert_eq!("latin-primary", latin_cluster.font_face.as_ref().expect("cluster must have a final font face").resource_id());
     assert_eq!("LatinText", result.debug.font_decisions.iter().find(|decision| decision.source_text == "(English)").unwrap().role);
 }
 
@@ -56,7 +58,7 @@ fn classifies_ascii_brackets_as_latin_regardless_of_surrounding_context() {
 fn classifies_ascii_brackets_as_latin_inside_pure_cjk_content() {
     let result = layout("中文(中文)");
     for bracket in ["(", ")"] {
-        assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == bracket).unwrap().font_key);
+        assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == bracket).unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
     }
 }
 
@@ -72,7 +74,7 @@ fn ascii_closing_bracket_with_cjk_interior_is_forbidden_at_line_start() {
     );
     let source = Text::from(text);
     assert!(result.lines.iter().all(|line| !source.slice_text(line.range).as_str().starts_with(')')), "{:#?}", result.lines);
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == ")").unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == ")").unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
 }
 
 #[test]
@@ -87,7 +89,7 @@ fn ascii_opening_bracket_with_cjk_interior_is_forbidden_at_line_end() {
     );
     let source = Text::from(text);
     assert!(result.lines.iter().all(|line| !source.slice_text(line.range).as_str().ends_with('(')), "{:#?}", result.lines);
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "(").unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "(").unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
 }
 
 #[test]
@@ -95,8 +97,8 @@ fn keeps_text_start_latin_quote_pair_in_latin_run() {
     let result = layout("“Hello” world");
     assert_eq!(3, result.clusters.len());
     assert_eq!("“Hello”", result.clusters[0].text);
-    assert_eq!("latin-primary", result.clusters[0].font_key);
-    assert!(result.debug.font_decisions.iter().any(|decision| decision.source_text == "“Hello” world" && decision.role == "LatinText"));
+    assert_eq!("latin-primary", result.clusters[0].font_face.as_ref().expect("cluster must have a final font face").resource_id());
+    assert!(result.debug.font_decisions.iter().any(|decision| decision.range == text_range(0, 7) && decision.role == "LatinText"));
 }
 
 #[test]
@@ -144,7 +146,7 @@ fn quote_roles_survive_style_and_source_boundaries() {
     assert_eq!(Some(&"CjkPunctuation"), roles.get(&scalar_offset(1)));
     assert_eq!(Some(&"LatinText"), roles.get(&scalar_offset(6)));
     assert_eq!(Some(&"CjkPunctuation"), roles.get(&scalar_offset(8)));
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.range.start().value() == 6).unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.range.start().value() == 6).unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
     assert_eq!(text, result.clusters.iter().map(|cluster| cluster.text.as_str()).collect::<String>());
 }
 
@@ -198,7 +200,7 @@ fn mi10s_adjacent_latin_transcriptions_keep_the_final_quote_pair_in_cjk_context(
 #[test]
 fn skips_neutral_dash_before_latin_quote_pair_in_layout() {
     let result = layout("English — “hello”");
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text.as_str().contains("“hello”")).unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text.as_str().contains("“hello”")).unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
 }
 
 #[test]
@@ -208,7 +210,7 @@ fn keeps_slash_led_latin_technical_run_out_of_cjk_punctuation_geometry() {
     assert_eq!("LatinText", latin_run.role);
     assert!(result.debug.punctuation_decisions.iter().all(|decision| decision.range != latin_run.range));
     let cluster = result.clusters.iter().find(|cluster| cluster.text == "/TERFism").unwrap();
-    assert_eq!("latin-primary", cluster.font_key);
+    assert_eq!("latin-primary", cluster.font_face.as_ref().expect("cluster must have a final font face").resource_id());
     assert!(cluster.advance > 16.0);
 }
 
@@ -241,40 +243,66 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
     let result = layout("1.“你知道李白是怎么死的吗？”");
     let opening = result.debug.font_decisions.iter().find(|decision| decision.range.start().value() == 2).unwrap();
     assert_eq!("CjkPunctuation", opening.role);
-    assert_eq!("cjk-primary", opening.font_key);
+    assert_eq!("cjk-primary", opening.resolved_face.as_ref().expect("font decision must have a resolved font face").resource_id());
     let override_info = result.debug.role_overrides.iter().find(|override_info| override_info.range.start().value() == 2).unwrap();
     assert_eq!("PairedPunctuationContentScriptContext", override_info.source);
     assert_eq!("quoted-content-script", override_info.reason);
     assert_eq!("CjkPunctuation", override_info.overridden_role);
 }
 
-struct ProportionalQuoteTextShaper;
-
-impl TextShaper for ProportionalQuoteTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
+fn proportional_quote_backend() -> impl FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if !matches!(input.display_text.as_str(), "“" | "”") {
             return result;
         }
         assert_eq!(vec!["fwid=1"], input.open_type_features);
         let advance = 6.0;
-        ShapingResult::with_decisions(
-            result.clusters.into_iter().map(|cluster| Cluster { advance, ..cluster }).collect(),
-            result.glyph_runs.into_iter().map(|run| GlyphRun::new(
-                run.range,
-                run.font_key,
-                run.glyphs.into_iter().map(|glyph| Glyph::builder(glyph.id, glyph.cluster_range, advance).bounds(Some(Rect { left: 1.0, top: -10.0, right: 5.0, bottom: 0.0 })).build()).collect(),
-                advance,
-            )).collect(),
-            result.decisions.into_iter().map(|decision| ShapingDecisionInfo { advance, ..decision }).collect(),
-        )
-    }
+        result.shaping.clusters = result
+            .shaping
+            .clusters
+            .into_iter()
+            .map(|cluster| Cluster { advance, ..cluster })
+            .collect();
+        result.shaping.glyph_runs = result
+            .shaping
+            .glyph_runs
+            .into_iter()
+            .map(|run| {
+                GlyphRun::new(
+                    run.range,
+                    run.font_face.clone(),
+                    run.glyphs
+                        .into_iter()
+                        .map(|glyph| {
+                            Glyph::builder(glyph.id, glyph.cluster_range, advance)
+                                .render_font_face(Some(run.font_face.clone()))
+                                .bounds(Some(Rect {
+                                    left: 1.0,
+                                    top: -10.0,
+                                    right: 5.0,
+                                    bottom: 0.0,
+                                }))
+                                .build()
+                        })
+                        .collect(),
+                    advance,
+                )
+            })
+            .collect();
+        result.shaping.decisions = result
+            .shaping
+            .decisions
+            .into_iter()
+            .map(|decision| ShapingDecisionInfo { advance, ..decision })
+            .collect();
+        result
+    })
 }
 
 #[test]
 fn requests_full_width_cjk_quotes_and_synthesizes_the_cell_when_the_font_stays_proportional() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(ProportionalQuoteTextShaper);
+    engine.font_backend = Box::new(proportional_quote_backend());
     let input = |text| LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(320.0))
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
         .build();
@@ -320,16 +348,16 @@ fn keeps_contraction_apostrophe_latin_inside_cjk_single_quotes() {
     assert_eq!("CjkPunctuation", opening.role);
     assert_eq!("LatinText", contraction.role);
     assert_eq!("that’s", contraction.source_text);
-    assert_eq!("latin-primary", contraction.font_key);
+    assert_eq!("latin-primary", contraction.resolved_face.as_ref().expect("font decision must have a resolved font face").resource_id());
     assert_eq!("CjkPunctuation", closing.role);
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "that’s").unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "that’s").unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
     assert!(result.debug.punctuation_decisions.iter().all(|decision| decision.range != text_range(6, 7)));
 }
 
 #[test]
 fn keeps_latin_word_internal_curly_quotes_in_latin_run_inside_mixed_paragraph() {
     let result = layout("中文 Latin: le“t”ters 中文");
-    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "le“t”ters").unwrap().font_key);
+    assert_eq!("latin-primary", result.clusters.iter().find(|cluster| cluster.text == "le“t”ters").unwrap().font_face.as_ref().expect("cluster must have a final font face").resource_id());
     let overrides: Vec<_> = result.debug.role_overrides.iter().filter(|override_info| matches!(override_info.source_text.as_str(), "“" | "”")).collect();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| override_info.overridden_role == "LatinText"));

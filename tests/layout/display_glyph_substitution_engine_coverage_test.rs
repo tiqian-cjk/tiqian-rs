@@ -11,10 +11,10 @@ use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-    UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
-};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+use tiqian::shaping::text_shaper::UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE;
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 struct PreserveInputProfile;
 
@@ -57,7 +57,10 @@ fn preserves_source_text_when_using_clreq_recommended_display_glyphs() {
         let cluster = result.clusters.iter().find(|cluster| cluster.text == source).unwrap();
         assert_eq!(source, cluster.text);
         assert_eq!(display, cluster.display_text);
-        assert_eq!("cjk-primary", cluster.font_key);
+        assert_eq!(
+            Some("cjk-primary"),
+            cluster.font_face.as_ref().map(|face| face.resource_id())
+        );
     }
 }
 
@@ -92,14 +95,13 @@ fn uses_two_em_advance_for_recommended_dash_codepoint() {
     assert_eq!(32.0, result.size.width);
 }
 
-struct FeatureBoundaryTextShaper;
-
-impl TextShaper for FeatureBoundaryTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let source = input.text.slice_text(input.range);
+fn feature_boundary_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text != "A’B" {
-            return ExplainableStubTextShaper.shape(input);
+            return result;
         }
+        let source = input.text.slice_text(input.range);
+        let face = result.face.clone();
         let clusters: Vec<_> = (0..input.range.length())
             .map(|local_offset| {
                 let range = input.range.start() + local_offset;
@@ -108,7 +110,7 @@ impl TextShaper for FeatureBoundaryTextShaper {
                     range,
                     input.text.slice_text(range),
                     input.display_text.slice_text(text_range(local_offset, local_offset + 1)),
-                    input.font_decision.candidate.key.clone(),
+                    face.clone(),
                     16.0,
                 )
             })
@@ -120,22 +122,26 @@ impl TextShaper for FeatureBoundaryTextShaper {
                 let features = (cluster.text == "’").then(|| vec!["pwid".to_owned(), "palt".to_owned()]).unwrap_or_default();
                 GlyphRun::with_open_type_features(
                     cluster.range,
-                    cluster.font_key.clone(),
-                    vec![Glyph::builder(glyph_id as u32, cluster.range, cluster.advance).build()],
+                    cluster.font_face.clone().expect("fixture cluster must have a final font face"),
+                    vec![Glyph::builder(glyph_id as u32, cluster.range, cluster.advance)
+                        .render_font_face(cluster.font_face.clone())
+                        .build()],
                     cluster.advance,
                     features,
                 )
             })
             .collect();
         assert_eq!("A’B", source);
-        ShapingResult::new(clusters, glyph_runs)
-    }
+        result.shaping.clusters = clusters;
+        result.shaping.glyph_runs = glyph_runs;
+        result
+    })
 }
 
 #[test]
 fn preserves_open_type_features_as_final_glyph_run_boundaries() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(FeatureBoundaryTextShaper);
+    engine.font_backend = Box::new(feature_boundary_backend());
     let result = engine.layout(input("A’B"));
     assert_eq!(
         vec![text_range(0, 1), text_range(1, 2), text_range(2, 3)],
@@ -147,33 +153,33 @@ fn preserves_open_type_features_as_final_glyph_run_boundaries() {
     );
 }
 
-struct NoBoundsTextShaper;
-
-impl TextShaper for NoBoundsTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
+fn no_bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         let source = input.text.slice_text(input.range);
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                source,
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                16.0,
-            )],
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                vec![Glyph::builder(0, input.range, 16.0).build()],
-                16.0,
-            )],
-        )
-    }
+        let face = result.face.clone();
+        result.shaping.clusters = vec![Cluster::with_display_text(
+            input.range,
+            source,
+            input.display_text.clone(),
+            face.clone(),
+            16.0,
+        )];
+        result.shaping.glyph_runs = vec![GlyphRun::new(
+            input.range,
+            face.clone(),
+            vec![Glyph::builder(0, input.range, 16.0)
+                .render_font_face(Some(face))
+                .build()],
+            16.0,
+        )];
+        result
+    })
 }
 
 #[test]
 fn shaping_without_bounds_produces_named_profile_fallback() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(NoBoundsTextShaper);
+    engine.font_backend = Box::new(no_bounds_backend());
     let result = engine.layout(input("。"));
     assert_eq!(1, result.debug.punctuation_decisions.len());
     let punctuation = &result.debug.punctuation_decisions[0];
@@ -184,26 +190,25 @@ fn shaping_without_bounds_produces_named_profile_fallback() {
     assert_eq!(8.0, punctuation.trailing_glue_natural);
 }
 
-struct MissingGlyphTextShaper;
-
-impl TextShaper for MissingGlyphTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
+fn missing_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text.as_str().contains('⸺') {
-            result.decisions = result
+            result.shaping.decisions = result
+                .shaping
                 .decisions
                 .into_iter()
                 .map(|decision| ShapingDecisionInfo { missing_glyphs: 1, ..decision })
                 .collect();
+            result.attempts[0].missing_glyphs = 1;
         }
         result
-    }
+    })
 }
 
 #[test]
 fn substitution_rolls_back_to_source_text_when_font_lacks_the_glyph() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(MissingGlyphTextShaper);
+    engine.font_backend = Box::new(missing_glyph_backend());
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -214,13 +219,11 @@ fn substitution_rolls_back_to_source_text_when_font_lacks_the_glyph() {
     assert!(decision.substitution_reason.ends_with("SubstitutionRollbackOnMissingGlyph"));
 }
 
-struct UnverifiedCoverageTextShaper;
-
-impl TextShaper for UnverifiedCoverageTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
+fn unverified_coverage_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text.as_str().contains('⋯') {
-            result.decisions = result
+            result.shaping.decisions = result
+                .shaping
                 .decisions
                 .into_iter()
                 .map(|decision| ShapingDecisionInfo {
@@ -230,13 +233,13 @@ impl TextShaper for UnverifiedCoverageTextShaper {
                 .collect();
         }
         result
-    }
+    })
 }
 
 #[test]
 fn ellipsis_substitution_rolls_back_when_coverage_cannot_be_verified() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(UnverifiedCoverageTextShaper);
+    engine.font_backend = Box::new(unverified_coverage_backend());
     let result = engine.layout(input("中……文"));
     assert_eq!(
         "……",
@@ -252,32 +255,45 @@ fn ellipsis_substitution_rolls_back_when_coverage_cannot_be_verified() {
         .ends_with("SubstitutionRollbackOnUnverifiedGlyphCoverage"));
 }
 
-struct UnderfilledDashInkTextShaper;
-
-impl TextShaper for UnderfilledDashInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
+fn dash_ink_backend(
+    body_advance: Option<f32>,
+    glyph_advance: f32,
+    bounds: Rect,
+) -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text.as_str().contains('⸺') {
-            for run in &mut result.glyph_runs {
+            if let Some(body_advance) = body_advance {
+                for cluster in &mut result.shaping.clusters {
+                    cluster.advance = body_advance;
+                }
+            }
+            for run in &mut result.shaping.glyph_runs {
+                if let Some(body_advance) = body_advance {
+                    run.advance = body_advance;
+                }
                 for glyph in &mut run.glyphs {
-                    glyph.advance = 32.0;
-                    glyph.bounds = Some(tiqian::core::geometry::Rect {
-                        left: 1.0,
-                        top: -10.0,
-                        right: 26.0,
-                        bottom: -8.0,
-                    });
+                    glyph.advance = glyph_advance;
+                    glyph.bounds = Some(bounds);
+                }
+            }
+            if let Some(body_advance) = body_advance {
+                for decision in &mut result.shaping.decisions {
+                    decision.advance = body_advance;
                 }
             }
         }
         result
-    }
+    })
 }
 
 #[test]
 fn dash_substitution_rolls_back_when_ink_does_not_fill_the_two_em_advance() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(UnderfilledDashInkTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        None,
+        32.0,
+        Rect { left: 1.0, top: -10.0, right: 26.0, bottom: -8.0 },
+    ));
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -291,41 +307,16 @@ fn dash_substitution_rolls_back_when_ink_does_not_fill_the_two_em_advance() {
         .unwrap()
         .substitution_reason
         .ends_with("DashSubstitutionInkCoverageRollback"));
-}
-
-struct OneEmFallbackDashTextShaper;
-
-impl TextShaper for OneEmFallbackDashTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.as_str().contains('⸺') {
-            for cluster in &mut result.clusters {
-                cluster.advance = 16.0;
-            }
-            for run in &mut result.glyph_runs {
-                run.advance = 16.0;
-                for glyph in &mut run.glyphs {
-                    glyph.advance = 16.0;
-                    glyph.bounds = Some(Rect {
-                        left: 0.5,
-                        top: -9.0,
-                        right: 15.7,
-                        bottom: -7.0,
-                    });
-                }
-            }
-            for decision in &mut result.decisions {
-                decision.advance = 16.0;
-            }
-        }
-        result
-    }
 }
 
 #[test]
 fn dash_substitution_rolls_back_when_fallback_reports_a_full_one_em_glyph() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(OneEmFallbackDashTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        Some(16.0),
+        16.0,
+        Rect { left: 0.5, top: -9.0, right: 15.7, bottom: -7.0 },
+    ));
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -341,39 +332,14 @@ fn dash_substitution_rolls_back_when_fallback_reports_a_full_one_em_glyph() {
         .ends_with("DashSubstitutionInkCoverageRollback"));
 }
 
-struct DashSpanSizeTextShaper;
-
-impl TextShaper for DashSpanSizeTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.as_str().contains('⸺') {
-            for cluster in &mut result.clusters {
-                cluster.advance = 32.0;
-            }
-            for run in &mut result.glyph_runs {
-                run.advance = 32.0;
-                for glyph in &mut run.glyphs {
-                    glyph.advance = 32.0;
-                    glyph.bounds = Some(Rect {
-                        left: 1.0,
-                        top: -18.0,
-                        right: 31.0,
-                        bottom: -14.0,
-                    });
-                }
-            }
-            for decision in &mut result.decisions {
-                decision.advance = 32.0;
-            }
-        }
-        result
-    }
-}
-
 #[test]
 fn dash_coverage_target_uses_the_dash_span_font_size() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(DashSpanSizeTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        Some(32.0),
+        32.0,
+        Rect { left: 1.0, top: -18.0, right: 31.0, bottom: -14.0 },
+    ));
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中——文"))
@@ -397,32 +363,14 @@ fn dash_coverage_target_uses_the_dash_span_font_size() {
     );
 }
 
-struct CenteredDashInkTextShaper;
-
-impl TextShaper for CenteredDashInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.as_str().contains('⸺') {
-            for run in &mut result.glyph_runs {
-                for glyph in &mut run.glyphs {
-                    glyph.advance = 32.0;
-                    glyph.bounds = Some(Rect {
-                        left: 0.5,
-                        top: -10.0,
-                        right: 28.0,
-                        bottom: -8.0,
-                    });
-                }
-            }
-        }
-        result
-    }
-}
-
 #[test]
 fn dash_ink_centers_within_the_two_em_body_when_the_font_rule_underfills() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(CenteredDashInkTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        None,
+        32.0,
+        Rect { left: 0.5, top: -10.0, right: 28.0, bottom: -8.0 },
+    ));
     let result = engine.layout(input("中——文"));
     let dash = result.clusters.iter().find(|cluster| cluster.text == "——").unwrap();
     assert_eq!("⸺", dash.display_text);
@@ -435,32 +383,14 @@ fn dash_ink_centers_within_the_two_em_body_when_the_font_rule_underfills() {
     assert!((glyph.x - 1.75).abs() <= 0.01, "glyph.x={}", glyph.x);
 }
 
-struct FullDashInkTextShaper;
-
-impl TextShaper for FullDashInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let mut result = ExplainableStubTextShaper.shape(input);
-        if input.display_text.as_str().contains('⸺') {
-            for run in &mut result.glyph_runs {
-                for glyph in &mut run.glyphs {
-                    glyph.advance = 32.0;
-                    glyph.bounds = Some(Rect {
-                        left: 1.0,
-                        top: -10.0,
-                        right: 31.0,
-                        bottom: -8.0,
-                    });
-                }
-            }
-        }
-        result
-    }
-}
-
 #[test]
 fn dash_substitution_is_kept_when_ink_fills_the_two_em_advance() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(FullDashInkTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        None,
+        32.0,
+        Rect { left: 1.0, top: -10.0, right: 31.0, bottom: -8.0 },
+    ));
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "⸺",
@@ -477,39 +407,33 @@ fn substitution_is_kept_when_font_covers_the_glyph() {
     );
 }
 
-struct AmbiguousGlyphClusterTextShaper;
-
-impl TextShaper for AmbiguousGlyphClusterTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                input.text.slice_text(input.range),
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                32.0,
-            )],
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                vec![Glyph::builder(0, input.range, 32.0)
-                    .bounds(Some(Rect {
-                        left: 2.0,
-                        top: -10.0,
-                        right: 30.0,
-                        bottom: -6.0,
-                    }))
-                    .build()],
-                32.0,
-            )],
-        )
-    }
+fn ambiguous_cluster_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        let face = result.face.clone();
+        result.shaping.clusters = vec![Cluster::with_display_text(
+            input.range,
+            input.text.slice_text(input.range),
+            input.display_text.clone(),
+            face.clone(),
+            32.0,
+        )];
+        result.shaping.glyph_runs = vec![GlyphRun::new(
+            input.range,
+            face.clone(),
+            vec![Glyph::builder(0, input.range, 32.0)
+                .render_font_face(Some(face))
+                .bounds(Some(Rect { left: 2.0, top: -10.0, right: 30.0, bottom: -6.0 }))
+                .build()],
+            32.0,
+        )];
+        result
+    })
 }
 
 #[test]
 fn ambiguous_glyph_cluster_mapping_falls_back_to_policy_with_recorded_reason() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(AmbiguousGlyphClusterTextShaper);
+    engine.font_backend = Box::new(ambiguous_cluster_backend());
     let result = engine.layout(input("……"));
     assert_eq!(2, result.debug.punctuation_decisions.len());
     for punctuation in &result.debug.punctuation_decisions {
@@ -521,54 +445,44 @@ fn ambiguous_glyph_cluster_mapping_falls_back_to_policy_with_recorded_reason() {
     }
 }
 
-struct CharacterLocalInkTextShaper;
-
-impl TextShaper for CharacterLocalInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
+fn character_local_ink_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text != "⋯⋯" {
-            return ExplainableStubTextShaper.shape(input);
+            return result;
         }
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                input.text.slice_text(input.range),
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                32.0,
-            )],
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                vec![
-                    Glyph::builder(1, input.range, 16.0)
-                        .x(0.0)
-                        .bounds(Some(Rect {
-                            left: 1.5,
-                            top: -7.0,
-                            right: 14.5,
-                            bottom: -5.0,
-                        }))
-                        .build(),
-                    Glyph::builder(2, input.range, 16.0)
-                        .x(16.0)
-                        .bounds(Some(Rect {
-                            left: 1.5,
-                            top: -7.0,
-                            right: 14.5,
-                            bottom: -5.0,
-                        }))
-                        .build(),
-                ],
-                32.0,
-            )],
-        )
-    }
+        let face = result.face.clone();
+        result.shaping.clusters = vec![Cluster::with_display_text(
+            input.range,
+            input.text.slice_text(input.range),
+            input.display_text.clone(),
+            face.clone(),
+            32.0,
+        )];
+        result.shaping.glyph_runs = vec![GlyphRun::new(
+            input.range,
+            face.clone(),
+            vec![
+                Glyph::builder(1, input.range, 16.0)
+                    .render_font_face(Some(face.clone()))
+                    .x(0.0)
+                    .bounds(Some(Rect { left: 1.5, top: -7.0, right: 14.5, bottom: -5.0 }))
+                    .build(),
+                Glyph::builder(2, input.range, 16.0)
+                    .render_font_face(Some(face))
+                    .x(16.0)
+                    .bounds(Some(Rect { left: 1.5, top: -7.0, right: 14.5, bottom: -5.0 }))
+                    .build(),
+            ],
+            32.0,
+        )];
+        result
+    })
 }
 
 #[test]
 fn multi_character_punctuation_uses_character_local_ink_bounds() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(CharacterLocalInkTextShaper);
+    engine.font_backend = Box::new(character_local_ink_backend());
     let result = engine.layout(input("……"));
     assert_eq!(2, result.debug.punctuation_decisions.len());
     assert_eq!(
@@ -595,7 +509,11 @@ fn multi_character_punctuation_uses_character_local_ink_bounds() {
 fn rolled_back_dash_still_keeps_its_boundaries_closed_under_justification() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.text_shaper = Box::new(UnderfilledDashInkTextShaper);
+    engine.font_backend = Box::new(dash_ink_backend(
+        None,
+        32.0,
+        Rect { left: 1.0, top: -10.0, right: 26.0, bottom: -8.0 },
+    ));
     let text = "在所谓中文语境下——不如说中文中文中文中文";
     let hit = (13..=30).find_map(|cells| {
         let result = engine.layout(

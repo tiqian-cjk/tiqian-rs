@@ -1,5 +1,6 @@
 use tiqian::common::HashMap;
 use tiqian::clreq::clreq_profile::PunctuationClass;
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, EmergencyTrackingEligibilityDecisionInfo};
 use tiqian::core::text::Text;
@@ -7,7 +8,7 @@ use tiqian::core::text_model::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, ParagraphStyle,
     TiqianTextContent,
 };
-use tiqian::font::font_policy::{FontCandidate, FontDecision, FontRole};
+use tiqian::font::font_policy::FontRole;
 use tiqian::layout::line_break_planning_stage::{
     plan_paragraph_lines, LineBreakPlanningRequest, ParagraphLayoutPrep,
 };
@@ -18,6 +19,7 @@ use tiqian::layout::progressive_break_decisions::{
 use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
 };
+use tiqian::shaping::font_backend::{FontCandidateAttempt, FontResolution};
 
 fn base_prep(engine: &ExplainableStubParagraphLayoutEngine, text: &str) -> ParagraphLayoutPrep {
     let input = LayoutInput::builder(
@@ -32,17 +34,15 @@ fn base_prep(engine: &ExplainableStubParagraphLayoutEngine, text: &str) -> Parag
         &rejected,
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     build_paragraph_layout_prep(
         &input,
         &annotation,
         &rejected,
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -55,7 +55,7 @@ fn plan(
 ) -> tiqian::layout::line_break_planning_stage::LineBreakPlanningStageResult {
     plan_paragraph_lines(LineBreakPlanningRequest::new(
         prep,
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         engine.font_metrics_normalizer.as_ref(),
         &engine.justifier,
         engine.line_breaker.as_ref(),
@@ -63,50 +63,54 @@ fn plan(
 }
 
 #[test]
-#[should_panic(expected = "crosses font decision")]
-fn test_cluster_crosses_font_decision_throws() {
+fn test_font_resolution_metrics_use_resolved_face() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "abcdef");
-    let bad_cluster = Cluster::new(text_range(0, 5), Text::from("abcde"), "test".to_owned(), 50.0);
-    let bad_decision = FontDecision {
-        range: text_range(0, 3),
-        candidate: FontCandidate {
-            key: "test".to_owned(),
-            family: "test".to_owned(),
-            role: FontRole::LatinText,
-        },
-        role: FontRole::LatinText,
-        reason: "test".to_owned(),
-    };
+    let bad_cluster = Cluster::new(text_range(0, 5), Text::from("abcde"), FontFaceId::with_resource_id("test"), 50.0);
+    let bad_resolution = FontResolution::new(
+        text_range(0, 3),
+        FontRole::LatinText,
+        FontFaceId::with_resource_id("test"),
+        vec![FontCandidateAttempt::new(
+            "test".to_owned(),
+            FontFaceId::with_resource_id("test"),
+            0,
+        )],
+    );
     prep.natural_clusters = vec![bad_cluster.clone()];
     prep.clusters = vec![bad_cluster];
-    prep.font_decisions = vec![bad_decision];
+    prep.font_resolutions = HashMap::from([(bad_resolution.range, bad_resolution)]);
 
-    plan(&engine, &prep);
+    let result = plan(&engine, &prep);
+    assert_eq!(1, result.metric_decisions.len());
+    assert_eq!(text_range(0, 3), result.metric_decisions[0].range);
+    assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
+    assert_eq!(FontRole::LatinText, result.metric_decisions[0].request.role);
 }
 
 #[test]
 fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "abcdef");
-    let decision = FontDecision {
-        range: text_range(4, 6),
-        candidate: FontCandidate {
-            key: "test".to_owned(),
-            family: "test".to_owned(),
-            role: FontRole::LatinText,
-        },
-        role: FontRole::LatinText,
-        reason: "test".to_owned(),
-    };
-    let cluster = Cluster::new(text_range(0, 2), Text::from("ab"), "test".to_owned(), 20.0);
+    let resolution = FontResolution::new(
+        text_range(4, 6),
+        FontRole::LatinText,
+        FontFaceId::with_resource_id("test"),
+        vec![FontCandidateAttempt::new(
+            "test".to_owned(),
+            FontFaceId::with_resource_id("test"),
+            0,
+        )],
+    );
+    let cluster = Cluster::new(text_range(0, 2), Text::from("ab"), FontFaceId::with_resource_id("test"), 20.0);
     prep.natural_clusters = vec![cluster.clone()];
     prep.clusters = vec![cluster];
-    prep.font_decisions = vec![decision];
+    prep.font_resolutions = HashMap::from([(resolution.range, resolution)]);
 
     let result = plan(&engine, &prep);
     assert_eq!(1, result.metric_decisions.len());
-    assert_eq!("ef", result.metric_decisions[0].request.face_selection_text.as_str());
+    assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
+    assert_eq!(text_range(4, 6), result.metric_decisions[0].range);
 }
 
 #[test]
@@ -187,10 +191,10 @@ fn test_emergency_tracking_boundary_whitespace_and_empty() {
     let engine = ExplainableStubParagraphLayoutEngine::default();
     let mut prep = base_prep(&engine, "ab");
     let clusters = vec![
-        Cluster::new(text_range(0, 0), Text::from(""), "test".to_owned(), 0.0),
-        Cluster::new(text_range(0, 1), Text::from("a"), "test".to_owned(), 10.0),
-        Cluster::new(text_range(1, 1), Text::from(""), "test".to_owned(), 0.0),
-        Cluster::new(text_range(1, 2), Text::from("b"), "test".to_owned(), 10.0),
+        Cluster::new(text_range(0, 0), Text::from(""), FontFaceId::with_resource_id("test"), 0.0),
+        Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("test"), 10.0),
+        Cluster::new(text_range(1, 1), Text::from(""), FontFaceId::with_resource_id("test"), 0.0),
+        Cluster::new(text_range(1, 2), Text::from("b"), FontFaceId::with_resource_id("test"), 10.0),
     ];
     prep.natural_clusters = clusters.clone();
     prep.clusters = clusters;

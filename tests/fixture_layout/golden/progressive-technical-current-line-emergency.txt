@@ -108,7 +108,8 @@ cluster 125-126 '量' adv=16.0
 cluster 126-127 '时' adv=16.0
 cluster 127-128 '间' adv=16.0
 cluster 128-129 '。' adv=8.0
-font 0-6 role=LatinText key=latin-primary display='Swift ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 0-5 role=LatinText key=latin-primary display='Swift' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-7 role=CjkText key=cjk-primary display='这' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 7-8 role=CjkText key=cjk-primary display='边' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 8-9 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -119,7 +120,9 @@ font 12-13 role=CjkText key=cjk-primary display='体' sub=CjkPunctuationGlyphPol
 font 13-14 role=CjkText key=cjk-primary display='感' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkText key=cjk-primary display='的' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-16 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-20 role=LatinText key=latin-primary display='JSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 16-27 role=LatinText key=latin-primary display='JSONDecoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-27 role=LatinText key=latin-primary display='Decoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 27-28 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 28-29 role=CjkText key=cjk-primary display='慢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 29-30 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -128,10 +131,13 @@ font 31-32 role=CjkText key=cjk-primary display='老' sub=CjkPunctuationGlyphPol
 font 32-33 role=CjkText key=cjk-primary display='问' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 33-34 role=CjkText key=cjk-primary display='题' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 34-35 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 35-47 role=LatinText key=latin-primary display='SR-6252[36] ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-46 role=LatinText key=latin-primary display='SR-6252[36]' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=CjkText key=cjk-primary display='那' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=CjkText key=cjk-primary display='个' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 49-56 role=LatinText key=latin-primary display=' issue ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-50 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 50-55 role=LatinText key=latin-primary display='issue' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 55-56 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-57 role=CjkText key=cjk-primary display='里' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 57-58 role=CjkText key=cjk-primary display='挖' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 58-59 role=CjkText key=cjk-primary display='出' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -143,15 +149,57 @@ font 63-64 role=CjkText key=cjk-primary display='底' sub=CjkPunctuationGlyphPol
 font 64-65 role=CjkText key=cjk-primary display='层' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='走' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-68 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-73 role=LatinText key=latin-primary display='NSJSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 67-86 role=LatinText key=latin-primary display='NSJSONSerialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 68-69 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 69-70 role=LatinText key=latin-primary display='J' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 70-71 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 71-72 role=LatinText key=latin-primary display='O' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 72-73 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-74 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-86 role=LatinText key=latin-primary display='Serialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 74-75 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 75-76 role=LatinText key=latin-primary display='r' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 76-77 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 77-78 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 78-79 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 79-80 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 80-81 role=LatinText key=latin-primary display='z' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 81-82 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 82-83 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 83-84 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 84-85 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 85-86 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 86-87 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 87-88 role=CjkText key=cjk-primary display='再' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 88-89 role=CjkText key=cjk-primary display='桥' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 89-90 role=CjkText key=cjk-primary display='接' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 90-91 role=CjkText key=cjk-primary display='回' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 91-103 role=LatinText key=latin-primary display=' Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 91-92 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 92-103 role=LatinText key=latin-primary display='Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 103-104 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-105 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-110 role=LatinText key=latin-primary display='swift_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 104-121 role=LatinText key=latin-primary display='swift_dynamicCast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 105-106 role=LatinText key=latin-primary display='w' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 106-107 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 107-108 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 108-109 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 109-110 role=LatinText key=latin-primary display='_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-111 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-117 role=LatinText key=latin-primary display='dynamic' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 111-112 role=LatinText key=latin-primary display='y' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 112-113 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 113-114 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 114-115 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 115-116 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 116-117 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-118 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-121 role=LatinText key=latin-primary display='Cast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 118-119 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 119-120 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 120-121 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 121-122 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 122-123 role=CjkText key=cjk-primary display='吃' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 123-124 role=CjkText key=cjk-primary display='掉' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -286,7 +334,8 @@ cluster 125-126 '量' adv=16.0
 cluster 126-127 '时' adv=16.0
 cluster 127-128 '间' adv=16.0
 cluster 128-129 '。' adv=8.0
-font 0-6 role=LatinText key=latin-primary display='Swift ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 0-5 role=LatinText key=latin-primary display='Swift' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-7 role=CjkText key=cjk-primary display='这' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 7-8 role=CjkText key=cjk-primary display='边' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 8-9 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -297,7 +346,9 @@ font 12-13 role=CjkText key=cjk-primary display='体' sub=CjkPunctuationGlyphPol
 font 13-14 role=CjkText key=cjk-primary display='感' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkText key=cjk-primary display='的' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-16 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-20 role=LatinText key=latin-primary display='JSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 16-27 role=LatinText key=latin-primary display='JSONDecoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-27 role=LatinText key=latin-primary display='Decoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 27-28 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 28-29 role=CjkText key=cjk-primary display='慢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 29-30 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -306,10 +357,13 @@ font 31-32 role=CjkText key=cjk-primary display='老' sub=CjkPunctuationGlyphPol
 font 32-33 role=CjkText key=cjk-primary display='问' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 33-34 role=CjkText key=cjk-primary display='题' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 34-35 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 35-47 role=LatinText key=latin-primary display='SR-6252[36] ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-46 role=LatinText key=latin-primary display='SR-6252[36]' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=CjkText key=cjk-primary display='那' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=CjkText key=cjk-primary display='个' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 49-56 role=LatinText key=latin-primary display=' issue ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-50 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 50-55 role=LatinText key=latin-primary display='issue' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 55-56 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-57 role=CjkText key=cjk-primary display='里' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 57-58 role=CjkText key=cjk-primary display='挖' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 58-59 role=CjkText key=cjk-primary display='出' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -321,15 +375,57 @@ font 63-64 role=CjkText key=cjk-primary display='底' sub=CjkPunctuationGlyphPol
 font 64-65 role=CjkText key=cjk-primary display='层' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='走' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-68 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-73 role=LatinText key=latin-primary display='NSJSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 67-86 role=LatinText key=latin-primary display='NSJSONSerialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 68-69 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 69-70 role=LatinText key=latin-primary display='J' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 70-71 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 71-72 role=LatinText key=latin-primary display='O' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 72-73 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-74 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-86 role=LatinText key=latin-primary display='Serialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 74-75 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 75-76 role=LatinText key=latin-primary display='r' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 76-77 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 77-78 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 78-79 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 79-80 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 80-81 role=LatinText key=latin-primary display='z' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 81-82 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 82-83 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 83-84 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 84-85 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 85-86 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 86-87 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 87-88 role=CjkText key=cjk-primary display='再' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 88-89 role=CjkText key=cjk-primary display='桥' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 89-90 role=CjkText key=cjk-primary display='接' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 90-91 role=CjkText key=cjk-primary display='回' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 91-103 role=LatinText key=latin-primary display=' Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 91-92 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 92-103 role=LatinText key=latin-primary display='Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 103-104 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-105 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-110 role=LatinText key=latin-primary display='swift_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 104-121 role=LatinText key=latin-primary display='swift_dynamicCast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 105-106 role=LatinText key=latin-primary display='w' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 106-107 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 107-108 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 108-109 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 109-110 role=LatinText key=latin-primary display='_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-111 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-117 role=LatinText key=latin-primary display='dynamic' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 111-112 role=LatinText key=latin-primary display='y' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 112-113 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 113-114 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 114-115 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 115-116 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 116-117 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-118 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-121 role=LatinText key=latin-primary display='Cast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 118-119 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 119-120 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 120-121 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 121-122 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 122-123 role=CjkText key=cjk-primary display='吃' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 123-124 role=CjkText key=cjk-primary display='掉' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -446,7 +542,8 @@ cluster 125-126 '量' adv=16.0
 cluster 126-127 '时' adv=16.0
 cluster 127-128 '间' adv=16.0
 cluster 128-129 '。' adv=8.0
-font 0-6 role=LatinText key=latin-primary display='Swift ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 0-5 role=LatinText key=latin-primary display='Swift' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-7 role=CjkText key=cjk-primary display='这' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 7-8 role=CjkText key=cjk-primary display='边' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 8-9 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -457,7 +554,9 @@ font 12-13 role=CjkText key=cjk-primary display='体' sub=CjkPunctuationGlyphPol
 font 13-14 role=CjkText key=cjk-primary display='感' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkText key=cjk-primary display='的' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-16 role=CjkPunctuation key=cjk-primary display='。' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 16-20 role=LatinText key=latin-primary display='JSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 16-27 role=LatinText key=latin-primary display='JSONDecoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-27 role=LatinText key=latin-primary display='Decoder' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 27-28 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 28-29 role=CjkText key=cjk-primary display='慢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 29-30 role=CjkText key=cjk-primary display='是' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -466,10 +565,13 @@ font 31-32 role=CjkText key=cjk-primary display='老' sub=CjkPunctuationGlyphPol
 font 32-33 role=CjkText key=cjk-primary display='问' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 33-34 role=CjkText key=cjk-primary display='题' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 34-35 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 35-47 role=LatinText key=latin-primary display='SR-6252[36] ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 35-46 role=LatinText key=latin-primary display='SR-6252[36]' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 46-47 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=CjkText key=cjk-primary display='那' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=CjkText key=cjk-primary display='个' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 49-56 role=LatinText key=latin-primary display=' issue ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 49-50 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 50-55 role=LatinText key=latin-primary display='issue' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 55-56 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 56-57 role=CjkText key=cjk-primary display='里' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 57-58 role=CjkText key=cjk-primary display='挖' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 58-59 role=CjkText key=cjk-primary display='出' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -481,15 +583,38 @@ font 63-64 role=CjkText key=cjk-primary display='底' sub=CjkPunctuationGlyphPol
 font 64-65 role=CjkText key=cjk-primary display='层' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='走' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-73 role=LatinText key=latin-primary display='NSJSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 67-86 role=LatinText key=latin-primary display='NSJSONSerialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-86 role=LatinText key=latin-primary display='Serialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 86-87 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 87-88 role=CjkText key=cjk-primary display='再' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 88-89 role=CjkText key=cjk-primary display='桥' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 89-90 role=CjkText key=cjk-primary display='接' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 90-91 role=CjkText key=cjk-primary display='回' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 91-103 role=LatinText key=latin-primary display=' Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 91-92 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 92-103 role=LatinText key=latin-primary display='Objective-C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 103-104 role=CjkPunctuation key=cjk-primary display='，' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-105 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 104-110 role=LatinText key=latin-primary display='swift_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 104-121 role=LatinText key=latin-primary display='swift_dynamicCast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 105-106 role=LatinText key=latin-primary display='w' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 106-107 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 107-108 role=LatinText key=latin-primary display='f' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 108-109 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 109-110 role=LatinText key=latin-primary display='_' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-111 role=LatinText key=latin-primary display='d' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 110-117 role=LatinText key=latin-primary display='dynamic' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 111-112 role=LatinText key=latin-primary display='y' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 112-113 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 113-114 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 114-115 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 115-116 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 116-117 role=LatinText key=latin-primary display='c' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-118 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 117-121 role=LatinText key=latin-primary display='Cast' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 118-119 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 119-120 role=LatinText key=latin-primary display='s' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 120-121 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 121-122 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 122-123 role=CjkText key=cjk-primary display='吃' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 123-124 role=CjkText key=cjk-primary display='掉' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve

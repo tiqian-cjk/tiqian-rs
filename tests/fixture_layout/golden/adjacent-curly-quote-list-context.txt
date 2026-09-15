@@ -53,7 +53,9 @@ font 17-18 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationG
 font 18-24 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 24-25 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 26-36 role=LatinText key=latin-primary display='double may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-32 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-36 role=LatinText key=latin-primary display='may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 36-37 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 37-38 role=CjkText key=cjk-primary display='呢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 role-override 2-3 source='“' CjkPunctuation->CjkPunctuation policy=PairedPunctuationOuterScriptContext reason=quote-pair-inherits-enclosing-level-script
@@ -147,7 +149,9 @@ font 17-18 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationG
 font 18-24 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 24-25 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 26-36 role=LatinText key=latin-primary display='double may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-32 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-36 role=LatinText key=latin-primary display='may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 36-37 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 37-38 role=CjkText key=cjk-primary display='呢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 role-override 2-3 source='“' CjkPunctuation->CjkPunctuation policy=PairedPunctuationOuterScriptContext reason=quote-pair-inherits-enclosing-level-script
@@ -241,7 +245,9 @@ font 17-18 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationG
 font 18-24 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 24-25 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkPunctuation key=cjk-primary display='“' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 26-36 role=LatinText key=latin-primary display='double may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-32 role=LatinText key=latin-primary display='double' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 32-33 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 33-36 role=LatinText key=latin-primary display='may' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 36-37 role=CjkPunctuation key=cjk-primary display='”' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 37-38 role=CjkText key=cjk-primary display='呢' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 role-override 2-3 source='“' CjkPunctuation->CjkPunctuation policy=PairedPunctuationOuterScriptContext reason=quote-pair-inherits-enclosing-level-script

@@ -103,7 +103,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
         output.push_str(&format!("cluster {}-{} '{}' adv={}{}\n", cluster.range.start(), cluster.range.end(), cluster.display_text, fmt(cluster.advance), if cluster.glyph_inline_shift != 0.0 { format!(" glyphShift={}", fmt(cluster.glyph_inline_shift)) } else { String::new() }));
     }
     for font in &result.debug.font_decisions {
-        output.push_str(&format!("font {}-{} role={} key={} display='{}' sub={}\n", font.range.start(), font.range.end(), font.role, font.font_key, font.display_text, font.substitution_reason));
+        output.push_str(&format!("font {}-{} role={} key={} display='{}' sub={}\n", font.range.start(), font.range.end(), font.role, font.candidate_key, font.display_text, font.substitution_reason));
     }
     for role in &result.debug.role_overrides {
         output.push_str(&format!("role-override {}-{} source='{}' {}->{} policy={} reason={}\n", role.range.start(), role.range.end(), escape(role.source_text.as_str()), role.original_role, role.overridden_role, role.source, role.reason));

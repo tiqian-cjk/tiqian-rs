@@ -1,6 +1,9 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect, Size, TextRange};
+use tiqian::core::font_face::FontFaceId;
+use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox};
+use tiqian::core::layout_model::{
+    Cluster, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox,
+};
 use tiqian::core::layout_queries::{
     get_bounding_boxes, get_bounding_boxes_from_offsets, get_cursor_rect, get_line_for_offset,
     get_offset_for_position, get_selection_offset_for_position, get_selection_word_boundary,
@@ -8,9 +11,9 @@ use tiqian::core::layout_queries::{
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    DecorationKind, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer,
-    RichTextLayerKind, RichTextPaint, RichTextSpan, RubyKind, TextStyle, TiqianTextContent,
-    LayoutInput,
+    DecorationKind, LayoutInput, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
+    RichTextLayer, RichTextLayerKind, RichTextPaint, RichTextSpan, RubyKind, TextStyle,
+    TiqianTextContent,
 };
 
 fn background_span(range: TextRange, background: RichTextBackgroundPaint) -> RichTextSpan {
@@ -25,38 +28,120 @@ fn background_span(range: TextRange, background: RichTextBackgroundPaint) -> Ric
 }
 
 fn input(text: &str, max_width: f32, rich_text: Vec<RichTextSpan>) -> LayoutInput {
-    LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(max_width))
-        .text_style(TextStyle::builder().font_size(10.0).build())
+    LayoutInput::builder(
+        TiqianTextContent::new(Text::from(text)),
+        LayoutConstraints::with_defaults(max_width),
+    )
+    .text_style(TextStyle::builder().font_size(10.0).build())
     .rich_text(rich_text)
-        .build()
+    .build()
 }
 
-fn line(range: TextRange, cluster_range: IntRange, baseline: f32, top: f32, bottom: f32, width: f32) -> LineBox {
-    LineBox::builder(range, cluster_range, baseline, top, bottom, width, width, width).build()
+fn line(
+    range: TextRange,
+    cluster_range: IntRange,
+    baseline: f32,
+    top: f32,
+    bottom: f32,
+    width: f32,
+) -> LineBox {
+    LineBox::builder(
+        range,
+        cluster_range,
+        baseline,
+        top,
+        bottom,
+        width,
+        width,
+        width,
+    )
+    .build()
 }
 
 fn sample_result() -> LayoutResult {
     LayoutResult::new(
-        input("甲——乙", 40.0, Vec::new()), Size { width: 34.0, height: 40.0 },
+        input("甲——乙", 40.0, Vec::new()),
+        Size {
+            width: 34.0,
+            height: 40.0,
+        },
         vec![
-            Cluster::new(text_range(0, 1), Text::from("甲"), "cjk".to_owned(), 10.0),
-            Cluster::with_display_text(text_range(1, 3), Text::from("——"), Text::from("⸺"), "cjk".to_owned(), 20.0),
-            Cluster::new(text_range(3, 4), Text::from("乙"), "cjk".to_owned(), 10.0),
-        ], Vec::new(),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("甲"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::with_display_text(
+                text_range(1, 3),
+                Text::from("——"),
+                Text::from("⸺"),
+                FontFaceId::with_resource_id("cjk"),
+                20.0,
+            ),
+            Cluster::new(
+                text_range(3, 4),
+                Text::from("乙"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+        ],
+        Vec::new(),
         vec![
-            LineBox::builder(text_range(0, 3), IntRange::new(0, 1), 15.0, 0.0, 20.0, 30.0, 30.0, 30.0).indent(4.0).build(),
-            line(text_range(3, 4), IntRange::new(2, 2), 35.0, 20.0, 40.0, 10.0),
+            LineBox::builder(
+                text_range(0, 3),
+                IntRange::new(0, 1),
+                15.0,
+                0.0,
+                20.0,
+                30.0,
+                30.0,
+                30.0,
+            )
+            .indent(4.0)
+            .build(),
+            line(
+                text_range(3, 4),
+                IntRange::new(2, 2),
+                35.0,
+                20.0,
+                40.0,
+                10.0,
+            ),
         ],
     )
 }
 
 fn latin_result(rich_text: Vec<RichTextSpan>) -> LayoutResult {
     LayoutResult::new(
-        input("AB", 100.0, rich_text), Size { width: 20.0, height: 20.0 },
+        input("AB", 100.0, rich_text),
+        Size {
+            width: 20.0,
+            height: 20.0,
+        },
         vec![
-            Cluster::new(text_range(0, 1), Text::from("A"), "latin".to_owned(), 10.0),
-            Cluster::new(text_range(1, 2), Text::from("B"), "latin".to_owned(), 10.0),
-        ], Vec::new(), vec![line(text_range(0, 2), IntRange::new(0, 1), 15.0, 0.0, 20.0, 20.0)],
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("A"),
+                FontFaceId::with_resource_id("latin"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("B"),
+                FontFaceId::with_resource_id("latin"),
+                10.0,
+            ),
+        ],
+        Vec::new(),
+        vec![line(
+            text_range(0, 2),
+            IntRange::new(0, 1),
+            15.0,
+            0.0,
+            20.0,
+            20.0,
+        )],
     )
 }
 
@@ -67,31 +152,83 @@ fn positioned_cluster_height_returns_difference() {
 
 #[test]
 fn get_line_for_offset_uses_nearest_line_when_gap_between_lines() {
-    let result = LayoutResult::new(input("abcde", 100.0, Vec::new()), Size { width: 10.0, height: 40.0 }, vec![
-        Cluster::new(text_range(0, 1), Text::from("a"), "cjk".to_owned(), 10.0),
-        Cluster::new(text_range(1, 2), Text::from("b"), "cjk".to_owned(), 10.0),
-        Cluster::new(text_range(2, 3), Text::from("c"), "cjk".to_owned(), 10.0),
-        Cluster::new(text_range(4, 5), Text::from("e"), "cjk".to_owned(), 10.0),
-    ], Vec::new(), vec![line(text_range(0, 2), IntRange::new(0, 1), 15.0, 0.0, 20.0, 20.0), line(text_range(4, 5), IntRange::new(2, 3), 35.0, 25.0, 45.0, 10.0)]);
+    let result = LayoutResult::new(
+        input("abcde", 100.0, Vec::new()),
+        Size {
+            width: 10.0,
+            height: 40.0,
+        },
+        vec![
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("a"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("b"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("c"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(4, 5),
+                Text::from("e"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+        ],
+        Vec::new(),
+        vec![
+            line(text_range(0, 2), IntRange::new(0, 1), 15.0, 0.0, 20.0, 20.0),
+            line(
+                text_range(4, 5),
+                IntRange::new(2, 3),
+                35.0,
+                25.0,
+                45.0,
+                10.0,
+            ),
+        ],
+    );
     assert_eq!(0, get_line_for_offset(&result, scalar_offset(3)));
 }
 
 #[test]
 fn get_bounding_boxes_int_delegates_to_text_range() {
     let result = sample_result();
-    assert_eq!(get_bounding_boxes(&result, text_range(2, 4)), get_bounding_boxes_from_offsets(&result, scalar_offset(2), scalar_offset(4)));
+    assert_eq!(
+        get_bounding_boxes(&result, text_range(2, 4)),
+        get_bounding_boxes_from_offsets(&result, scalar_offset(2), scalar_offset(4))
+    );
 }
 
 #[test]
 fn rich_text_background_uses_horizontal_padding() {
-    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().horizontal_padding(5.0).build());
+    let span = background_span(
+        text_range(0, 2),
+        RichTextBackgroundPaint::builder()
+            .horizontal_padding(5.0)
+            .build(),
+    );
     let result = latin_result(vec![span]);
     assert_eq!(1, result.rich_text_background_segments().len());
 }
 
 #[test]
 fn rich_text_background_trailing_padding_when_span_ends_at_segment_end() {
-    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().horizontal_padding(5.0).build());
+    let span = background_span(
+        text_range(0, 2),
+        RichTextBackgroundPaint::builder()
+            .horizontal_padding(5.0)
+            .build(),
+    );
     let result = latin_result(vec![span]);
     let segments = result.rich_text_background_segments();
     assert_eq!(1, segments.len());
@@ -100,7 +237,12 @@ fn rich_text_background_trailing_padding_when_span_ends_at_segment_end() {
 
 #[test]
 fn rich_text_background_uniform_paragraph_style_uses_paragraph_style() {
-    let span = background_span(text_range(0, 2), RichTextBackgroundPaint::builder().metric_policy(RichTextBackgroundMetricPolicy::UniformParagraphStyle).build());
+    let span = background_span(
+        text_range(0, 2),
+        RichTextBackgroundPaint::builder()
+            .metric_policy(RichTextBackgroundMetricPolicy::UniformParagraphStyle)
+            .build(),
+    );
     let result = latin_result(vec![span]);
     assert_eq!(1, result.rich_text_background_segments().len());
 }
@@ -108,7 +250,29 @@ fn rich_text_background_uniform_paragraph_style_uses_paragraph_style() {
 #[test]
 fn marked_face_vertical_bounds_uses_fallback_when_no_metric_matches() {
     let span = background_span(text_range(0, 2), RichTextBackgroundPaint::default());
-    let result = LayoutResult::with_debug(input("AB", 100.0, vec![span]), Size { width: 20.0, height: 20.0 }, vec![Cluster::new(text_range(0, 2), Text::from("AB"), "latin".to_owned(), 20.0)], Vec::new(), vec![line(text_range(0, 2), IntRange::new(0, 0), 15.0, 0.0, 20.0, 20.0)], LayoutDebugInfo::default());
+    let result = LayoutResult::with_debug(
+        input("AB", 100.0, vec![span]),
+        Size {
+            width: 20.0,
+            height: 20.0,
+        },
+        vec![Cluster::new(
+            text_range(0, 2),
+            Text::from("AB"),
+            FontFaceId::with_resource_id("latin"),
+            20.0,
+        )],
+        Vec::new(),
+        vec![line(
+            text_range(0, 2),
+            IntRange::new(0, 0),
+            15.0,
+            0.0,
+            20.0,
+            20.0,
+        )],
+        LayoutDebugInfo::default(),
+    );
     assert_eq!(1, result.rich_text_background_segments().len());
 }
 
@@ -118,61 +282,171 @@ fn decoration_and_annotation_layers_match_partially_overlapping_layout_ranges_by
         RichTextSpan {
             range: text_range(1, 2),
             layers: vec![RichTextLayer {
-                kind: RichTextLayerKind::Decoration { kind: DecorationKind::Emphasis },
-                paints: vec![RichTextPaint::Fill { argb: 0xFF2563EB_u32 as i32 }],
+                kind: RichTextLayerKind::Decoration {
+                    kind: DecorationKind::Emphasis,
+                },
+                paints: vec![RichTextPaint::Fill {
+                    argb: 0xFF2563EB_u32 as i32,
+                }],
             }],
             semantics: Vec::new(),
         },
         RichTextSpan {
             range: text_range(2, 3),
             layers: vec![RichTextLayer {
-                kind: RichTextLayerKind::Annotation { kind: RubyKind::Pinyin },
-                paints: vec![RichTextPaint::Fill { argb: 0xFFDC2626_u32 as i32 }],
+                kind: RichTextLayerKind::Annotation {
+                    kind: RubyKind::Pinyin,
+                },
+                paints: vec![RichTextPaint::Fill {
+                    argb: 0xFFDC2626_u32 as i32,
+                }],
             }],
             semantics: Vec::new(),
         },
     ];
 
-    let result = LayoutResult::new(input("abc", 100.0, spans.to_vec()), Size { width: 0.0, height: 0.0 }, Vec::new(), Vec::new(), Vec::new());
+    let result = LayoutResult::new(
+        input("abc", 100.0, spans.to_vec()),
+        Size {
+            width: 0.0,
+            height: 0.0,
+        },
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
     let decoration = result.rich_text_decoration_layers(text_range(0, 2), DecorationKind::Emphasis);
     assert_eq!(1, decoration.len());
     assert_eq!(spans[0].layers[0], *decoration[0]);
-    assert!(result.rich_text_decoration_layers(text_range(0, 2), DecorationKind::BookTitle).is_empty());
+    assert!(
+        result
+            .rich_text_decoration_layers(text_range(0, 2), DecorationKind::BookTitle)
+            .is_empty()
+    );
 
     let annotation = result.rich_text_annotation_layers(text_range(1, 3), RubyKind::Pinyin);
     assert_eq!(1, annotation.len());
     assert_eq!(spans[1].layers[0], *annotation[0]);
-    assert!(result.rich_text_annotation_layers(text_range(1, 3), RubyKind::Bopomofo).is_empty());
+    assert!(
+        result
+            .rich_text_annotation_layers(text_range(1, 3), RubyKind::Bopomofo)
+            .is_empty()
+    );
 }
 
 #[test]
 fn get_selection_offset_for_position_returns_nearest_when_before_first_cluster() {
-    assert_eq!(scalar_offset(0), get_selection_offset_for_position(&sample_result(), 3.0, 5.0));
+    assert_eq!(
+        scalar_offset(0),
+        get_selection_offset_for_position(&sample_result(), 3.0, 5.0)
+    );
 }
 
 #[test]
 fn get_selection_offset_for_position_returns_nearest_when_after_last_cluster() {
-    assert_eq!(scalar_offset(4), get_selection_offset_for_position(&sample_result(), 35.0, 25.0));
+    assert_eq!(
+        scalar_offset(4),
+        get_selection_offset_for_position(&sample_result(), 35.0, 25.0)
+    );
 }
 
 #[test]
 fn get_selection_offset_for_position_returns_start_of_line_when_clusters_empty() {
-    let result = LayoutResult::new(input("", 100.0, Vec::new()), Size { width: 0.0, height: 20.0 }, Vec::new(), Vec::new(), vec![line(text_range(0, 0), IntRange::new(0, -1), 15.0, 0.0, 20.0, 0.0)]);
-    assert_eq!(scalar_offset(0), get_selection_offset_for_position(&result, 5.0, 10.0));
+    let result = LayoutResult::new(
+        input("", 100.0, Vec::new()),
+        Size {
+            width: 0.0,
+            height: 20.0,
+        },
+        Vec::new(),
+        Vec::new(),
+        vec![line(
+            text_range(0, 0),
+            IntRange::new(0, -1),
+            15.0,
+            0.0,
+            20.0,
+            0.0,
+        )],
+    );
+    assert_eq!(
+        scalar_offset(0),
+        get_selection_offset_for_position(&result, 5.0, 10.0)
+    );
 }
 
 #[test]
 fn get_selection_word_boundary_for_emoji_zwj_sequence() {
-    let result = LayoutResult::new(input("👩‍👩", 100.0, Vec::new()), Size { width: 50.0, height: 20.0 }, vec![Cluster::new(text_range(0, 3), Text::from("👩‍👩"), "emoji".to_owned(), 50.0)], Vec::new(), vec![line(text_range(0, 3), IntRange::new(0, 0), 15.0, 0.0, 20.0, 50.0)]);
-    assert_eq!(text_range(0, 3), get_selection_word_boundary(&result, scalar_offset(3)));
+    let result = LayoutResult::new(
+        input("👩‍👩", 100.0, Vec::new()),
+        Size {
+            width: 50.0,
+            height: 20.0,
+        },
+        vec![Cluster::new(
+            text_range(0, 3),
+            Text::from("👩‍👩"),
+            FontFaceId::with_resource_id("emoji"),
+            50.0,
+        )],
+        Vec::new(),
+        vec![line(
+            text_range(0, 3),
+            IntRange::new(0, 0),
+            15.0,
+            0.0,
+            20.0,
+            50.0,
+        )],
+    );
+    assert_eq!(
+        text_range(0, 3),
+        get_selection_word_boundary(&result, scalar_offset(3))
+    );
 }
 
 #[test]
 fn get_selection_word_boundary_for_punctuation_returns_single() {
-    let result = LayoutResult::new(input("A,B", 100.0, Vec::new()), Size { width: 30.0, height: 20.0 }, vec![
-        Cluster::new(text_range(0, 1), Text::from("A"), "latin".to_owned(), 10.0), Cluster::new(text_range(1, 2), Text::from(","), "latin".to_owned(), 10.0), Cluster::new(text_range(2, 3), Text::from("B"), "latin".to_owned(), 10.0),
-    ], Vec::new(), vec![line(text_range(0, 3), IntRange::new(0, 2), 15.0, 0.0, 20.0, 30.0)]);
-    assert_eq!(text_range(1, 2), get_selection_word_boundary(&result, scalar_offset(1)));
+    let result = LayoutResult::new(
+        input("A,B", 100.0, Vec::new()),
+        Size {
+            width: 30.0,
+            height: 20.0,
+        },
+        vec![
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("A"),
+                FontFaceId::with_resource_id("latin"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("B"),
+                FontFaceId::with_resource_id("latin"),
+                10.0,
+            ),
+        ],
+        Vec::new(),
+        vec![line(
+            text_range(0, 3),
+            IntRange::new(0, 2),
+            15.0,
+            0.0,
+            20.0,
+            30.0,
+        )],
+    );
+    assert_eq!(
+        text_range(1, 2),
+        get_selection_word_boundary(&result, scalar_offset(1))
+    );
 }
 
 #[test]
@@ -186,8 +460,14 @@ fn positioned_clusters_produces_source_stops_for_latin_run() {
 fn offset_for_x_uses_source_stops_when_available() {
     let result = latin_with_glyphs(true);
     let positioned = positioned_clusters(&result);
-    assert_eq!(scalar_offset(0), get_offset_for_position(&result, positioned[0].left, 10.0));
-    assert_eq!(scalar_offset(1), get_offset_for_position(&result, 15.0, 10.0));
+    assert_eq!(
+        scalar_offset(0),
+        get_offset_for_position(&result, positioned[0].left, 10.0)
+    );
+    assert_eq!(
+        scalar_offset(1),
+        get_offset_for_position(&result, 15.0, 10.0)
+    );
 }
 
 #[test]
@@ -197,33 +477,124 @@ fn get_bounding_boxes_empty_range_returns_empty_list() {
 
 #[test]
 fn get_line_for_offset_returns_nearest_line() {
-    let result = LayoutResult::new(input("abc", 100.0, Vec::new()), Size { width: 30.0, height: 40.0 }, vec![
-        Cluster::new(text_range(0, 1), Text::from("a"), "cjk".to_owned(), 10.0), Cluster::new(text_range(1, 2), Text::from("b"), "cjk".to_owned(), 10.0), Cluster::new(text_range(2, 3), Text::from("c"), "cjk".to_owned(), 10.0),
-    ], Vec::new(), vec![line(text_range(0, 1), IntRange::new(0, 0), 15.0, 0.0, 20.0, 10.0), line(text_range(1, 2), IntRange::new(1, 1), 35.0, 25.0, 45.0, 10.0)]);
+    let result = LayoutResult::new(
+        input("abc", 100.0, Vec::new()),
+        Size {
+            width: 30.0,
+            height: 40.0,
+        },
+        vec![
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("a"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("b"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("c"),
+                FontFaceId::with_resource_id("cjk"),
+                10.0,
+            ),
+        ],
+        Vec::new(),
+        vec![
+            line(text_range(0, 1), IntRange::new(0, 0), 15.0, 0.0, 20.0, 10.0),
+            line(
+                text_range(1, 2),
+                IntRange::new(1, 1),
+                35.0,
+                25.0,
+                45.0,
+                10.0,
+            ),
+        ],
+    );
     assert_eq!(1, get_line_for_offset(&result, scalar_offset(10)));
 }
 
 #[test]
 fn get_cursor_rect_returns_caret_in_cluster() {
-    assert_eq!(Rect { left: 24.0, top: 0.0, right: 25.0, bottom: 20.0 }, get_cursor_rect(&sample_result(), scalar_offset(2)));
+    assert_eq!(
+        Rect {
+            left: 24.0,
+            top: 0.0,
+            right: 25.0,
+            bottom: 20.0
+        },
+        get_cursor_rect(&sample_result(), scalar_offset(2))
+    );
 }
 
 #[test]
 fn get_offset_for_position_uses_min_by_when_outside_clusters() {
-    assert_eq!(scalar_offset(1), get_offset_for_position(&sample_result(), 12.0, 5.0));
+    assert_eq!(
+        scalar_offset(1),
+        get_offset_for_position(&sample_result(), 12.0, 5.0)
+    );
 }
 
 #[test]
 fn get_selection_word_boundary_returns_empty_for_empty_text() {
-    let result = LayoutResult::new(input("", 100.0, Vec::new()), Size { width: 0.0, height: 20.0 }, Vec::new(), Vec::new(), Vec::new());
-    assert_eq!(text_range(0, 0), get_selection_word_boundary(&result, scalar_offset(0)));
+    let result = LayoutResult::new(
+        input("", 100.0, Vec::new()),
+        Size {
+            width: 0.0,
+            height: 20.0,
+        },
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
+    assert_eq!(
+        text_range(0, 0),
+        get_selection_word_boundary(&result, scalar_offset(0))
+    );
 }
 
 fn latin_with_glyphs(with_positions: bool) -> LayoutResult {
     let glyphs = if with_positions {
-        vec![Glyph::builder(1, text_range(0, 2), 10.0).x(5.0).build(), Glyph::builder(2, text_range(0, 2), 10.0).x(15.0).build()]
+        vec![
+            Glyph::builder(1, text_range(0, 2), 10.0).x(5.0).build(),
+            Glyph::builder(2, text_range(0, 2), 10.0).x(15.0).build(),
+        ]
     } else {
-        vec![Glyph::builder(1, text_range(0, 2), 10.0).build(), Glyph::builder(2, text_range(0, 2), 10.0).build()]
+        vec![
+            Glyph::builder(1, text_range(0, 2), 10.0).build(),
+            Glyph::builder(2, text_range(0, 2), 10.0).build(),
+        ]
     };
-    LayoutResult::new(input("Hi", 100.0, Vec::new()), Size { width: 20.0, height: 20.0 }, vec![Cluster::new(text_range(0, 2), Text::from("Hi"), "latin".to_owned(), 20.0)], vec![GlyphRun::new(text_range(0, 2), "latin".to_owned(), glyphs, 20.0)], vec![line(text_range(0, 2), IntRange::new(0, 0), 15.0, 0.0, 20.0, 20.0)])
+    LayoutResult::new(
+        input("Hi", 100.0, Vec::new()),
+        Size {
+            width: 20.0,
+            height: 20.0,
+        },
+        vec![Cluster::new(
+            text_range(0, 2),
+            Text::from("Hi"),
+            FontFaceId::with_resource_id("latin"),
+            20.0,
+        )],
+        vec![GlyphRun::new(
+            text_range(0, 2),
+            FontFaceId::with_resource_id("latin"),
+            glyphs,
+            20.0,
+        )],
+        vec![line(
+            text_range(0, 2),
+            IntRange::new(0, 0),
+            15.0,
+            0.0,
+            20.0,
+            20.0,
+        )],
+    )
 }

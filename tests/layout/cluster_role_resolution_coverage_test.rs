@@ -1,5 +1,6 @@
 use tiqian::clreq::clreq_profile::ClreqProfile;
 use tiqian::common::{HashMap, HashSet};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range, TextRange};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -76,7 +77,7 @@ fn latin_cluster(range: TextRange, text: &str) -> Cluster {
         range,
         Text::from(text),
         Text::from(text),
-        "latin".to_owned(),
+        FontFaceId::with_resource_id("latin"),
         8.0,
     )
 }

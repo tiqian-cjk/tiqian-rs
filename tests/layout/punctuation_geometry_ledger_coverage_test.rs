@@ -1,8 +1,9 @@
 use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
 use tiqian::common::HashMap;
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, Rect};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{Cluster, SyntheticClusterKind};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineAttachment;
 use tiqian::layout::line_breaker::LineCandidate;
@@ -17,11 +18,12 @@ use tiqian::layout::punctuation_model::{
 
 const EM: f32 = 16.0;
 
-fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
+
+fn cluster(text: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
         text_range(start, start + text.chars().count() as i32),
         Text::from(text),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
@@ -329,8 +331,13 @@ fn attached_inline_boundary_before_ascii_point_mark_collapses_like_adjacent() {
 
 #[test]
 fn attached_inline_boundary_skips_mandatory_break_neighbour() {
-    let mut mandatory = cluster("\n", 4, 0.0, "mandatory-break");
-    mandatory.display_text = Text::from("");
+    let mandatory = Cluster::synthetic(
+        text_range(4, 5),
+        Text::from("\n"),
+        Text::from(""),
+        SyntheticClusterKind::MandatoryBreak,
+        0.0,
+    );
     let clusters = vec![cluster("」", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), mandatory];
     let atoms = atoms_for(&clusters);
     let ledger = PunctuationGeometryLedger::from(

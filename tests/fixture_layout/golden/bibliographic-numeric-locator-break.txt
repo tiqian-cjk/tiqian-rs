@@ -22,7 +22,10 @@ font 2-3 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolic
 font 3-4 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 4-5 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-6 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-8 role=LatinText key=latin-primary display='44' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-19 role=LatinText key=latin-primary display='44(10):21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-13 role=LatinText key=latin-primary display='(10):' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-19 role=LatinText key=latin-primary display='21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 6-8 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
@@ -46,7 +49,10 @@ font 2-3 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolic
 font 3-4 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 4-5 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-6 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-8 role=LatinText key=latin-primary display='44' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-19 role=LatinText key=latin-primary display='44(10):21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-13 role=LatinText key=latin-primary display='(10):' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-19 role=LatinText key=latin-primary display='21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 6-8 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
@@ -70,6 +76,9 @@ font 2-3 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolic
 font 3-4 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 4-5 role=CjkText key=cjk-primary display='中' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-6 role=CjkText key=cjk-primary display='文' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-8 role=LatinText key=latin-primary display='44' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 6-19 role=LatinText key=latin-primary display='44(10):21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-13 role=LatinText key=latin-primary display='(10):' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-19 role=LatinText key=latin-primary display='21-38.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 6-8 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

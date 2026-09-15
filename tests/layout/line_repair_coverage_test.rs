@@ -1,4 +1,5 @@
 use tiqian::common::{HashMap, HashSet};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
@@ -21,7 +22,7 @@ fn cluster(text: &str, index: i32, advance: f32, display_text: &str) -> Cluster 
         text_range(index, index + text.chars().count() as i32),
         Text::from(text),
         Text::from(display_text),
-        "k".to_owned(),
+        FontFaceId::with_resource_id("k"),
         advance,
     )
 }

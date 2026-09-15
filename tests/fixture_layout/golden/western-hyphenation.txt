@@ -24,7 +24,16 @@ cluster 26-27 '令' adv=16.0
 font 0-1 role=CjkText key=cjk-primary display='请' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 1-2 role=CjkText key=cjk-primary display='运' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 2-3 role=CjkText key=cjk-primary display='行' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 3-25 role=LatinText key=latin-primary display=' internationalization ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-6 role=LatinText key=latin-primary display='in' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-24 role=LatinText key=latin-primary display='internationalization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-9 role=LatinText key=latin-primary display='ter' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-11 role=LatinText key=latin-primary display='na' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-15 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='al' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-20 role=LatinText key=latin-primary display='iza' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-24 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkText key=cjk-primary display='命' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 26-27 role=CjkText key=cjk-primary display='令' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 3-4 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
@@ -53,7 +62,16 @@ cluster 26-27 '令' adv=16.0
 font 0-1 role=CjkText key=cjk-primary display='请' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 1-2 role=CjkText key=cjk-primary display='运' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 2-3 role=CjkText key=cjk-primary display='行' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 3-25 role=LatinText key=latin-primary display=' internationalization ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-6 role=LatinText key=latin-primary display='in' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-24 role=LatinText key=latin-primary display='internationalization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-9 role=LatinText key=latin-primary display='ter' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-11 role=LatinText key=latin-primary display='na' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-15 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='al' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-20 role=LatinText key=latin-primary display='iza' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-24 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkText key=cjk-primary display='命' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 26-27 role=CjkText key=cjk-primary display='令' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 3-4 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
@@ -82,7 +100,16 @@ cluster 26-27 '令' adv=16.0
 font 0-1 role=CjkText key=cjk-primary display='请' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 1-2 role=CjkText key=cjk-primary display='运' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 2-3 role=CjkText key=cjk-primary display='行' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-font 3-25 role=LatinText key=latin-primary display=' internationalization ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-6 role=LatinText key=latin-primary display='in' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-24 role=LatinText key=latin-primary display='internationalization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-9 role=LatinText key=latin-primary display='ter' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-11 role=LatinText key=latin-primary display='na' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-15 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='al' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-20 role=LatinText key=latin-primary display='iza' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-24 role=LatinText key=latin-primary display='tion' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 24-25 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 25-26 role=CjkText key=cjk-primary display='命' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 26-27 role=CjkText key=cjk-primary display='令' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 autospace 3-4 side=gap boundary=EastAsianSpacing.Wide reduction=6.0

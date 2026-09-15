@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tiqian::common::{HashMap, HashSet};
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
@@ -21,7 +22,9 @@ use tiqian::layout::width_independent_annotation_cache::{
     first_contained_item, build_paragraph_layout_prep, prepare_width_independent_annotation,
     to_width_independent_annotation_key,
 };
-use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 #[test]
 fn lru_cache_update_existing_key_and_clear() {
@@ -36,10 +39,8 @@ fn lru_cache_update_existing_key_and_clear() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     ));
     let key = to_width_independent_annotation_key(&input, HashMap::new());
@@ -78,16 +79,16 @@ fn lru_cache_update_existing_key_and_clear() {
 fn containing_items_and_first_contained_item_branches() {
     let clusters = vec![
         Cluster::with_display_text(
-            text_range(0, 2), Text::from("aa"), Text::from("aa"), "k".to_owned(), 10.0,
+            text_range(0, 2), Text::from("aa"), Text::from("aa"), FontFaceId::with_resource_id("k"), 10.0,
         ),
         Cluster::with_display_text(
-            text_range(2, 5), Text::from("bbb"), Text::from("bbb"), "k".to_owned(), 15.0,
+            text_range(2, 5), Text::from("bbb"), Text::from("bbb"), FontFaceId::with_resource_id("k"), 15.0,
         ),
         Cluster::with_display_text(
-            text_range(5, 7), Text::from("cc"), Text::from("cc"), "k".to_owned(), 10.0,
+            text_range(5, 7), Text::from("cc"), Text::from("cc"), FontFaceId::with_resource_id("k"), 10.0,
         ),
         Cluster::with_display_text(
-            text_range(7, 9), Text::from("dd"), Text::from("dd"), "k".to_owned(), 10.0,
+            text_range(7, 9), Text::from("dd"), Text::from("dd"), FontFaceId::with_resource_id("k"), 10.0,
         ),
     ];
     let items = vec![
@@ -131,17 +132,15 @@ fn line_length_grid_body_alignment_branches() {
             &HashMap::new(),
             engine.clreq_profile_resolver.as_ref(),
             engine.font_role_classifier.as_ref(),
-            engine.fallback_resolver.as_ref(),
-            engine.font_metrics_resolver.as_ref(),
+            engine.font_backend.as_ref(),
             &engine.quote_pair_analyzer,
-            engine.text_shaper.as_ref(),
             engine.hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &HashMap::new(),
-            engine.text_shaper.as_ref(),
+            engine.font_backend.as_ref(),
             engine.hyphenator,
             &engine.punctuation_atom_builder,
             &engine.punctuation_spacing_compressor,
@@ -202,17 +201,15 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
             &rejected,
             engine.clreq_profile_resolver.as_ref(),
             engine.font_role_classifier.as_ref(),
-            engine.fallback_resolver.as_ref(),
-            engine.font_metrics_resolver.as_ref(),
+            engine.font_backend.as_ref(),
             &engine.quote_pair_analyzer,
-            engine.text_shaper.as_ref(),
             engine.hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &rejected,
-            engine.text_shaper.as_ref(),
+            engine.font_backend.as_ref(),
             engine.hyphenator,
             &engine.punctuation_atom_builder,
             &engine.punctuation_spacing_compressor,
@@ -224,41 +221,34 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
 #[test]
 #[should_panic(expected = "Conflicting OpenType features")]
 fn conflicting_open_type_features_throws() {
-    struct ConflictingFeatureShaper;
-
-    impl TextShaper for ConflictingFeatureShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let cluster = Cluster::with_display_text(
-                input.range,
-                input.text.slice_text(input.range),
-                input.display_text.clone(),
-                "test".to_owned(),
-                16.0,
-            );
-            ShapingResult::new(
-                vec![cluster],
-                vec![
-                    GlyphRun::with_open_type_features(
-                        input.range,
-                        "test".to_owned(),
-                        vec![Glyph::builder(1, input.range, 8.0).build()],
-                        8.0,
-                        vec!["feat1".to_owned()],
-                    ),
-                    GlyphRun::with_open_type_features(
-                        input.range,
-                        "test".to_owned(),
-                        vec![Glyph::builder(2, input.range, 8.0).x(8.0).build()],
-                        8.0,
-                        vec!["feat2".to_owned()],
-                    ),
-                ],
-            )
-        }
-    }
-
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(ConflictingFeatureShaper);
+    engine.font_backend = Box::new(stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let face = result.face.clone();
+            result.shaping.glyph_runs = vec![
+                GlyphRun::with_open_type_features(
+                    input.range,
+                    face.clone(),
+                    vec![Glyph::builder(1, input.range, 8.0)
+                        .render_font_face(Some(face.clone()))
+                        .build()],
+                    8.0,
+                    vec!["feat1".to_owned()],
+                ),
+                GlyphRun::with_open_type_features(
+                    input.range,
+                    face.clone(),
+                    vec![Glyph::builder(2, input.range, 8.0)
+                        .render_font_face(Some(face))
+                        .x(8.0)
+                        .build()],
+                    8.0,
+                    vec!["feat2".to_owned()],
+                ),
+            ];
+            result
+        },
+    ));
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("测试")),
         LayoutConstraints::with_defaults(300.0),
@@ -269,17 +259,15 @@ fn conflicting_open_type_features_throws() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -308,17 +296,15 @@ fn verbatim_ranges_and_auto_space_decisions() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -347,17 +333,15 @@ fn ruby_spread_accumulation_and_edges() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -386,17 +370,15 @@ fn ruby_spread_second_visit_and_zero_first_cluster() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -417,17 +399,15 @@ fn paired_punctuation_with_zero_capacity() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -485,17 +465,15 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
                         &HashMap::new(),
                         engine.clreq_profile_resolver.as_ref(),
                         engine.font_role_classifier.as_ref(),
-                        engine.fallback_resolver.as_ref(),
-                        engine.font_metrics_resolver.as_ref(),
+                        engine.font_backend.as_ref(),
                         &engine.quote_pair_analyzer,
-                        engine.text_shaper.as_ref(),
                         engine.hyphenator,
                     );
                     let prep = build_paragraph_layout_prep(
                         &input,
                         &annotation,
                         &HashMap::new(),
-                        engine.text_shaper.as_ref(),
+                        engine.font_backend.as_ref(),
                         engine.hyphenator,
                         &engine.punctuation_atom_builder,
                         &engine.punctuation_spacing_compressor,
@@ -543,10 +521,8 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -554,7 +530,7 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
             &input,
             &annotation,
             &HashMap::new(),
-            engine.text_shaper.as_ref(),
+            engine.font_backend.as_ref(),
             engine.hyphenator,
             &engine.punctuation_atom_builder,
             &engine.punctuation_spacing_compressor,
@@ -569,52 +545,25 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
 
 #[test]
 fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
-    struct NarrowInkShaper;
-
-    impl TextShaper for NarrowInkShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let result = tiqian::shaping::text_shaper::ExplainableStubTextShaper.shape(input);
-            ShapingResult::with_decisions(
-                result.clusters,
-                result
-                    .glyph_runs
-                    .into_iter()
-                    .map(|run| {
-                        GlyphRun::new(
-                            run.range,
-                            run.font_key,
-                            run.glyphs
-                                .into_iter()
-                                .map(|glyph| {
-                                    Glyph::builder(glyph.id, glyph.cluster_range, glyph.advance)
-                                        .x(glyph.x)
-                                        .y(glyph.y)
-                                        .render_font_key(glyph.render_font_key)
-                                        .bounds(Some(tiqian::core::geometry::Rect {
-                                            left: 4.0,
-                                            top: 2.0,
-                                            right: 12.0,
-                                            bottom: 10.0,
-                                        }))
-                                        .halt_advance(glyph.halt_advance)
-                                        .halt_placement_x(glyph.halt_placement_x)
-                                        .build()
-                                })
-                                .collect(),
-                            run.advance,
-                        )
-                    })
-                    .collect(),
-                result.decisions,
-            )
-        }
-    }
-
     let text = "正文：“内容·[1]，后文";
     let byte_start = text.find("[1]").unwrap();
     let attach_start = text[..byte_start].chars().count() as i32;
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(NarrowInkShaper);
+    engine.font_backend = Box::new(stub_backend_with_transform(
+        |_: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            for run in &mut result.shaping.glyph_runs {
+                for glyph in &mut run.glyphs {
+                    glyph.bounds = Some(tiqian::core::geometry::Rect {
+                        left: 4.0,
+                        top: 2.0,
+                        right: 12.0,
+                        bottom: 10.0,
+                    });
+                }
+            }
+            result
+        },
+    ));
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
@@ -733,10 +682,8 @@ fn prepare_width_independent_annotation_branches() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     assert_eq!(18.0, (annotation.font_size_at)(scalar_offset(0)));
@@ -756,7 +703,7 @@ fn prepare_width_independent_annotation_branches() {
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -807,10 +754,8 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
                 &HashMap::new(),
                 engine.clreq_profile_resolver.as_ref(),
                 engine.font_role_classifier.as_ref(),
-                engine.fallback_resolver.as_ref(),
-                engine.font_metrics_resolver.as_ref(),
+                engine.font_backend.as_ref(),
                 &engine.quote_pair_analyzer,
-                engine.text_shaper.as_ref(),
                 engine.hyphenator,
             );
             annotation.clreq_profile.adjustment.allow_inline_stop_compression = allow_inline_stop;
@@ -820,7 +765,7 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
                 &input,
                 &annotation,
                 &HashMap::new(),
-                engine.text_shaper.as_ref(),
+                engine.font_backend.as_ref(),
                 engine.hyphenator,
                 &engine.punctuation_atom_builder,
                 &engine.punctuation_spacing_compressor,
@@ -862,10 +807,8 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(8)));
@@ -881,7 +824,7 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         &input,
         &annotation,
         &rejected,
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -899,17 +842,15 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
             &HashMap::new(),
             engine.clreq_profile_resolver.as_ref(),
             engine.font_role_classifier.as_ref(),
-            engine.fallback_resolver.as_ref(),
-            engine.font_metrics_resolver.as_ref(),
+            engine.font_backend.as_ref(),
             &engine.quote_pair_analyzer,
-            engine.text_shaper.as_ref(),
             engine.hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &no_break_input,
             &no_break_annotation,
             &HashMap::new(),
-            engine.text_shaper.as_ref(),
+            engine.font_backend.as_ref(),
             engine.hyphenator,
             &engine.punctuation_atom_builder,
             &engine.punctuation_spacing_compressor,
@@ -917,12 +858,15 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         assert!(!prep.clusters.is_empty());
     }
 
-    annotation.font_decisions.truncate(1);
+    annotation.segment_font_resolutions = std::mem::take(&mut annotation.segment_font_resolutions)
+        .into_iter()
+        .take(1)
+        .collect();
     let prep_unknown_roles = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -958,10 +902,8 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
         &HashMap::new(),
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     annotation.segment_shaping_cache = HashMap::new();
@@ -973,7 +915,7 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
         &input,
         &annotation,
         &rejected,
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,

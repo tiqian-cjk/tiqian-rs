@@ -1,4 +1,5 @@
-use tiqian::core::geometry::{text_range, Rect};
+use tiqian::core::font_face::FontFaceId;
+use tiqian::core::geometry::{Rect, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     DecorationDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyDecisionInfo,
@@ -16,13 +17,27 @@ fn visible_paint_overhang_includes_visible_glyph_dot_and_ruby_paint() {
     let result = result(
         "甲",
         vec![cluster(text_range(0, 1), "甲", 10.0)],
-        vec![line(text_range(0, 1), IntRange::new(0, 0), 15.0, 0.0, 20.0, 10.0)],
+        vec![line(
+            text_range(0, 1),
+            IntRange::new(0, 0),
+            15.0,
+            0.0,
+            20.0,
+            10.0,
+        )],
         vec![GlyphRun::new(
             text_range(0, 1),
-            "cjk".to_owned(),
-            vec![Glyph::builder(1, text_range(0, 1), 10.0)
-                .bounds(Some(Rect { left: -2.0, top: -18.0, right: 12.0, bottom: 5.0 }))
-                .build()],
+            FontFaceId::with_resource_id("cjk"),
+            vec![
+                Glyph::builder(1, text_range(0, 1), 10.0)
+                    .bounds(Some(Rect {
+                        left: -2.0,
+                        top: -18.0,
+                        right: 12.0,
+                        bottom: 5.0,
+                    }))
+                    .build(),
+            ],
             10.0,
         )],
         Vec::new(),
@@ -41,17 +56,30 @@ fn visible_paint_overhang_includes_visible_glyph_dot_and_ruby_paint() {
                 .build(),
             ])
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(text_range(0, 1), Text::from("jiǎ"), 0, 5.0, -3.0, 5.0, 0.0)
-                    .ascent(5.0)
-                    .descent(2.0)
-                    .width(16.0)
-                    .build(),
+                RubyDecisionInfo::builder(
+                    text_range(0, 1),
+                    Text::from("jiǎ"),
+                    0,
+                    5.0,
+                    -3.0,
+                    5.0,
+                    0.0,
+                )
+                .ascent(5.0)
+                .descent(2.0)
+                .width(16.0)
+                .build(),
             ])
             .build(),
     );
 
     assert_eq!(
-        LayoutPaintOverhang { left: 0.0, top: 8.0, right: 0.0, bottom: 0.0 },
+        LayoutPaintOverhang {
+            left: 0.0,
+            top: 8.0,
+            right: 0.0,
+            bottom: 0.0
+        },
         visible_paint_overhang(&result, 100.0, 100.0, Some(&positioned_clusters(&result))),
     );
 }
@@ -61,13 +89,27 @@ fn offscreen_occupied_geometry_does_not_expand_the_paint_clip() {
     let result = result(
         "甲",
         vec![cluster(text_range(0, 1), "甲", 10.0)],
-        vec![line(text_range(0, 1), IntRange::new(0, 0), 45.0, 30.0, 50.0, 10.0)],
+        vec![line(
+            text_range(0, 1),
+            IntRange::new(0, 0),
+            45.0,
+            30.0,
+            50.0,
+            10.0,
+        )],
         vec![GlyphRun::new(
             text_range(0, 1),
-            "cjk".to_owned(),
-            vec![Glyph::builder(1, text_range(0, 1), 10.0)
-                .bounds(Some(Rect { left: -10.0, top: -30.0, right: 20.0, bottom: 10.0 }))
-                .build()],
+            FontFaceId::with_resource_id("cjk"),
+            vec![
+                Glyph::builder(1, text_range(0, 1), 10.0)
+                    .bounds(Some(Rect {
+                        left: -10.0,
+                        top: -30.0,
+                        right: 20.0,
+                        bottom: 10.0,
+                    }))
+                    .build(),
+            ],
             10.0,
         )],
         Vec::new(),

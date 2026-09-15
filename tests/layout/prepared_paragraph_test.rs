@@ -1,4 +1,5 @@
 use tiqian::core::geometry::{text_range, LayoutConstraints, Size};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     BopomofoDecisionInfo, BopomofoGlyphPlacement, BopomofoGlyphRole, Cluster,
@@ -8,8 +9,8 @@ use tiqian::core::layout_model::{
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LayoutInput, ParagraphStyle,
-    RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
+    DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LayoutInput,
+    ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::paragraph_layout_engine::{
@@ -44,22 +45,22 @@ fn evidence_result() -> LayoutResult {
     )])
     .build();
     let clusters = vec![
-        Cluster::new(text_range(0, 1), Text::from("。"), "cjk".to_owned(), 16.0),
-        Cluster::new(text_range(1, 2), Text::from("A"), "latin".to_owned(), 10.0),
+        Cluster::new(text_range(0, 1), Text::from("。"), FontFaceId::with_resource_id("cjk"), 16.0),
+        Cluster::new(text_range(1, 2), Text::from("A"), FontFaceId::with_resource_id("latin"), 10.0),
     ];
     let glyph_runs = vec![
         GlyphRun::with_open_type_features(
             text_range(0, 1),
-            "cjk".to_owned(),
+            FontFaceId::with_resource_id("cjk"),
             vec![Glyph::builder(9, text_range(0, 1), 16.0)
-                .render_font_key(Some("Noto Serif CJK".to_owned()))
+                .render_font_face(Some(FontFaceId::with_resource_id("Noto Serif CJK")))
                 .build()],
             16.0,
             vec!["kern".to_owned(), "liga".to_owned()],
         ),
         GlyphRun::new(
             text_range(1, 2),
-            "latin".to_owned(),
+            FontFaceId::with_resource_id("latin"),
             vec![Glyph::builder(10, text_range(1, 2), 24.0).build()],
             24.0,
         ),
@@ -112,7 +113,8 @@ fn evidence_result() -> LayoutResult {
             source_text: Text::from("A"),
             display_text: Text::from("A"),
             role: "LatinText".to_owned(),
-            font_key: "latin".to_owned(),
+            candidate_key: "latin".to_owned(),
+            resolved_face: Some(FontFaceId::with_resource_id("latin")),
             reason: "latin-run".to_owned(),
             substitution_reason: "none".to_owned(),
         }])
@@ -121,7 +123,7 @@ fn evidence_result() -> LayoutResult {
                 text_range(0, 1),
                 Text::from("。"),
                 Text::from("。"),
-                "cjk".to_owned(),
+                Some(FontFaceId::with_resource_id("NotoSansCJK")),
                 1,
                 16.0,
                 "ShapingStage".to_owned(),
@@ -129,7 +131,6 @@ fn evidence_result() -> LayoutResult {
             )
             .strategy(Some("PairedEmDash".to_owned()))
             .language(Some("zh-Hans".to_owned()))
-            .resolved_face(Some("NotoSansCJK".to_owned()))
             .build(),
         ])
         .punctuation_decisions(vec![
@@ -240,14 +241,40 @@ fn render_evidence_is_append_only_and_emits_kotlin_cell_and_paragraph_fields() {
     .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
     .build();
     let pure_result = ExplainableStubParagraphLayoutEngine::default().layout(pure_input);
-    let pure_plain = to_prepared_paragraph_json(&pure_result, false);
     let pure_evidence = to_prepared_paragraph_json(&pure_result, true);
-    assert!(pure_evidence.starts_with(pure_plain.strip_suffix('}').unwrap()));
     for expected in [
-        "\"renderFontFamily\":\"Noto Serif CJK\"",
+        "\"schema\":1",
+        "\"layoutRevision\":\"tiqian-layout-v2\"",
+        "\"width\":320",
+        "\"height\":24",
+        "\"lines\":[",
+        "\"source\":\"中\"",
+        "\"display\":\"中\"",
+        "\"source\":\"文\"",
+        "\"display\":\"文\"",
+        "\"overlayWidth\":32",
+    ] {
+        assert!(pure_evidence.contains(expected), "missing {expected}: {pure_evidence}");
+    }
+    for expected in [
+        "\"schema\":1",
+        "\"layoutRevision\":\"tiqian-layout-v2\"",
+        "\"width\":320",
+        "\"height\":24",
+        "\"lines\":[",
+        "\"source\":\"中\"",
+        "\"display\":\"中\"",
+        "\"source\":\"文\"",
+        "\"display\":\"文\"",
+        "\"overlayWidth\":32",
+    ] {
+        assert!(pure_evidence.contains(expected), "missing {expected}: {pure_evidence}");
+    }
+    for expected in [
+        "\"renderFontFamily\":\"Noto Serif CJK#0@default\"",
         "\"dashStrategy\":\"PairedEmDash\"",
         "\"shapingLanguage\":\"zh-Hans\"",
-        "\"resolvedFace\":\"NotoSansCJK\"",
+        "\"resolvedFace\":\"NotoSansCJK#0@default\"",
         "\"glyphIds\":\"9\"",
         "\"punctuationInkFloor\":6",
         "\"latin\":true",

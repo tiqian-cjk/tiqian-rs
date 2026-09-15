@@ -2,13 +2,16 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use tiqian::common::{HashMap, HashSet};
 use tiqian::clreq::clreq_profile::ClreqPunctuationGlyphSubstitutor;
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints, Rect, TextRange};
-use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
+use tiqian::core::layout_model::{
+    Cluster, Glyph, GlyphRun, ShapingDecisionInfo, SyntheticClusterKind,
+};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::font::font_policy::{FontCandidate, FontDecision, FontRole};
+use tiqian::font::font_policy::FontRole;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
@@ -22,10 +25,15 @@ use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
 };
 use tiqian::linebreak::hyphenation::Hyphenator;
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-    UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
+use tiqian::shaping::font_backend::{
+    FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
+use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use tiqian::shaping::text_shaper::{
+    ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
+};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 #[test]
 fn map_to_cluster_range_with_zero_and_positive_advance() {
@@ -33,7 +41,7 @@ fn map_to_cluster_range_with_zero_and_positive_advance() {
         text_range(0, 4),
         Text::from("test"),
         Text::from("test"),
-        "k".to_owned(),
+        FontFaceId::with_resource_id("k"),
         20.0,
     );
 
@@ -63,32 +71,32 @@ fn map_to_cluster_range_with_zero_and_positive_advance() {
 
 #[test]
 fn cluster_predicates_and_curly_quote_features() {
-    let mandatory = Cluster::with_display_text(
+    let mandatory = Cluster::synthetic(
         text_range(0, 1),
         Text::from("\n"),
         Text::new(),
-        "mandatory-break".to_owned(),
+        SyntheticClusterKind::MandatoryBreak,
         0.0,
     );
     assert!(is_mandatory_break_cluster(&mandatory));
     assert!(!is_zero_width_soft_break_cluster(&mandatory));
     assert!(!is_inline_object_cluster(&mandatory));
 
-    let zero_width = Cluster::with_display_text(
+    let zero_width = Cluster::synthetic(
         text_range(0, 1),
         Text::from("\u{200B}"),
         Text::new(),
-        "zero-width-space".to_owned(),
+        SyntheticClusterKind::ZeroWidthSoftBreak,
         0.0,
     );
     assert!(is_zero_width_soft_break_cluster(&zero_width));
     assert!(!is_mandatory_break_cluster(&zero_width));
 
-    let inline_object = Cluster::with_display_text(
+    let inline_object = Cluster::synthetic(
         text_range(0, 1),
         Text::from("x"),
         Text::new(),
-        "inline-object".to_owned(),
+        SyntheticClusterKind::InlineObject,
         20.0,
     );
     assert!(is_inline_object_cluster(&inline_object));
@@ -98,7 +106,7 @@ fn cluster_predicates_and_curly_quote_features() {
         text_range(0, 1),
         Text::from("中"),
         Text::from("中"),
-        "font".to_owned(),
+        FontFaceId::with_resource_id("font"),
         16.0,
     );
     assert!(!is_mandatory_break_cluster(&normal));
@@ -118,19 +126,18 @@ fn cluster_predicates_and_curly_quote_features() {
 
 #[test]
 fn hyphen_advance_fallback_when_shaper_returns_empty_clusters() {
-    struct NoClusterHyphenShaper;
-
-    impl TextShaper for NoClusterHyphenShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
+    let backend = stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             if input.text.slice_text(input.range) == "-" || input.display_text == "-" {
-                return ShapingResult::new(Vec::new(), Vec::new());
+                result.shaping.clusters.clear();
+                result.shaping.glyph_runs.clear();
             }
-            ExplainableStubTextShaper.shape(input)
-        }
-    }
+            result
+        },
+    );
 
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(NoClusterHyphenShaper);
+    engine.font_backend = Box::new(backend);
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("supercalifragilisticexpialidocious")),
@@ -143,59 +150,52 @@ fn hyphen_advance_fallback_when_shaper_returns_empty_clusters() {
 
 #[test]
 fn dash_substitution_rollback_and_coverage_branches() {
-    struct InkCoverageShaper {
-        ink_right: f32,
-    }
-
-    impl TextShaper for InkCoverageShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let cluster = Cluster::with_display_text(
+    let ink_coverage_backend = |ink_right: f32| {
+        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let face = result.face.clone();
+            result.shaping.clusters = vec![Cluster::with_display_text(
                 input.range,
                 input.text.slice_text(input.range),
                 input.display_text.clone(),
-                "test".to_owned(),
+                face.clone(),
                 32.0,
-            );
-            let glyph = Glyph::builder(1, input.range, 32.0)
-                .bounds(Some(Rect {
-                    left: 0.0,
-                    top: 0.0,
-                    right: self.ink_right,
-                    bottom: 10.0,
-                }))
-                .build();
-            ShapingResult::new(
-                vec![cluster],
-                vec![GlyphRun::new(
-                    input.range,
-                    "test".to_owned(),
-                    vec![glyph],
-                    32.0,
-                )],
-            )
-        }
-    }
+            )];
+            result.shaping.glyph_runs = vec![GlyphRun::new(
+                input.range,
+                face.clone(),
+                vec![Glyph::builder(1, input.range, 32.0)
+                    .render_font_face(Some(face))
+                    .bounds(Some(Rect {
+                        left: 0.0,
+                        top: 0.0,
+                        right: ink_right,
+                        bottom: 10.0,
+                    }))
+                    .build()],
+                32.0,
+            )];
+            result
+        })
+    };
 
-    struct RollbackShaper {
-        calls: AtomicI32,
-    }
-
-    impl TextShaper for RollbackShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let call = self.calls.fetch_add(1, Ordering::Relaxed) + 1;
+    let rollback_backend = {
+        let calls = AtomicI32::new(0);
+        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
             let source = input.text.slice_text(input.range);
+            let face = result.face.clone();
             let cluster = Cluster::with_display_text(
                 input.range,
                 source.clone(),
                 input.display_text.clone(),
-                "test".to_owned(),
+                face.clone(),
                 16.0,
             );
             let decision = ShapingDecisionInfo::builder(
                 input.range,
                 source,
                 input.display_text.clone(),
-                "test".to_owned(),
+                Some(face.clone()),
                 1,
                 16.0,
                 "Test".to_owned(),
@@ -205,55 +205,48 @@ fn dash_substitution_rollback_and_coverage_branches() {
                 .then(|| UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.to_owned()))
             .missing_glyphs(if call == 2 { 1 } else { 0 })
             .build();
-            ShapingResult::with_decisions(
+            if call == 2 {
+                result.attempts[0].missing_glyphs = 1;
+            }
+            result.shaping = ShapingResult::with_decisions(
                 vec![cluster],
-                vec![GlyphRun::new(
-                    input.range,
-                    "test".to_owned(),
-                    Vec::new(),
-                    16.0,
-                )],
+                vec![GlyphRun::new(input.range, face, Vec::new(), 16.0)],
                 vec![decision],
-            )
-        }
-    }
+            );
+            result
+        })
+    };
 
-    struct MultiAndNullGlyphShaper {
-        calls: AtomicI32,
-    }
-
-    impl TextShaper for MultiAndNullGlyphShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let call = self.calls.fetch_add(1, Ordering::Relaxed) + 1;
+    let multi_and_null_glyph_backend = {
+        let calls = AtomicI32::new(0);
+        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
+            let face = result.face.clone();
             let glyphs = match call % 3 {
                 0 => Vec::new(),
                 1 => vec![
-                    Glyph::builder(1, input.range, 16.0).build(),
-                    Glyph::builder(2, input.range, 16.0).x(16.0).build(),
+                    Glyph::builder(1, input.range, 16.0)
+                        .render_font_face(Some(face.clone()))
+                        .build(),
+                    Glyph::builder(2, input.range, 16.0)
+                        .render_font_face(Some(face.clone()))
+                        .x(16.0)
+                        .build(),
                 ],
-                _ => vec![Glyph::builder(1, input.range, 32.0).build()],
+                _ => vec![
+                    Glyph::builder(1, input.range, 32.0)
+                        .render_font_face(Some(face.clone()))
+                        .build(),
+                ],
             };
-            ShapingResult::new(
-                vec![Cluster::with_display_text(
-                    input.range,
-                    input.text.slice_text(input.range),
-                    input.display_text.clone(),
-                    "test".to_owned(),
-                    32.0,
-                )],
-                vec![GlyphRun::new(
-                    input.range,
-                    "test".to_owned(),
-                    glyphs,
-                    32.0,
-                )],
-            )
-        }
-    }
+            result.shaping.glyph_runs = vec![GlyphRun::new(input.range, face, glyphs, 32.0)];
+            result
+        })
+    };
 
-    let layout = |text: &str, text_shaper: Box<dyn TextShaper>| {
+    let layout = |text: &str, font_backend: Box<dyn FontBackend>| {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.text_shaper = text_shaper;
+        engine.font_backend = font_backend;
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from(text)),
@@ -263,25 +256,21 @@ fn dash_substitution_rollback_and_coverage_branches() {
         )
     };
 
-    assert!(!layout("——", Box::new(InkCoverageShaper { ink_right: 20.0 }))
+    assert!(!layout("——", Box::new(ink_coverage_backend(20.0)))
         .lines
         .is_empty());
-    assert!(!layout("——", Box::new(InkCoverageShaper { ink_right: 30.0 }))
+    assert!(!layout("——", Box::new(ink_coverage_backend(30.0)))
         .lines
         .is_empty());
     assert!(!layout(
         "……",
-        Box::new(RollbackShaper {
-            calls: AtomicI32::new(0),
-        }),
+        Box::new(rollback_backend),
     )
     .lines
     .is_empty());
 
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(MultiAndNullGlyphShaper {
-        calls: AtomicI32::new(0),
-    });
+    engine.font_backend = Box::new(multi_and_null_glyph_backend);
     for _ in 0..4 {
         let result = engine.layout(
             LayoutInput::builder(
@@ -380,7 +369,6 @@ fn progressive_technical_span_breaks_and_tiers() {
     .build();
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = &MACHINE_HYPHENATOR;
-
     for tier in [
         ProgressiveBreakTier::Structural,
         ProgressiveBreakTier::Syllable,
@@ -392,17 +380,15 @@ fn progressive_technical_span_breaks_and_tiers() {
             &rejected,
             engine.clreq_profile_resolver.as_ref(),
             engine.font_role_classifier.as_ref(),
-            engine.fallback_resolver.as_ref(),
-            engine.font_metrics_resolver.as_ref(),
+            engine.font_backend.as_ref(),
             &engine.quote_pair_analyzer,
-            engine.text_shaper.as_ref(),
             engine.hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &rejected,
-            engine.text_shaper.as_ref(),
+            engine.font_backend.as_ref(),
             engine.hyphenator,
             &engine.punctuation_atom_builder,
             &engine.punctuation_spacing_compressor,
@@ -422,17 +408,15 @@ fn progressive_technical_span_breaks_and_tiers() {
         &rejected,
         engine.clreq_profile_resolver.as_ref(),
         engine.font_role_classifier.as_ref(),
-        engine.fallback_resolver.as_ref(),
-        engine.font_metrics_resolver.as_ref(),
+        engine.font_backend.as_ref(),
         &engine.quote_pair_analyzer,
-        engine.text_shaper.as_ref(),
         engine.hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &rejected,
-        engine.text_shaper.as_ref(),
+        engine.font_backend.as_ref(),
         engine.hyphenator,
         &engine.punctuation_atom_builder,
         &engine.punctuation_spacing_compressor,
@@ -452,43 +436,36 @@ static ONE_TWO_THREE_HYPHENATOR: OneTwoThreeHyphenator = OneTwoThreeHyphenator;
 
 #[test]
 fn multi_cluster_shaper_for_word_cuts_and_opaque_hard_cuts() {
-    struct MultiClusterShaper {
-        split: AtomicBool,
-    }
-
-    impl TextShaper for MultiClusterShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let result = ExplainableStubTextShaper.shape(input);
-            if input.range.length() <= 1 || self.split.fetch_xor(true, Ordering::Relaxed) {
+    let split = AtomicBool::new(false);
+    let backend = stub_backend_with_transform(
+        move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            if input.range.length() <= 1 || split.fetch_xor(true, Ordering::Relaxed) {
                 return result;
             }
             let mid = input.range.start() + input.range.length() / 2;
-            ShapingResult::new(
-                vec![
-                    Cluster::with_display_text(
-                        TextRange::new(input.range.start(), mid),
-                        Text::from("a"),
-                        Text::from("a"),
-                        "k".to_owned(),
-                        100.0,
-                    ),
-                    Cluster::with_display_text(
-                        TextRange::new(mid, input.range.end()),
-                        Text::from("b"),
-                        Text::from("b"),
-                        "k".to_owned(),
-                        100.0,
-                    ),
-                ],
-                result.glyph_runs,
-            )
-        }
-    }
+            let face = result.face.clone();
+            result.shaping.clusters = vec![
+                Cluster::with_display_text(
+                    TextRange::new(input.range.start(), mid),
+                    Text::from("a"),
+                    Text::from("a"),
+                    face.clone(),
+                    100.0,
+                ),
+                Cluster::with_display_text(
+                    TextRange::new(mid, input.range.end()),
+                    Text::from("b"),
+                    Text::from("b"),
+                    face,
+                    100.0,
+                ),
+            ];
+            result
+        },
+    );
 
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(MultiClusterShaper {
-        split: AtomicBool::new(false),
-    });
+    engine.font_backend = Box::new(backend);
     engine.hyphenator = &ONE_TWO_THREE_HYPHENATOR;
     let result = engine.layout(
         LayoutInput::builder(
@@ -536,39 +513,35 @@ static LATIN_WORD_CUTS_HYPHENATOR: LatinWordCutsHyphenator = LatinWordCutsHyphen
 
 #[test]
 fn latin_word_cuts_lo_hi_and_empty_branches() {
-    struct WordShaper;
-
-    impl TextShaper for WordShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let result = ExplainableStubTextShaper.shape(input);
+    let backend = stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             if input.range.length() != 2 || input.text.slice_text(input.range) != "em" {
                 return result;
             }
-            ShapingResult {
-                clusters: vec![
-                    Cluster::with_display_text(
-                        TextRange::new(input.range.start(), input.range.start() + 1),
-                        Text::from("e"),
-                        Text::from("e"),
-                        "k".to_owned(),
-                        10.0,
-                    ),
-                    Cluster::with_display_text(
-                        TextRange::new(input.range.start() + 1, input.range.end()),
-                        Text::from("m"),
-                        Text::from("m"),
-                        "k".to_owned(),
-                        10.0,
-                    ),
-                ],
-                ..result
-            }
-        }
-    }
+            let face = result.face.clone();
+            result.shaping.clusters = vec![
+                Cluster::with_display_text(
+                    TextRange::new(input.range.start(), input.range.start() + 1),
+                    Text::from("e"),
+                    Text::from("e"),
+                    face.clone(),
+                    10.0,
+                ),
+                Cluster::with_display_text(
+                    TextRange::new(input.range.start() + 1, input.range.end()),
+                    Text::from("m"),
+                    Text::from("m"),
+                    face,
+                    10.0,
+                ),
+            ];
+            result
+        },
+    );
 
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
     engine.hyphenator = &LATIN_WORD_CUTS_HYPHENATOR;
-    engine.text_shaper = Box::new(WordShaper);
+    engine.font_backend = Box::new(backend);
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("abcdef ghijkl mnopqr empty")),
@@ -603,22 +576,16 @@ static DIRECT_SHAPE_HYPHENATOR: DirectShapeHyphenator = DirectShapeHyphenator;
 
 #[test]
 fn direct_shape_paragraph_edge_cases() {
-    struct EmptyClusterShaper;
-
-    impl TextShaper for EmptyClusterShaper {
-        fn shape(&self, input: &ShapingInput) -> ShapingResult {
-            let result = ExplainableStubTextShaper.shape(input);
+    let backend = stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             if input.text.slice_text(input.range) == "singlecluster"
                 || input.display_text == "singlecluster"
             {
-                return ShapingResult {
-                    clusters: Vec::new(),
-                    ..result
-                };
+                result.shaping.clusters.clear();
             }
             result
-        }
-    }
+        },
+    );
 
     let text = Text::from(
         "abcdef abcdeg antidisestablishmentarianism singlecluster Machine2Machine /a/b/c 12(3):. 12a(3):45 12(3a):45 12(3):-45 12(3):45- 12(3):45-6a 12(3):4a-65 12(3):abc aaaaaa111111 a1b2c3d4e5f6 http://example.com/foo https://example.com/foo?a=1&b=2#x%20~y abc.d abc.12 abc.de abc.de12 --.com foo.-bar /start end/ a/b a//b",
@@ -634,66 +601,47 @@ fn direct_shape_paragraph_edge_cases() {
         LayoutConstraints::with_defaults(1.0),
     )
     .build();
-    let latin_candidate = FontCandidate {
-        key: "k".to_owned(),
-        family: "f".to_owned(),
-        role: FontRole::LatinText,
-    };
-    let latin_decision = FontDecision {
-        range,
-        candidate: latin_candidate,
-        role: FontRole::LatinText,
-        reason: "r".to_owned(),
-    };
-    let cjk_decision = FontDecision {
-        range,
-        candidate: FontCandidate {
-            key: "k".to_owned(),
-            family: "f".to_owned(),
-            role: FontRole::CjkText,
-        },
-        role: FontRole::CjkText,
-        reason: "r".to_owned(),
-    };
-    let shaper = EmptyClusterShaper;
     let substitutor = ClreqPunctuationGlyphSubstitutor::default();
     let style = |_| TextStyle::builder().font_size(16.0).build();
+    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
+    let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
 
     let latin = shape_paragraph(
-        &shaper,
+        &backend,
         &DIRECT_SHAPE_HYPHENATOR,
         &input,
         &text,
         16.0,
         1.0,
         &[ResolvedClusterRange::new(range, FontRole::LatinText)],
-        &HashMap::from([(range, latin_decision)]),
         &HashMap::new(),
         &substitutor,
         &style,
         &|_| true,
         &HashMap::new(),
-        &HashMap::new(),
-        &HashMap::new(),
+        &cached_segment_shaping,
+        &cached_font_resolutions,
+        &cached_rollbacks,
     );
     assert!(!latin.shaping_results.is_empty());
 
     let cjk = shape_paragraph(
-        &shaper,
+        &backend,
         &DIRECT_SHAPE_HYPHENATOR,
         &input,
         &text,
         16.0,
         40.0,
         &[ResolvedClusterRange::new(range, FontRole::CjkText)],
-        &HashMap::from([(range, cjk_decision)]),
         &HashMap::new(),
         &substitutor,
         &style,
         &|_| false,
         &HashMap::new(),
-        &HashMap::new(),
-        &HashMap::new(),
+        &cached_segment_shaping,
+        &cached_font_resolutions,
+        &cached_rollbacks,
     );
     assert!(!cjk.shaping_results.is_empty());
 
@@ -704,32 +652,22 @@ fn direct_shape_paragraph_edge_cases() {
         LayoutConstraints::with_defaults(100.0),
     )
     .build();
-    let space_decision = FontDecision {
-        range: space_range,
-        candidate: FontCandidate {
-            key: "k".to_owned(),
-            family: "f".to_owned(),
-            role: FontRole::LatinText,
-        },
-        role: FontRole::LatinText,
-        reason: "r".to_owned(),
-    };
     let space_result = shape_paragraph(
-        &shaper,
+        &backend,
         &DIRECT_SHAPE_HYPHENATOR,
         &space_input,
         &space,
         16.0,
         100.0,
         &[ResolvedClusterRange::new(space_range, FontRole::LatinText)],
-        &HashMap::from([(space_range, space_decision)]),
         &HashMap::new(),
         &substitutor,
         &style,
         &|_| false,
         &HashMap::new(),
-        &HashMap::new(),
-        &HashMap::new(),
+        &cached_segment_shaping,
+        &cached_font_resolutions,
+        &cached_rollbacks,
     );
     assert!(!space_result.shaping_results.is_empty());
 }
@@ -780,47 +718,17 @@ fn progressive_technical_tier_priority_and_false_branches() {
         LayoutConstraints::with_defaults(10.0),
     )
     .build();
-    let candidate = FontCandidate {
-        key: "k".to_owned(),
-        family: "f".to_owned(),
-        role: FontRole::LatinText,
-    };
+    let backend = DeterministicStubFontBackend::default();
     let ranges = [
         text_range(0, 7),
         text_range(2, 7),
         text_range(0, 0),
     ];
-    let decisions = HashMap::from([
-        (
-            ranges[0],
-            FontDecision {
-                range: ranges[0],
-                candidate: candidate.clone(),
-                role: FontRole::LatinText,
-                reason: "r".to_owned(),
-            },
-        ),
-        (
-            ranges[1],
-            FontDecision {
-                range: ranges[1],
-                candidate: candidate.clone(),
-                role: FontRole::LatinText,
-                reason: "r".to_owned(),
-            },
-        ),
-        (
-            ranges[2],
-            FontDecision {
-                range: ranges[2],
-                candidate,
-                role: FontRole::LatinText,
-                reason: "r".to_owned(),
-            },
-        ),
-    ]);
+    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
+    let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
     let result = shape_paragraph(
-        &ExplainableStubTextShaper,
+        &backend,
         &PROGRESSIVE_PRIORITY_HYPHENATOR,
         &input,
         &text,
@@ -831,7 +739,6 @@ fn progressive_technical_tier_priority_and_false_branches() {
             ResolvedClusterRange::new(ranges[1], FontRole::LatinText),
             ResolvedClusterRange::new(ranges[2], FontRole::LatinText),
         ],
-        &decisions,
         &HashMap::new(),
         &ClreqPunctuationGlyphSubstitutor::default(),
         &|_| TextStyle::builder().font_size(16.0).build(),
@@ -843,8 +750,9 @@ fn progressive_technical_tier_priority_and_false_branches() {
                 ProgressiveBreakTier::Syllable,
             ]),
         )]),
-        &HashMap::new(),
-        &HashMap::new(),
+        &cached_segment_shaping,
+        &cached_font_resolutions,
+        &cached_rollbacks,
     );
     assert!(!result.shaping_results.is_empty());
 }
@@ -909,33 +817,12 @@ fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
     )
     .build();
     let ranges = [text_range(0, 7), text_range(2, 7)];
-    let candidate = FontCandidate {
-        key: "k".to_owned(),
-        family: "f".to_owned(),
-        role: FontRole::LatinText,
-    };
-    let decisions = HashMap::from([
-        (
-            ranges[0],
-            FontDecision {
-                range: ranges[0],
-                candidate: candidate.clone(),
-                role: FontRole::LatinText,
-                reason: "r".to_owned(),
-            },
-        ),
-        (
-            ranges[1],
-            FontDecision {
-                range: ranges[1],
-                candidate,
-                role: FontRole::LatinText,
-                reason: "r".to_owned(),
-            },
-        ),
-    ]);
+    let backend = DeterministicStubFontBackend::default();
+    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
+    let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
     let result = shape_paragraph(
-        &ExplainableStubTextShaper,
+        &backend,
         &TIER_REVISIT_HYPHENATOR,
         &input,
         &text,
@@ -945,14 +832,14 @@ fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
             ResolvedClusterRange::new(ranges[0], FontRole::LatinText),
             ResolvedClusterRange::new(ranges[1], FontRole::LatinText),
         ],
-        &decisions,
         &HashMap::new(),
         &ClreqPunctuationGlyphSubstitutor::default(),
         &|_| TextStyle::builder().font_size(16.0).build(),
         &|_| false,
         &HashMap::new(),
-        &HashMap::new(),
-        &HashMap::new(),
+        &cached_segment_shaping,
+        &cached_font_resolutions,
+        &cached_rollbacks,
     );
     assert!(!result.shaping_results.is_empty());
 }
@@ -967,33 +854,27 @@ fn latin_separator_tokens_cover_url_leading_slash_and_dash_locators() {
             LayoutConstraints::with_defaults(500.0),
         )
         .build();
-        let decision = FontDecision {
-            range,
-            candidate: FontCandidate {
-                key: "k".to_owned(),
-                family: "f".to_owned(),
-                role: FontRole::LatinText,
-            },
-            role: FontRole::LatinText,
-            reason: "r".to_owned(),
-        };
+        let backend = DeterministicStubFontBackend::default();
+        let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+        let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
+        let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
         for measure in [500.0, 8.0] {
             let result = shape_paragraph(
-                &ExplainableStubTextShaper,
+                &backend,
                 &HYPHENATED_WORD_HYPHENATOR,
                 &input,
                 &text,
                 16.0,
                 measure,
                 &[ResolvedClusterRange::new(range, FontRole::LatinText)],
-                &HashMap::from([(range, decision.clone())]),
                 &HashMap::new(),
                 &ClreqPunctuationGlyphSubstitutor::default(),
                 &|_| TextStyle::builder().font_size(16.0).build(),
                 &|_| false,
                 &HashMap::new(),
-                &HashMap::new(),
-                &HashMap::new(),
+                &cached_segment_shaping,
+                &cached_font_resolutions,
+                &cached_rollbacks,
             );
             assert!(!result.shaping_results.is_empty());
         }

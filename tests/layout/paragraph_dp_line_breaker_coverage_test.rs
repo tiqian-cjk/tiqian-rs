@@ -1,4 +1,5 @@
 use tiqian::core::geometry::{text_range};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -13,7 +14,7 @@ fn cluster(index: i32, advance: f32) -> Cluster {
     Cluster::new(
         text_range(index, index + 1),
         Text::from("中"),
-        "test".to_owned(),
+        FontFaceId::with_resource_id("test"),
         advance,
     )
 }
@@ -24,11 +25,11 @@ fn han_clusters(count: i32, advance: f32) -> Vec<Cluster> {
 
 fn latin_clusters() -> Vec<Cluster> {
     vec![
-        Cluster::new(text_range(0, 1), Text::from("a"), "test".to_owned(), 30.0),
-        Cluster::new(text_range(1, 2), Text::from("/"), "test".to_owned(), 30.0),
-        Cluster::new(text_range(2, 3), Text::from("b"), "test".to_owned(), 25.0),
-        Cluster::new(text_range(3, 4), Text::from("c"), "test".to_owned(), 30.0),
-        Cluster::new(text_range(4, 5), Text::from("d"), "test".to_owned(), 30.0),
+        Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("test"), 30.0),
+        Cluster::new(text_range(1, 2), Text::from("/"), FontFaceId::with_resource_id("test"), 30.0),
+        Cluster::new(text_range(2, 3), Text::from("b"), FontFaceId::with_resource_id("test"), 25.0),
+        Cluster::new(text_range(3, 4), Text::from("c"), FontFaceId::with_resource_id("test"), 30.0),
+        Cluster::new(text_range(4, 5), Text::from("d"), FontFaceId::with_resource_id("test"), 30.0),
     ]
 }
 

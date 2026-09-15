@@ -162,7 +162,7 @@ fn cjk_attached_ascii_point_marks_cannot_start_wrapped_lines_and_stay_latin() {
             let result = layout_with(&text, 64.0, breaker, KinsokuLevel::Basic, HangingPunctuationStyle::Disabled, Some(Ic::ZERO), Vec::new(), Vec::new(), true);
             assert!(line_texts(&result, &text).iter().all(|line| !line.starts_with(mark)));
             let point = result.clusters.iter().find(|cluster| cluster.text == mark.to_string()).unwrap();
-            assert_eq!("latin-primary", point.font_key);
+            assert_eq!("latin-primary", point.font_face.as_ref().expect("point must have a final font face").resource_id());
             assert_eq!("LatinText", result.debug.font_decisions.iter().find(|decision| decision.range == point.range).unwrap().role);
             assert!(result.debug.punctuation_decisions.iter().all(|decision| decision.range != point.range));
             let decision = result.debug.contextual_kinsoku_decisions.iter().find(|decision| decision.range == point.range).unwrap();

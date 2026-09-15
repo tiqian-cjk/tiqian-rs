@@ -3,8 +3,9 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, Rect};
-use tiqian::core::layout_model::{Cluster, Glyph};
+use tiqian::core::layout_model::{Cluster, Glyph, SyntheticClusterKind};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineAttachment, InlineBoxSpan};
 use tiqian::font::font_policy::FontRole;
@@ -21,21 +22,21 @@ use tiqian::layout::punctuation_model::{
 
 const EM: f32 = 16.0;
 
-fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
+fn cluster(text: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
         text_range(start, start + text.chars().count() as i32),
         Text::from(text),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
 
-fn display_cluster(text: &str, display: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
+fn display_cluster(text: &str, display: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::with_display_text(
         text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         Text::from(display),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
@@ -99,9 +100,9 @@ fn union_ignores_glyphs_without_bounds() {
 #[test]
 fn attached_mark_walk_stops_mid_run_at_a_gap() {
     let rule = tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default();
-    let gapped = vec![display_cluster("x", "", 0, 8.0, "inline-object"), cluster(" ", 1, EM, "latin"), cluster(" ", 2, EM, "latin"), cluster("，", 4, EM, "cjk")];
+    let gapped = vec![Cluster::synthetic(text_range(0, 1), Text::from("x"), Text::from(""), SyntheticClusterKind::InlineObject, 8.0), cluster(" ", 1, EM, "latin"), cluster(" ", 2, EM, "latin"), cluster("，", 4, EM, "cjk")];
     assert!(inline_object_attached_marks(&gapped, &[FontRole::Unknown, FontRole::LatinText, FontRole::LatinText, FontRole::CjkPunctuation], KinsokuLevel::Basic, &rule).is_empty());
-    let contiguous = vec![display_cluster("x", "", 0, 8.0, "inline-object"), cluster(" ", 1, EM, "latin"), cluster(" ", 2, EM, "latin"), cluster("，", 3, EM, "cjk")];
+    let contiguous = vec![Cluster::synthetic(text_range(0, 1), Text::from("x"), Text::from(""), SyntheticClusterKind::InlineObject, 8.0), cluster(" ", 1, EM, "latin"), cluster(" ", 2, EM, "latin"), cluster("，", 3, EM, "cjk")];
     let mark = inline_object_attached_marks(&contiguous, &[FontRole::Unknown, FontRole::LatinText, FontRole::LatinText, FontRole::CjkPunctuation], KinsokuLevel::Basic, &rule);
     assert_eq!(vec![1, 2], mark[0].separator_cluster_indices);
     assert_eq!(3, mark[0].mark_cluster_index);
@@ -109,7 +110,7 @@ fn attached_mark_walk_stops_mid_run_at_a_gap() {
 
 #[test]
 fn empty_text_clusters_cannot_be_attached_marks() {
-    let clusters = vec![display_cluster("x", "", 0, 8.0, "inline-object"), cluster("", 1, EM, "latin")];
+    let clusters = vec![Cluster::synthetic(text_range(0, 1), Text::from("x"), Text::from(""), SyntheticClusterKind::InlineObject, 8.0), cluster("", 1, EM, "latin")];
     assert!(inline_object_attached_marks(&clusters, &[FontRole::Unknown, FontRole::LatinText], KinsokuLevel::Basic, &tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default()).is_empty());
     let attachments = [InlineObjectAttachedMark { object_cluster_index: 0, separator_cluster_indices: Vec::new(), mark_cluster_index: 1 }];
     let result = inline_object_attached_kinsoku(&clusters, &attachments, &clusters, KinsokuLevel::Basic, 10.0, 10.0);

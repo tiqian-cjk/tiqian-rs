@@ -3,8 +3,9 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, Rect};
-use tiqian::core::layout_model::{Cluster, Glyph};
+use tiqian::core::layout_model::{Cluster, Glyph, SyntheticClusterKind};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineAttachment, InlineBoxSpan};
 use tiqian::font::font_policy::FontRole;
@@ -18,21 +19,21 @@ use tiqian::layout::punctuation_model::PunctuationAtomBuilder;
 
 const EM: f32 = 16.0;
 
-fn cluster(text: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
+fn cluster(text: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
         text_range(start, start + text.chars().count() as i32),
         Text::from(text),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
 
-fn display_cluster(text: &str, display: &str, start: i32, advance: f32, font_key: &str) -> Cluster {
+fn display_cluster(text: &str, display: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::with_display_text(
         text_range(start, start + text.chars().count() as i32),
         Text::from(text),
         Text::from(display),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
@@ -64,7 +65,13 @@ fn edges(leading: EastAsianSpacingValue, trailing: EastAsianSpacingValue) -> Eas
 }
 
 fn inline_object(start: i32) -> Cluster {
-    display_cluster("x", "", start, 8.0, "inline-object")
+    Cluster::synthetic(
+        text_range(start, start + 1),
+        Text::from("x"),
+        Text::from(""),
+        SyntheticClusterKind::InlineObject,
+        8.0,
+    )
 }
 
 #[test]
@@ -342,7 +349,7 @@ fn virtual_gaps_respect_narrow_to_wide_edges_and_their_neighbours() {
     assert_eq!("AttachedInlineVirtualAutoSpace:east-asian-spacing-W-N", reversed_result.decisions[0].reason);
     let space_after = vec![cluster("中", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), cluster(" ", 4, EM, "latin")];
     assert!(apply_auto_space_policy(&space_after, &[edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide), edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other), edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other)], &attachments, AutoSpacePolicy::default(), EM, &HashSet::new(), &HashSet::new()).decisions.is_empty());
-    let break_after = vec![cluster("中", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), display_cluster("\n", "", 4, 0.0, "mandatory-break")];
+    let break_after = vec![cluster("中", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), Cluster::synthetic(text_range(4, 5), Text::from("\n"), Text::from(""), SyntheticClusterKind::MandatoryBreak, 0.0)];
     assert!(apply_auto_space_policy(&break_after, &[edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide), edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other), edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other)], &attachments, AutoSpacePolicy::default(), EM, &HashSet::new(), &HashSet::new()).decisions.is_empty());
     let cjk_after = vec![cluster("中", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), cluster("中", 4, EM, "cjk")];
     assert!(apply_auto_space_policy(&cjk_after, &[edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide), edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other), edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide)], &attachments, AutoSpacePolicy::default(), EM, &HashSet::new(), &HashSet::new()).decisions.is_empty());

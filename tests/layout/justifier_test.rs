@@ -1,7 +1,8 @@
 use tiqian::common::{HashMap, HashSet};
 
 use tiqian::core::east_asian_spacing::unicode_east_asian_spacing;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::font_face::FontFaceId;
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -25,7 +26,8 @@ struct JustificationRequestConfig {
     attached_inline_virtual_sino_western_boundary_after_clusters: HashSet<i32>,
     uniform_inline_object_boundary_after_clusters: HashSet<i32>,
     preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
-    technical_boundary_after_clusters: HashMap<i32, tiqian::layout::progressive_break_decisions::ProgressiveBreakTier>,
+    technical_boundary_after_clusters:
+        HashMap<i32, tiqian::layout::progressive_break_decisions::ProgressiveBreakTier>,
     emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
     preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
 }
@@ -52,11 +54,11 @@ impl Default for JustificationRequestConfig {
     }
 }
 
-fn cluster(start: i32, end: i32, text: &str, advance: f32, font_key: &str) -> Cluster {
+fn cluster(start: i32, end: i32, text: &str, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
         text_range(start, end),
         Text::from(text),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }
@@ -298,8 +300,16 @@ fn explicit_inline_object_boundaries_share_uniform_stretch_on_formula_only_line(
             .map(|allocation| allocation.target_cluster_index)
             .collect::<HashSet<i32>>()
     );
-    assert!(plan.allocations.iter().all(|allocation| allocation.kind == GlueKind::InlineObjectBoundary));
-    assert!(plan.allocations.iter().all(|allocation| (allocation.delta - 0.5 * EM).abs() < 0.001));
+    assert!(
+        plan.allocations
+            .iter()
+            .all(|allocation| allocation.kind == GlueKind::InlineObjectBoundary)
+    );
+    assert!(
+        plan.allocations
+            .iter()
+            .all(|allocation| (allocation.delta - 0.5 * EM).abs() < 0.001)
+    );
 }
 
 #[test]
@@ -307,47 +317,134 @@ fn formula_boundaries_stretch_punctuation_then_relations_then_binary_operators()
     let clusters: Vec<_> = ["a", ",", "b", "=", "c", "+", "d"]
         .into_iter()
         .enumerate()
-        .map(|(index, text)| cluster(index as i32, index as i32 + 1, text, 2.0 * EM, "inline-object"))
+        .map(|(index, text)| {
+            cluster(
+                index as i32,
+                index as i32 + 1,
+                text,
+                2.0 * EM,
+                "inline-object",
+            )
+        })
         .collect();
     let roles = vec![FontRole::Unknown; clusters.len()];
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let preferred = HashMap::from([
-        (1, InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::PunctuationTrailing, 1.0, 8.0)),
-        (2, InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 2.0, 8.0)),
-        (3, InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 2.0, 8.0)),
-        (4, InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::BinaryOperator, 3.0, 8.0)),
-        (5, InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::BinaryOperator, 3.0, 8.0)),
+        (
+            1,
+            InlineObjectPreferredStretch::new(
+                InlineObjectPreferredStretchKind::PunctuationTrailing,
+                1.0,
+                8.0,
+            ),
+        ),
+        (
+            2,
+            InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 2.0, 8.0),
+        ),
+        (
+            3,
+            InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 2.0, 8.0),
+        ),
+        (
+            4,
+            InlineObjectPreferredStretch::new(
+                InlineObjectPreferredStretchKind::BinaryOperator,
+                3.0,
+                8.0,
+            ),
+        ),
+        (
+            5,
+            InlineObjectPreferredStretch::new(
+                InlineObjectPreferredStretchKind::BinaryOperator,
+                3.0,
+                8.0,
+            ),
+        ),
     ]);
     let preferred_only = justify(&clusters, &roles, natural + 24.0, |request| {
         request.preferred_inline_object_boundary_after_clusters = preferred.clone();
     });
 
     assert_eq!(
-        vec![GlueKind::InlineObjectPunctuationTrailing, GlueKind::InlineObjectRelation, GlueKind::InlineObjectRelation, GlueKind::InlineObjectBinaryOperator, GlueKind::InlineObjectBinaryOperator],
-        preferred_only.allocations.iter().map(|allocation| allocation.kind).collect::<Vec<_>>(),
+        vec![
+            GlueKind::InlineObjectPunctuationTrailing,
+            GlueKind::InlineObjectRelation,
+            GlueKind::InlineObjectRelation,
+            GlueKind::InlineObjectBinaryOperator,
+            GlueKind::InlineObjectBinaryOperator
+        ],
+        preferred_only
+            .allocations
+            .iter()
+            .map(|allocation| allocation.kind)
+            .collect::<Vec<_>>(),
     );
-    assert_eq!(vec![7.0, 6.0, 6.0, 2.5, 2.5], preferred_only.allocations.iter().map(|allocation| allocation.delta).collect::<Vec<_>>());
+    assert_eq!(
+        vec![7.0, 6.0, 6.0, 2.5, 2.5],
+        preferred_only
+            .allocations
+            .iter()
+            .map(|allocation| allocation.delta)
+            .collect::<Vec<_>>()
+    );
     assert_eq!(0.0, preferred_only.unfilled_deficit);
 
     let with_final_uniform = justify(&clusters, &roles, natural + 34.0, |request| {
         request.preferred_inline_object_boundary_after_clusters = preferred.clone();
         request.uniform_inline_object_boundary_after_clusters = preferred.keys().copied().collect();
     });
-    assert_eq!(29.0, with_final_uniform.allocations.iter().take(5).map(|allocation| allocation.delta).sum::<f32>());
-    let uniform: Vec<_> = with_final_uniform.allocations.iter().filter(|allocation| allocation.kind == GlueKind::InlineObjectBoundary).collect();
-    assert_eq!(preferred.keys().copied().collect::<HashSet<_>>(), uniform.iter().map(|allocation| allocation.target_cluster_index).collect());
-    assert!(uniform.iter().all(|allocation| (allocation.delta - 1.0).abs() < 0.001));
+    assert_eq!(
+        29.0,
+        with_final_uniform
+            .allocations
+            .iter()
+            .take(5)
+            .map(|allocation| allocation.delta)
+            .sum::<f32>()
+    );
+    let uniform: Vec<_> = with_final_uniform
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::InlineObjectBoundary)
+        .collect();
+    assert_eq!(
+        preferred.keys().copied().collect::<HashSet<_>>(),
+        uniform
+            .iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect()
+    );
+    assert!(
+        uniform
+            .iter()
+            .all(|allocation| (allocation.delta - 1.0).abs() < 0.001)
+    );
     assert_eq!(0.0, with_final_uniform.unfilled_deficit);
 }
 
 #[test]
 fn mixed_cjk_line_still_stretches_punctuation_western_boundary() {
-    let clusters = vec![cluster(0, 2, "Hi", 2.0 * EM, "latin"), cluster(2, 3, "（", EM, "cjk"), cluster(3, 4, "中", EM, "cjk")];
-    let roles = vec![FontRole::LatinText, FontRole::CjkPunctuation, FontRole::CjkText];
+    let clusters = vec![
+        cluster(0, 2, "Hi", 2.0 * EM, "latin"),
+        cluster(2, 3, "（", EM, "cjk"),
+        cluster(3, 4, "中", EM, "cjk"),
+    ];
+    let roles = vec![
+        FontRole::LatinText,
+        FontRole::CjkPunctuation,
+        FontRole::CjkText,
+    ];
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let plan = justify(&clusters, &roles, natural + 0.5 * EM, |_| {});
 
-    assert!(plan.allocations.iter().any(|allocation| allocation.kind == GlueKind::CjkInterChar && allocation.target_cluster_index == 0));
+    assert!(
+        plan.allocations
+            .iter()
+            .any(|allocation| allocation.kind == GlueKind::CjkInterChar
+                && allocation.target_cluster_index == 0)
+    );
     assert_eq!(0.0, plan.unfilled_deficit);
     assert_eq!(None, plan.fallback_reason);
 }
@@ -373,15 +470,50 @@ fn final_uniform_spacing_includes_word_and_sino_western_gaps_once_each() {
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let plan = justify(&clusters, &roles, natural + 2.25 * EM, |_| {});
 
-    let word: Vec<_> = plan.allocations.iter().filter(|allocation| allocation.kind == GlueKind::WordSpace).collect();
-    assert_eq!(vec![2], word.iter().map(|allocation| allocation.target_cluster_index).collect::<Vec<_>>());
+    let word: Vec<_> = plan
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::WordSpace)
+        .collect();
+    assert_eq!(
+        vec![2],
+        word.iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect::<Vec<_>>()
+    );
     assert!((word[0].delta - 0.25 * EM).abs() < 0.001);
-    let sino: Vec<_> = plan.allocations.iter().filter(|allocation| allocation.kind == GlueKind::CjkLatinSpace).collect();
-    assert_eq!(vec![0, 3], sino.iter().map(|allocation| allocation.target_cluster_index).collect::<Vec<_>>());
-    assert!(sino.iter().all(|allocation| (allocation.delta - 0.25 * EM).abs() < 0.001));
-    let uniform: Vec<_> = plan.allocations.iter().filter(|allocation| allocation.kind == GlueKind::CjkInterChar).collect();
-    assert_eq!(vec![0, 3, 4, 2], uniform.iter().map(|allocation| allocation.target_cluster_index).collect::<Vec<_>>());
-    assert!(uniform.iter().all(|allocation| (allocation.delta - 0.375 * EM).abs() < 0.001));
+    let sino: Vec<_> = plan
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::CjkLatinSpace)
+        .collect();
+    assert_eq!(
+        vec![0, 3],
+        sino.iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        sino.iter()
+            .all(|allocation| (allocation.delta - 0.25 * EM).abs() < 0.001)
+    );
+    let uniform: Vec<_> = plan
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
+        .collect();
+    assert_eq!(
+        vec![0, 3, 4, 2],
+        uniform
+            .iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        uniform
+            .iter()
+            .all(|allocation| (allocation.delta - 0.375 * EM).abs() < 0.001)
+    );
     assert_eq!(0.0, plan.unfilled_deficit);
 }
 
@@ -394,15 +526,35 @@ fn western_brackets_touching_cjk_share_tier_three_stretch() {
         cluster(3, 4, ")", 0.5 * EM, "latin"),
         cluster(4, 5, "中", EM, "cjk"),
     ];
-    let roles = vec![FontRole::CjkText, FontRole::LatinText, FontRole::CjkText, FontRole::LatinText, FontRole::CjkText];
+    let roles = vec![
+        FontRole::CjkText,
+        FontRole::LatinText,
+        FontRole::CjkText,
+        FontRole::LatinText,
+        FontRole::CjkText,
+    ];
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let plan = justify(&clusters, &roles, natural + EM, |request| {
-        request.western_bracket_cjk_inter_char_boundary_after_clusters = HashSet::from([0, 1, 2, 3]);
+        request.western_bracket_cjk_inter_char_boundary_after_clusters =
+            HashSet::from([0, 1, 2, 3]);
     });
 
-    let allocations: Vec<_> = plan.allocations.iter().filter(|allocation| allocation.kind == GlueKind::CjkInterChar).collect();
-    assert_eq!(HashSet::from([0, 1, 2, 3]), allocations.iter().map(|allocation| allocation.target_cluster_index).collect::<HashSet<i32>>());
-    assert!(allocations.iter().all(|allocation| allocation.reason == "WesternBracketCjkInterChar" && (allocation.delta - 0.25 * EM).abs() < 0.001));
+    let allocations: Vec<_> = plan
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
+        .collect();
+    assert_eq!(
+        HashSet::from([0, 1, 2, 3]),
+        allocations
+            .iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect::<HashSet<i32>>()
+    );
+    assert!(allocations.iter().all(
+        |allocation| allocation.reason == "WesternBracketCjkInterChar"
+            && (allocation.delta - 0.25 * EM).abs() < 0.001
+    ));
     assert_eq!(0.0, plan.unfilled_deficit);
 }
 
@@ -415,7 +567,13 @@ fn attached_reference_uses_the_virtual_prose_boundary_for_stretching() {
         cluster(4, 5, "]", 0.5 * EM, "latin"),
         cluster(5, 6, "中", EM, "cjk"),
     ];
-    let roles = vec![FontRole::CjkText, FontRole::LatinText, FontRole::LatinText, FontRole::LatinText, FontRole::CjkText];
+    let roles = vec![
+        FontRole::CjkText,
+        FontRole::LatinText,
+        FontRole::LatinText,
+        FontRole::LatinText,
+        FontRole::CjkText,
+    ];
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let middle = justify(&clusters, &roles, natural + EM, |request| {
         request.attached_inline_physical_boundary_after_clusters = HashSet::from([0, 3]);
@@ -424,7 +582,10 @@ fn attached_reference_uses_the_virtual_prose_boundary_for_stretching() {
 
     assert_eq!(1, middle.allocations.len());
     assert_eq!(3, middle.allocations[0].target_cluster_index);
-    assert_eq!("AttachedInlineVirtualInterChar", middle.allocations[0].reason);
+    assert_eq!(
+        "AttachedInlineVirtualInterChar",
+        middle.allocations[0].reason
+    );
     assert_eq!(EM, middle.allocations[0].delta);
 
     let line_end_width: f32 = clusters[..4].iter().map(|cluster| cluster.advance).sum();
@@ -447,8 +608,17 @@ fn virtual_sino_western_stretch_requires_alpha_numeric_boundary_char() {
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let plan = justify(&clusters, &roles, natural + 0.2 * EM, |_| {});
 
-    let sino: Vec<_> = plan.allocations.iter().filter(|allocation| allocation.kind == GlueKind::CjkLatinSpace).collect();
-    assert_eq!(vec![1], sino.iter().map(|allocation| allocation.target_cluster_index).collect::<Vec<_>>());
+    let sino: Vec<_> = plan
+        .allocations
+        .iter()
+        .filter(|allocation| allocation.kind == GlueKind::CjkLatinSpace)
+        .collect();
+    assert_eq!(
+        vec![1],
+        sino.iter()
+            .map(|allocation| allocation.target_cluster_index)
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -462,7 +632,11 @@ fn typed_space_before_slash_led_latin_run_is_not_sino_western_gap() {
     let natural: f32 = clusters.iter().map(|cluster| cluster.advance).sum();
     let plan = justify(&clusters, &roles, natural + 0.2 * EM, |_| {});
 
-    assert!(plan.allocations.iter().all(|allocation| allocation.kind != GlueKind::CjkLatinSpace));
+    assert!(
+        plan.allocations
+            .iter()
+            .all(|allocation| allocation.kind != GlueKind::CjkLatinSpace)
+    );
 }
 
 #[test]
@@ -478,6 +652,10 @@ fn sino_western_stretch_respects_third_em_cap_when_style_sets_it() {
         request.cjk_latin_space_max_em = 1.0 / 3.0;
     });
 
-    let sino = plan.allocations.iter().find(|allocation| allocation.kind == GlueKind::CjkLatinSpace).expect("expected CJK-Latin allocation");
+    let sino = plan
+        .allocations
+        .iter()
+        .find(|allocation| allocation.kind == GlueKind::CjkLatinSpace)
+        .expect("expected CJK-Latin allocation");
     assert!((sino.delta - (1.0 / 3.0 - 0.25) * EM).abs() < 0.001);
 }

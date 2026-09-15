@@ -1,5 +1,6 @@
 use tiqian::common::{HashMap, HashSet};
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
@@ -57,11 +58,11 @@ impl Default for JustificationRequestConfig {
     }
 }
 
-fn c(text: &str, index: i32, advance: f32, font_key: &str) -> Cluster {
+fn c(text: &str, index: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
         text_range(index, index + text.chars().count() as i32),
         Text::from(text),
-        font_key.to_owned(),
+        FontFaceId::with_resource_id(resource_id),
         advance,
     )
 }

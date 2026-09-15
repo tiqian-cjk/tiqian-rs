@@ -15,6 +15,7 @@ mod contextual_quote_role_resolver_nested_coverage_test;
 mod cluster_role_resolution_coverage_test;
 mod emergency_grapheme_tracking_test;
 mod explainable_stub_paragraph_layout_engine_test;
+mod font_backend_test_support;
 mod font_instance_metrics_request_test;
 mod giant_token_scaling_probe_test;
 mod greedy_line_breaker_test;

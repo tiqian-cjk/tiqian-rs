@@ -1,4 +1,5 @@
 use tiqian::common::HashMap;
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range};
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -10,7 +11,7 @@ fn cluster(index: i32) -> Cluster {
     Cluster::new(
         text_range(index, index + 1),
         Text::from("中"),
-        "test".to_owned(),
+        FontFaceId::with_resource_id("test"),
         16.0,
     )
 }

@@ -11,9 +11,9 @@ use tiqian::core::units::Ic;
 use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
-use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper,
-};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 struct TaiwanProfile;
 
@@ -96,39 +96,37 @@ fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     )
 }
 
-struct CenteredInkTextShaper;
-
-impl TextShaper for CenteredInkTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                input.text.slice_text(input.range),
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                16.0,
-            )],
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                vec![Glyph::builder(7, input.range, 16.0)
-                    .bounds(Some(Rect {
-                        left: 9.0,
-                        top: -2.0,
-                        right: 11.0,
-                        bottom: 2.0,
-                    }))
-                    .build()],
-                16.0,
-            )],
-        )
-    }
+fn centered_ink_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        let face = result.face.clone();
+        result.shaping.clusters = vec![Cluster::with_display_text(
+            input.range,
+            input.text.slice_text(input.range),
+            input.display_text.clone(),
+            face.clone(),
+            16.0,
+        )];
+        result.shaping.glyph_runs = vec![GlyphRun::new(
+            input.range,
+            face.clone(),
+            vec![Glyph::builder(7, input.range, 16.0)
+                .render_font_face(Some(face))
+                .bounds(Some(Rect {
+                    left: 9.0,
+                    top: -2.0,
+                    right: 11.0,
+                    bottom: 2.0,
+                }))
+                .build()],
+            16.0,
+        )];
+        result
+    })
 }
 
-struct PushInCenteredCommaTextShaper;
-
-impl TextShaper for PushInCenteredCommaTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
+fn push_in_centered_comma_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+        let face = result.face.clone();
         let clusters: Vec<_> = input
             .display_text
             .chars()
@@ -140,7 +138,7 @@ impl TextShaper for PushInCenteredCommaTextShaper {
                     range,
                     input.text.slice_text(range),
                     Text::from(character.to_string()),
-                    input.font_decision.candidate.key.clone(),
+                    face.clone(),
                     16.0,
                 ))
             })
@@ -150,6 +148,7 @@ impl TextShaper for PushInCenteredCommaTextShaper {
             .enumerate()
             .map(|(index, cluster)| {
                 Glyph::builder(index as u32 + 1, cluster.range, 16.0)
+                    .render_font_face(Some(face.clone()))
                     .bounds(Some(if cluster.display_text == "，" {
                         Rect {
                             left: 5.0,
@@ -168,55 +167,50 @@ impl TextShaper for PushInCenteredCommaTextShaper {
                     .build()
             })
             .collect();
-        ShapingResult::new(
-            clusters,
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                glyphs,
-                input.display_text.chars().count() as f32 * 16.0,
-            )],
-        )
-    }
+        result.shaping.clusters = clusters;
+        result.shaping.glyph_runs = vec![GlyphRun::new(
+            input.range,
+            face,
+            glyphs,
+            input.display_text.chars().count() as f32 * 16.0,
+        )];
+        result
+    })
 }
 
-struct HaltStopTextShaper;
-
-impl TextShaper for HaltStopTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let result = ExplainableStubTextShaper.shape(input);
+fn halt_stop_backend() -> impl tiqian::shaping::font_backend::FontBackend {
+    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
         if input.display_text != "。" {
             return result;
         }
-        ShapingResult::with_decisions(
-            result.clusters,
-            result
-                .glyph_runs
-                .into_iter()
-                .map(|run| {
-                    GlyphRun::new(
-                        run.range,
-                        run.font_key,
-                        run.glyphs
-                            .into_iter()
-                            .map(|glyph| {
-                                Glyph::builder(glyph.id, glyph.cluster_range, glyph.advance)
-                                    .x(glyph.x)
-                                    .y(glyph.y)
-                                    .render_font_key(glyph.render_font_key)
-                                    .bounds(glyph.bounds)
-                                    .halt_advance(Some(7.0))
-                                    .halt_placement_x(Some(0.0))
-                                    .build()
-                            })
-                            .collect(),
-                        run.advance,
-                    )
-                })
-                .collect(),
-            result.decisions,
-        )
-    }
+        let face = result.face.clone();
+        result.shaping.glyph_runs = result
+            .shaping
+            .glyph_runs
+            .into_iter()
+            .map(|run| {
+                GlyphRun::new(
+                    run.range,
+                    run.font_face,
+                    run.glyphs
+                        .into_iter()
+                        .map(|glyph| {
+                            Glyph::builder(glyph.id, glyph.cluster_range, glyph.advance)
+                                .x(glyph.x)
+                                .y(glyph.y)
+                                .render_font_face(Some(face.clone()))
+                                .bounds(glyph.bounds)
+                                .halt_advance(Some(7.0))
+                                .halt_placement_x(Some(0.0))
+                                .build()
+                        })
+                        .collect(),
+                    run.advance,
+                )
+            })
+            .collect();
+        result
+    })
 }
 
 #[test]
@@ -259,7 +253,7 @@ fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
 #[test]
 fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(CenteredInkTextShaper);
+    engine.font_backend = Box::new(centered_ink_backend());
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("。")),
@@ -296,7 +290,7 @@ fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
 #[test]
 fn push_in_keeps_font_centered_punctuation_compression_paired() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(PushInCenteredCommaTextShaper);
+    engine.font_backend = Box::new(push_in_centered_comma_backend());
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文，中文")),
@@ -406,7 +400,7 @@ fn compresses_cjk_closing_before_ascii_point_mark_without_reclassifying_ascii() 
 #[test]
 fn halt_advance_from_shaper_drives_punctuation_body_end_to_end() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(HaltStopTextShaper);
+    engine.font_backend = Box::new(halt_stop_backend());
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文。")), LayoutConstraints::with_defaults(320.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())

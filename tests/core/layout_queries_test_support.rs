@@ -1,3 +1,4 @@
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints, Size, TextRange};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
@@ -45,7 +46,7 @@ pub fn line(
 }
 
 pub fn cluster(range: TextRange, text: &str, advance: f32) -> Cluster {
-    Cluster::new(range, Text::from(text), "test".to_owned(), advance)
+    Cluster::new(range, Text::from(text), FontFaceId::with_resource_id("test"), advance)
 }
 
 pub fn result(
@@ -98,7 +99,7 @@ pub fn metric(range: TextRange, ascent: f32, descent: f32, metric_box: &str) -> 
         range,
         source_text: Text::from("test"),
         role: "test".to_owned(),
-        font_key: "test".to_owned(),
+        font_face: FontFaceId::with_resource_id("test"),
         raw_ascent: ascent,
         raw_descent: descent,
         raw_leading: 0.0,
@@ -151,7 +152,7 @@ pub fn sample_result_with_rich_text(rich_text: Vec<RichTextSpan>) -> LayoutResul
                 text_range(1, 3),
                 Text::from("——"),
                 Text::from("⸺"),
-                "cjk".to_owned(),
+                FontFaceId::with_resource_id("cjk"),
                 20.0,
             ),
             cluster(text_range(3, 4), "乙", 10.0),
@@ -219,8 +220,8 @@ pub fn background_geometry_result_with_rich_text(
         ],
         vec![line(text_range(0, 3), IntRange::new(0, 2), 20.0, 0.0, 30.0, 31.0)],
         vec![
-            GlyphRun::new(text_range(0, 1), "latin".to_owned(), vec![Glyph::builder(1, text_range(0, 1), 10.0).build()], 10.0),
-            GlyphRun::new(text_range(2, 3), "latin".to_owned(), vec![Glyph::builder(2, text_range(2, 3), 10.0).build()], 10.0),
+            GlyphRun::new(text_range(0, 1), FontFaceId::with_resource_id("latin"), vec![Glyph::builder(1, text_range(0, 1), 10.0).build()], 10.0),
+            GlyphRun::new(text_range(2, 3), FontFaceId::with_resource_id("latin"), vec![Glyph::builder(2, text_range(2, 3), 10.0).build()], 10.0),
         ],
         Vec::new(),
         rich_text,
@@ -281,7 +282,7 @@ pub fn ruby_selection_result() -> LayoutResult {
             cluster(text_range(2, 3), "李", 20.0),
         ],
         vec![line(text_range(0, 3), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
-        vec![GlyphRun::new(text_range(0, 3), "cjk".to_owned(), vec![
+        vec![GlyphRun::new(text_range(0, 3), FontFaceId::with_resource_id("cjk"), vec![
             Glyph::builder(1, text_range(0, 1), 20.0).build(),
             Glyph::builder(2, text_range(1, 2), 20.0).build(),
             Glyph::builder(3, text_range(2, 3), 20.0).build(),

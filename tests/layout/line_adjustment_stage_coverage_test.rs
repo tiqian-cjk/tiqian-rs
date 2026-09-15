@@ -12,7 +12,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
-use tiqian::shaping::text_shaper::{ExplainableStubTextShaper, ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str, max_width: f32, hyphenate: bool) -> tiqian::core::layout_model::LayoutResult {
     layout_with_content(text, max_width, hyphenate, Vec::new(), Vec::new())
@@ -49,11 +51,11 @@ fn layout_with_spans(
     text: &str,
     max_width: f32,
     line_break_spans: Vec<LineBreakSpan>,
-    text_shaper: Option<Box<dyn TextShaper>>,
+    font_backend: Option<Box<dyn FontBackend>>,
 ) -> tiqian::core::layout_model::LayoutResult {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    if let Some(text_shaper) = text_shaper {
-        engine.text_shaper = text_shaper;
+    if let Some(font_backend) = font_backend {
+        engine.font_backend = font_backend;
     }
     engine.layout(
         LayoutInput::builder(
@@ -232,29 +234,22 @@ fn attached_object_mark_hangs_instead_of_leaving_the_separator_at_an_edge() {
     assert!(result.debug.line_edge_trim_decisions.iter().all(|decision| decision.reason != "LineEdgeWordSpaceCollapse"), "{:?}", result.debug.line_edge_trim_decisions);
 }
 
-struct ZeroSpaceTextShaper;
-
-impl TextShaper for ZeroSpaceTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let shaped = ExplainableStubTextShaper.shape(input);
-        ShapingResult::with_decisions(
-            shaped.clusters.into_iter().map(|cluster| {
-                (cluster.text.chars().all(|character| character == ' ')).then_some(())
-                    .map_or(cluster.clone(), |_| tiqian::core::layout_model::Cluster { advance: 0.0, ..cluster })
-            }).collect(),
-            shaped.glyph_runs,
-            shaped.decisions,
-        )
-    }
-}
-
 #[test]
 fn zero_advance_edge_space_is_never_collapsed() {
     let result = layout_with_spans(
         "中中中中 aaa bbb",
         114.0,
         Vec::new(),
-        Some(Box::new(ZeroSpaceTextShaper)),
+        Some(Box::new(stub_backend_with_transform(
+            |_: &FontBackendRequest, mut result: FontBackendShapingResult| {
+                for cluster in &mut result.shaping.clusters {
+                    if cluster.text.chars().all(|character| character == ' ') {
+                        cluster.advance = 0.0;
+                    }
+                }
+                result
+            },
+        ))),
     );
     let first = &result.lines[0];
     let edge = &result.clusters[first.cluster_range.last() as usize];
@@ -412,37 +407,29 @@ fn hyphen_squeeze_consumes_paired_leading_and_trailing_glue_under_taiwan_profile
     assert!(comma.advance < 16.0, "{}", comma.advance);
 }
 
-struct DashInkBoundsTextShaper {
-    left: f32,
-    right: f32,
-}
-
-impl TextShaper for DashInkBoundsTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let shaped = ExplainableStubTextShaper.shape(input);
-        ShapingResult::with_decisions(
-            shaped.clusters,
-            shaped.glyph_runs.into_iter().map(|run| tiqian::core::layout_model::GlyphRun {
-                glyphs: run.glyphs.into_iter().map(|glyph| {
-                    input.display_text.as_str().contains('⸺').then(|| tiqian::core::layout_model::Glyph {
-                        bounds: Some(tiqian::core::geometry::Rect {
-                            left: self.left,
-                            top: 0.0,
-                            right: self.right,
-                            bottom: 16.0,
-                        }),
-                        ..glyph.clone()
-                    }).unwrap_or(glyph)
-                }).collect(),
-                ..run
-            }).collect(),
-            shaped.decisions,
-        )
-    }
-}
-
 fn layout_with_dash_ink_bounds(left: f32, right: f32) -> tiqian::core::layout_model::LayoutResult {
-    layout_with_spans("中——中", 200.0, Vec::new(), Some(Box::new(DashInkBoundsTextShaper { left, right })))
+    layout_with_spans(
+        "中——中",
+        200.0,
+        Vec::new(),
+        Some(Box::new(stub_backend_with_transform(
+            move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+                for run in &mut result.shaping.glyph_runs {
+                    for glyph in &mut run.glyphs {
+                        if input.display_text.as_str().contains('⸺') {
+                            glyph.bounds = Some(tiqian::core::geometry::Rect {
+                                left,
+                                top: 0.0,
+                                right,
+                                bottom: 16.0,
+                            });
+                        }
+                    }
+                }
+                result
+            },
+        ))),
+    )
 }
 
 #[test]

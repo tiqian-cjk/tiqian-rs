@@ -1,5 +1,6 @@
 use tiqian::common::{HashMap, HashSet};
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
@@ -54,7 +55,7 @@ fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
         text_range(index, index + text.chars().count() as i32),
         Text::from(text),
-        "k".to_owned(),
+        FontFaceId::with_resource_id("k"),
         advance,
     )
 }

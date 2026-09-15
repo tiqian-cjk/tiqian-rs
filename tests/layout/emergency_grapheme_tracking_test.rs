@@ -1,5 +1,5 @@
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, TextRange};
-use tiqian::core::layout_model::{Cluster, LineEndReason};
+use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineObjectSpan, LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle,
@@ -10,7 +10,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
-use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 fn no_indent_style() -> ParagraphStyle {
     ParagraphStyle::builder()
@@ -54,30 +56,33 @@ fn rejected_letter_digit_structural_offsets_remain_emergency_cuts() {
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
 }
 
-struct UniformAdvanceTextShaper;
-
-impl TextShaper for UniformAdvanceTextShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let source = input.text.slice_text(input.range);
-        let advance = source.scalar_len().value() as f32 * 10.0;
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                source,
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                advance,
-            )],
-            Vec::new(),
-        )
-    }
-}
-
 #[test]
 fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
     let text = "Machine2Machine";
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(UniformAdvanceTextShaper);
+    engine.font_backend = Box::new(stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let source = input.text.slice_text(input.range);
+            let advance = source.scalar_len().value() as f32 * 10.0;
+            let face = result.face.clone();
+            result.shaping.clusters = vec![Cluster::with_display_text(
+                input.range,
+                source,
+                input.display_text.clone(),
+                face.clone(),
+                advance,
+            )];
+            result.shaping.glyph_runs = vec![GlyphRun::new(
+                input.range,
+                face.clone(),
+                vec![Glyph::builder(0, input.range, advance)
+                    .render_font_face(Some(face))
+                    .build()],
+                advance,
+            )];
+            result
+        },
+    ));
     engine.hyphenator = english_hyphenation::en_us();
     let result = engine.layout(
         LayoutInput::builder(

@@ -27,9 +27,21 @@ cluster 17-21 'Font' adv=64.0
 cluster 21-22 '？' adv=8.0
 font 0-2 role=LatinText key=latin-primary display='A.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 3-4 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-14 role=LatinText key=latin-primary display='.Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-14 role=LatinText key=latin-primary display='Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='p' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='Aa' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-21 role=LatinText key=latin-primary display='AaFont' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-21 role=LatinText key=latin-primary display='Font' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 21-22 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 punct 14-15 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 21-22 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
@@ -65,9 +77,21 @@ cluster 17-21 'Font' adv=64.0
 cluster 21-22 '？' adv=8.0
 font 0-2 role=LatinText key=latin-primary display='A.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 3-4 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-14 role=LatinText key=latin-primary display='.Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-14 role=LatinText key=latin-primary display='Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='p' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='Aa' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-21 role=LatinText key=latin-primary display='AaFont' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-21 role=LatinText key=latin-primary display='Font' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 21-22 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 punct 14-15 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 21-22 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
@@ -103,9 +127,21 @@ cluster 17-21 'Font' adv=64.0
 cluster 21-22 '？' adv=8.0
 font 0-2 role=LatinText key=latin-primary display='A.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 3-4 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=LatinText key=latin-primary display='.' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 5-14 role=LatinText key=latin-primary display='.Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=LatinText key=latin-primary display='C' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-14 role=LatinText key=latin-primary display='Complete' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 8-9 role=LatinText key=latin-primary display='m' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='p' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 13-14 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 14-15 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 15-17 role=LatinText key=latin-primary display='Aa' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 15-21 role=LatinText key=latin-primary display='AaFont' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-21 role=LatinText key=latin-primary display='Font' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 21-22 role=CjkPunctuation key=cjk-primary display='？' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 punct 14-15 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 21-22 '？' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds

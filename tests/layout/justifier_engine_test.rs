@@ -12,7 +12,9 @@ use tiqian::layout::paragraph_layout_engine::{
     ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
 };
 use tiqian::linebreak::hyphenation::NoHyphenator;
-use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, TextShaper};
+use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use super::font_backend_test_support::stub_backend_with_transform;
 
 struct PushOutOnlyProfile;
 
@@ -62,38 +64,6 @@ fn exact_measure_style() -> ParagraphStyle {
         .first_line_indent(Some(Ic::ZERO))
         .line_length_grid(LineLengthGrid::with_enabled(false))
         .build()
-}
-
-struct PositionedPairShaper;
-
-impl TextShaper for PositionedPairShaper {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let text = input.text.slice_text(input.range);
-        let advance = if text == "AV" { 10.0 } else { text.scalar_len().value() as f32 * 16.0 };
-        let glyphs = if text == "AV" {
-            vec![
-                Glyph::builder(1, input.range, 5.0).x(0.0).build(),
-                Glyph::builder(2, input.range, 5.0).x(5.0).build(),
-            ]
-        } else {
-            vec![Glyph::builder(3, input.range, advance).x(0.0).build()]
-        };
-        ShapingResult::new(
-            vec![Cluster::with_display_text(
-                input.range,
-                text,
-                input.display_text.clone(),
-                input.font_decision.candidate.key.clone(),
-                advance,
-            )],
-            vec![GlyphRun::new(
-                input.range,
-                input.font_decision.candidate.key.clone(),
-                glyphs,
-                advance,
-            )],
-        )
-    }
 }
 
 #[test]
@@ -427,7 +397,46 @@ fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
 #[test]
 fn latin_glyph_positions_survive_autospace_and_justification() {
     let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.text_shaper = Box::new(PositionedPairShaper);
+    engine.font_backend = Box::new(stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let text = input.text.slice_text(input.range);
+            let advance = if text == "AV" { 10.0 } else { text.scalar_len().value() as f32 * 16.0 };
+            let face = result.face.clone();
+            let glyphs = if text == "AV" {
+                vec![
+                    Glyph::builder(1, input.range, 5.0)
+                        .render_font_face(Some(face.clone()))
+                        .x(0.0)
+                        .build(),
+                    Glyph::builder(2, input.range, 5.0)
+                        .render_font_face(Some(face.clone()))
+                        .x(5.0)
+                        .build(),
+                ]
+            } else {
+                vec![
+                    Glyph::builder(3, input.range, advance)
+                        .render_font_face(Some(face.clone()))
+                        .x(0.0)
+                        .build(),
+                ]
+            };
+            result.shaping.clusters = vec![Cluster::with_display_text(
+                input.range,
+                text,
+                input.display_text.clone(),
+                face.clone(),
+                advance,
+            )];
+            result.shaping.glyph_runs = vec![GlyphRun::new(
+                input.range,
+                face,
+                glyphs,
+                advance,
+            )];
+            result
+        },
+    ));
     engine.hyphenator = &NoHyphenator;
     engine.clreq_profile_resolver = Box::new(PushOutOnlyProfile);
     let result = engine.layout(
