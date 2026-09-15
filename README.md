@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-示例中的 `ExplainableStubParagraphLayoutEngine` 使用确定性的 stub shaping 和字体度量，适合快速试用、测试和排版行为验证。接入平台字体时，需要实现并注入 `FallbackResolver`、`FontMetricsResolver` 和 `TextShaper`；`examples/paragraph-demo.rs` 展示了使用 HarfRust、SkRifa 和 Vello 的桌面接入路径。
+示例中的 `ExplainableStubParagraphLayoutEngine` 使用确定性的 stub shaping 和字体度量，适合快速试用、测试和排版行为验证。接入平台字体时，需要实现并注入 `FontBackend`；它在同一个 backend 中完成字体选择、shaping 和 metrics 查询，`examples/paragraph-demo.rs` 展示了使用 HarfRust、SkRifa 和 Vello 的桌面接入路径。
 
 `LayoutResult` 包含行、cluster、glyph replay 数据、注音和装饰几何，以及结构化的布局决策。宿主应用可以据此绘制字形、背景和装饰，也可以使用布局查询实现选择、复制和命中测试。测量与绘制应使用同一字体后端，避免重新 shaping 造成几何差异。
 

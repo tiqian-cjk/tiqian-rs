@@ -114,15 +114,15 @@ use tiqian::layout::paragraph_layout_engine::{
 
 ### 3. 平台字体与 shaping 集成
 
-桌面 demo 的 [`DemoFontCatalog`](../examples/paragraph_demo/font_backend.rs) 是当前最能说明集成成本的实例。它同时实现了三个互相独立的 trait：
+桌面 demo 的 [`DemoFontCatalog`](../examples/paragraph_demo/font_backend.rs) 是当前最能说明集成成本的实例。迁移前它同时实现了三个互相独立的 trait：
 
 | trait | 引擎向它提出的问题 | demo 的实现 | 输出被谁消费 |
 | --- | --- | --- | --- |
 | `FallbackResolver` | 某段文本、role、family 偏好应选择哪个字体候选 | 按 role 返回受控的 CJK/Latin/Emoji face | shaping 与 font decision debug |
-| `FontMetricsResolver` | 某 face/style 的 ascent、descent、leading 是什么 | 读取 SFNT `hhea`/`OS/2` 表 | 行盒、baseline、富文本背景 |
+| `FontBackend::metrics` | 已由 `FontBackend::shape` 选定的 face/style 的 ascent、descent、leading 是什么 | 读取该 `FontFaceId` 对应的 SFNT `hhea`/`OS/2` 表 | 行盒、baseline、富文本背景 |
 | `TextShaper` | 指定 range/style/font decision 如何变成 cluster 与 glyph run | HarfRust shaping，记录 glyph id、advance、bounds、render key | line breaking、最终 replay、debug |
 
-引擎安装方式如下，三次赋值不可省略：
+迁移前引擎安装方式如下，三次赋值不可省略：
 
 ```rust
 let mut engine = ExplainableStubParagraphLayoutEngine::default();
@@ -131,7 +131,7 @@ engine.font_metrics_resolver = Box::new(catalog.clone());
 engine.text_shaper = Box::new(catalog);
 ```
 
-这保证了一次 layout 中的字体选择、测量和绘制使用同一 catalog，但这个一致性目前没有被类型系统表达。`ReplayableFontCatalog` 已定义了稳定 face identity、capability report 和 resolve 约定，却没有被 `ParagraphLayoutEngine` 或上述三个 trait 直接组合使用；它是有价值的方向性接口，但尚未构成实际接入路径。
+这保证了一次 layout 中的字体选择、测量和绘制使用同一 catalog，但这个一致性目前没有被类型系统表达。统一 backend 迁移后，普通引擎只注入一个 `FontBackend`；每次段落 shaping request 独立完成候选选择和完整 shaping，并以 request range 记录 `FontResolution`。`ReplayableFontCatalog` 由 backend 继承，用于保证最终 face 可被 metrics 和 glyph replay 共同解析。
 
 ### 4. 布局结果、绘制数据与诊断
 
@@ -178,12 +178,8 @@ flowchart TD
     B --> C[DemoDocument]
     C --> D[TiqianTextContent<br/>TextSpan / source_boundaries]
     C --> E[LayoutInput<br/>TextStyle / ParagraphStyle / Ruby / Decoration]
-    F[DemoFontCatalog] --> G[FallbackResolver]
-    F --> H[FontMetricsResolver]
-    F --> I[TextShaper]
+    F[DemoFontBackend] --> G[FontBackend]
     G --> J[ExplainableStubParagraphLayoutEngine]
-    H --> J
-    I --> J
     E --> J
     J --> K[输入校验]
     K --> L[宽度无关注释与 shaping]
@@ -319,7 +315,7 @@ flowchart TB
 | 结构化而非字符串化的 debug | `LayoutDebugInfo` 的 decision struct | golden 比对和问题定位可重复、可机器读取 |
 | 范围精确的交互查询 | selection/caret/copy/word boundary API | emoji、组合附加符、inline object 等文本边界不能退化 |
 | profile 驱动 CLREQ 规则 | `ClreqProfileResolver`、profile 数据模型 | 区域/风格变体不应要求 fork 核心算法 |
-| 平台字体后端可插拔 | 三个 trait 和 desktop demo | crate 不绑定某个图形/UI 框架，仍能正确接入平台字体 |
+| 平台字体后端可插拔 | `FontBackend` 和 desktop demo | crate 不绑定某个图形/UI 框架，仍能正确接入平台字体 |
 
 ## 现状下的最小集成清单
 
@@ -328,7 +324,7 @@ flowchart TB
 1. 使用 `api::ParagraphBuilder` 追加文本并声明范围，读取其生成的 `LayoutInput`、颜色和 rich text。
 2. 手工构造 `TiqianTextContent` 时，将宿主文本位置转换为 Unicode scalar offset，构造 `TextRange`，并维护精确几何范围的 `source_boundaries`。
 3. 用 `LayoutInput` 提供基础样式、段落样式、constraints、注音、装饰和行内对象。
-4. 实现 `FallbackResolver`、`FontMetricsResolver`、`TextShaper`，并保证三者使用同一字体 catalog/face identity。
+4. 实现一个 `FontBackend`，由它统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
 5. 从 `LayoutResult` 读取 glyph、line、查询结果以及当前位于 `debug` 中的 annotation geometry，完成 renderer、裁切和交互。
 
 这一清单本身就是当前对外 API 尚未收敛的证据：它适合作为平台 adapter 的实现指南，但对一般应用调用方过于深入。

@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The `ExplainableStubParagraphLayoutEngine` in this example uses deterministic stub shaping and font metrics. It is suitable for quick experiments, tests, and layout behavior validation. To connect platform fonts, implement and inject `FallbackResolver`, `FontMetricsResolver`, and `TextShaper`. The desktop integration path in `examples/paragraph-demo.rs` uses HarfRust, SkRifa, and Vello.
+The `ExplainableStubParagraphLayoutEngine` in this example uses deterministic stub shaping and font metrics. It is suitable for quick experiments, tests, and layout behavior validation. To connect platform fonts, implement and inject `FontBackend`; the backend performs font selection, shaping, and metrics lookup as one contract. The desktop integration path in `examples/paragraph-demo.rs` uses HarfRust, SkRifa, and Vello.
 
 `LayoutResult` contains lines, clusters, glyph replay data, ruby and decoration geometry, and structured layout decisions. A host application can use it to draw glyphs, backgrounds, and decorations, as well as to implement selection, copying, and hit testing through the layout queries. Measurement and drawing should use the same font backend to avoid geometry differences caused by reshaping.
 
