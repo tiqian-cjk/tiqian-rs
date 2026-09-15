@@ -190,9 +190,7 @@ fn main() -> Result<(), String> {
     if options.strategy == "lookahead" {
         engine.line_breaker = Box::new(LookaheadLineBreaker::default());
     }
-    engine.fallback_resolver = Box::new(catalog.clone());
-    engine.font_metrics_resolver = Box::new(catalog.clone());
-    engine.text_shaper = Box::new(catalog);
+    engine.font_backend = Box::new(catalog);
     println!("font/engine setup: {:.3} ms", start.elapsed().as_secs_f64() * 1000.0);
     println!("widths={:?} scale={} strategy={} warmup={} iterations={} profile={} arch={}",
         options.widths, options.scale, options.strategy, options.warmup, options.iterations,

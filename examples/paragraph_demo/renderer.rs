@@ -70,7 +70,7 @@ impl<'a> DemoRenderer<'a> {
                     self.catalog.paint_glyph(
                         scene,
                         self.transform(),
-                        glyph.render_font_key.as_deref().ok_or_else(|| {
+                        glyph.render_font_face.as_ref().ok_or_else(|| {
                             format!(
                                 "glyph {:?} has no render font identity",
                                 glyph.cluster_range
@@ -91,7 +91,7 @@ impl<'a> DemoRenderer<'a> {
                     self.catalog.paint_glyph(
                         scene,
                         self.transform(),
-                        glyph.render_font_key.as_deref().ok_or_else(|| {
+                        glyph.render_font_face.as_ref().ok_or_else(|| {
                             format!(
                                 "line-end hyphen {:?} has no render font identity",
                                 glyph.cluster_range
@@ -170,7 +170,7 @@ impl<'a> DemoRenderer<'a> {
         self.catalog.paint_glyph(
             scene,
             self.transform(),
-            glyph.render_font_key.as_deref().ok_or_else(|| {
+            glyph.render_font_face.as_ref().ok_or_else(|| {
                 format!(
                     "annotation glyph {:?} has no render font identity",
                     glyph.cluster_range
@@ -885,9 +885,7 @@ mod tests {
     fn body_replay_uses_positioned_layout_glyphs() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文 English")),
@@ -918,9 +916,7 @@ mod tests {
     fn annotation_replay_uses_ruby_and_bopomofo_layout_decisions() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文")),
@@ -962,7 +958,7 @@ mod tests {
                 .ruby_decisions
                 .iter()
                 .flat_map(|decision| &decision.glyphs)
-                .all(|glyph| glyph.render_font_key.is_some())
+                .all(|glyph| glyph.render_font_face.is_some())
         );
         assert!(
             result
@@ -971,7 +967,7 @@ mod tests {
                 .iter()
                 .flat_map(|decision| &decision.placements)
                 .flat_map(|placement| &placement.glyphs)
-                .all(|glyph| glyph.render_font_key.is_some())
+                .all(|glyph| glyph.render_font_face.is_some())
         );
         let ruby = result.debug.ruby_decisions.first().unwrap();
         let mut cluster_pen_x = 0.0;
@@ -1033,9 +1029,7 @@ mod tests {
     fn body_replay_includes_shape_once_line_end_hyphens() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let mut result = (32..=112)
             .step_by(4)
             .map(|width| {
@@ -1089,9 +1083,7 @@ mod tests {
     fn rich_text_and_decoration_replay_consume_core_geometry() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文书名")),

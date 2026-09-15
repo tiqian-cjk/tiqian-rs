@@ -174,9 +174,7 @@ fn layout_paint_overhang(
 impl DesktopParagraphDemo {
     pub fn new(catalog: DemoFontCatalog) -> Self {
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         Self {
             catalog,
             engine,
@@ -692,7 +690,7 @@ mod tests {
                 .iter()
                 .flat_map(|run| &run.glyphs)
                 .chain(result.lines.iter().flat_map(|line| &line.hyphen_glyphs))
-                .all(|glyph| glyph.render_font_key.is_some())
+                .all(|glyph| glyph.render_font_face.is_some())
         );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(catalog, 1.0);
@@ -719,9 +717,7 @@ mod tests {
     fn width_round_trip_restores_the_same_layout() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let wide_document = build_document(640.0, 1.0);
         let narrow_document = build_document(240.0, 1.0);
         let restored_document = build_document(640.0, 1.0);
@@ -752,9 +748,7 @@ mod tests {
     fn demo_blocks_are_all_layout_and_replayable() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog.clone());
+        engine.font_backend = Box::new(catalog.clone());
         let document = build_document_demo(640.0, 1.0);
         for block in document.blocks {
             match block {
@@ -786,24 +780,22 @@ mod tests {
     fn formal_sample_uses_span_selected_font_faces() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog);
+        engine.font_backend = Box::new(catalog);
         let document = build_document_demo(640.0, 1.0);
         let mut expected_faces = vec![
-            ("黑体", 0, "demo-cjk@wght=400"),
-            ("宋体", 0, "demo-serif@wght=400"),
-            ("sans-serif", 0, "demo-latin@wght=400"),
-            ("serif", 1, "demo-serif@wght=400"),
-            ("monospace", 0, "demo-monospace@wght=400"),
-            ("editorial-notes.md", 0, "demo-monospace@wght=400"),
-            ("👩🏽‍💻", 0, "demo-emoji@wght=400"),
-            ("👨‍👩‍👧‍👦", 0, "demo-emoji@wght=400"),
-            ("🇨🇳", 0, "demo-emoji@wght=400"),
-            ("1️⃣", 0, "demo-emoji@wght=400"),
-            ("✈️", 0, "demo-emoji@wght=400"),
-            ("office affinity waffle", 0, "demo-garamond@wght=400"),
-            ("-> <= := != === //", 0, "demo-monospace@wght=400"),
+            ("黑体", 0, "demo-cjk"),
+            ("宋体", 0, "demo-serif"),
+            ("sans-serif", 0, "demo-latin"),
+            ("serif", 1, "demo-serif"),
+            ("monospace", 0, "demo-monospace"),
+            ("editorial-notes.md", 0, "demo-monospace"),
+            ("👩🏽‍💻", 0, "demo-emoji"),
+            ("👨‍👩‍👧‍👦", 0, "demo-emoji"),
+            ("🇨🇳", 0, "demo-emoji"),
+            ("1️⃣", 0, "demo-emoji"),
+            ("✈️", 0, "demo-emoji"),
+            ("office affinity waffle", 0, "demo-garamond"),
+            ("-> <= := != === //", 0, "demo-monospace"),
         ];
 
         for block in document.blocks {
@@ -844,7 +836,10 @@ mod tests {
                         .collect();
                     let matches_expected_face = !decisions.is_empty()
                         && decisions.iter().all(|decision| {
-                            decision.resolved_face.as_deref() == Some(*expected_face)
+                            decision
+                                .font_face
+                                .as_ref()
+                                .is_some_and(|face| face.resource_id() == *expected_face)
                         });
                     !matches_expected_face
                 });
@@ -908,9 +903,7 @@ mod tests {
     fn default_window_sample_exhibits_hanging_punctuation_and_hyphenation() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog);
+        engine.font_backend = Box::new(catalog);
         let document = build_document_demo(672.0, 1.0);
         let mut hanging_was_seen = false;
         let mut hyphenation_was_seen = false;
@@ -978,9 +971,7 @@ mod tests {
     fn narrow_demo_word_uses_hyphens_at_multiple_line_ends() {
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog);
+        engine.font_backend = Box::new(catalog);
         let document = build_document_demo(672.0, 1.0);
         let mut input = document
             .blocks

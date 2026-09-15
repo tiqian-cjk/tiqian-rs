@@ -1,6 +1,7 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
+use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -45,15 +46,17 @@ impl Options {
                 }
                 "--warmup" => options.warmup = value.parse().map_err(|_| "invalid warmup")?,
                 "--calls-per-sample" => {
-                    options.calls_per_sample = value
-                        .parse()
-                        .map_err(|_| "invalid calls-per-sample")?
+                    options.calls_per_sample =
+                        value.parse().map_err(|_| "invalid calls-per-sample")?
                 }
                 _ => unreachable!(),
             }
         }
         if options.length < 65 || options.iterations == 0 || options.calls_per_sample == 0 {
-            return Err("length must be at least 65; iterations and calls-per-sample must be positive".to_owned());
+            return Err(
+                "length must be at least 65; iterations and calls-per-sample must be positive"
+                    .to_owned(),
+            );
         }
         Ok(Some(options))
     }
@@ -71,7 +74,7 @@ impl Fixture {
                 Cluster::new(
                     text_range(index as i32, index as i32 + 1),
                     Text::from("中"),
-                    "benchmark".to_owned(),
+                    FontFaceId::with_resource_id("benchmark"),
                     1.0,
                 )
             })

@@ -1,17 +1,22 @@
-use tiqian::common::HashMap;
+use tiqian::common::{HashMap, HashSet};
 
 use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, UnicodeBuffer};
 use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
+use tiqian::core::font_face::{FontFaceId, FontVariationInstance, FontVariationSetting};
 use tiqian::core::geometry::{Rect, ScalarOffset, TextRange};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::text::Text;
-use tiqian::font::font_metrics::{FontMetricSource, FontMetricsRequest, FontMetricsResolver};
-use tiqian::font::font_policy::{
-    FallbackResolver, FontCandidate, FontDecision, FontRequest, FontRole, RawFontMetrics,
+use tiqian::font::font_metrics::{FontMetricSource, FontMetricsRequest};
+use tiqian::font::font_policy::{FontRole, RawFontMetrics};
+use tiqian::shaping::font_backend::{
+    FontBackend, FontBackendRequest, FontBackendShapingResult, FontCandidateAttempt,
 };
-use tiqian::shaping::text_shaper::{ShapingInput, ShapingResult, ShapingSource, TextShaper};
+use tiqian::shaping::replayable_font_backend::{
+    FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
+};
+use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
 use vello::kurbo::Affine;
 use vello::peniko::color::{AlphaColor, Srgb};
 use vello::peniko::{Blob, Fill, FontData};
@@ -35,6 +40,8 @@ const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/NotoColorE
 #[derive(Clone)]
 pub struct DemoFontCatalog {
     faces: HashMap<&'static str, DemoFontFace>,
+    descriptors: Vec<ReplayableFontFaceDescriptor>,
+    capability_report: FontBackendCapabilityReport,
 }
 
 #[derive(Clone)]
@@ -75,15 +82,27 @@ impl DemoFontCatalog {
         )?;
         let garamond = DemoFontFace::load(GARAMOND_FONT_KEY, "EB Garamond", GARAMOND_FONT_BYTES)?;
         let emoji = DemoFontFace::load(EMOJI_FONT_KEY, "Noto Color Emoji", EMOJI_FONT_BYTES)?;
-        Ok(Self {
-            faces: HashMap::from([
+        let faces = HashMap::from([
                 (CJK_FONT_KEY, cjk),
                 (LATIN_FONT_KEY, latin),
                 (SERIF_FONT_KEY, serif),
                 (MONOSPACE_FONT_KEY, monospace),
                 (GARAMOND_FONT_KEY, garamond),
                 (EMOJI_FONT_KEY, emoji),
-            ]),
+            ]);
+        let descriptors: Vec<_> = faces
+            .values()
+            .map(DemoFontFace::descriptor)
+            .collect();
+        let capability_report = FontBackendCapabilityReport::new(
+            "ParagraphDemoHarfRustFontBackend".to_owned(),
+            "controlled-font-bytes".to_owned(),
+            descriptors.clone(),
+        );
+        Ok(Self {
+            faces,
+            descriptors,
+            capability_report,
         })
     }
 
@@ -114,47 +133,64 @@ impl DemoFontCatalog {
         })
     }
 
-    fn face_for_style(&self, role: FontRole, font_families: &[String]) -> &DemoFontFace {
-        if role == FontRole::Emoji {
-            return self.face_for_key(EMOJI_FONT_KEY);
+    fn candidate_faces(&self, request: &FontBackendRequest) -> Vec<&DemoFontFace> {
+        if request.role == FontRole::Emoji {
+            return vec![self.face_for_key(EMOJI_FONT_KEY)];
         }
-        let key = font_families
-            .iter()
-            .find_map(|family| match family.as_str() {
-                "Source Han Sans SC" if role != FontRole::LatinText => Some(CJK_FONT_KEY),
-                "Inter" => Some(LATIN_FONT_KEY),
-                "serif" | "Source Han Serif CN" => Some(SERIF_FONT_KEY),
-                "monospace" | "FiraCode Nerd Font" => Some(MONOSPACE_FONT_KEY),
-                "EB Garamond" => Some(GARAMOND_FONT_KEY),
+        let mut keys = Vec::new();
+        for family in &request.style.font_families {
+            let key = match family.as_str() {
+                "Source Han Sans SC" if request.role != FontRole::LatinText => Some(CJK_FONT_KEY),
+                "Inter" | "serif" | "Source Han Serif CN" | "monospace" | "FiraCode Nerd Font"
+                | "EB Garamond" => self.face_key_for_family(family),
                 "emoji" | "Noto Color Emoji" => Some(EMOJI_FONT_KEY),
                 _ => None,
-            });
-        key.map(|key| self.face_for_key(key))
-            .unwrap_or_else(|| self.role_default_face(role))
+            };
+            if let Some(key) = key
+                && !keys.contains(&key)
+            {
+                keys.push(key);
+            }
+        }
+        let default = self.role_default_face(request.role).key;
+        if !keys.contains(&default) {
+            keys.push(default);
+        }
+        keys.into_iter().map(|key| self.face_for_key(key)).collect()
     }
 
-    fn resolved_font_key(face: &DemoFontFace, weight: f32) -> String {
-        format!("{}@wght={weight}", face.key)
+    fn face_key_for_family(&self, family: &str) -> Option<&'static str> {
+        match family {
+            "Inter" => Some(LATIN_FONT_KEY),
+            "serif" | "Source Han Serif CN" => Some(SERIF_FONT_KEY),
+            "monospace" | "FiraCode Nerd Font" => Some(MONOSPACE_FONT_KEY),
+            "EB Garamond" => Some(GARAMOND_FONT_KEY),
+            _ => None,
+        }
+    }
+
+    fn face_for_id(&self, id: &FontFaceId) -> &DemoFontFace {
+        assert_eq!(
+            id.collection_index(),
+            0,
+            "paragraph-demo does not contain font collections"
+        );
+        self.face_for_key(id.resource_id())
     }
 
     pub fn paint_glyph(
         &self,
         scene: &mut Scene,
         transform: Affine,
-        render_font_key: &str,
+        render_font_face: &FontFaceId,
         glyph_id: u32,
         font_size: f32,
         origin_x: f32,
         origin_y: f32,
         color: AlphaColor<Srgb>,
     ) -> Result<(), String> {
-        let (key, weight) = render_font_key
-            .split_once("@wght=")
-            .ok_or_else(|| format!("invalid paragraph-demo render font key: {render_font_key}"))?;
-        let weight = weight
-            .parse::<f32>()
-            .map_err(|_| format!("invalid paragraph-demo render weight: {render_font_key}"))?;
-        let face = self.face_for_key(key);
+        let face = self.face_for_id(render_font_face);
+        let weight = face.weight_from_id(render_font_face)?;
         let font = SkrifaFontRef::new(face.bytes)
             .map_err(|_| format!("font decode failed during glyph replay: {}", face.family))?;
         let location = match face.weight_axis {
@@ -169,10 +205,7 @@ impl DemoFontCatalog {
             }
             None if weight == 400.0 => font.axes().location(Vec::<(&str, f32)>::new()),
             None => {
-                return Err(format!(
-                    "font {} cannot replay non-regular render key {render_font_key}",
-                    face.family
-                ));
+                return Err(format!("font {} cannot replay non-regular face {render_font_face}", face.family));
             }
         };
         let normalized_coords: Vec<vello::NormalizedCoord> = location
@@ -234,7 +267,49 @@ impl DemoFontFace {
         }
     }
 
-    fn shape(&self, input: &ShapingInput, features: &[String]) -> RawShaping {
+    fn face_id(&self, weight: f32) -> FontFaceId {
+        let variation_instance = self.weight_axis.map_or_else(
+            FontVariationInstance::default,
+            |_| FontVariationInstance::new(vec![FontVariationSetting::new("wght".to_owned(), weight)]),
+        );
+        FontFaceId::new(self.key.to_owned(), 0, variation_instance)
+    }
+
+    fn weight_from_id(&self, id: &FontFaceId) -> Result<f32, String> {
+        let settings = id.variation_instance().settings();
+        match self.weight_axis {
+            Some(_) if settings.len() == 1 && settings[0].tag() == "wght" => {
+                self.weight_for(settings[0].value() as i32)
+            }
+            Some(_) => Err(format!("font {} requires one wght variation setting", self.family)),
+            None if settings.is_empty() => Ok(400.0),
+            None => Err(format!("font {} has no variation axes", self.family)),
+        }
+    }
+
+    fn descriptor(&self) -> ReplayableFontFaceDescriptor {
+        let roles = match self.key {
+            CJK_FONT_KEY => HashSet::from([
+                FontRole::CjkText,
+                FontRole::CjkPunctuation,
+                FontRole::Symbol,
+                FontRole::Unknown,
+            ]),
+            LATIN_FONT_KEY | SERIF_FONT_KEY | MONOSPACE_FONT_KEY | GARAMOND_FONT_KEY => {
+                HashSet::from([FontRole::LatinText])
+            }
+            EMOJI_FONT_KEY => HashSet::from([FontRole::Emoji]),
+            _ => unreachable!("paragraph-demo contains only controlled faces"),
+        };
+        ReplayableFontFaceDescriptor::new(
+            self.face_id(400.0),
+            HashSet::from([self.family.to_owned(), self.key.to_owned()]),
+            roles,
+            self.key.to_owned(),
+        )
+    }
+
+    fn shape(&self, input: &FontBackendRequest, features: &[String]) -> RawShaping {
         let weight = self
             .weight_for(input.style.font_weight)
             .unwrap_or_else(|error| panic!("paragraph-demo shaping failed: {error}"));
@@ -259,7 +334,7 @@ impl DemoFontFace {
         buffer.push_str(input.display_text.as_str());
         buffer.guess_segment_properties();
         buffer.set_direction(Direction::LeftToRight);
-        if input.font_decision.role == FontRole::CjkPunctuation {
+        if input.role == FontRole::CjkPunctuation {
             buffer.set_script(harfrust::script::HAN);
         }
         buffer.set_language(
@@ -347,29 +422,142 @@ impl DemoFontFace {
     }
 }
 
-impl FallbackResolver for DemoFontCatalog {
-    fn resolve(&self, _text: &Text, range: TextRange, request: &FontRequest) -> FontDecision {
-        let face = self.role_default_face(request.role);
-        FontDecision {
-            range,
-            candidate: FontCandidate {
-                key: face.key.to_owned(),
-                family: face.family.to_owned(),
-                role: request.role,
-            },
-            role: request.role,
-            reason: format!("ParagraphDemoControlledFontCatalog:{}", face.family),
-        }
+impl DemoFontCatalog {
+    fn shape_one_face(
+        &self,
+        input: &FontBackendRequest,
+        face: &DemoFontFace,
+    ) -> (FontFaceId, ShapingResult, u32) {
+        let weight = face
+            .weight_for(input.style.font_weight)
+            .unwrap_or_else(|error| panic!("paragraph-demo shaping failed: {error}"));
+        let font_face = face.face_id(weight);
+        let features = input.open_type_features.clone();
+        let shaped = face.shape(input, &features);
+        let halt = if input.role == FontRole::CjkPunctuation
+            && !features.iter().any(|feature| feature.starts_with("halt"))
+        {
+            let mut halt_features = features.clone();
+            halt_features.push("halt=1".to_owned());
+            Some(face.shape(input, &halt_features))
+        } else {
+            None
+        };
+        let halt_matches = halt
+            .as_ref()
+            .filter(|candidate| candidate.glyphs.len() == shaped.glyphs.len());
+        let display_length = input.display_text.scalar_len();
+        let clusters = vec![clustered_glyph_group(
+            input.range,
+            ScalarOffset::ZERO,
+            display_length,
+            &shaped.glyphs,
+            halt_matches.map(|candidate| candidate.glyphs.as_slice()),
+            0.0,
+            &font_face,
+        )];
+        let glyphs: Vec<_> = clusters
+            .iter()
+            .flat_map(|cluster| cluster.glyphs.iter().cloned())
+            .collect();
+        let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as u32;
+        let glyphs_without_ink_bounds =
+            glyphs.iter().filter(|glyph| glyph.bounds.is_none()).count() as i32;
+        let source_text = Text::from(input.text.slice(input.range));
+        let glyph_count = glyphs.len() as i32;
+        let decision = ShapingDecisionInfo::builder(
+            input.range,
+            source_text,
+            input.display_text.clone(),
+            Some(font_face.clone()),
+            glyph_count,
+            shaped.advance,
+            format!("{:?}", ShapingSource::HarfBuzz),
+            "ParagraphDemoHarfRustFontBackend:complete-shaping".to_owned(),
+        )
+        .glyphs_without_ink_bounds(glyphs_without_ink_bounds)
+        .missing_glyphs(missing_glyphs as i32)
+        .language(Some(input.style.locale.clone()))
+        .feature_evidence((!features.is_empty()).then(|| {
+            features
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(",")
+        }))
+        .build();
+        let result = ShapingResult::with_decisions(
+            clusters
+                .iter()
+                .map(|cluster| {
+                    Cluster::with_display_text(
+                        cluster.range,
+                        Text::from(input.text.slice(cluster.range)),
+                        Text::from(
+                            input
+                                .display_text
+                                .slice_offsets(cluster.display_start, cluster.display_end),
+                        ),
+                        font_face.clone(),
+                        cluster.advance,
+                    )
+                })
+                .collect(),
+            vec![GlyphRun::with_open_type_features(
+                input.range,
+                font_face.clone(),
+                glyphs,
+                shaped.advance,
+                features,
+            )],
+            vec![decision],
+        );
+        (font_face, result, missing_glyphs)
     }
 }
 
-impl FontMetricsResolver for DemoFontCatalog {
-    fn resolve(&self, request: &FontMetricsRequest) -> RawFontMetrics {
-        let face = self.face_for_style(request.role, &request.font_families);
-        let weight = face
-            .weight_for(request.font_weight)
+impl ReplayableFontCatalog for DemoFontCatalog {
+    fn faces(&self) -> &[ReplayableFontFaceDescriptor] {
+        &self.descriptors
+    }
+
+    fn capability_report(&self) -> &FontBackendCapabilityReport {
+        &self.capability_report
+    }
+
+    fn face(&self, id: &FontFaceId) -> Option<&ReplayableFontFaceDescriptor> {
+        self.descriptors
+            .iter()
+            .find(|descriptor| descriptor.id.resource_id() == id.resource_id())
+    }
+}
+
+impl FontBackend for DemoFontCatalog {
+    fn shape(&self, input: &FontBackendRequest) -> FontBackendShapingResult {
+        let mut attempts = Vec::new();
+        let mut preferred = None;
+        for face in self.candidate_faces(input) {
+            let (font_face, shaping, missing_glyphs) = self.shape_one_face(input, face);
+            attempts.push(FontCandidateAttempt::new(
+                face.key.to_owned(),
+                font_face.clone(),
+                missing_glyphs,
+            ));
+            if preferred.is_none() {
+                preferred = Some((font_face.clone(), shaping.clone()));
+            }
+            if missing_glyphs == 0 {
+                return FontBackendShapingResult::new(font_face, shaping, attempts);
+            }
+        }
+        let (font_face, shaping) = preferred.expect("paragraph-demo candidate list must not be empty");
+        FontBackendShapingResult::new(font_face, shaping, attempts)
+    }
+
+    fn metrics(&self, request: &FontMetricsRequest) -> RawFontMetrics {
+        let face = self.face_for_id(&request.face);
+        face.weight_from_id(&request.face)
             .unwrap_or_else(|error| panic!("paragraph-demo metrics failed: {error}"));
-        let _ = weight;
         let scale = request.font_size / face.units_per_em as f32;
         RawFontMetrics {
             ascent: face.metrics.ascent as f32 * scale,
@@ -382,102 +570,6 @@ impl FontMetricsResolver for DemoFontCatalog {
                 .typo_descent
                 .map(|value| -(value as f32) * scale),
         }
-    }
-}
-
-impl TextShaper for DemoFontCatalog {
-    fn shape(&self, input: &ShapingInput) -> ShapingResult {
-        let face = self.face_for_style(input.font_decision.role, &input.style.font_families);
-        let features = input.open_type_features.clone();
-        let shaped = face.shape(input, &features);
-        let halt = if input.font_decision.role == FontRole::CjkPunctuation
-            && !features.iter().any(|feature| feature.starts_with("halt"))
-        {
-            let mut halt_features = features.clone();
-            halt_features.push("halt=1".to_owned());
-            Some(face.shape(input, &halt_features))
-        } else {
-            None
-        };
-        let exact_key = Self::resolved_font_key(
-            face,
-            face.weight_for(input.style.font_weight)
-                .unwrap_or_else(|error| panic!("paragraph-demo shaping failed: {error}")),
-        );
-        let halt_matches = halt
-            .as_ref()
-            .filter(|candidate| candidate.glyphs.len() == shaped.glyphs.len());
-        // `ShapingInputDefinesLayoutCluster`: HarfRust clusters describe glyph-to-source
-        // association inside this shaping input. Layout break opportunities are already expressed
-        // by the input ranges emitted by the core shaping stage, so exposing these internal
-        // clusters would create accidental breaks.
-        let display_length = input.display_text.scalar_len();
-        let clusters = vec![clustered_glyph_group(
-            input.range,
-            ScalarOffset::ZERO,
-            display_length,
-            &shaped.glyphs,
-            halt_matches.map(|candidate| candidate.glyphs.as_slice()),
-            0.0,
-            &exact_key,
-        )];
-        let glyphs: Vec<_> = clusters
-            .iter()
-            .flat_map(|cluster| cluster.glyphs.iter().cloned())
-            .collect();
-        let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as i32;
-        let glyphs_without_ink_bounds =
-            glyphs.iter().filter(|glyph| glyph.bounds.is_none()).count() as i32;
-        let source_text = Text::from(input.text.slice(input.range));
-        let glyph_count = glyphs.len() as i32;
-        let decision = ShapingDecisionInfo::builder(
-            input.range,
-            source_text.clone(),
-            input.display_text.clone(),
-            face.key.to_owned(),
-            glyph_count,
-            shaped.advance,
-            format!("{:?}", ShapingSource::HarfBuzz),
-            "ParagraphDemoControlledFontCatalog:harfrust".to_owned(),
-        )
-        .glyphs_without_ink_bounds(glyphs_without_ink_bounds)
-        .missing_glyphs(missing_glyphs)
-        .resolved_face(Some(exact_key))
-        .language(Some(input.style.locale.clone()))
-        .feature_evidence((!features.is_empty()).then(|| {
-            features
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-                .join(",")
-        }))
-        .build();
-        ShapingResult::with_decisions(
-            clusters
-                .iter()
-                .map(|cluster| {
-                    Cluster::with_display_text(
-                        cluster.range,
-                        Text::from(input.text.slice(cluster.range)),
-                        Text::from(
-                            input
-                                .display_text
-                                .slice_offsets(cluster.display_start, cluster.display_end),
-                        ),
-                        face.key.to_owned(),
-                        cluster.advance,
-                    )
-                })
-                .collect(),
-            vec![GlyphRun::with_open_type_features(
-                input.range,
-                face.key.to_owned(),
-                glyphs,
-                shaped.advance,
-                features,
-            )],
-            vec![decision],
-        )
     }
 }
 
@@ -511,7 +603,7 @@ fn clustered_glyph_group(
     glyphs: &[RawGlyph],
     halt: Option<&[RawGlyph]>,
     pen_x: f32,
-    render_font_key: &str,
+    render_font_face: &FontFaceId,
 ) -> ClusteredGlyphs {
     let advance = glyphs.iter().map(|glyph| glyph.advance).sum();
     let glyphs = glyphs
@@ -525,7 +617,7 @@ fn clustered_glyph_group(
             Glyph::builder(glyph.id, range, glyph.advance)
                 .x(glyph.x - pen_x)
                 .y(glyph.y)
-                .render_font_key(Some(render_font_key.to_owned()))
+                .render_font_face(Some(render_font_face.clone()))
                 .bounds(glyph.bounds)
                 .halt_advance(halt_glyph.map(|value| value.advance))
                 .halt_placement_x(halt_glyph.map(|value| value.x - glyph.x))
@@ -645,61 +737,42 @@ mod tests {
     use super::*;
     use tiqian::core::geometry::text_range;
     use tiqian::core::text_model::TextStyle;
-    use tiqian::shaping::text_shaper::ShapingInput;
+
+    fn request(text: &str, role: FontRole, style: TextStyle) -> FontBackendRequest {
+        let text = Text::from(text);
+        FontBackendRequest::new(
+            text.clone(),
+            text_range(0, text.scalar_len().value()),
+            style,
+            role,
+        )
+    }
 
     #[test]
     fn controlled_faces_shape_and_measure_their_own_roles() {
         let catalog = DemoFontCatalog::load().unwrap();
         catalog.validate_demo_faces().unwrap();
-        let cjk = FallbackResolver::resolve(
-            &catalog,
-            &"中文".into(),
-            text_range(0, 2),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::CjkText,
-            },
-        );
-        let latin = FallbackResolver::resolve(
-            &catalog,
-            &"Latin".into(),
-            text_range(0, 5),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::LatinText,
-            },
-        );
-        assert_eq!(cjk.candidate.key, CJK_FONT_KEY);
-        assert_eq!(latin.candidate.key, LATIN_FONT_KEY);
-        let result = catalog.shape(&ShapingInput::new(
-            "中文".into(),
-            text_range(0, 2),
-            TextStyle::default(),
-            cjk,
-        ));
+        let result = catalog.shape(&request("中文", FontRole::CjkText, TextStyle::default()));
+        assert_eq!(result.face.resource_id(), CJK_FONT_KEY);
+        assert_eq!(result.selected_attempt().candidate_key, CJK_FONT_KEY);
         assert!(
-            result.glyph_runs[0]
+            result.shaping.glyph_runs[0]
                 .glyphs
                 .iter()
                 .all(|glyph| glyph.id != 0)
         );
         assert!(
-            result.glyph_runs[0]
+            result.shaping.glyph_runs[0]
                 .glyphs
                 .iter()
-                .all(|glyph| glyph.render_font_key.is_some() && glyph.bounds.is_some())
+                .all(|glyph| glyph.render_font_face.as_ref() == Some(&result.face) && glyph.bounds.is_some())
         );
-        let metrics = FontMetricsResolver::resolve(
-            &catalog,
-            &FontMetricsRequest::new(
-                CJK_FONT_KEY.to_owned(),
-                16.0,
-                FontRole::CjkText,
-                "zh-Hans".to_owned(),
-            ),
-        );
+        let metrics = catalog.metrics(&FontMetricsRequest::new(
+            result.face,
+            16.0,
+            FontRole::CjkText,
+            "zh-Hans".to_owned(),
+        ));
         assert!(metrics.ascent > 0.0 && metrics.descent > 0.0);
         assert!(metrics.typo_ascent.is_some() && metrics.typo_descent.is_some());
     }
@@ -711,104 +784,65 @@ mod tests {
             ("serif", "serif", SERIF_FONT_KEY),
             ("monospace", "monospace-note.txt", MONOSPACE_FONT_KEY),
         ] {
-            let range = text_range(0, Text::from(text).scalar_len().value());
-            let decision = FallbackResolver::resolve(
-                &catalog,
-                &text.into(),
-                range,
-                &FontRequest {
-                    preferred_families: vec![family.to_owned()],
-                    locale: "zh-Hans".to_owned(),
-                    role: FontRole::LatinText,
-                },
-            );
-            assert_eq!(decision.candidate.key, LATIN_FONT_KEY);
-            let shaped = catalog.shape(&ShapingInput::new(
-                text.into(),
-                range,
+            let shaped = catalog.shape(&request(
+                text,
+                FontRole::LatinText,
                 TextStyle::builder()
                     .font_families(vec![family.to_owned()])
                     .build(),
-                decision,
             ));
             assert!(
-                shaped.glyph_runs[0]
+                shaped.shaping.glyph_runs[0]
                     .glyphs
                     .iter()
-                    .all(|glyph| glyph.id != 0 && glyph.render_font_key.is_some())
+                    .all(|glyph| glyph.id != 0 && glyph.render_font_face.as_ref() == Some(&shaped.face))
             );
-            assert_eq!(shaped.glyph_runs[0].font_key, expected_key);
-            assert!(shaped.glyph_runs[0].glyphs.iter().all(|glyph| {
-                glyph
-                    .render_font_key
-                    .as_deref()
-                    .is_some_and(|key| key.starts_with(expected_key))
-            }));
+            assert_eq!(shaped.face.resource_id(), expected_key);
         }
     }
 
     #[test]
     fn cjk_feature_shapes_preserve_replay_evidence() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let punctuation = FallbackResolver::resolve(
-            &catalog,
-            &"（".into(),
-            text_range(0, 1),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::CjkPunctuation,
-            },
-        );
         let halt = catalog.shape(
-            &ShapingInput::builder(
+            &FontBackendRequest::builder(
                 "（".into(),
                 text_range(0, 1),
                 TextStyle::default(),
-                punctuation,
+                FontRole::CjkPunctuation,
             )
             .open_type_features(vec!["fwid=1".to_owned()])
             .build(),
         );
-        assert_eq!(halt.glyph_runs[0].open_type_features, vec!["fwid=1"]);
+        assert_eq!(halt.shaping.glyph_runs[0].open_type_features, vec!["fwid=1"]);
         assert_eq!(
-            halt.decisions[0].feature_evidence.as_deref(),
+            halt.shaping.decisions[0].feature_evidence.as_deref(),
             Some("fwid=1")
         );
         assert!(
-            halt.glyph_runs[0]
+            halt.shaping.glyph_runs[0]
                 .glyphs
                 .iter()
                 .all(|glyph| glyph.halt_advance.is_some())
         );
 
-        let bopomofo = FallbackResolver::resolve(
-            &catalog,
-            &"ㄅ".into(),
-            text_range(0, 1),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::CjkText,
-            },
-        );
         let vertical = catalog.shape(
-            &ShapingInput::builder(
+            &FontBackendRequest::builder(
                 "ㄅ".into(),
                 text_range(0, 1),
                 TextStyle::default(),
-                bopomofo,
+                FontRole::CjkText,
             )
             .open_type_features(vec!["vert=1".to_owned()])
             .build(),
         );
-        assert_eq!(vertical.glyph_runs[0].open_type_features, vec!["vert=1"]);
+        assert_eq!(vertical.shaping.glyph_runs[0].open_type_features, vec!["vert=1"]);
         assert_eq!(
-            vertical.decisions[0].feature_evidence.as_deref(),
+            vertical.shaping.decisions[0].feature_evidence.as_deref(),
             Some("vert=1")
         );
         assert!(
-            vertical.glyph_runs[0]
+            vertical.shaping.glyph_runs[0]
                 .glyphs
                 .iter()
                 .all(|glyph| glyph.id != 0)
@@ -818,30 +852,16 @@ mod tests {
     #[test]
     fn harfrust_glyph_clusters_stay_inside_the_layout_cluster() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let decision = FallbackResolver::resolve(
-            &catalog,
-            &"a😀b".into(),
-            text_range(0, 3),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::LatinText,
-            },
-        );
-        let shaped = catalog.shape(&ShapingInput::new(
-            "a😀b".into(),
-            text_range(0, 3),
-            TextStyle::default(),
-            decision,
-        ));
-        assert_eq!(shaped.clusters.len(), 1);
-        assert_eq!(shaped.clusters[0].range, text_range(0, 3));
+        let shaped = catalog.shape(&request("a😀b", FontRole::LatinText, TextStyle::default()));
+        assert_eq!(shaped.shaping.clusters.len(), 1);
+        assert_eq!(shaped.shaping.clusters[0].range, text_range(0, 3));
         assert!(
             shaped
+                .shaping
                 .glyph_runs
                 .iter()
                 .flat_map(|run| &run.glyphs)
-                .all(|glyph| glyph.cluster_range == shaped.clusters[0].range)
+                .all(|glyph| glyph.cluster_range == shaped.shaping.clusters[0].range)
         );
     }
 
@@ -855,9 +875,7 @@ mod tests {
 
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog);
+        engine.font_backend = Box::new(catalog);
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new("中文（English）".into()),
@@ -871,7 +889,7 @@ mod tests {
                 .glyph_runs
                 .iter()
                 .flat_map(|run| &run.glyphs)
-                .all(|glyph| glyph.render_font_key.is_some() && glyph.id != 0)
+                .all(|glyph| glyph.render_font_face.is_some() && glyph.id != 0)
         );
         assert!(
             result
@@ -893,9 +911,7 @@ mod tests {
             for source in ["中—中", "中——中"] {
                 let catalog = DemoFontCatalog::load().unwrap();
                 let mut engine = ExplainableStubParagraphLayoutEngine::default();
-                engine.fallback_resolver = Box::new(catalog.clone());
-                engine.font_metrics_resolver = Box::new(catalog.clone());
-                engine.text_shaper = Box::new(catalog);
+                engine.font_backend = Box::new(catalog);
                 let result = engine.layout(
                     LayoutInput::builder(
                         TiqianTextContent::new(source.into()),
@@ -952,31 +968,16 @@ mod tests {
         }
 
     #[test]
-    fn render_font_key_replays_a_shaped_glyph_outline() {
+    fn font_face_replays_a_shaped_glyph_outline() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let decision = FallbackResolver::resolve(
-            &catalog,
-            &"中".into(),
-            text_range(0, 1),
-            &FontRequest {
-                preferred_families: Vec::new(),
-                locale: "zh-Hans".to_owned(),
-                role: FontRole::CjkText,
-            },
-        );
-        let shaped = catalog.shape(&ShapingInput::new(
-            "中".into(),
-            text_range(0, 1),
-            TextStyle::default(),
-            decision,
-        ));
-        let glyph = &shaped.glyph_runs[0].glyphs[0];
+        let shaped = catalog.shape(&request("中", FontRole::CjkText, TextStyle::default()));
+        let glyph = &shaped.shaping.glyph_runs[0].glyphs[0];
         let mut scene = Scene::new();
         catalog
             .paint_glyph(
                 &mut scene,
                 Affine::IDENTITY,
-                glyph.render_font_key.as_deref().unwrap(),
+                glyph.render_font_face.as_ref().unwrap(),
                 glyph.id,
                 16.0,
                 12.0 + glyph.x,
@@ -992,40 +993,24 @@ mod tests {
         let catalog = DemoFontCatalog::load().unwrap();
         for emoji in ["👩🏽‍💻", "🇨🇳"] {
             let range = text_range(0, Text::from(emoji).scalar_len().value());
-            let decision = FallbackResolver::resolve(
-                &catalog,
-                &emoji.into(),
-                range,
-                &FontRequest {
-                    preferred_families: Vec::new(),
-                    locale: "zh-Hans".to_owned(),
-                    role: FontRole::Emoji,
-                },
-            );
-            assert_eq!(decision.candidate.key, EMOJI_FONT_KEY);
-            let shaped = catalog.shape(&ShapingInput::new(
-                emoji.into(),
-                range,
-                TextStyle::default(),
-                decision,
-            ));
-            assert_eq!(shaped.glyph_runs[0].font_key, EMOJI_FONT_KEY);
-            assert_eq!(shaped.clusters.len(), 1);
-            assert_eq!(shaped.clusters[0].range, range);
+            let shaped = catalog.shape(&request(emoji, FontRole::Emoji, TextStyle::default()));
+            assert_eq!(shaped.face.resource_id(), EMOJI_FONT_KEY);
+            assert_eq!(shaped.shaping.clusters.len(), 1);
+            assert_eq!(shaped.shaping.clusters[0].range, range);
             assert!(
-                shaped.glyph_runs[0]
+                shaped.shaping.glyph_runs[0]
                     .glyphs
                     .iter()
                     .all(|glyph| glyph.id != 0)
             );
 
             let mut scene = Scene::new();
-            for glyph in &shaped.glyph_runs[0].glyphs {
+            for glyph in &shaped.shaping.glyph_runs[0].glyphs {
                 catalog
                     .paint_glyph(
                         &mut scene,
                         Affine::IDENTITY,
-                        glyph.render_font_key.as_deref().unwrap(),
+                        glyph.render_font_face.as_ref().unwrap(),
                         glyph.id,
                         64.0,
                         20.0 + glyph.x,
@@ -1048,9 +1033,7 @@ mod tests {
 
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.fallback_resolver = Box::new(catalog.clone());
-        engine.font_metrics_resolver = Box::new(catalog.clone());
-        engine.text_shaper = Box::new(catalog);
+        engine.font_backend = Box::new(catalog);
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new("甲👩🏽‍💻乙".into()),
@@ -1079,8 +1062,10 @@ mod tests {
         assert!(result.debug.shaping_decisions.iter().any(|decision| {
             decision.range == emoji_range
                 && decision.source_text == "👩🏽‍💻"
-                && decision.font_key == EMOJI_FONT_KEY
-                && decision.resolved_face.as_deref() == Some("demo-emoji@wght=400")
+                && decision
+                    .font_face
+                    .as_ref()
+                    .is_some_and(|face| face.resource_id() == EMOJI_FONT_KEY)
         }));
         assert!(
             result
@@ -1088,7 +1073,12 @@ mod tests {
                 .iter()
                 .filter(|run| run.range == emoji_range)
                 .flat_map(|run| &run.glyphs)
-                .all(|glyph| glyph.render_font_key.as_deref() == Some("demo-emoji@wght=400"))
+                .all(|glyph| {
+                    glyph
+                        .render_font_face
+                        .as_ref()
+                        .is_some_and(|face| face.resource_id() == EMOJI_FONT_KEY)
+                })
         );
     }
 }
