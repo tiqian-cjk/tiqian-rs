@@ -1,2 +1,3 @@
 mod explainable_stub_text_shaper_test;
 mod replayable_font_backend_coverage_test;
+mod stub_font_backend_test;

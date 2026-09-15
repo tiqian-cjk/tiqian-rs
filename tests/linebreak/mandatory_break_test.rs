@@ -135,3 +135,27 @@ fn test_simple_character_line_break_analyzer() {
     assert_eq!(BreakKind::Required, with_final_cr[1].kind);
     assert_eq!("MandatoryBreak", with_final_cr[1].reason);
 }
+
+#[test]
+fn every_mandatory_control_creates_a_required_break_with_its_own_reason() {
+    let analyzer = SimpleCharacterLineBreakAnalyzer;
+    for control in ['\u{000B}', '\u{000C}', '\u{0085}', '\u{2028}', '\u{2029}'] {
+        let opportunities = analyzer.analyze(&Text::from(format!("a{control}b")));
+        assert_eq!(BreakKind::Required, opportunities[1].kind, "U+{:04X}", control as u32);
+        assert_eq!("MandatoryBreak", opportunities[1].reason, "U+{:04X}", control as u32);
+    }
+}
+
+#[test]
+fn weighted_break_opportunity_keeps_the_planner_priority_and_diagnostic_reason() {
+    let opportunity = tiqian::linebreak::line_break::BreakOpportunity::with_penalty(
+        scalar_offset(7),
+        BreakKind::Problematic,
+        120,
+        "AvoidDanglingPunctuation".to_owned(),
+    );
+    assert_eq!(scalar_offset(7), opportunity.index);
+    assert_eq!(BreakKind::Problematic, opportunity.kind);
+    assert_eq!(120, opportunity.penalty);
+    assert_eq!("AvoidDanglingPunctuation", opportunity.reason);
+}

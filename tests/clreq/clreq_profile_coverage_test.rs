@@ -1,7 +1,9 @@
 use tiqian::clreq::bopomofo_reading::{BopomofoReading, BopomofoTone, bopomofo_parser};
 use tiqian::clreq::clreq_profile::{
-    BuiltInClreqProfileResolver, ClreqProfile, ClreqProfileResolver, ClreqRegion,
-    ClreqStrictness, CjkPunctuationGlyphPolicy, InteriorPunctuationStyle, KinsokuLevel,
+    AdjustmentStylePolicy, AutoSpaceMode, AutoSpacePolicy, BuiltInClreqProfileResolver,
+    ClreqProfile, ClreqProfileResolver, ClreqRegion, ClreqStrictness,
+    CjkPunctuationGlyphPolicy, GlueSide, HangingPunctuationStyle, InteriorPunctuationStyle,
+    KinsokuLevel, KinsokuMode, LineAdjustmentStrategy, LineEndPunctuationStyle,
     PunctuationClass, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_advance_policy, clreq_punctuation_policies,
 };
@@ -103,4 +105,53 @@ fn punctuation_advance_and_substitutor() {
     let unchanged = force.substitute(&Text::from("abc"));
     assert_eq!("abc", unchanged.display_text.as_str());
     assert!(unchanged.reason.contains("preserve"));
+}
+
+#[test]
+fn profile_builder_and_kinsoku_resolution_keep_region_and_measure_policy_explicit() {
+    let profile = ClreqProfile::builder(
+        "custom".to_owned(),
+        ClreqStrictness::Strict,
+        ClreqRegion::Custom,
+    )
+    .auto_space(
+        AutoSpacePolicy::builder()
+            .cjk_latin(AutoSpaceMode::Replace)
+            .cjk_digit(AutoSpaceMode::Disabled)
+            .gap_em(0.2)
+            .stretch_max_em(0.4)
+            .build(),
+    )
+    .glue_placement(PunctuationGluePlacement::Traditional)
+    .adjustment(
+        AdjustmentStylePolicy::builder()
+            .line_end_punctuation(LineEndPunctuationStyle::AllowFullWidth)
+            .allow_inline_stop_compression(false)
+            .allow_sino_western_gap_adjustment(false)
+            .line_adjustment(LineAdjustmentStrategy::PushOutOnly)
+            .build(),
+    )
+    .kinsoku_mode(KinsokuMode::measure_adaptive_with_thresholds(10.0, 20.0, 30.0))
+    .punctuation_width(PunctuationWidthPolicy::new(InteriorPunctuationStyle::Kaiming, true))
+    .build();
+
+    assert_eq!(ClreqStrictness::Strict, profile.strictness);
+    assert_eq!(AutoSpaceMode::Replace, profile.auto_space.cjk_latin);
+    assert_eq!(AutoSpaceMode::Disabled, profile.auto_space.cjk_digit);
+    assert_eq!(GlueSide::BothSides, profile.glue_placement.glue_side_for(PunctuationClass::Opening));
+    assert_eq!(LineAdjustmentStrategy::PushOutOnly, profile.adjustment.line_adjustment);
+    assert!(profile.punctuation_width.gb_fixed_separators);
+
+    let narrow = profile.kinsoku_mode.resolve(9.0);
+    assert_eq!(KinsokuLevel::Basic, narrow.level);
+    assert_eq!(HangingPunctuationStyle::PauseStops, narrow.hanging);
+    let gb = profile.kinsoku_mode.resolve(25.0);
+    assert_eq!(KinsokuLevel::GbStyle, gb.level);
+    assert_eq!(HangingPunctuationStyle::Disabled, gb.hanging);
+    let strict = profile.kinsoku_mode.resolve(31.0);
+    assert_eq!(KinsokuLevel::Strict, strict.level);
+
+    let fixed = KinsokuMode::fixed_with_hanging(KinsokuLevel::None, HangingPunctuationStyle::PauseStops).resolve(80.0);
+    assert_eq!(KinsokuLevel::None, fixed.level);
+    assert!(fixed.reason.contains("Fixed:None+Hang"));
 }
