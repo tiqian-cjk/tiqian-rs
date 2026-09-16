@@ -4,9 +4,8 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_result_replay_index::{LayoutResultReplayIndex, to_replay_index};
 use tiqian::core::text_model::LineLengthGrid;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
 use vello::peniko::color::palette::css::WHITE;
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu;
@@ -30,7 +29,7 @@ const WHEEL_LINE_LOGICAL: f32 = 40.0;
 
 pub struct DesktopParagraphDemo {
     catalog: DemoFontCatalog,
-    engine: ExplainableStubParagraphLayoutEngine,
+    engine: ParagraphLayoutEngine,
     context: RenderContext,
     renderers: Vec<Option<Renderer>>,
     state: RenderState,
@@ -173,8 +172,7 @@ fn layout_paint_overhang(
 
 impl DesktopParagraphDemo {
     pub fn new(catalog: DemoFontCatalog) -> Self {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         Self {
             catalog,
             engine,
@@ -716,8 +714,7 @@ mod tests {
     #[test]
     fn width_round_trip_restores_the_same_layout() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let wide_document = build_document(640.0, 1.0);
         let narrow_document = build_document(240.0, 1.0);
         let restored_document = build_document(640.0, 1.0);
@@ -747,8 +744,7 @@ mod tests {
     #[test]
     fn demo_blocks_are_all_layout_and_replayable() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let document = build_document_demo(640.0, 1.0);
         for block in document.blocks {
             match block {
@@ -779,8 +775,7 @@ mod tests {
     #[test]
     fn formal_sample_uses_span_selected_font_faces() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog);
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
         let document = build_document_demo(640.0, 1.0);
         let mut expected_faces = vec![
             ("黑体", 0, "demo-cjk"),
@@ -902,8 +897,7 @@ mod tests {
     #[test]
     fn default_window_sample_exhibits_hanging_punctuation_and_hyphenation() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog);
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
         let document = build_document_demo(672.0, 1.0);
         let mut hanging_was_seen = false;
         let mut hyphenation_was_seen = false;
@@ -970,8 +964,7 @@ mod tests {
     #[test]
     fn narrow_demo_word_uses_hyphens_at_multiple_line_ends() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog);
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
         let document = build_document_demo(672.0, 1.0);
         let mut input = document
             .blocks

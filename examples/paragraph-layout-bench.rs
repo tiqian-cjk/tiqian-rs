@@ -5,9 +5,7 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid};
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::{ParagraphLayoutEngine, ParagraphLayoutEngineBuilder};
 
 #[allow(dead_code)]
 #[path = "paragraph_demo/font_backend.rs"]
@@ -92,7 +90,7 @@ struct PageMeasurement {
 }
 
 fn timed_layout(
-    engine: &mut ExplainableStubParagraphLayoutEngine,
+    engine: &mut ParagraphLayoutEngine,
     input: LayoutInput,
     measurement: &mut PageMeasurement,
 ) -> LayoutResult {
@@ -105,7 +103,7 @@ fn timed_layout(
 
 // 保留整页输出，使每次布局的计时不包含先前结果的析构。
 fn measure_page(
-    engine: &mut ExplainableStubParagraphLayoutEngine,
+    engine: &mut ParagraphLayoutEngine,
     width: f32,
     scale: f32,
     replay: bool,
@@ -186,11 +184,13 @@ fn main() -> Result<(), String> {
     let start = Instant::now();
     let catalog = font_backend::DemoFontCatalog::load()?;
     catalog.validate_demo_faces()?;
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    if options.strategy == "lookahead" {
-        engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    }
-    engine.font_backend = Box::new(catalog);
+    let mut engine = if options.strategy == "lookahead" {
+        ParagraphLayoutEngineBuilder::new(Box::new(catalog))
+            .line_breaker(Box::new(LookaheadLineBreaker::default()))
+            .build()
+    } else {
+        ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build()
+    };
     println!("font/engine setup: {:.3} ms", start.elapsed().as_secs_f64() * 1000.0);
     println!("widths={:?} scale={} strategy={} warmup={} iterations={} profile={} arch={}",
         options.widths, options.scale, options.strategy, options.warmup, options.iterations,

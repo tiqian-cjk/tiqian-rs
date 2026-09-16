@@ -11,7 +11,6 @@ use super::super::font::font_metrics::{FontMetricsNormalizer, ScriptAwareFontMet
 use super::super::font::font_policy::{CjkFontRoleClassifier, FontRoleClassifier};
 use super::super::linebreak::hyphenation::Hyphenator;
 use super::super::shaping::font_backend::FontBackend;
-use super::super::shaping::stub_font_backend::DeterministicStubFontBackend;
 use super::default_hyphenator::default_hyphenator;
 use super::justifier::Justifier;
 use super::line_adjustment_stage::{
@@ -28,44 +27,89 @@ use super::width_independent_annotation_cache::{
     to_width_independent_annotation_key,
 };
 
-pub trait ParagraphLayoutEngine {
-    fn layout(&mut self, input: LayoutInput) -> LayoutResult;
+pub struct ParagraphLayoutEngine {
+    font_role_classifier: Box<dyn FontRoleClassifier>,
+    font_backend: Box<dyn FontBackend>,
+    clreq_profile_resolver: Box<dyn ClreqProfileResolver>,
+    font_metrics_normalizer: Box<dyn FontMetricsNormalizer>,
+    punctuation_atom_builder: PunctuationAtomBuilder,
+    punctuation_spacing_compressor: PunctuationSpacingCompressor,
+    quote_pair_analyzer: QuotePairAnalyzer,
+    line_breaker: Box<dyn LineBreaker>,
+    justifier: Justifier,
+    hyphenator: &'static dyn Hyphenator,
+    annotation_cache: Box<dyn WidthIndependentAnnotationCache>,
 }
 
-pub struct ExplainableStubParagraphLayoutEngine {
-    pub font_role_classifier: Box<dyn FontRoleClassifier>,
-    pub font_backend: Box<dyn FontBackend>,
-    pub clreq_profile_resolver: Box<dyn ClreqProfileResolver>,
-    pub font_metrics_normalizer: Box<dyn FontMetricsNormalizer>,
-    pub punctuation_atom_builder: PunctuationAtomBuilder,
-    pub punctuation_spacing_compressor: PunctuationSpacingCompressor,
-    pub quote_pair_analyzer: QuotePairAnalyzer,
-    pub line_breaker: Box<dyn LineBreaker>,
-    pub justifier: Justifier,
-    pub hyphenator: &'static dyn Hyphenator,
-    pub annotation_cache: Box<dyn WidthIndependentAnnotationCache>,
+pub struct ParagraphLayoutEngineBuilder {
+    font_backend: Box<dyn FontBackend>,
+    clreq_profile_resolver: Box<dyn ClreqProfileResolver>,
+    line_breaker: Box<dyn LineBreaker>,
+    hyphenator: &'static dyn Hyphenator,
+    annotation_cache: Box<dyn WidthIndependentAnnotationCache>,
 }
 
-impl Default for ExplainableStubParagraphLayoutEngine {
-    fn default() -> Self {
+impl ParagraphLayoutEngineBuilder {
+    pub fn new(font_backend: Box<dyn FontBackend>) -> Self {
         Self {
-            font_role_classifier: Box::new(CjkFontRoleClassifier),
-            font_backend: Box::new(DeterministicStubFontBackend::default()),
+            font_backend,
             clreq_profile_resolver: Box::new(BuiltInClreqProfileResolver),
-            font_metrics_normalizer: Box::new(ScriptAwareFontMetricsNormalizer),
-            punctuation_atom_builder: PunctuationAtomBuilder::default(),
-            punctuation_spacing_compressor: PunctuationSpacingCompressor,
-            quote_pair_analyzer: QuotePairAnalyzer,
             line_breaker: Box::new(GreedyLineBreaker::default()),
-            justifier: Justifier::default(),
             hyphenator: default_hyphenator(),
             annotation_cache: Box::new(LruWidthIndependentAnnotationCache::default()),
         }
     }
+
+    pub fn clreq_profile_resolver(
+        mut self,
+        clreq_profile_resolver: Box<dyn ClreqProfileResolver>,
+    ) -> Self {
+        self.clreq_profile_resolver = clreq_profile_resolver;
+        self
+    }
+
+    pub fn line_breaker(mut self, line_breaker: Box<dyn LineBreaker>) -> Self {
+        self.line_breaker = line_breaker;
+        self
+    }
+
+    pub fn hyphenator(mut self, hyphenator: &'static dyn Hyphenator) -> Self {
+        self.hyphenator = hyphenator;
+        self
+    }
+
+    pub fn annotation_cache(
+        mut self,
+        annotation_cache: Box<dyn WidthIndependentAnnotationCache>,
+    ) -> Self {
+        self.annotation_cache = annotation_cache;
+        self
+    }
+
+    pub fn build(self) -> ParagraphLayoutEngine {
+        ParagraphLayoutEngine {
+            font_role_classifier: Box::new(CjkFontRoleClassifier),
+            font_backend: self.font_backend,
+            clreq_profile_resolver: self.clreq_profile_resolver,
+            font_metrics_normalizer: Box::new(ScriptAwareFontMetricsNormalizer),
+            punctuation_atom_builder: PunctuationAtomBuilder::default(),
+            punctuation_spacing_compressor: PunctuationSpacingCompressor,
+            quote_pair_analyzer: QuotePairAnalyzer,
+            line_breaker: self.line_breaker,
+            justifier: Justifier::default(),
+            hyphenator: self.hyphenator,
+            annotation_cache: self.annotation_cache,
+        }
+    }
 }
 
-impl ExplainableStubParagraphLayoutEngine {
-    pub fn layout_with_rejected_technical_tiers(
+impl ParagraphLayoutEngine {
+    pub fn layout(&mut self, input: LayoutInput) -> LayoutResult {
+        self.layout_with_rejected_technical_tiers(input, HashMap::new())
+    }
+
+    // 用于递归重试。
+    fn layout_with_rejected_technical_tiers(
         &mut self,
         input: LayoutInput,
         rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
@@ -114,12 +158,6 @@ impl ExplainableStubParagraphLayoutEngine {
                 rejected_technical_tiers_by_span,
             } => self.layout_with_rejected_technical_tiers(input, rejected_technical_tiers_by_span),
         }
-    }
-}
-
-impl ParagraphLayoutEngine for ExplainableStubParagraphLayoutEngine {
-    fn layout(&mut self, input: LayoutInput) -> LayoutResult {
-        self.layout_with_rejected_technical_tiers(input, HashMap::new())
     }
 }
 

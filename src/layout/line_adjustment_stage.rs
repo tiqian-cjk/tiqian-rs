@@ -23,7 +23,7 @@ use super::progressive_break_decisions::{ProgressiveBreakTier, ShrinkChannel};
 
 /// Kotlin `finishParagraphLayout` 的 Rust stage outcome。
 ///
-/// FIXME(strict-mirror): Kotlin 通过 `ExplainableStubParagraphLayoutEngine` extension receiver
+/// FIXME(strict-mirror): Kotlin 通过 `ParagraphLayoutEngine` extension receiver
 /// 直接调用主入口的 `layoutWithRejectedTechnicalTiers`。Rust 将 stage 划为显式 request/outcome；
 /// `Retry` 的重放控制流必须且仅能由 `ParagraphLayoutEngine.rs` 执行，不能迁入本文件。
 #[derive(Clone, Debug, PartialEq)]

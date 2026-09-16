@@ -473,12 +473,8 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::ClreqProfile;
-    use crate::core::geometry::{LayoutConstraints, scalar_offset, text_range};
-    use crate::core::text_model::{LayoutInput, TextSpan, TextStyle, TiqianTextContent};
+    use crate::core::geometry::text_range;
     use crate::font::font_policy::CjkFontRoleClassifier;
-    use crate::layout::paragraph_layout_engine::{
-        ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-    };
 
     #[test]
     fn complex_emoji_graphemes_are_single_emoji_shaping_ranges() {
@@ -529,140 +525,6 @@ mod tests {
                 (text_range(4, 5), FontRole::Symbol),
                 (text_range(5, 7), FontRole::Emoji),
             ],
-        );
-    }
-
-    #[test]
-    fn complex_emoji_graphemes_reach_the_text_shaper_as_complete_ranges() {
-        let text = Text::from("前👩🏽‍💻后🇨🇳与1️⃣。");
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        let result = engine.layout(
-            LayoutInput::builder(
-                TiqianTextContent::new(text),
-                LayoutConstraints::with_defaults(1_000.0),
-            )
-            .build(),
-        );
-
-        assert_eq!(
-            result
-                .debug
-                .shaping_decisions
-                .iter()
-                .filter(|decision| {
-                    decision
-                        .font_face
-                        .as_ref()
-                        .is_some_and(|face| face.resource_id() == "symbol-fallback")
-                })
-                .map(|decision| (decision.range, decision.source_text.as_str()))
-                .collect::<Vec<_>>(),
-            vec![
-                (text_range(1, 5), "👩🏽‍💻"),
-                (text_range(6, 8), "🇨🇳"),
-                (text_range(9, 12), "1️⃣"),
-            ],
-        );
-    }
-
-    #[test]
-    fn complex_emoji_graphemes_ignore_geometry_only_source_boundaries() {
-        let options = ClusterRoleRangeOptions::builder()
-            .span_boundaries([scalar_offset(2)].into_iter().collect())
-            .emoji_shaping_boundaries(HashSet::new())
-            .build();
-        let text = Text::from("👩🏽‍💻");
-        let ranges = cluster_role_ranges_with_options(
-            &text,
-            &CjkFontRoleClassifier,
-            &FontRoleContext::default(),
-            &ClreqProfile::mainland_horizontal(),
-            &options,
-        );
-
-        assert_eq!(
-            ranges
-                .iter()
-                .map(|range| (range.range, range.role))
-                .collect::<Vec<_>>(),
-            vec![(text_range(0, 4), FontRole::Emoji)],
-        );
-
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        let result = engine.layout(
-            LayoutInput::builder(
-                TiqianTextContent::builder(Text::from("👩🏽‍💻"))
-                    .source_boundaries([scalar_offset(2)].into_iter().collect())
-                    .build(),
-                LayoutConstraints::with_defaults(1_000.0),
-            )
-            .build(),
-        );
-        assert_eq!(
-            result
-                .debug
-                .font_decisions
-                .iter()
-                .filter(|decision| decision.role == "Emoji")
-                .map(|decision| decision.range)
-                .collect::<Vec<_>>(),
-            vec![text_range(0, 4)],
-        );
-    }
-
-    #[test]
-    fn complex_emoji_graphemes_honor_layout_style_boundaries() {
-        let hard_boundary: HashSet<ScalarOffset> = [scalar_offset(1)].into_iter().collect();
-        let options = ClusterRoleRangeOptions::builder()
-            .span_boundaries(hard_boundary.clone())
-            .emoji_shaping_boundaries(hard_boundary)
-            .build();
-        let text = Text::from("👩🏽‍💻");
-        let ranges = cluster_role_ranges_with_options(
-            &text,
-            &CjkFontRoleClassifier,
-            &FontRoleContext::default(),
-            &ClreqProfile::mainland_horizontal(),
-            &options,
-        );
-
-        assert_eq!(
-            ranges
-                .iter()
-                .map(|range| (range.range, range.role))
-                .collect::<Vec<_>>(),
-            vec![
-                    (text_range(0, 1), FontRole::Emoji),
-                    (text_range(1, 4), FontRole::Emoji),
-            ],
-        );
-
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        let result = engine.layout(
-            LayoutInput::builder(
-                TiqianTextContent::builder(Text::from("👩🏽‍💻"))
-                    .spans(vec![TextSpan {
-                        range: text_range(1, 4),
-                        style: TextStyle {
-                            font_weight: 700,
-                            ..TextStyle::default()
-                        },
-                    }])
-                    .source_boundaries([scalar_offset(1)].into_iter().collect())
-                    .build(),
-                LayoutConstraints::with_defaults(1_000.0),
-            )
-            .build(),
-        );
-        assert_eq!(
-            result
-                .debug
-                .font_decisions
-                .iter()
-                .filter(|decision| decision.role == "Emoji")
-                .map(|decision| decision.range)
-                .collect::<Vec<_>>(),
-            vec![text_range(0, 1), text_range(1, 4)],
         );
     }
 

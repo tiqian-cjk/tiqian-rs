@@ -22,7 +22,7 @@ cargo test
 cargo run --example paragraph-demo
 ```
 
-示例使用 HarfRust、SkRifa 和 Vello 接入字体、字形 shaping 与绘制，展示平台接入方式；crate 默认使用 stub 字体后端。
+示例使用 HarfRust、SkRifa 和 Vello 实现 `FontBackend` 并完成字体接入、字形 shaping 与绘制；生产引擎通过 `ParagraphLayoutEngineBuilder` 显式接收该 backend。
 
 ## Fixture 与 golden
 
@@ -73,7 +73,7 @@ HTML 报告位于 `target/llvm-cov/html/index.html`。
 
 - 优先使用 `api::ParagraphBuilder` 按内容顺序构造段落；`build()` 返回 `LayoutInput`。
 - `TextRange` 和布局查询使用 Unicode scalar offset；UTF-8 byte offset 仅用于 Rust 字符串的底层索引。
-- 默认的 `ExplainableStubParagraphLayoutEngine` 使用确定性 stub shaping 和字体度量，适合测试与行为验证。
+- `ParagraphLayoutEngineBuilder::new(Box<dyn FontBackend>)` 是生产引擎的唯一构造入口；确定性 backend 仅位于 `tests/support/`，供 fixture、golden 和 integration test 使用。
 - 接入平台字体时，实现一个 `FontBackend`，由它统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
 	段落 shaping 的每个 backend request 都是独立的字体选择原子范围；同一个旧 range 被内部切分后，不应在调用方
 	重新合并 `FontResolution`。桌面示例中的字体 backend 提供了参考实现。

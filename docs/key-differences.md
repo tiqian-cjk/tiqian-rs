@@ -37,6 +37,16 @@ Kotlin 上游在普通布局路径中分别使用 fallback、文本 shaping 与�
 验证要求见 [`R0003-unified-font-backend.md`](adr/R0003-unified-font-backend.md) 与
 [`2026-09-15-feat-unified-font-backend.md`](iteration/2026-09-15-feat-unified-font-backend.md)。
 
+### 显式字体后端的段落引擎构造
+
+Kotlin 保留 `ExplainableStubParagraphLayoutEngine` 的历史名称。Rust 已接受 R0004：普通段落引擎必须通过
+`ParagraphLayoutEngineBuilder` 显式接收 `FontBackend`，并构造唯一的 `ParagraphLayoutEngine`。确定性 fixture
+backend 只位于 `tests/support/`，不会成为生产 crate 的默认依赖。
+
+该差异将生产字体资源接入与 fixture 支持分开，同时保持两者使用同一段落 layout pipeline。实施范围和
+验证要求见 [`R0004-explicit-font-backend-engine.md`](adr/R0004-explicit-font-backend-engine.md) 与
+[`2026-09-16-feat-explicit-font-backend-engine.md`](iteration/2026-09-16-feat-explicit-font-backend-engine.md)。
+
 ### 统一富文本旁路模型
 
 Rust 已实施 R0002：`ColorSpan` 与单 role 的 `RichTextSpan` 已合并为统一的富文本旁路输出。

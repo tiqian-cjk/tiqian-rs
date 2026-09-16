@@ -862,9 +862,7 @@ mod tests {
         TiqianTextContent,
     };
     use tiqian::core::units::Ic;
-    use tiqian::layout::paragraph_layout_engine::{
-        ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-    };
+    use tiqian::api::ParagraphLayoutEngineBuilder;
 
     fn layer(kind: RichTextLayerKind, argb: i32) -> RichTextLayer {
         RichTextLayer {
@@ -884,8 +882,7 @@ mod tests {
     #[test]
     fn body_replay_uses_positioned_layout_glyphs() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文 English")),
@@ -915,8 +912,7 @@ mod tests {
     #[test]
     fn annotation_replay_uses_ruby_and_bopomofo_layout_decisions() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文")),
@@ -1028,8 +1024,7 @@ mod tests {
     #[test]
     fn body_replay_includes_shape_once_line_end_hyphens() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let mut result = (32..=112)
             .step_by(4)
             .map(|width| {
@@ -1082,8 +1077,7 @@ mod tests {
     #[test]
     fn rich_text_and_decoration_replay_consume_core_geometry() {
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog.clone());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog.clone())).build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("中文书名")),

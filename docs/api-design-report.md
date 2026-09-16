@@ -6,12 +6,12 @@
 
 ## 结论摘要
 
-当前 crate 的功能已经覆盖了段落输入、CLREQ 规则、字体接入、断行、字形重放、注音/装饰、富文本几何和交互查询；其产品级 facade 尚未收敛。`api::ParagraphBuilder` 已提供按内容顺序生成现有输入字段的构造入口。`src/lib.rs` 将多数实现模块逐层 `pub mod` 暴露，外部调用方可直接访问大量算法和阶段类型。layout 执行入口为 `ParagraphLayoutEngine::layout`，最常用实现名为 `ExplainableStubParagraphLayoutEngine`，并且其 13 个可替换组件均是公有字段。
+当前 crate 的功能已经覆盖了段落输入、CLREQ 规则、字体接入、断行、字形重放、注音/装饰、富文本几何和交互查询；其产品级 facade 正由 builder 与具体引擎收敛。`api::ParagraphBuilder` 已提供按内容顺序生成现有输入字段的构造入口。`src/lib.rs` 将多数实现模块逐层 `pub mod` 暴露，外部调用方可直接访问大量算法和阶段类型。layout 执行入口为具体的 `ParagraphLayoutEngine::layout`，由 `api::ParagraphLayoutEngineBuilder` 以必填 `Box<dyn FontBackend>` 一次性组装；引擎的策略与组件字段均为私有。
 
 桌面 demo 表明，生产级接入至少需要同时完成三件事：
 
 1. 构造 `LayoutInput`，并以 Unicode scalar offset 表示所有 source range；
-2. 实现字体 fallback、字体度量和 shaping 三个 trait，手动注入引擎；
+2. 实现一个 `FontBackend`，由 builder 注入引擎，统一提供字体候选、度量和 shaping 能力；
 3. 使用 `LayoutResult` 的 glyph、line、debug annotation 和查询函数自行绘制、裁切、选择和命中测试。
 
 当前 API 的主要问题是边界未收敛：配置、算法策略、平台后端、可绘制结果、诊断信息和内部阶段处于同一公开层级。调用方需要理解内部实现细节，才能做出正确且可重放的集成。
@@ -38,11 +38,10 @@
 [`src/lib.rs`](../src/lib.rs) 没有根级 facade、prelude 或 `pub use`。调用方必须从深层模块路径导入类型，例如：
 
 ```rust
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
 ```
 
 根模块公开的一级分组如下：
@@ -50,13 +49,13 @@ use tiqian::layout::paragraph_layout_engine::{
 | 一级模块 | 当前性质 | 外部调用者可见的主要内容 | 评价 |
 | --- | --- | --- | --- |
 | `common` | 实现便利层 | `HashMap`、`HashSet` 的特性切换导出 | 不应成为业务 API 的必要依赖 |
-| `api` | 段落构造层 | `ParagraphBuilder`、构造期样式与结构错误 | 按内容顺序生成现有输入、颜色和富文本范围 |
+| `api` | 段落构造与引擎组装层 | `ParagraphBuilder`、`ParagraphLayoutEngineBuilder`、构造期样式与结构错误 | 按内容顺序生成现有输入、颜色和富文本范围，并组装生产引擎 |
 | `core` | 数据模型与查询 | `Text`、range、constraints、输入模型、布局结果、交互查询 | 最接近应稳定的公共数据层 |
 | `clreq` | 排版规则与区域 profile | profile、禁则、标点、注音规则 | 含适合配置的类型，也混入规则实现细节 |
-| `font` | 字体决策与度量接口 | font role、fallback、metrics traits | 平台接入必需，但分散在两个模块 |
-| `shaping` | shaping 接口与字体 catalog 草案 | `TextShaper`、`ShapingInput/Result`、`ReplayableFontCatalog` | 前者是当前必需扩展点，后者尚未被主引擎直接消费 |
+| `font` | 字体决策与度量接口 | font role、fallback、metrics 类型 | 平台接入必需，具体 shaping 由统一 backend 完成 |
+| `shaping` | shaping 接口与字体 catalog | `FontBackend`、`FontBackendRequest/Result`、`ReplayableFontCatalog` | 主引擎通过统一 backend 消费候选、shaping、metrics 与 replay identity |
 | `linebreak` | 换行工具与连字符 | `Hyphenator`、语言断词、Unicode 规则 | 一部分适合策略配置，另一部分是算法实现 |
-| `layout` | 主引擎和所有 pipeline 阶段 | 引擎、line breaker、justifier、stage、cache、内部 ledger | 对外面过宽；调用方能依赖本不该稳定的阶段类型 |
+| `layout` | 生产引擎和内部 pipeline 阶段 | `ParagraphLayoutEngine`、line breaker、justifier、stage、cache、内部 ledger | 生产引擎经过 builder 组装；阶段与缓存仍是公开实现目录，出口偏宽 |
 
 `Cargo.toml` 的版本为 `0.1.0`，且 package `include` 仅包含 `src`、资源、manifest、README、LICENSE；`examples` 不会进入发布包。demo 是当前覆盖范围最广的集成证据，不会作为随 crate 发布的正式示例或入门 API。
 
@@ -64,7 +63,7 @@ use tiqian::layout::paragraph_layout_engine::{
 
 | 用户画像 | 入口 | 主要目的 | 直接使用的低层能力 |
 | --- | --- | --- | --- |
-| 桌面排版应用 | `paragraph-demo` | 使用平台字体 layout，重放 glyph 和装饰到 Vello | 三个字体 trait、`LayoutResult` 字段、`layout_queries`、debug annotation |
+| 桌面排版应用 | `paragraph-demo` | 使用平台字体 layout，重放 glyph 和装饰到 Vello | `FontBackend`、`LayoutResult` 字段、`layout_queries`、debug annotation |
 | fixture/golden 工具 | `fixture-layout-dump` | 将 JSON 转输入，以不同 breaker 比对 Kotlin dump | profile resolver、hyphenator、三种 line breaker、全部 debug 字段 |
 
 第二类调用方不是目标产品用户，但它通过公开 API 验证了测试工具能侵入实现配置。这一点需要在重设计时保留“诊断/验证专用入口”，同时不让它定义普通集成 API 的形状。
@@ -100,38 +99,18 @@ use tiqian::layout::paragraph_layout_engine::{
 
 | 类型/入口 | 职责 | 当前默认 | 外部可替换方式 | 使用层级建议 |
 | --- | --- | --- | --- | --- |
-| `ParagraphLayoutEngine` | 唯一 layout 执行 trait | 无 | 实现 trait | 应稳定的最小执行边界 |
-| `ExplainableStubParagraphLayoutEngine` | 默认 pipeline 组装器 | stub shaping/metrics、greedy breaker、缓存 | 直接改 13 个 `pub` 字段 | 应替换为配置构建的集成引擎；当前名字不适合作为产品入口 |
-| `LineBreaker` | 断行策略 | `GreedyLineBreaker` | `engine.line_breaker = Box::new(...)` | 高级策略扩展点 |
-| `GreedyLineBreaker` | 贪心断行+repair | 默认 | 替换或改公有 penalty 字段 | 普通用户不应直接依赖算法参数 |
-| `LookaheadLineBreaker` | 有限前瞻断行 | fixture 显式使用 | 同上 | 验证/高级策略 |
-| `ParagraphDpLineBreaker` | 段落全局 DP 断行 | fixture 显式使用 | 同上 | 验证/高级策略 |
-| `ClreqProfileResolver` | 从 profile id 取规则 | 内置大陆横排 resolver | 直接替换字段 | 合理的领域扩展点，但应由配置统一注入 |
-| `Hyphenator` | 西文断词 | `default_hyphenator()` | 直接替换字段 | 合理的可选能力 |
-| `WidthIndependentAnnotationCache` | 宽度无关注释缓存 | LRU | 直接替换字段 | 属于性能实现细节，当前不应为产品 API |
-
-`ExplainableStubParagraphLayoutEngine::layout_with_rejected_technical_tiers` 也是公开 inherent 方法。它直接暴露引擎 retry 的内部状态 `HashMap<TextRange, HashSet<ProgressiveBreakTier>>`，更适合测试/诊断边界而非普通使用入口。
+| `ParagraphLayoutEngine` | 具体生产 layout pipeline（非 trait） | 由 `ParagraphLayoutEngineBuilder::build()` 组装默认策略、字体后端和缓存 | 通过 `ParagraphLayoutEngineBuilder` 组装 | 稳定的最小执行边界 |
+| `LineBreaker` | 断行策略 | `GreedyLineBreaker` | `ParagraphLayoutEngineBuilder::line_breaker(...)` | 高级策略扩展点 |
+| `GreedyLineBreaker` | 贪心断行+repair | 默认 | 作为 `Box<dyn LineBreaker>` 传给 `ParagraphLayoutEngineBuilder::line_breaker(...)` | 普通用户不应直接依赖算法参数 |
+| `LookaheadLineBreaker` | 有限前瞻断行 | fixture 显式使用 | 作为 `Box<dyn LineBreaker>` 传给 `ParagraphLayoutEngineBuilder::line_breaker(...)` | 验证/高级策略 |
+| `ParagraphDpLineBreaker` | 段落全局 DP 断行 | fixture 显式使用 | 作为 `Box<dyn LineBreaker>` 传给 `ParagraphLayoutEngineBuilder::line_breaker(...)` | 验证/高级策略 |
+| `ClreqProfileResolver` | 从 profile id 取规则 | 内置大陆横排 resolver | `ParagraphLayoutEngineBuilder::clreq_profile_resolver(...)` | 合理的领域扩展点，由 builder 统一注入 |
+| `Hyphenator` | 西文断词 | `default_hyphenator()` | `ParagraphLayoutEngineBuilder::hyphenator(...)` | 合理的可选能力 |
+| `WidthIndependentAnnotationCache` | 宽度无关注释缓存 | LRU | `ParagraphLayoutEngineBuilder::annotation_cache(...)` | 属于性能实现细节，按需由 builder 注入 |
 
 ### 3. 平台字体与 shaping 集成
 
-桌面 demo 的 [`DemoFontCatalog`](../examples/paragraph_demo/font_backend.rs) 是当前最能说明集成成本的实例。迁移前它同时实现了三个互相独立的 trait：
-
-| trait | 引擎向它提出的问题 | demo 的实现 | 输出被谁消费 |
-| --- | --- | --- | --- |
-| `FallbackResolver` | 某段文本、role、family 偏好应选择哪个字体候选 | 按 role 返回受控的 CJK/Latin/Emoji face | shaping 与 font decision debug |
-| `FontBackend::metrics` | 已由 `FontBackend::shape` 选定的 face/style 的 ascent、descent、leading 是什么 | 读取该 `FontFaceId` 对应的 SFNT `hhea`/`OS/2` 表 | 行盒、baseline、富文本背景 |
-| `TextShaper` | 指定 range/style/font decision 如何变成 cluster 与 glyph run | HarfRust shaping，记录 glyph id、advance、bounds、render key | line breaking、最终 replay、debug |
-
-迁移前引擎安装方式如下，三次赋值不可省略：
-
-```rust
-let mut engine = ExplainableStubParagraphLayoutEngine::default();
-engine.fallback_resolver = Box::new(catalog.clone());
-engine.font_metrics_resolver = Box::new(catalog.clone());
-engine.text_shaper = Box::new(catalog);
-```
-
-这保证了一次 layout 中的字体选择、测量和绘制使用同一 catalog，但这个一致性目前没有被类型系统表达。统一 backend 迁移后，普通引擎只注入一个 `FontBackend`；每次段落 shaping request 独立完成候选选择和完整 shaping，并以 request range 记录 `FontResolution`。`ReplayableFontCatalog` 由 backend 继承，用于保证最终 face 可被 metrics 和 glyph replay 共同解析。
+桌面 demo 的 [`DemoFontCatalog`](../examples/paragraph_demo/font_backend.rs) 当前实现 `FontBackend`。应用通过 `ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build()` 注入它，普通引擎只接收一个统一 backend。backend 负责候选选择、完整 shaping、metrics 和 replay identity；每次段落 shaping request 独立完成候选选择和完整 shaping，并以 request range 记录 `FontResolution`。`ReplayableFontCatalog` 由 backend 继承，用于保证最终 face 可被 metrics 和 glyph replay 共同解析。
 
 ### 4. 布局结果、绘制数据与诊断
 
@@ -178,8 +157,8 @@ flowchart TD
     B --> C[DemoDocument]
     C --> D[TiqianTextContent<br/>TextSpan / source_boundaries]
     C --> E[LayoutInput<br/>TextStyle / ParagraphStyle / Ruby / Decoration]
-    F[DemoFontBackend] --> G[FontBackend]
-    G --> J[ExplainableStubParagraphLayoutEngine]
+    F[DemoFontCatalog / FontBackend] --> G[ParagraphLayoutEngineBuilder]
+    G --> J[ParagraphLayoutEngine]
     E --> J
     J --> K[输入校验]
     K --> L[宽度无关注释与 shaping]
@@ -217,8 +196,8 @@ flowchart LR
 | --- | --- | --- | --- |
 | 简体中文正文和默认段落 | 是 | 默认 `TextStyle`、`ParagraphStyle`、`LayoutInput` | glyph replay |
 | 响应式宽度与缩放 | 是 | 每次替换 `LayoutConstraints` 后重新 `layout` | 页面重排与滚动 |
-| CJK/Latin 混排、font family、weight、italic | 是 | `TextSpan`、`TextStyle`、三个字体 trait | shape-once glyph replay |
-| CLREQ 标点、禁则、行尾悬挂 | 是 | 内置 profile/default engine | line 与 glyph geometry |
+| CJK/Latin 混排、font family、weight、italic | 是 | `TextSpan`、`TextStyle`、`FontBackend` | shape-once glyph replay |
+| CLREQ 标点、禁则、行尾悬挂 | 是 | 内置 profile 与 builder 默认策略 | line 与 glyph geometry |
 | 英文断词 | 是 | 默认 hyphenator、`LineBox.hyphen_glyphs` | 单独重放行尾连字符 |
 | 列表 | 是 | demo 将 marker/body 当作两个独立 paragraph layout | host 负责 gutter、基线对齐 |
 | 拼音 ruby、注音 | 是 | `RubySpan` | 从 `result.debug` 读取 glyph 与绝对位置 |
@@ -244,7 +223,7 @@ flowchart LR
 
 `Glyph` 记录 glyph id、shaper advance、偏移、bounds 和可选 `render_font_key`；`LineBox` 记录 synthetic hyphen glyph；ruby/bopomofo 也记录要重放的 glyph。桌面 demo 因而可以不重新 shaping，直接重放布局时已经确定的字形。
 
-这是高价值设计：测量、断行和绘制能保持一致。但它要求 host 字体后端提供同一 face identity 的解析能力。当前这个约束由 demo 的同一个 `DemoFontCatalog` 人工维持，统一 backend trait 或 engine 构造器尚未表达该关系。
+这是高价值设计：测量、断行和绘制能保持一致。但它要求 host 字体后端提供同一 face identity 的解析能力。当前这个约束由 `FontBackend` 及其继承的 `ReplayableFontCatalog` 表达，demo 使用同一个 `DemoFontCatalog` 通过 builder 注入。
 
 ### 当前结果是“布局结果 + renderer DTO + explain trace”的并集
 
@@ -257,9 +236,9 @@ flowchart LR
 
 ### builder 与公有字段并存
 
-输入模型广泛采用 builder，部分带值 enum 通过构造函数保持校验；这对 authored input 是积极的。另一方面，`LayoutInput`、`TextStyle`、`ParagraphStyle`、`LayoutResult`、`ExplainableStubParagraphLayoutEngine` 等大量结构体字段也是 `pub`，demo 会直接修改 `document.input.constraints` 和 `engine.*`。
+输入模型广泛采用 builder，部分带值 enum 通过构造函数保持校验；这对 authored input 是积极的。`LayoutInput`、`TextStyle`、`ParagraphStyle`、`LayoutResult` 等输入和结果 DTO 仍有公有字段，便于构造和消费；production `ParagraphLayoutEngine` 的策略依赖则由 `ParagraphLayoutEngineBuilder` 组装，组件字段保持私有。
 
-因此公开 API 同时支持“受控创建”和“任意后修改”两种方式。重设计时需要明确：哪些类型是稳定 DTO、哪些不变量需要由 builder/constructor 保证、哪些内部配置不能被调用方修改。
+因此公开 API 同时支持“受控创建”和 DTO 字段访问两种方式。稳定边界主要由输入/输出 DTO 与 builder 组成，内部引擎配置不由调用方直接修改。
 
 ## 当前设计问题与重构关注点
 
@@ -267,12 +246,12 @@ flowchart LR
 
 | 优先级 | 观察到的问题 | 事实依据 | 对外影响 | 后续设计需回答的问题 |
 | --- | --- | --- | --- | --- |
-| 高 | 产品入口使用 `ExplainableStub...` | desktop demo 和绝大多数测试都直接构造该类型 | 调用方无法判断默认路径是否可生产使用；名称把实现限制泄露到产品层 | 是否提供无 `Stub` 的稳定 engine/facade，并将 deterministic stub 降为测试实现？ |
-| 高 | 字体接入分裂为三个 trait | demo 必须实现并注入 fallback、metrics、shaper | 一致性依靠调用方纪律；接入成本高 | 是否将三者组合为一个主 backend contract，同时保留细粒度高级扩展？ |
+| 高 | 产品入口已使用 `ParagraphLayoutEngineBuilder` | 产品入口以必填 `FontBackend` 组装具体 production engine；确定性 backend 位于 test support | 生产路径和测试路径的字体依赖边界已明确 | 后续继续收敛 facade 与 renderer/diagnostic 输出边界 |
+| 高 | 字体接入依赖平台 backend contract | demo 通过 `DemoFontCatalog` 实现并注入 `FontBackend`，统一提供候选选择、metrics、shaping 和 replay identity | 一致性由统一 backend contract 表达；平台仍需提供完整字体能力 | 后续是否继续细化 backend capability 与 renderer replay 边界？ |
 | 高 | 绘制数据和诊断数据混在 `debug` | ruby/bopomofo/decoration renderer 读取 `result.debug` | renderer 绑定 debug schema，难以独立演进 | 最终可视 annotation 是否应成为正式 output；explain trace 如何按需获得？ |
 | 高 | 富文本输入未随 layout input/result 统一流转 | `ParagraphBuildOutput` 将 `LayoutInput` 与颜色、`rich_text` 一并交给 demo；它们仍不属于 `LayoutInput` | builder 已消除手工范围和边界维护，renderer 输入仍是独立数据 | 后续是否将颜色和 rich text 收入统一输入接口？ |
 | 中 | 一级公开模块等于内部实现目录 | `layout` 公开各 stage、cache、ledger、optimization | 外部代码会依赖重构敏感类型，增加兼容负担 | 哪些模块应为 public facade、advanced、debug、internal？ |
-| 中 | 配置通过可变引擎字段分散注入 | 13 个 `pub` 依赖字段 | 初始化不完整、cache 生命周期与策略组合不透明 | 是否使用 builder/config 一次性组装并验证 dependency coherence？ |
+| 中 | 配置已通过 builder 一次性注入 | `ParagraphLayoutEngineBuilder` 统一组装必填字体 backend、cache 和策略；引擎组件字段为私有 | cache 和策略不再通过引擎公有字段修改，依赖组合更明确 | 后续是否继续细化 builder 的稳定配置边界？ |
 | 中 | 结果复制原始 `LayoutInput` | `LayoutResult.input` 是完整值 | 大文本/多 span 的内存和生命周期固定绑定 | 是否区分 `LayoutSnapshot`、render plan、source/document reference？ |
 | 中 | 错误通过 `assert!`/`panic!` 表达 | constraints、range、inline object、demo backend 多处如此 | 外部不可信/编辑中输入难以恢复 | 公共边界哪些情况应返回结构化错误，哪些保留编程错误断言？ |
 | 中 | 约束语义未完全对称 | `LayoutConstraints` 有 `max_height`，文档重点实现 `max_lines` | 调用方可能期待高度裁切/溢出策略 | 每一项 constraint 的 layout、paint、interaction 语义是什么？ |
@@ -298,7 +277,7 @@ flowchart TB
 基于当前事实，未来设计可以先固定下列决策问题，而不急于一次性改变算法：
 
 1. **稳定入口**：普通调用方是否只需要一个可配置的 paragraph layout engine，而算法策略和缓存仅以选项出现。
-2. **字体边界**：是否将 fallback、metrics、shaping 和 glyph replay 的一致性表达为一个主能力，避免三次注入。
+2. **字体边界**：如何继续细化 `FontBackend` 的 capability 与 glyph replay 约束，同时保持 fallback、metrics、shaping 的一致性。
 3. **输入归属**：颜色、link、rich text、source boundary 和 inline semantic 是否统一为 document/span 输入，还是明确划分“layout input”与“renderer metadata”并提供官方转换。
 4. **输出分层**：哪些结果是每次 layout 必得的核心几何，哪些 glyph/annotation 是 renderer payload，哪些解释 trace 仅在诊断模式生成。
 5. **可见性政策**：哪些模块允许高级用户自定义，哪些仅为 parity test 和内部 pipeline 使用；公开但不稳定的模块应如何迁移。
@@ -319,12 +298,12 @@ flowchart TB
 
 ## 现状下的最小集成清单
 
-在新 facade 出现前，外部应用正确接入当前 API 至少需要完成下列项目：
+按当前 facade 接入时，外部应用正确使用当前 API 至少需要完成下列项目：
 
 1. 使用 `api::ParagraphBuilder` 追加文本并声明范围，读取其生成的 `LayoutInput`、颜色和 rich text。
 2. 手工构造 `TiqianTextContent` 时，将宿主文本位置转换为 Unicode scalar offset，构造 `TextRange`，并维护精确几何范围的 `source_boundaries`。
 3. 用 `LayoutInput` 提供基础样式、段落样式、constraints、注音、装饰和行内对象。
-4. 实现一个 `FontBackend`，由它统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
+4. 实现一个 `FontBackend`，并通过 `ParagraphLayoutEngineBuilder::new(Box::new(backend)).build()` 构造引擎；backend 统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
 5. 从 `LayoutResult` 读取 glyph、line、查询结果以及当前位于 `debug` 中的 annotation geometry，完成 renderer、裁切和交互。
 
 这一清单本身就是当前对外 API 尚未收敛的证据：它适合作为平台 adapter 的实现指南，但对一般应用调用方过于深入。

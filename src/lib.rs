@@ -50,7 +50,6 @@ pub mod linebreak {
 pub mod shaping {
     pub mod font_backend;
     pub mod replayable_font_backend;
-    pub mod stub_font_backend;
     pub mod text_shaper;
 }
 

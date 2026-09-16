@@ -869,13 +869,10 @@ mod tests {
     fn catalog_replaces_the_engine_stub_font_path() {
         use tiqian::core::geometry::LayoutConstraints;
         use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-        use tiqian::layout::paragraph_layout_engine::{
-            ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-        };
+        use tiqian::api::ParagraphLayoutEngineBuilder;
 
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog);
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new("中文（English）".into()),
@@ -904,14 +901,11 @@ mod tests {
         fn cjk_dashes_share_the_ideograph_vertical_center() {
             use tiqian::core::geometry::LayoutConstraints;
             use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-            use tiqian::layout::paragraph_layout_engine::{
-                ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-            };
+            use tiqian::api::ParagraphLayoutEngineBuilder;
 
             for source in ["中—中", "中——中"] {
                 let catalog = DemoFontCatalog::load().unwrap();
-                let mut engine = ExplainableStubParagraphLayoutEngine::default();
-                engine.font_backend = Box::new(catalog);
+                let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
                 let result = engine.layout(
                     LayoutInput::builder(
                         TiqianTextContent::new(source.into()),
@@ -1027,13 +1021,10 @@ mod tests {
     fn complex_emoji_layout_keeps_the_noto_face_and_source_range() {
         use tiqian::core::geometry::LayoutConstraints;
         use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-        use tiqian::layout::paragraph_layout_engine::{
-            ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-        };
+        use tiqian::api::ParagraphLayoutEngineBuilder;
 
         let catalog = DemoFontCatalog::load().unwrap();
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(catalog);
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new("甲👩🏽‍💻乙".into()),

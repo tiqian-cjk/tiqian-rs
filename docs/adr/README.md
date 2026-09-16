@@ -12,3 +12,4 @@ Alternatives considered 和 Verification 说明当时的取舍与验证证据；
 - [R0001 核心 source coordinate 使用 Unicode scalar value](R0001-unicode-scalar-source-coordinates.md)
 - [R0002 统一富文本旁路模型与绘制定义](R0002-unified-rich-text-paint-model.md)
 - [R0003 统一字体后端](R0003-unified-font-backend.md)
+- [R0004 显式字体后端的段落引擎构造](R0004-explicit-font-backend-engine.md)
