@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use tiqian::common::{HashMap, HashSet};
-use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
@@ -14,9 +15,11 @@ use tiqian::core::text_model::{
     RubyKind, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
-use tiqian::layout::paragraph_layout_engine::ExplainableStubParagraphLayoutEngine;
+use tiqian::font::font_policy::CjkFontRoleClassifier;
+use tiqian::layout::default_hyphenator::default_hyphenator;
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
+use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
+use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
     LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache, containing_items,
     first_contained_item, build_paragraph_layout_prep, prepare_width_independent_annotation,
@@ -24,11 +27,16 @@ use tiqian::layout::width_independent_annotation_cache::{
 };
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 #[test]
 fn lru_cache_update_existing_key_and_clear() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("测试缓存")),
         LayoutConstraints::with_defaults(300.0),
@@ -37,11 +45,11 @@ fn lru_cache_update_existing_key_and_clear() {
     let annotation = Arc::new(prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     ));
     let key = to_width_independent_annotation_key(&input, HashMap::new());
     let mut cache = LruWidthIndependentAnnotationCache::new(2);
@@ -115,7 +123,13 @@ fn line_length_grid_body_alignment_branches() {
         (LastLineAlignment::Center, 2.0),
         (LastLineAlignment::End, 4.0),
     ] {
-        let engine = ExplainableStubParagraphLayoutEngine::default();
+        let clreq_profile_resolver = BuiltInClreqProfileResolver;
+        let font_role_classifier = CjkFontRoleClassifier;
+        let font_backend = DeterministicStubFontBackend::default();
+        let quote_pair_analyzer = QuotePairAnalyzer;
+        let hyphenator = default_hyphenator();
+        let punctuation_atom_builder = PunctuationAtomBuilder::default();
+        let punctuation_spacing_compressor = PunctuationSpacingCompressor;
         let input = LayoutInput::builder(
             TiqianTextContent::new(Text::from("一二三四五六七八九十")),
             LayoutConstraints::with_defaults(100.0),
@@ -130,20 +144,20 @@ fn line_length_grid_body_alignment_branches() {
         let annotation = prepare_width_independent_annotation(
             &input,
             &HashMap::new(),
-            engine.clreq_profile_resolver.as_ref(),
-            engine.font_role_classifier.as_ref(),
-            engine.font_backend.as_ref(),
-            &engine.quote_pair_analyzer,
-            engine.hyphenator,
+            &clreq_profile_resolver,
+            &font_role_classifier,
+            &font_backend,
+            &quote_pair_analyzer,
+            hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &HashMap::new(),
-            engine.font_backend.as_ref(),
-            engine.hyphenator,
-            &engine.punctuation_atom_builder,
-            &engine.punctuation_spacing_compressor,
+            &font_backend,
+            hyphenator,
+            &punctuation_atom_builder,
+            &punctuation_spacing_compressor,
         );
         assert!((prep.grid_body_offset - expected_offset).abs() < 0.001);
     }
@@ -151,7 +165,13 @@ fn line_length_grid_body_alignment_branches() {
 
 #[test]
 fn dynamic_shaping_triggers_and_emphasis_italic() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     for (input, rejected) in [
         (
             LayoutInput::builder(
@@ -199,20 +219,20 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
         let annotation = prepare_width_independent_annotation(
             &input,
             &rejected,
-            engine.clreq_profile_resolver.as_ref(),
-            engine.font_role_classifier.as_ref(),
-            engine.font_backend.as_ref(),
-            &engine.quote_pair_analyzer,
-            engine.hyphenator,
+            &clreq_profile_resolver,
+            &font_role_classifier,
+            &font_backend,
+            &quote_pair_analyzer,
+            hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &rejected,
-            engine.font_backend.as_ref(),
-            engine.hyphenator,
-            &engine.punctuation_atom_builder,
-            &engine.punctuation_spacing_compressor,
+            &font_backend,
+            hyphenator,
+            &punctuation_atom_builder,
+            &punctuation_spacing_compressor,
         );
         assert!(!prep.clusters.is_empty());
     }
@@ -221,8 +241,9 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
 #[test]
 #[should_panic(expected = "Conflicting OpenType features")]
 fn conflicting_open_type_features_throws() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(stub_backend_with_transform(
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = stub_backend_with_transform(
         |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             let face = result.face.clone();
             result.shaping.glyph_runs = vec![
@@ -248,7 +269,11 @@ fn conflicting_open_type_features_throws() {
             ];
             result
         },
-    ));
+    );
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("测试")),
         LayoutConstraints::with_defaults(300.0),
@@ -257,26 +282,32 @@ fn conflicting_open_type_features_throws() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
 }
 
 #[test]
 fn verbatim_ranges_and_auto_space_decisions() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let text = Text::from("中文 English 混排测试 12345");
     let input = LayoutInput::builder(
         TiqianTextContent::builder(text)
@@ -294,27 +325,33 @@ fn verbatim_ranges_and_auto_space_decisions() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.clusters.is_empty());
 }
 
 #[test]
 fn ruby_spread_accumulation_and_edges() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("中文测试段落"))
             .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5)]))
@@ -331,27 +368,33 @@ fn ruby_spread_accumulation_and_edges() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.ruby_and_bopomofo_spread.is_empty());
 }
 
 #[test]
 fn ruby_spread_second_visit_and_zero_first_cluster() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("一二三四五六七八"))
             .source_boundaries(HashSet::from([scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5), scalar_offset(6), scalar_offset(7)]))
@@ -368,27 +411,33 @@ fn ruby_spread_second_visit_and_zero_first_cluster() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.ruby_and_bopomofo_spread.is_empty());
 }
 
 #[test]
 fn paired_punctuation_with_zero_capacity() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("（括号）")),
         LayoutConstraints::with_defaults(300.0),
@@ -397,27 +446,33 @@ fn paired_punctuation_with_zero_capacity() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.clusters.is_empty());
 }
 
 #[test]
 fn adjacent_inline_object_boundaries_merging_and_conflicts() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     for uniform1 in [true, false] {
         for uniform2 in [true, false] {
             for prevents1 in [true, false] {
@@ -463,20 +518,20 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
                     let annotation = prepare_width_independent_annotation(
                         &input,
                         &HashMap::new(),
-                        engine.clreq_profile_resolver.as_ref(),
-                        engine.font_role_classifier.as_ref(),
-                        engine.font_backend.as_ref(),
-                        &engine.quote_pair_analyzer,
-                        engine.hyphenator,
+                        &clreq_profile_resolver,
+                        &font_role_classifier,
+                        &font_backend,
+                        &quote_pair_analyzer,
+                        hyphenator,
                     );
                     let prep = build_paragraph_layout_prep(
                         &input,
                         &annotation,
                         &HashMap::new(),
-                        engine.font_backend.as_ref(),
-                        engine.hyphenator,
-                        &engine.punctuation_atom_builder,
-                        &engine.punctuation_spacing_compressor,
+                        &font_backend,
+                        hyphenator,
+                        &punctuation_atom_builder,
+                        &punctuation_spacing_compressor,
                     );
                     assert!(!prep.clusters.is_empty());
                 }
@@ -519,21 +574,21 @@ fn adjacent_inline_object_boundaries_merging_and_conflicts() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         build_paragraph_layout_prep(
             &input,
             &annotation,
             &HashMap::new(),
-            engine.font_backend.as_ref(),
-            engine.hyphenator,
-            &engine.punctuation_atom_builder,
-            &engine.punctuation_spacing_compressor,
+            &font_backend,
+            hyphenator,
+            &punctuation_atom_builder,
+            &punctuation_spacing_compressor,
         )
     }));
     let message = match result {
@@ -548,8 +603,7 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
     let text = "正文：“内容·[1]，后文";
     let byte_start = text.find("[1]").unwrap();
     let attach_start = text[..byte_start].chars().count() as i32;
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(stub_backend_with_transform(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(stub_backend_with_transform(
         |_: &FontBackendRequest, mut result: FontBackendShapingResult| {
             for run in &mut result.shaping.glyph_runs {
                 for glyph in &mut run.glyphs {
@@ -563,7 +617,8 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
             }
             result
         },
-    ));
+    )))
+    .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
@@ -609,7 +664,13 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
 
 #[test]
 fn prepare_width_independent_annotation_branches() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("测试文本【中文】与English，以及注音与行内框。"))
             .spans(vec![
@@ -680,11 +741,11 @@ fn prepare_width_independent_annotation_branches() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     assert_eq!(18.0, (annotation.font_size_at)(scalar_offset(0)));
     assert_eq!(14.0, (annotation.font_size_at)(scalar_offset(5)));
@@ -703,10 +764,10 @@ fn prepare_width_independent_annotation_branches() {
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.ruby_and_bopomofo_spread.is_empty());
 }
@@ -721,8 +782,13 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
         }
     }
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(TaiwanProfileResolver);
+    let clreq_profile_resolver = TaiwanProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let text = Text::from("「引用」·中点‧间隔•中点，逗号。句号！问号？．点号、顿号以及 English words 间距");
     let spans: Vec<TextSpan> = text.scalar_indices()
         .map(|(offset, _)| TextSpan {
@@ -752,11 +818,11 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
             let mut annotation = prepare_width_independent_annotation(
                 &input,
                 &HashMap::new(),
-                engine.clreq_profile_resolver.as_ref(),
-                engine.font_role_classifier.as_ref(),
-                engine.font_backend.as_ref(),
-                &engine.quote_pair_analyzer,
-                engine.hyphenator,
+                &clreq_profile_resolver,
+                &font_role_classifier,
+                &font_backend,
+                &quote_pair_analyzer,
+                hyphenator,
             );
             annotation.clreq_profile.adjustment.allow_inline_stop_compression = allow_inline_stop;
             annotation.clreq_profile.adjustment.allow_sino_western_gap_adjustment =
@@ -765,10 +831,10 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
                 &input,
                 &annotation,
                 &HashMap::new(),
-                engine.font_backend.as_ref(),
-                engine.hyphenator,
-                &engine.punctuation_atom_builder,
-                &engine.punctuation_spacing_compressor,
+                &font_backend,
+                hyphenator,
+                &punctuation_atom_builder,
+                &punctuation_spacing_compressor,
             );
             assert!(!prep.shrink_opportunities.is_empty());
         }
@@ -777,7 +843,13 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
 
 #[test]
 fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("English 中文 混排 Latin 测试 样式"))
             .spans(vec![TextSpan {
@@ -805,11 +877,11 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
     let mut annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(8)));
     assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(9)));
@@ -824,10 +896,10 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         &input,
         &annotation,
         &rejected,
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.clusters.is_empty());
 
@@ -840,20 +912,20 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         let no_break_annotation = prepare_width_independent_annotation(
             &no_break_input,
             &HashMap::new(),
-            engine.clreq_profile_resolver.as_ref(),
-            engine.font_role_classifier.as_ref(),
-            engine.font_backend.as_ref(),
-            &engine.quote_pair_analyzer,
-            engine.hyphenator,
+            &clreq_profile_resolver,
+            &font_role_classifier,
+            &font_backend,
+            &quote_pair_analyzer,
+            hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &no_break_input,
             &no_break_annotation,
             &HashMap::new(),
-            engine.font_backend.as_ref(),
-            engine.hyphenator,
-            &engine.punctuation_atom_builder,
-            &engine.punctuation_spacing_compressor,
+            &font_backend,
+            hyphenator,
+            &punctuation_atom_builder,
+            &punctuation_spacing_compressor,
         );
         assert!(!prep.clusters.is_empty());
     }
@@ -866,17 +938,23 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         &input,
         &annotation,
         &HashMap::new(),
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep_unknown_roles.clusters.is_empty());
 }
 
 #[test]
 fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("Hello World Latin"))
             .line_break_spans(vec![LineBreakSpan {
@@ -900,11 +978,11 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
     let mut annotation = prepare_width_independent_annotation(
         &input,
         &HashMap::new(),
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     annotation.segment_shaping_cache = HashMap::new();
     let rejected = HashMap::from([(
@@ -915,10 +993,10 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
         &input,
         &annotation,
         &rejected,
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.clusters.is_empty());
 }

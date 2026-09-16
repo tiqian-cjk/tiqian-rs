@@ -5,9 +5,9 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct PreserveInputProfile;
 
@@ -34,11 +34,12 @@ fn layout(
     text: &str,
     profile: Option<Box<dyn ClreqProfileResolver>>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut builder = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()));
     if let Some(profile) = profile {
-        engine.clreq_profile_resolver = profile;
+        let clreq_profile_resolver = profile;
+        builder = builder.clreq_profile_resolver(clreq_profile_resolver);
     }
-    engine.layout(
+    builder.build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),

@@ -1,12 +1,11 @@
 use tiqian::core::geometry::{text_range, LayoutConstraints, TextRange};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineBoxSpan, InlineObjectBoundaryAdjustment, InlineObjectSpan, LayoutInput, LineBreakPolicy,
     LineBreakSpan, ParagraphStyle, TiqianTextContent,
 };
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use crate::support::DeterministicStubFontBackend;
 
 fn input(
     paragraph_style: ParagraphStyle,
@@ -41,7 +40,7 @@ fn inline_object(
 
 fn expect_rejection(input: LayoutInput, fragment: &str) {
     let error = std::panic::catch_unwind(|| {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
         engine.layout(input);
     })
     .expect_err("expected layout input rejection");

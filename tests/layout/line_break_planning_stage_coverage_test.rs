@@ -6,10 +6,10 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+
+use crate::support::DeterministicStubFontBackend;
 
 struct AdjustmentProfile(LineAdjustmentStrategy);
 
@@ -33,7 +33,7 @@ fn layout(
         .line_length_grid(LineLengthGrid::with_enabled(false))
         .line_height(line_height)
         .build();
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(line_break_spans)
@@ -138,9 +138,12 @@ fn overlapping_technical_spans_keep_the_first_boundary_reason() {
 fn push_out_first_takes_fewer_fill_push_ins_than_push_in_first() {
     const TEXT: &str = "咖啡（coffee）在十七世纪经威尼斯传入欧洲。最初它被当作药物出售，价格高得吓人，真正让它流行起来的是随后遍地开花的咖啡馆——读报、辩论、下棋、写作——城市生活忽然多出一个公共客厅。意大利人做出了 espresso，维也纳人往杯里加奶油，土耳其人坚持连渣同煮……每座城市都相信自己手里那一杯才是正统。有人说：「先有咖啡馆，后有启蒙运动」。这话说得夸张，但也不算太离谱。";
     let layout_with = |strategy| {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-        engine.clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
+        let line_breaker = Box::new(LookaheadLineBreaker::default());
+        let clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .line_breaker(line_breaker)
+            .clreq_profile_resolver(clreq_profile_resolver)
+            .build();
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from(TEXT)),

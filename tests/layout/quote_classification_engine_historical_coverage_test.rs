@@ -6,14 +6,15 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
@@ -65,8 +66,10 @@ fn classifies_ascii_brackets_as_latin_inside_pure_cjk_content() {
 #[test]
 fn ascii_closing_bracket_with_cjk_interior_is_forbidden_at_line_start() {
     let text = "如今已占据超七成份额(国产品牌)，互联网大厂排队抢购？";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(232.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -80,8 +83,10 @@ fn ascii_closing_bracket_with_cjk_interior_is_forbidden_at_line_start() {
 #[test]
 fn ascii_opening_bracket_with_cjk_interior_is_forbidden_at_line_end() {
     let text = "如今已占据超七成份额(国产品牌)，互联网大厂排队抢购？";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(168.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -104,7 +109,7 @@ fn keeps_text_start_latin_quote_pair_in_latin_run() {
 #[test]
 fn mixed_quote_contexts_reach_the_font_and_punctuation_pipeline() {
     let text = "中“文”中；that’s；（如 ‘O’, ‘Q’）；他说：“She said ‘hello’.”";
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(1_000.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
             .build(),
@@ -131,7 +136,7 @@ fn mixed_quote_contexts_reach_the_font_and_punctuation_pipeline() {
 #[test]
 fn quote_roles_survive_style_and_source_boundaries() {
     let text = "中‘that’s’中";
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan { range: text_range(2, 7), style: TextStyle::builder().font_weight(700).build() }])
@@ -156,7 +161,7 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         "便延伸出了“乃子”“大波”“大灯”“大雷”“大扎”“对A”“波霸”这些词",
         "这些太直白了是吧，\n “欧派”“double”“double may”呢",
     ] {
-        let result = ExplainableStubParagraphLayoutEngine::default().layout(
+        let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
             LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(1_000.0))
                 .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
                 .build(),
@@ -178,9 +183,12 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
 #[test]
 fn mi10s_adjacent_latin_transcriptions_keep_the_final_quote_pair_in_cjk_context() {
     let text = "所以这个和 “骑ji” “说shui”“斜xiá”不一样，港台是从众的，大陆读音大多数源自韵书。";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.hyphenator = &NoHyphenator;
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let hyphenator = &NoHyphenator;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(160.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -301,8 +309,7 @@ fn proportional_quote_backend() -> impl FontBackend {
 
 #[test]
 fn requests_full_width_cjk_quotes_and_synthesizes_the_cell_when_the_font_stays_proportional() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(proportional_quote_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(proportional_quote_backend())).build();
     let input = |text| LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(320.0))
         .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
         .build();

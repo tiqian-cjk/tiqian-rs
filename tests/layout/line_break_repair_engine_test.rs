@@ -6,10 +6,10 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
+
+use crate::support::DeterministicStubFontBackend;
 
 fn layout(
     text: &str,
@@ -17,11 +17,15 @@ fn layout(
     spans: Vec<LineBreakSpan>,
     no_hyphenation: bool,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    if no_hyphenation {
-        engine.hyphenator = &NoHyphenator;
-    }
-    engine.layout(
+    let hyphenator = if no_hyphenation {
+        &NoHyphenator as &'static dyn Hyphenator
+    } else {
+        tiqian::layout::default_hyphenator::default_hyphenator()
+    };
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(spans)
@@ -43,11 +47,15 @@ fn layout_with_default_grid(
     max_width: f32,
     no_hyphenation: bool,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    if no_hyphenation {
-        engine.hyphenator = &NoHyphenator;
-    }
-    engine.layout(
+    let hyphenator = if no_hyphenation {
+        &NoHyphenator as &'static dyn Hyphenator
+    } else {
+        tiqian::layout::default_hyphenator::default_hyphenator()
+    };
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
@@ -68,10 +76,13 @@ fn layout_with_breaker(
     breaker: Box<dyn LineBreaker>,
     hyphenator: &'static dyn Hyphenator,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = breaker;
-    engine.hyphenator = hyphenator;
-    engine.layout(
+    let line_breaker = breaker;
+    let hyphenator = hyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .line_break_spans(spans)
@@ -93,10 +104,13 @@ fn layout_with_default_grid_breaker(
     max_width: f32,
     hyphenator: &'static dyn Hyphenator,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.hyphenator = hyphenator;
-    engine.layout(
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let hyphenator = hyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),

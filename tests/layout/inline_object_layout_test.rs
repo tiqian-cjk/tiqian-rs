@@ -8,16 +8,16 @@ use tiqian::core::text_model::{
     TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::layout::line_geometry_stage::resolve_inline_object_line_boundary_extent;
 use tiqian::layout::progressive_break_decisions::{
     UnbreakableRanges, adjust_break_for_unbreakables,
 };
 use tiqian::linebreak::hyphenation::NoHyphenator;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct FixedBasicProfile;
 
@@ -31,12 +31,15 @@ impl ClreqProfileResolver for FixedBasicProfile {
 
 fn fixed_basic_engine(
     breaker: Box<dyn tiqian::layout::line_breaker::LineBreaker>,
-) -> ExplainableStubParagraphLayoutEngine {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = breaker;
-    engine.clreq_profile_resolver = Box::new(FixedBasicProfile);
-    engine.hyphenator = &NoHyphenator;
-    engine
+) -> tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine {
+    let line_breaker = breaker;
+    let clreq_profile_resolver = Box::new(FixedBasicProfile);
+    let hyphenator = &NoHyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .hyphenator(hyphenator)
+        .build()
 }
 
 fn breaker(strategy: usize) -> Box<dyn tiqian::layout::line_breaker::LineBreaker> {
@@ -57,7 +60,7 @@ fn style() -> ParagraphStyle {
 }
 
 fn layout(objects: Vec<InlineObjectSpan>) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("甲乙")),
             LayoutConstraints::with_defaults(16.0),
@@ -124,7 +127,7 @@ fn inline_object_expands_only_the_boundary_with_actual_collision() {
     assert!((decision.line_extras[1] - 7.6).abs() < 0.001);
     assert_eq!(vec![1], decision.expanded_line_indices);
     assert_eq!("InlineObjectInterlineCollision", decision.reason);
-    let without_clearance = ExplainableStubParagraphLayoutEngine::default().layout(
+    let without_clearance = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("甲乙")),
             LayoutConstraints::with_defaults(16.0),
@@ -151,7 +154,7 @@ fn inline_object_expands_only_the_boundary_with_actual_collision() {
 #[test]
 fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
     let text = format!("中{INLINE_OBJECT_REPLACEMENT_CHAR}文");
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(120.0),
@@ -202,7 +205,7 @@ fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
 #[test]
 fn inline_object_is_one_indivisible_break_cluster() {
     let text = format!("中{INLINE_OBJECT_REPLACEMENT_CHAR}文");
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(35.0),
@@ -220,7 +223,7 @@ fn inline_object_is_one_indivisible_break_cluster() {
 
 #[test]
 fn inline_object_keeps_alternate_source_text_while_skipping_its_glyph_shaping() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中图片文")),
             LayoutConstraints::with_defaults(120.0),

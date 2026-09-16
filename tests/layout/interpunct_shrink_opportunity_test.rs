@@ -6,9 +6,7 @@ use tiqian::core::layout_model::{Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use super::font_backend_test_support::stub_backend_with_transform;
@@ -85,8 +83,8 @@ fn halt_ink_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 }
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(halt_ink_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(halt_ink_backend()))
+        .build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -127,9 +125,10 @@ fn interpunct_ink_evidence_frees_paired_glue_for_tier_three_shrink() {
 
 #[test]
 fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(PreserveInputProfile);
-    engine.font_backend = Box::new(halt_ink_backend());
+    let clreq_profile_resolver = Box::new(PreserveInputProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(halt_ink_backend()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("正文・间隔・后文")),

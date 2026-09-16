@@ -13,9 +13,8 @@ use tiqian::core::text_model::{
     ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 use tiqian::layout::prepared_paragraph::{ecma_json_number, to_prepared_paragraph_json};
 
 fn evidence_result() -> LayoutResult {
@@ -240,7 +239,7 @@ fn render_evidence_is_append_only_and_emits_kotlin_cell_and_paragraph_fields() {
     )
     .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
     .build();
-    let pure_result = ExplainableStubParagraphLayoutEngine::default().layout(pure_input);
+    let pure_result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(pure_input);
     let pure_evidence = to_prepared_paragraph_json(&pure_result, true);
     for expected in [
         "\"schema\":1",
@@ -308,7 +307,7 @@ fn real_ruby_and_bopomofo_layouts_emit_evidence_only_when_requested() {
         RubySpan::with_kind(text_range(1, 2), Text::from("ㄨㄣˊ"), RubyKind::Bopomofo),
     ])
     .build();
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input);
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input);
     let plain = to_prepared_paragraph_json(&result, false);
     let evidence = to_prepared_paragraph_json(&result, true);
 

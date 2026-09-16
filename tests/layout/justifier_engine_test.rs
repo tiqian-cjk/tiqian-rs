@@ -8,12 +8,11 @@ use tiqian::core::text_model::{
     LastLineAlignment, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 struct PushOutOnlyProfile;
@@ -38,10 +37,11 @@ impl ClreqProfileResolver for FixedSinoWesternGapProfile {
     }
 }
 
-fn engine() -> ExplainableStubParagraphLayoutEngine {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(PushOutOnlyProfile);
-    engine
+fn engine() -> tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine {
+    let clreq_profile_resolver = Box::new(PushOutOnlyProfile);
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build()
 }
 
 fn layout(
@@ -185,8 +185,10 @@ fn last_line_alignment_positions_the_last_line_via_indent() {
 
 #[test]
 fn sino_western_gap_knob_disables_stretch_and_shrink() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(FixedSinoWesternGapProfile);
+    let clreq_profile_resolver = Box::new(FixedSinoWesternGapProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文Hello文中文中文中文中")),
@@ -223,8 +225,10 @@ fn half_em_word_spaces_do_not_stretch_under_justification() {
 
 #[test]
 fn justify_fills_saturated_line_with_uncapped_even_share() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &NoHyphenator;
+    let hyphenator = &NoHyphenator;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文Network中文")),
@@ -396,8 +400,9 @@ fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
 
 #[test]
 fn latin_glyph_positions_survive_autospace_and_justification() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(stub_backend_with_transform(
+    let hyphenator = &NoHyphenator;
+    let clreq_profile_resolver = Box::new(PushOutOnlyProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(stub_backend_with_transform(
         |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             let text = input.text.slice_text(input.range);
             let advance = if text == "AV" { 10.0 } else { text.scalar_len().value() as f32 * 16.0 };
@@ -436,9 +441,10 @@ fn latin_glyph_positions_survive_autospace_and_justification() {
             )];
             result
         },
-    ));
-    engine.hyphenator = &NoHyphenator;
-    engine.clreq_profile_resolver = Box::new(PushOutOnlyProfile);
+    )))
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中AV中文")),

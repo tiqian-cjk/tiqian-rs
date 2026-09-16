@@ -8,11 +8,10 @@ use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 struct TaiwanProfile;
@@ -67,8 +66,10 @@ fn fixed_basic_layout(
     auto_space: AutoSpacePolicy,
     grid: bool,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(FixedBasicProfile { adjustment, auto_space });
+    let clreq_profile_resolver = Box::new(FixedBasicProfile { adjustment, auto_space });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(max_width))
             .paragraph_style(
@@ -82,7 +83,7 @@ fn fixed_basic_layout(
 }
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
@@ -252,8 +253,7 @@ fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
 
 #[test]
 fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(centered_ink_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(centered_ink_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("。")),
@@ -289,8 +289,7 @@ fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
 
 #[test]
 fn push_in_keeps_font_centered_punctuation_compression_paired() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(push_in_centered_comma_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(push_in_centered_comma_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文，中文")),
@@ -399,8 +398,7 @@ fn compresses_cjk_closing_before_ascii_point_mark_without_reclassifying_ascii() 
 
 #[test]
 fn halt_advance_from_shaper_drives_punctuation_body_end_to_end() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(halt_stop_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(halt_stop_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文。")), LayoutConstraints::with_defaults(320.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -417,8 +415,10 @@ fn halt_advance_from_shaper_drives_punctuation_body_end_to_end() {
 
 #[test]
 fn loose_line_end_style_keeps_full_width_punctuation() {
-    let mut loose_engine = ExplainableStubParagraphLayoutEngine::default();
-    loose_engine.clreq_profile_resolver = Box::new(LooseLineEndProfile);
+    let clreq_profile_resolver = Box::new(LooseLineEndProfile);
+    let mut loose_engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let loose = loose_engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文中文。")), LayoutConstraints::with_defaults(320.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -436,8 +436,10 @@ fn gb_fixed_separators_are_half_width_and_unadjustable() {
     let default = layout("中·中文");
     assert_eq!(16.0, default.clusters.iter().find(|cluster| cluster.text == "·").unwrap().advance);
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(GbFixedSeparatorProfile);
+    let clreq_profile_resolver = Box::new(GbFixedSeparatorProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文·中文")), LayoutConstraints::with_defaults(320.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
@@ -451,7 +453,7 @@ fn gb_fixed_separators_are_half_width_and_unadjustable() {
 
 #[test]
 fn push_in_drains_bracket_outer_glue_before_inline_comma() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中（文）中，中文中。")), LayoutConstraints::with_defaults(144.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
             .build(),
@@ -515,8 +517,10 @@ fn sino_western_gap_shrink_floors_at_eighth_em() {
 
 #[test]
 fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(TaiwanProfile);
+    let clreq_profile_resolver = Box::new(TaiwanProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("你好。")),
@@ -577,7 +581,7 @@ fn adjacent_closing_and_pause_stop_compression_is_reflected_in_drawable_ledger()
 
 #[test]
 fn push_in_consumes_punctuation_glue_before_carrying_line_start_stop() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中。")),
             LayoutConstraints::with_defaults(60.0),

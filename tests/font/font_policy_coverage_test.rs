@@ -11,7 +11,7 @@ use tiqian::font::font_policy::{
     RawFontMetrics, font_role_name_uses_latin_face,
 };
 use tiqian::shaping::font_backend::FontBackend;
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn test_font_request_and_roles() {

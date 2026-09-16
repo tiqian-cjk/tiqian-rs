@@ -8,12 +8,11 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 use tiqian::shaping::text_shaper::UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE;
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 struct PreserveInputProfile;
@@ -52,7 +51,7 @@ fn input(text: &str) -> LayoutInput {
 
 #[test]
 fn preserves_source_text_when_using_clreq_recommended_display_glyphs() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("……——・／"));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input("……——・／"));
     for (source, display) in [("……", "⋯⋯"), ("——", "⸺"), ("・", "·"), ("／", "／")] {
         let cluster = result.clusters.iter().find(|cluster| cluster.text == source).unwrap();
         assert_eq!(source, cluster.text);
@@ -66,8 +65,10 @@ fn preserves_source_text_when_using_clreq_recommended_display_glyphs() {
 
 #[test]
 fn honors_profile_punctuation_glyph_policy() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(PreserveInputProfile);
+    let clreq_profile_resolver = Box::new(PreserveInputProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(input("……——"));
     assert_eq!("……", result.clusters.iter().find(|cluster| cluster.text == "……").unwrap().display_text);
     assert_eq!("——", result.clusters.iter().find(|cluster| cluster.text == "——").unwrap().display_text);
@@ -75,8 +76,10 @@ fn honors_profile_punctuation_glyph_policy() {
 
 #[test]
 fn coalesce_set_is_driven_by_profile() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(SplitDashProfile);
+    let clreq_profile_resolver = Box::new(SplitDashProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     assert_eq!(
         vec!["—", "—"],
         engine.layout(input("——")).clusters.iter().map(|cluster| cluster.text.as_str()).collect::<Vec<_>>(),
@@ -89,7 +92,7 @@ fn coalesce_set_is_driven_by_profile() {
 
 #[test]
 fn uses_two_em_advance_for_recommended_dash_codepoint() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("⸺"));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input("⸺"));
     assert_eq!(1, result.clusters.len());
     assert_eq!(32.0, result.clusters[0].advance);
     assert_eq!(32.0, result.size.width);
@@ -140,8 +143,7 @@ fn feature_boundary_backend() -> impl tiqian::shaping::font_backend::FontBackend
 
 #[test]
 fn preserves_open_type_features_as_final_glyph_run_boundaries() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(feature_boundary_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(feature_boundary_backend())).build();
     let result = engine.layout(input("A’B"));
     assert_eq!(
         vec![text_range(0, 1), text_range(1, 2), text_range(2, 3)],
@@ -178,8 +180,7 @@ fn no_bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 
 #[test]
 fn shaping_without_bounds_produces_named_profile_fallback() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(no_bounds_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(no_bounds_backend())).build();
     let result = engine.layout(input("。"));
     assert_eq!(1, result.debug.punctuation_decisions.len());
     let punctuation = &result.debug.punctuation_decisions[0];
@@ -207,8 +208,7 @@ fn missing_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 
 #[test]
 fn substitution_rolls_back_to_source_text_when_font_lacks_the_glyph() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(missing_glyph_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(missing_glyph_backend())).build();
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -238,8 +238,7 @@ fn unverified_coverage_backend() -> impl tiqian::shaping::font_backend::FontBack
 
 #[test]
 fn ellipsis_substitution_rolls_back_when_coverage_cannot_be_verified() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(unverified_coverage_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(unverified_coverage_backend())).build();
     let result = engine.layout(input("中……文"));
     assert_eq!(
         "……",
@@ -288,12 +287,11 @@ fn dash_ink_backend(
 
 #[test]
 fn dash_substitution_rolls_back_when_ink_does_not_fill_the_two_em_advance() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(dash_ink_backend(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         None,
         32.0,
         Rect { left: 1.0, top: -10.0, right: 26.0, bottom: -8.0 },
-    ));
+    ))).build();
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -311,12 +309,11 @@ fn dash_substitution_rolls_back_when_ink_does_not_fill_the_two_em_advance() {
 
 #[test]
 fn dash_substitution_rolls_back_when_fallback_reports_a_full_one_em_glyph() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(dash_ink_backend(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         Some(16.0),
         16.0,
         Rect { left: 0.5, top: -9.0, right: 15.7, bottom: -7.0 },
-    ));
+    ))).build();
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "——",
@@ -334,12 +331,11 @@ fn dash_substitution_rolls_back_when_fallback_reports_a_full_one_em_glyph() {
 
 #[test]
 fn dash_coverage_target_uses_the_dash_span_font_size() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(dash_ink_backend(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         Some(32.0),
         32.0,
         Rect { left: 1.0, top: -18.0, right: 31.0, bottom: -14.0 },
-    ));
+    ))).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中——文"))
@@ -365,12 +361,11 @@ fn dash_coverage_target_uses_the_dash_span_font_size() {
 
 #[test]
 fn dash_ink_centers_within_the_two_em_body_when_the_font_rule_underfills() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(dash_ink_backend(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         None,
         32.0,
         Rect { left: 0.5, top: -10.0, right: 28.0, bottom: -8.0 },
-    ));
+    ))).build();
     let result = engine.layout(input("中——文"));
     let dash = result.clusters.iter().find(|cluster| cluster.text == "——").unwrap();
     assert_eq!("⸺", dash.display_text);
@@ -385,12 +380,11 @@ fn dash_ink_centers_within_the_two_em_body_when_the_font_rule_underfills() {
 
 #[test]
 fn dash_substitution_is_kept_when_ink_fills_the_two_em_advance() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(dash_ink_backend(
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         None,
         32.0,
         Rect { left: 1.0, top: -10.0, right: 31.0, bottom: -8.0 },
-    ));
+    ))).build();
     let result = engine.layout(input("中——文"));
     assert_eq!(
         "⸺",
@@ -400,7 +394,7 @@ fn dash_substitution_is_kept_when_ink_fills_the_two_em_advance() {
 
 #[test]
 fn substitution_is_kept_when_font_covers_the_glyph() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("中——文"));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input("中——文"));
     assert_eq!(
         "⸺",
         result.clusters.iter().find(|cluster| cluster.text == "——").unwrap().display_text,
@@ -432,8 +426,7 @@ fn ambiguous_cluster_backend() -> impl tiqian::shaping::font_backend::FontBacken
 
 #[test]
 fn ambiguous_glyph_cluster_mapping_falls_back_to_policy_with_recorded_reason() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(ambiguous_cluster_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(ambiguous_cluster_backend())).build();
     let result = engine.layout(input("……"));
     assert_eq!(2, result.debug.punctuation_decisions.len());
     for punctuation in &result.debug.punctuation_decisions {
@@ -481,8 +474,7 @@ fn character_local_ink_backend() -> impl tiqian::shaping::font_backend::FontBack
 
 #[test]
 fn multi_character_punctuation_uses_character_local_ink_bounds() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(character_local_ink_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(character_local_ink_backend())).build();
     let result = engine.layout(input("……"));
     assert_eq!(2, result.debug.punctuation_decisions.len());
     assert_eq!(
@@ -507,13 +499,14 @@ fn multi_character_punctuation_uses_character_local_ink_bounds() {
 
 #[test]
 fn rolled_back_dash_still_keeps_its_boundaries_closed_under_justification() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.font_backend = Box::new(dash_ink_backend(
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(dash_ink_backend(
         None,
         32.0,
         Rect { left: 1.0, top: -10.0, right: 26.0, bottom: -8.0 },
-    ));
+    )))
+        .line_breaker(line_breaker)
+        .build();
     let text = "在所谓中文语境下——不如说中文中文中文中文";
     let hit = (13..=30).find_map(|cells| {
         let result = engine.layout(

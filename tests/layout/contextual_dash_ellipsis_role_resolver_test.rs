@@ -12,9 +12,9 @@ use tiqian::layout::contextual_dash_ellipsis_role_resolver::{
 use tiqian::layout::quote_pair_analyzer::{
     with_contextual_quote_roles, ContextualQuoteFontRoleClassifier,
 };
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct SplitDashProfile;
 
@@ -28,7 +28,7 @@ impl ClreqProfileResolver for SplitDashProfile {
 }
 
 fn layout(text: &str, locale: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(1_000.0),
@@ -293,7 +293,7 @@ fn latin_dash_run_at_paragraph_end_stays_one_cluster() {
 
 #[test]
 fn style_span_inside_latin_dash_run_splits_the_cluster() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("A——B"))
                 .spans(vec![TextSpan {
@@ -325,8 +325,10 @@ fn style_span_inside_latin_dash_run_splits_the_cluster() {
 
 #[test]
 fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(SplitDashProfile);
+    let clreq_profile_resolver = Box::new(SplitDashProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let split = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("A——B")),
@@ -348,7 +350,7 @@ fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
             .collect::<Vec<_>>(),
     );
 
-    let style_split = ExplainableStubParagraphLayoutEngine::default().layout(
+    let style_split = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("A——B"))
                 .spans(vec![TextSpan {

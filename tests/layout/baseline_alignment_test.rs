@@ -4,12 +4,11 @@ use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 
 fn layout(content: TiqianTextContent) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(content, LayoutConstraints::with_defaults(400.0))
             .paragraph_style(
                 ParagraphStyle::builder()

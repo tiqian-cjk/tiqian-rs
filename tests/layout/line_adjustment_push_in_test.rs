@@ -7,17 +7,17 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::rebuild_line;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
     UnbreakableRanges,
 };
+
+use crate::support::DeterministicStubFontBackend;
 
 fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
     Cluster::new(
@@ -86,10 +86,13 @@ impl ClreqProfileResolver for AdjustmentProfile {
 }
 
 fn layout(strategy: LineAdjustmentStrategy) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
-    engine.layout(
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(
                 "咖啡（coffee）在十七世纪经威尼斯传入欧洲。最初它被当作药物出售，价格高得吓人，真正"

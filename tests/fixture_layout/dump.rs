@@ -4,13 +4,12 @@ use tiqian::clreq::clreq_profile::{
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
 
 use super::cases::Fixture;
+use crate::support::DeterministicStubFontBackend;
 
 static NO_HYPHENATOR: NoHyphenator = NoHyphenator;
 
@@ -43,21 +42,24 @@ pub fn dump_fixture(fixture: &Fixture) -> String {
 }
 
 fn layout(fixture: &Fixture, breaker: &str) -> LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = match breaker {
+    let line_breaker: Box<dyn tiqian::layout::line_breaker::LineBreaker> = match breaker {
         "greedy" => Box::new(GreedyLineBreaker::default()),
         "lookahead" => Box::new(LookaheadLineBreaker::default()),
         "paragraph-dp" => Box::new(ParagraphDpLineBreaker::default()),
         _ => unreachable!(),
     };
-    engine.hyphenator = if fixture.use_english_hyphenation {
+    let hyphenator = if fixture.use_english_hyphenation {
         english_hyphenation::en_us()
     } else {
         &NO_HYPHENATOR as &dyn Hyphenator
     };
-    engine.clreq_profile_resolver = Box::new(FixtureProfileResolver {
-        pin_basic_no_hang: fixture.pin_basic_no_hang,
-    });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(Box::new(FixtureProfileResolver {
+            pin_basic_no_hang: fixture.pin_basic_no_hang,
+        }))
+        .build();
     engine.layout(fixture.input.clone())
 }
 

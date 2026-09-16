@@ -9,7 +9,7 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontCandidateAttempt,
 };
 use tiqian::shaping::replayable_font_backend::ReplayableFontCatalog;
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 use tiqian::shaping::text_shaper::ShapingResult;
 
 fn request(text: &str, display_text: &str, role: FontRole) -> FontBackendRequest {

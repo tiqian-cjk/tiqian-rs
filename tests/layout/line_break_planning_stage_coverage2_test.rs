@@ -1,5 +1,6 @@
 use tiqian::common::HashMap;
-use tiqian::clreq::clreq_profile::PunctuationClass;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver, PunctuationClass};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::layout_model::{Cluster, EmergencyTrackingEligibilityDecisionInfo};
@@ -8,11 +9,16 @@ use tiqian::core::text_model::{
     INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, ParagraphStyle,
     TiqianTextContent,
 };
-use tiqian::font::font_policy::FontRole;
+use tiqian::font::font_metrics::ScriptAwareFontMetricsNormalizer;
+use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
+use tiqian::layout::default_hyphenator::default_hyphenator;
+use tiqian::layout::justifier::Justifier;
+use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker};
 use tiqian::layout::line_break_planning_stage::{
     plan_paragraph_lines, LineBreakPlanningRequest, ParagraphLayoutPrep,
 };
-use tiqian::layout::paragraph_layout_engine::ExplainableStubParagraphLayoutEngine;
+use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
+use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier,
 };
@@ -20,8 +26,9 @@ use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
 };
 use tiqian::shaping::font_backend::{FontCandidateAttempt, FontResolution};
+use crate::support::DeterministicStubFontBackend;
 
-fn base_prep(engine: &ExplainableStubParagraphLayoutEngine, text: &str) -> ParagraphLayoutPrep {
+fn base_prep(text: &str) -> ParagraphLayoutPrep {
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from(text)),
         LayoutConstraints::with_defaults(200.0),
@@ -29,43 +36,48 @@ fn base_prep(engine: &ExplainableStubParagraphLayoutEngine, text: &str) -> Parag
     .paragraph_style(ParagraphStyle::default())
     .build();
     let rejected = HashMap::new();
+    let clreq_profile_resolver: &dyn ClreqProfileResolver = &BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = default_hyphenator();
     let annotation = prepare_width_independent_annotation(
         &input,
         &rejected,
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     build_paragraph_layout_prep(
         &input,
         &annotation,
         &rejected,
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &PunctuationAtomBuilder::default(),
+        &PunctuationSpacingCompressor,
     )
 }
 
-fn plan(
-    engine: &ExplainableStubParagraphLayoutEngine,
-    prep: &ParagraphLayoutPrep,
-) -> tiqian::layout::line_break_planning_stage::LineBreakPlanningStageResult {
+fn plan(prep: &ParagraphLayoutPrep) -> tiqian::layout::line_break_planning_stage::LineBreakPlanningStageResult {
+    let font_backend = DeterministicStubFontBackend::default();
+    let font_metrics_normalizer = ScriptAwareFontMetricsNormalizer;
+    let justifier = Justifier::default();
+    let line_breaker: Box<dyn LineBreaker> = Box::new(GreedyLineBreaker::default());
     plan_paragraph_lines(LineBreakPlanningRequest::new(
         prep,
-        engine.font_backend.as_ref(),
-        engine.font_metrics_normalizer.as_ref(),
-        &engine.justifier,
-        engine.line_breaker.as_ref(),
+        &font_backend,
+        &font_metrics_normalizer,
+        &justifier,
+        line_breaker.as_ref(),
     ))
 }
 
 #[test]
 fn test_font_resolution_metrics_use_resolved_face() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "abcdef");
+    let mut prep = base_prep("abcdef");
     let bad_cluster = Cluster::new(text_range(0, 5), Text::from("abcde"), FontFaceId::with_resource_id("test"), 50.0);
     let bad_resolution = FontResolution::new(
         text_range(0, 3),
@@ -81,7 +93,7 @@ fn test_font_resolution_metrics_use_resolved_face() {
     prep.clusters = vec![bad_cluster];
     prep.font_resolutions = HashMap::from([(bad_resolution.range, bad_resolution)]);
 
-    let result = plan(&engine, &prep);
+    let result = plan(&prep);
     assert_eq!(1, result.metric_decisions.len());
     assert_eq!(text_range(0, 3), result.metric_decisions[0].range);
     assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
@@ -90,8 +102,7 @@ fn test_font_resolution_metrics_use_resolved_face() {
 
 #[test]
 fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "abcdef");
+    let mut prep = base_prep("abcdef");
     let resolution = FontResolution::new(
         text_range(4, 6),
         FontRole::LatinText,
@@ -107,7 +118,7 @@ fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
     prep.clusters = vec![cluster];
     prep.font_resolutions = HashMap::from([(resolution.range, resolution)]);
 
-    let result = plan(&engine, &prep);
+    let result = plan(&prep);
     assert_eq!(1, result.metric_decisions.len());
     assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
     assert_eq!(text_range(4, 6), result.metric_decisions[0].range);
@@ -115,9 +126,8 @@ fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
 
 #[test]
 fn test_ascii_point_mark_kinsoku_line_start() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    let result = tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine::layout(
-        &mut engine,
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("hello, world")),
             LayoutConstraints::with_defaults(50.0),
@@ -130,9 +140,8 @@ fn test_ascii_point_mark_kinsoku_line_start() {
 #[test]
 fn test_inline_object_kinsoku_line_start() {
     let text = format!("{INLINE_OBJECT_REPLACEMENT_CHAR}hello");
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    let result = tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine::layout(
-        &mut engine,
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(50.0),
@@ -150,21 +159,19 @@ fn test_inline_object_kinsoku_line_start() {
 
 #[test]
 fn test_progressive_break_offsets_unmapped_cluster_index() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "abc");
+    let mut prep = base_prep("abc");
     prep.progressive_break_offsets = HashMap::from([(
         scalar_offset(999),
         ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, text_range(0, 3)),
     )]);
 
-    let result = plan(&engine, &prep);
+    let result = plan(&prep);
     assert!(result.progressive_break_opportunities.is_empty());
 }
 
 #[test]
 fn test_emergency_tracking_eligibility_decisions_branches() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "中文字符");
+    let mut prep = base_prep("中文字符");
     prep.emergency_tracking_eligibility_decisions = vec![
         EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(100, 200),
@@ -183,13 +190,12 @@ fn test_emergency_tracking_eligibility_decisions_branches() {
         },
     ];
 
-    assert!(!plan(&engine, &prep).line_solution.lines.is_empty());
+    assert!(!plan(&prep).line_solution.lines.is_empty());
 }
 
 #[test]
 fn test_emergency_tracking_boundary_whitespace_and_empty() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "ab");
+    let mut prep = base_prep("ab");
     let clusters = vec![
         Cluster::new(text_range(0, 0), Text::from(""), FontFaceId::with_resource_id("test"), 0.0),
         Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("test"), 10.0),
@@ -209,18 +215,17 @@ fn test_emergency_tracking_boundary_whitespace_and_empty() {
         },
     ];
 
-    assert!(!plan(&engine, &prep).line_solution.lines.is_empty());
+    assert!(!plan(&prep).line_solution.lines.is_empty());
 }
 
 #[test]
 fn test_adjustable_inline_boundary_right_clusters_no_stretch_boundaries() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
-    let mut prep = base_prep(&engine, "中文字符排版");
+    let mut prep = base_prep("中文字符排版");
     prep.uniform_inline_object_boundary_after_clusters = [0, 1, 3].into_iter().collect();
     prep.atom_class_by_range = HashMap::from([
         (text_range(0, 1), PunctuationClass::Dash),
         (text_range(2, 3), PunctuationClass::Connector),
     ]);
 
-    assert!(!plan(&engine, &prep).line_solution.lines.is_empty());
+    assert!(!plan(&prep).line_solution.lines.is_empty());
 }

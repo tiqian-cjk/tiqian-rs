@@ -8,12 +8,11 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str, max_width: f32, hyphenate: bool) -> tiqian::core::layout_model::LayoutResult {
@@ -27,10 +26,12 @@ fn layout_with_content(
     spans: Vec<TextSpan>,
     inline_objects: Vec<InlineObjectSpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut builder = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()));
     if hyphenate {
-        engine.hyphenator = english_hyphenation::en_us();
+        let hyphenator = english_hyphenation::en_us();
+        builder = builder.hyphenator(hyphenator);
     }
+    let mut engine = builder.build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text)).spans(spans).build(),
@@ -53,10 +54,9 @@ fn layout_with_spans(
     line_break_spans: Vec<LineBreakSpan>,
     font_backend: Option<Box<dyn FontBackend>>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    if let Some(font_backend) = font_backend {
-        engine.font_backend = font_backend;
-    }
+    let font_backend = font_backend
+        .unwrap_or_else(|| Box::new(DeterministicStubFontBackend::default()));
+    let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
@@ -382,9 +382,12 @@ impl ClreqProfileResolver for TaiwanProfile {
 }
 
 fn layout_with_taiwan_profile(text: &str, max_width: f32) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = english_hyphenation::en_us();
-    engine.clreq_profile_resolver = Box::new(TaiwanProfile);
+    let hyphenator = english_hyphenation::en_us();
+    let clreq_profile_resolver = Box::new(TaiwanProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),

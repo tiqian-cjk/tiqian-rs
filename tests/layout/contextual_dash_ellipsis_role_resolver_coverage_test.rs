@@ -4,9 +4,8 @@ use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextStyle, TiqianTex
 use tiqian::core::units::Ic;
 use tiqian::font::font_policy::{FontRole, FontRoleContext};
 use tiqian::layout::contextual_dash_ellipsis_role_resolver::ContextualDashEllipsisRoleResolver;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 
 fn resolve(text: &str, locale: &str) -> Vec<tiqian::layout::contextual_dash_ellipsis_role_resolver::DashEllipsisRoleDecision> {
     ContextualDashEllipsisRoleResolver.resolve(
@@ -16,7 +15,7 @@ fn resolve(text: &str, locale: &str) -> Vec<tiqian::layout::contextual_dash_elli
 }
 
 fn layout(text: &str, locale: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(1_000.0),

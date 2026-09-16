@@ -3,11 +3,11 @@ use std::time::Instant;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::layout::width_independent_annotation_cache::LruWidthIndependentAnnotationCache;
+
+use crate::support::DeterministicStubFontBackend;
 
 fn giant_token_input(length: usize) -> LayoutInput {
     let unit = r"\rlap{\color{#BB9}{\rule{4px}{320px}}}{";
@@ -19,15 +19,17 @@ fn giant_token_input(length: usize) -> LayoutInput {
     .build()
 }
 
-fn engine(use_lookahead: bool) -> ExplainableStubParagraphLayoutEngine {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = if use_lookahead {
+fn engine(use_lookahead: bool) -> tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine {
+    let line_breaker: Box<dyn tiqian::layout::line_breaker::LineBreaker> = if use_lookahead {
         Box::new(LookaheadLineBreaker::default())
     } else {
         Box::new(GreedyLineBreaker::default())
     };
-    engine.annotation_cache = Box::new(LruWidthIndependentAnnotationCache::new(8));
-    engine
+    let annotation_cache = Box::new(LruWidthIndependentAnnotationCache::new(8));
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .annotation_cache(annotation_cache)
+        .build()
 }
 
 #[test]
@@ -60,21 +62,21 @@ fn measure_giant_token_scaling_matrix() {
     for (name, use_lookahead) in [("lookahead", true), ("greedy", false)] {
         for length in [5_000, 10_000, 20_000, 40_000, 80_000] {
             let input = giant_token_input(length);
-            let mut engine = engine(use_lookahead);
+            let mut warm_engine = engine(use_lookahead);
             for _ in 0..if length <= 10_000 { 2 } else { 1 } {
-                engine.layout(input.clone());
+                warm_engine.layout(input.clone());
             }
             let warm = (0..3)
                 .map(|_| {
                     let started = Instant::now();
-                    engine.layout(input.clone());
+                    warm_engine.layout(input.clone());
                     started.elapsed()
                 })
                 .min()
                 .unwrap();
-            engine.annotation_cache.clear();
+            let mut cold_engine = engine(use_lookahead);
             let started = Instant::now();
-            engine.layout(input);
+            cold_engine.layout(input);
             let cold = started.elapsed();
             println!(
                 "giant-token[{name}] length={length} warm={:.3} ms cold={:.3} ms",

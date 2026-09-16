@@ -4,13 +4,12 @@ use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, RubyLineHeightMode, RubySpan, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult,
 };
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(
@@ -19,7 +18,7 @@ fn layout(
     style: ParagraphStyle,
     ruby_spans: Vec<RubySpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
@@ -166,8 +165,7 @@ fn ruby_vertical_geometry_uses_metrics_not_reading_ink() {
         .line_height(Some(18.0))
         .build();
     let layout_with_ink = |reading| {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = Box::new(contradictory_ruby_ink_backend());
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(contradictory_ruby_ink_backend())).build();
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("甲乙丙丁")),

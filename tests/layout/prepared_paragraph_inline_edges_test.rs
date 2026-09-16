@@ -2,14 +2,13 @@ use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineBoxSpan, LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 use tiqian::layout::prepared_paragraph::to_prepared_paragraph_json;
 
 #[test]
 fn end_only_inline_box_emits_edge_without_inline_start_field() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文正文")),
             LayoutConstraints::with_defaults(320.0),
@@ -29,7 +28,7 @@ fn end_only_inline_box_emits_edge_without_inline_start_field() {
 
 #[test]
 fn content_without_inline_boxes_omits_inline_edges_array() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文正文")),
             LayoutConstraints::with_defaults(320.0),

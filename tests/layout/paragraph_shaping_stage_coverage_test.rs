@@ -1,7 +1,8 @@
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use tiqian::common::{HashMap, HashSet};
-use tiqian::clreq::clreq_profile::ClreqPunctuationGlyphSubstitutor;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqPunctuationGlyphSubstitutor};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints, Rect, TextRange};
 use tiqian::core::layout_model::{
@@ -11,16 +12,15 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::font::font_policy::FontRole;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
 use tiqian::layout::paragraph_shaping_stage::{
     is_inline_object_cluster, is_mandatory_break_cluster, is_zero_width_soft_break_cluster,
     map_to_cluster_range, shape_paragraph,
 };
 use tiqian::layout::cluster_role_resolution::ResolvedClusterRange;
+use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
+use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
 };
@@ -28,11 +28,11 @@ use tiqian::linebreak::hyphenation::Hyphenator;
 use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
 use tiqian::shaping::text_shaper::{
     ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
 };
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 #[test]
@@ -113,7 +113,7 @@ fn cluster_predicates_and_curly_quote_features() {
     assert!(!is_zero_width_soft_break_cluster(&normal));
     assert!(!is_inline_object_cluster(&normal));
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("“双引号”与‘单引号’")),
@@ -136,8 +136,7 @@ fn hyphen_advance_fallback_when_shaper_returns_empty_clusters() {
         },
     );
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(backend);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(backend)).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("supercalifragilisticexpialidocious")),
@@ -245,8 +244,7 @@ fn dash_substitution_rollback_and_coverage_branches() {
     };
 
     let layout = |text: &str, font_backend: Box<dyn FontBackend>| {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.font_backend = font_backend;
+        let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from(text)),
@@ -269,8 +267,7 @@ fn dash_substitution_rollback_and_coverage_branches() {
     .lines
     .is_empty());
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(multi_and_null_glyph_backend);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(multi_and_null_glyph_backend)).build();
     for _ in 0..4 {
         let result = engine.layout(
             LayoutInput::builder(
@@ -299,8 +296,9 @@ static HYPHEN_WORD_HYPHENATOR: HyphenWordHyphenator = HyphenWordHyphenator;
 
 #[test]
 fn latin_segmentation_and_cuts_branches() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &HYPHEN_WORD_HYPHENATOR;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(&HYPHEN_WORD_HYPHENATOR)
+        .build();
 
     let inputs = [
         (
@@ -367,8 +365,13 @@ fn progressive_technical_span_breaks_and_tiers() {
         LayoutConstraints::with_defaults(80.0),
     )
     .build();
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &MACHINE_HYPHENATOR;
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_role_classifier = CjkFontRoleClassifier;
+    let font_backend = DeterministicStubFontBackend::default();
+    let quote_pair_analyzer = QuotePairAnalyzer;
+    let hyphenator = &MACHINE_HYPHENATOR;
+    let punctuation_atom_builder = PunctuationAtomBuilder::default();
+    let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     for tier in [
         ProgressiveBreakTier::Structural,
         ProgressiveBreakTier::Syllable,
@@ -378,20 +381,20 @@ fn progressive_technical_span_breaks_and_tiers() {
         let annotation = prepare_width_independent_annotation(
             &input,
             &rejected,
-            engine.clreq_profile_resolver.as_ref(),
-            engine.font_role_classifier.as_ref(),
-            engine.font_backend.as_ref(),
-            &engine.quote_pair_analyzer,
-            engine.hyphenator,
+            &clreq_profile_resolver,
+            &font_role_classifier,
+            &font_backend,
+            &quote_pair_analyzer,
+            hyphenator,
         );
         let prep = build_paragraph_layout_prep(
             &input,
             &annotation,
             &rejected,
-            engine.font_backend.as_ref(),
-            engine.hyphenator,
-            &engine.punctuation_atom_builder,
-            &engine.punctuation_spacing_compressor,
+            &font_backend,
+            hyphenator,
+            &punctuation_atom_builder,
+            &punctuation_spacing_compressor,
         );
         assert!(!prep.clusters.is_empty());
     }
@@ -406,20 +409,20 @@ fn progressive_technical_span_breaks_and_tiers() {
     let annotation = prepare_width_independent_annotation(
         &input,
         &rejected,
-        engine.clreq_profile_resolver.as_ref(),
-        engine.font_role_classifier.as_ref(),
-        engine.font_backend.as_ref(),
-        &engine.quote_pair_analyzer,
-        engine.hyphenator,
+        &clreq_profile_resolver,
+        &font_role_classifier,
+        &font_backend,
+        &quote_pair_analyzer,
+        hyphenator,
     );
     let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &rejected,
-        engine.font_backend.as_ref(),
-        engine.hyphenator,
-        &engine.punctuation_atom_builder,
-        &engine.punctuation_spacing_compressor,
+        &font_backend,
+        hyphenator,
+        &punctuation_atom_builder,
+        &punctuation_spacing_compressor,
     );
     assert!(!prep.clusters.is_empty());
 }
@@ -464,9 +467,9 @@ fn multi_cluster_shaper_for_word_cuts_and_opaque_hard_cuts() {
         },
     );
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(backend);
-    engine.hyphenator = &ONE_TWO_THREE_HYPHENATOR;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(backend))
+        .hyphenator(&ONE_TWO_THREE_HYPHENATOR)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(
@@ -482,7 +485,7 @@ fn multi_cluster_shaper_for_word_cuts_and_opaque_hard_cuts() {
 #[test]
 fn latin_separator_cuts_and_solidus_branches() {
     let text = "http://example.com/path a/b /start end/ a//b foo_bar";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     for max_width in [500.0, 1.0] {
         let result = engine.layout(
             LayoutInput::builder(
@@ -539,9 +542,9 @@ fn latin_word_cuts_lo_hi_and_empty_branches() {
         },
     );
 
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &LATIN_WORD_CUTS_HYPHENATOR;
-    engine.font_backend = Box::new(backend);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(backend))
+        .hyphenator(&LATIN_WORD_CUTS_HYPHENATOR)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("abcdef ghijkl mnopqr empty")),
@@ -774,8 +777,9 @@ static HYPHENATED_WORD_HYPHENATOR: HyphenatedWordHyphenator = HyphenatedWordHyph
 #[test]
 fn latin_separator_cuts_exhaustive_branches() {
     let text = "12(3):45-67 12(3):45–67 12(3):45—67 12(3):45 12(3):. 12():45 12(3): :(3):45 12(3):- 12(3):45- 12(3):4a-65 12(3):45-6a 12(3):abc http://example.com/a/b/c https://test.org:8080/foo?bar=1&baz=2#frag%20~val+1*2|3;4,5.6-7_8 http:/test /a a/ a//b a/b ABC CamelCase aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa hyphenated-word clean/solidus hyphenated";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &HYPHENATED_WORD_HYPHENATOR;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(&HYPHENATED_WORD_HYPHENATOR)
+        .build();
     for max_width in [500.0, 10.0] {
         let result = engine.layout(
             LayoutInput::builder(

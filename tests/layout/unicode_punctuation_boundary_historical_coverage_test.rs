@@ -6,10 +6,10 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LookaheadLineBreaker};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct FixedKinsokuProfile(KinsokuLevel);
 
@@ -27,10 +27,14 @@ fn layout(
     breaker: Box<dyn LineBreaker>,
     level: KinsokuLevel,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = breaker;
-    engine.hyphenator = &NoHyphenator;
-    engine.clreq_profile_resolver = Box::new(FixedKinsokuProfile(level));
+    let line_breaker = breaker;
+    let hyphenator = &NoHyphenator;
+    let clreq_profile_resolver = Box::new(FixedKinsokuProfile(level));
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let indexed = Text::from(text);
     engine.layout(
         LayoutInput::builder(

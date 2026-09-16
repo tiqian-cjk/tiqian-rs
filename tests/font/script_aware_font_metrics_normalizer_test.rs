@@ -5,7 +5,7 @@ use tiqian::font::font_metrics::{
 };
 use tiqian::font::font_policy::{FontMetricsPolicy, FontRole, RawFontMetrics};
 use tiqian::shaping::font_backend::FontBackend;
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 fn request(resource_id: &str, role: FontRole, locale: &str) -> FontMetricsRequest {
     FontMetricsRequest::new(

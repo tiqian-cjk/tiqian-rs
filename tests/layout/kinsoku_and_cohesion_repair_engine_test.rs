@@ -4,10 +4,10 @@ use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct FixedBasicProfile;
 
@@ -19,11 +19,13 @@ impl ClreqProfileResolver for FixedBasicProfile {
     }
 }
 
-fn engine() -> ExplainableStubParagraphLayoutEngine {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(FixedBasicProfile);
-    engine.hyphenator = &NoHyphenator;
-    engine
+fn engine() -> tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine {
+    let clreq_profile_resolver = Box::new(FixedBasicProfile);
+    let hyphenator = &NoHyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .hyphenator(hyphenator)
+        .build()
 }
 
 fn layout(text: &str, max_width: f32, grid: bool) -> tiqian::core::layout_model::LayoutResult {
@@ -49,10 +51,13 @@ fn layout_at_kinsoku(
     hanging: HangingPunctuationStyle,
     grid: bool,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &NoHyphenator;
-    engine.clreq_profile_resolver = Box::new(FixedKinsokuProfile { level, hanging });
-    engine.layout(
+    let hyphenator = &NoHyphenator;
+    let clreq_profile_resolver = Box::new(FixedKinsokuProfile { level, hanging });
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),

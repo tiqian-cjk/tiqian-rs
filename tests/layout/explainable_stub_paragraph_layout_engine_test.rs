@@ -9,12 +9,11 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn input(text: &str) -> LayoutInput {
@@ -32,7 +31,7 @@ fn input(text: &str) -> LayoutInput {
 
 #[test]
 fn returns_debuggable_single_line_result() {
-    let mut greedy = ExplainableStubParagraphLayoutEngine::default();
+    let mut greedy = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let result = greedy.layout(input("提椠"));
     assert_eq!(2, result.clusters.len());
     assert_eq!(1, result.lines.len());
@@ -41,16 +40,20 @@ fn returns_debuggable_single_line_result() {
 
 #[test]
 fn records_injected_line_breaker_strategy_in_debug_decisions() {
-    let mut lookahead = ExplainableStubParagraphLayoutEngine::default();
-    lookahead.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut lookahead = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = lookahead.layout(input("提椠"));
     assert_eq!("lookahead", result.debug.line_decisions[0].kind);
 }
 
 #[test]
 fn mandatory_line_break_clusters_are_zero_width_and_not_shaped() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(input("第一行\n第二行"));
 
     assert_eq!(2, result.lines.len());
@@ -82,7 +85,7 @@ fn mandatory_line_break_clusters_are_zero_width_and_not_shaped() {
 
 #[test]
 fn consecutive_mandatory_line_breaks_create_one_empty_line_box() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("第一行\n\n第二行"));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input("第一行\n\n第二行"));
 
     assert_eq!(3, result.lines.len());
     assert_eq!(LineEndReason::MandatoryBreak, result.lines[0].end_reason);
@@ -101,8 +104,10 @@ fn consecutive_mandatory_line_breaks_create_one_empty_line_box() {
 #[test]
 fn single_mandatory_break_after_wrapped_line_does_not_create_empty_line() {
     let text = "很久以前，曾经有一个名叫小红帽的孩子，生活在大森林的边上，大森林里充满了濒临灭绝的猫头鹰和珍稀植物，如果有人愿意花时间研究它们，就会发现癌症的治疗方法。\n小红帽和一位称为母亲的养育者一起生活";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -140,8 +145,10 @@ fn single_mandatory_break_after_wrapped_line_does_not_create_empty_line() {
 
 #[test]
 fn crlf_is_one_mandatory_break_cluster() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(input("甲\r\n乙"));
 
     assert_eq!(2, result.lines.len());
@@ -157,8 +164,10 @@ fn crlf_is_one_mandatory_break_cluster() {
 
 #[test]
 fn consecutive_and_trailing_mandatory_breaks_preserve_blank_lines() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(input("甲\n\n乙\n"));
 
     assert_eq!(4, result.lines.len());
@@ -172,8 +181,10 @@ fn consecutive_and_trailing_mandatory_breaks_preserve_blank_lines() {
 
 #[test]
 fn mandatory_break_line_is_not_justified() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .build();
     let result = engine.layout(input("短\n中文中文中文中文中文"));
 
     let mandatory_line = &result.lines[0];
@@ -221,7 +232,7 @@ fn bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 
 #[test]
 fn font_resolution_and_cluster_faces_remain_consistent() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input("提椠"));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input("提椠"));
     let mut checked_cluster = false;
 
     for cluster in result
@@ -245,8 +256,7 @@ fn font_resolution_and_cluster_faces_remain_consistent() {
 
 #[test]
 fn preserves_shaper_glyph_bounds_in_layout_glyph_runs() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(bounds_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(bounds_backend())).build();
     let result = engine.layout(input("A"));
 
     let glyph = &result.glyph_runs[0].glyphs[0];
@@ -265,8 +275,10 @@ fn preserves_shaper_glyph_bounds_in_layout_glyph_runs() {
 
 #[test]
 fn records_fallback_decisions_per_cluster() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &NoHyphenator;
+    let hyphenator = &NoHyphenator;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build();
     let result = engine.layout(input("提椠……English——世界。"));
 
     assert!(result.debug.font_decisions.iter().any(|decision| {
@@ -304,8 +316,10 @@ fn records_fallback_decisions_per_cluster() {
 
 #[test]
 fn combining_marks_stay_in_their_base_shaping_runs() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = &NoHyphenator;
+    let hyphenator = &NoHyphenator;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build();
     let result = engine.layout(input("༎ຶ Ỏ̷"));
 
     assert!(
@@ -338,7 +352,7 @@ fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
     let atomic_content = TiqianTextContent::builder(Text::from(text))
         .source_boundaries(HashSet::from([scalar_offset(2)]))
         .build();
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let atomic = engine.layout(
         LayoutInput::builder(atomic_content, LayoutConstraints::with_defaults(320.0))
             .paragraph_style(
@@ -372,7 +386,7 @@ fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
 #[test]
 fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
     let text = "前👩🏽‍💻后🇨🇳与1️⃣和❤️。";
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input(text));
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input(text));
 
     assert_eq!(
         vec!["👩🏽‍💻", "🇨🇳", "1️⃣", "❤️"],
@@ -414,7 +428,7 @@ fn complex_emoji_graphemes_honor_text_span_style_boundaries() {
         }])
         .source_boundaries(HashSet::from([scalar_offset(2)]))
         .build();
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let styled = engine.layout(
         LayoutInput::builder(styled_content, LayoutConstraints::with_defaults(320.0))
             .paragraph_style(
@@ -451,7 +465,7 @@ fn source_grapheme_boundaries_do_not_join_zwj_with_ordinary_text() {
 
 #[test]
 fn records_unicode_emoji_sequence_role_promotions() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let result = engine.layout(input("❤️与1️⃣"));
 
     assert_eq!(
@@ -549,7 +563,7 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
     ];
 
     for (text, expected) in cases {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
         let result = engine.layout(input(&text));
         let actual = result
             .debug

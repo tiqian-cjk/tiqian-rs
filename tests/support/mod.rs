@@ -1,0 +1,3 @@
+mod deterministic_stub_font_backend;
+
+pub use deterministic_stub_font_backend::DeterministicStubFontBackend;

@@ -7,7 +7,7 @@ use tiqian::shaping::font_backend::{
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 pub struct StubResultTransformFontBackend<F> {
     fallback: DeterministicStubFontBackend,

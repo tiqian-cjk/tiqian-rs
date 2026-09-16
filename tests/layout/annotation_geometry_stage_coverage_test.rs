@@ -1,6 +1,8 @@
 use std::cell::Cell;
 
 use tiqian::common::HashMap;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
 use tiqian::core::int_range::IntRange;
@@ -14,9 +16,6 @@ use tiqian::core::text_model::{
     InlineObjectPreferredStretchKind, InlineObjectSpan, LayoutInput, RubyKind, RubySpan,
     TiqianTextContent,
 };
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::layout::annotation_geometry_stage::{
     resolve_annotation_geometry, AnnotationGeometryRequest, RubyFontGeometry,
 };
@@ -27,6 +26,8 @@ use tiqian::font::font_policy::{
     BaselinePolicy, FontMetricsPolicy, FontRole, LayoutFontMetrics, RawFontMetrics,
 };
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
+
+use crate::support::DeterministicStubFontBackend;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 
@@ -93,7 +94,7 @@ fn inline_object_decisions_with_preferred_stretch_and_fixed() {
         .shrink_capacity(3.0)
         .line_end_discardable_advance(2.0)
         .build();
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(text), LayoutConstraints::with_defaults(300.0))
             .inline_objects(vec![
                 InlineObjectSpan::new(text_range(4, 5), 30.0, 12.0, 4.0, preferred_leading, preferred_trailing),
@@ -110,7 +111,7 @@ fn inline_object_decisions_with_preferred_stretch_and_fixed() {
 #[test]
 fn decoration_decisions_emphasis_on_han_punctuation_and_western() {
     let text = Text::from("汉字，。English");
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(text.clone()), LayoutConstraints::with_defaults(300.0))
             .decorations(vec![DecorationSpan { range: text_range(0, text.scalar_len().value()), kind: DecorationKind::Emphasis }])
             .build(),
@@ -122,7 +123,7 @@ fn decoration_decisions_emphasis_on_han_punctuation_and_western() {
 
 #[test]
 fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("张三李四王五赵六钱七孙八周吴郑王")), LayoutConstraints::with_defaults(120.0))
             .decorations(vec![
                 DecorationSpan { range: text_range(0, 2), kind: DecorationKind::ProperNoun },
@@ -142,7 +143,7 @@ fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
 #[test]
 fn decoration_segments_leading_and_trailing_blanks() {
     let text = Text::from("「开头」中文 English 混排【结束】");
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(text.clone()), LayoutConstraints::with_defaults(150.0))
             .decorations(vec![DecorationSpan { range: text_range(0, text.scalar_len().value()), kind: DecorationKind::ProperNoun }])
             .build(),
@@ -152,7 +153,7 @@ fn decoration_segments_leading_and_trailing_blanks() {
 
 #[test]
 fn ruby_decisions_pinyin_single_and_split_lines() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("这是一个很长很长的段落用于测试拼音行间注跨行")), LayoutConstraints::with_defaults(100.0))
             .ruby_spans(vec![
                 RubySpan::builder(text_range(0, 2), Text::from("zhèshì")).locale(Some("zh-Latn".to_owned())).build(),
@@ -178,8 +179,7 @@ fn bopomofo_decisions_all_tones_and_symbol_counts() {
                 .build()
         })
         .collect();
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(ink_bounds_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(ink_bounds_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八九十甲乙丙丁戊己庚辛")), LayoutConstraints::with_defaults(300.0))
             .ruby_spans(ruby_spans)
@@ -191,7 +191,8 @@ fn bopomofo_decisions_all_tones_and_symbol_counts() {
 
 #[test]
 fn direct_resolve_annotation_geometry_fallback_branches() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_backend = DeterministicStubFontBackend::default();
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("汉字，测试English")),
         LayoutConstraints::with_defaults(300.0),
@@ -253,7 +254,7 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         font_size: 16.0,
         inline_object_by_cluster_index: &inline_objects,
         line_solution: &line_solution,
-        clreq_profile: &engine.clreq_profile_resolver.resolve(&input.profile_id),
+        clreq_profile: &clreq_profile_resolver.resolve(&input.profile_id),
         geometry_decisions: &[geometry],
         auto_space_decisions: &auto_space,
         visible_line_ranges: &[IntRange::new(0, 2), IntRange::new(3, 3)],
@@ -272,7 +273,7 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        font_backend: engine.font_backend.as_ref(),
+        font_backend: &font_backend,
     });
     assert_eq!(3, result.inline_object_decisions.len());
     assert_eq!(-1, result.inline_object_decisions.last().unwrap().line_index);
@@ -288,7 +289,7 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         font_size: 16.0,
         inline_object_by_cluster_index: &HashMap::new(),
         line_solution: &line_solution,
-        clreq_profile: &engine.clreq_profile_resolver.resolve(&input.profile_id),
+        clreq_profile: &clreq_profile_resolver.resolve(&input.profile_id),
         geometry_decisions: &[],
         auto_space_decisions: &[],
         visible_line_ranges: &[IntRange::new(0, 2), IntRange::new(3, 3)],
@@ -310,14 +311,15 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        font_backend: engine.font_backend.as_ref(),
+        font_backend: &font_backend,
     });
     assert!(!second.ruby_decisions.is_empty());
 }
 
 #[test]
 fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() {
-    let engine = ExplainableStubParagraphLayoutEngine::default();
+    let clreq_profile_resolver = BuiltInClreqProfileResolver;
+    let font_backend = DeterministicStubFontBackend::default();
     let input = LayoutInput::builder(
         TiqianTextContent::new(Text::from("汉字，测试English")),
         LayoutConstraints::with_defaults(300.0),
@@ -393,7 +395,7 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         font_size: 16.0,
         inline_object_by_cluster_index: &inline_objects,
         line_solution: &line_solution,
-        clreq_profile: &engine.clreq_profile_resolver.resolve(&input.profile_id),
+        clreq_profile: &clreq_profile_resolver.resolve(&input.profile_id),
         geometry_decisions: &[geometry],
         auto_space_decisions: &auto_space,
         visible_line_ranges: &[IntRange::EMPTY, IntRange::new(0, 2)],
@@ -412,15 +414,14 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         ruby_font_weight: 400,
         base_descent: 4.0,
         bopomofo_font_weight_at: &|_| 400,
-        font_backend: engine.font_backend.as_ref(),
+        font_backend: &font_backend,
     });
     assert!(!result.decoration_decisions.is_empty());
 }
 
 #[test]
 fn bopomofo_decisions_multi_glyph_min_max_and_empty_placements() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(multi_glyph_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(multi_glyph_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八")), LayoutConstraints::with_defaults(300.0))
             .ruby_spans(vec![
@@ -438,8 +439,7 @@ fn bopomofo_decisions_multi_glyph_min_max_and_empty_placements() {
 
 #[test]
 fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(alternating_glyph_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(alternating_glyph_backend())).build();
     let input = LayoutInput::builder(TiqianTextContent::new(Text::from("中文English")), LayoutConstraints::with_defaults(500.0))
         .decorations(vec![
             DecorationSpan { range: text_range(0, 7), kind: DecorationKind::ProperNoun },
@@ -464,7 +464,7 @@ fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
 
 #[test]
 fn bopomofo_over_latin_clusters_covers_cross_metric_lookup() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文English")), LayoutConstraints::with_defaults(500.0))
             .ruby_spans(vec![
                 RubySpan::builder(text_range(2, 3), Text::from("ㄅ")).kind(RubyKind::Bopomofo).locale(None).build(),

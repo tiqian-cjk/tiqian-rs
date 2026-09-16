@@ -5,15 +5,14 @@ use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 
 fn layout(
     ruby_spans: Vec<RubySpan>,
     spans: Vec<TextSpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from("中文"))
                 .spans(spans)

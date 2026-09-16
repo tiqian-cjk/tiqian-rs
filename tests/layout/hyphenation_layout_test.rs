@@ -3,11 +3,11 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
+
+use crate::support::DeterministicStubFontBackend;
 
 struct PushOutOnlyProfile;
 
@@ -24,9 +24,11 @@ fn layout_with(
     text: &str,
     max_width: f32,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.hyphenator = hyphenator;
-    engine.layout(
+    let hyphenator = hyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .hyphenator(hyphenator)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(max_width),
@@ -43,7 +45,7 @@ fn layout_with(
 
 #[test]
 fn hyphenation_is_on_by_default() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中 coffee")),
@@ -174,8 +176,10 @@ fn hyphen_is_reserved_inside_measure() {
 
 #[test]
 fn tight_cjk_stretch_avoids_hyphenation_with_push_out_only() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(PushOutOnlyProfile);
+    let clreq_profile_resolver = Box::new(PushOutOnlyProfile);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文中文中文 coffee")),

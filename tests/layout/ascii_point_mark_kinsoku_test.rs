@@ -8,11 +8,11 @@ use tiqian::core::text_model::{
     TiqianTextContent,
 };
 use tiqian::core::units::Ic;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::linebreak::hyphenation::NoHyphenator;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct FixedKinsokuProfile {
     level: KinsokuLevel,
@@ -28,17 +28,23 @@ impl ClreqProfileResolver for FixedKinsokuProfile {
 }
 
 fn layout_with_greedy(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(GreedyLineBreaker::default());
-    engine.hyphenator = &NoHyphenator;
-    engine.layout(input(text))
+    let line_breaker = Box::new(GreedyLineBreaker::default());
+    let hyphenator = &NoHyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build()
+        .layout(input(text))
 }
 
 fn layout_with_lookahead(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.hyphenator = &NoHyphenator;
-    engine.layout(input(text))
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let hyphenator = &NoHyphenator;
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build()
+        .layout(input(text))
 }
 
 fn input(text: &str) -> LayoutInput {
@@ -65,11 +71,15 @@ fn layout_with(
     spans: Vec<TextSpan>,
     grid: bool,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = breaker;
-    engine.hyphenator = &NoHyphenator;
-    engine.clreq_profile_resolver = Box::new(FixedKinsokuProfile { level, hanging });
-    engine.layout(
+    let line_breaker = breaker;
+    let hyphenator = &NoHyphenator;
+    let clreq_profile_resolver = Box::new(FixedKinsokuProfile { level, hanging });
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build()
+        .layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text)).spans(spans).build(),
             LayoutConstraints::with_defaults(max_width),
@@ -131,7 +141,7 @@ fn cjk_attached_ascii_point_mark_is_separate_from_following_latin_run() {
 
 #[test]
 fn latin_tokens_keep_existing_internal_ascii_punctuation_segmentation() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("foo,bar 1,234 50% \"quoted\"")),
             LayoutConstraints::with_defaults(1000.0),

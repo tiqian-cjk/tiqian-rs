@@ -2,9 +2,8 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
@@ -19,7 +18,7 @@ fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
             .build(),
     )
     .build();
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(input);
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input);
 
     assert_eq!(3, result.lines.len());
     for line in result.lines.iter().skip(1) {

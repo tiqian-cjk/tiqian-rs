@@ -4,12 +4,12 @@ use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
+
+use crate::support::DeterministicStubFontBackend;
 
 fn attached_span(range: TextRange) -> TextSpan {
     TextSpan {
@@ -23,7 +23,7 @@ fn attached_span(range: TextRange) -> TextSpan {
 fn layout_reference(text: &str) -> tiqian::core::layout_model::LayoutResult {
     let byte_start = text.find("[1]").unwrap();
     let start = text[..byte_start].chars().count() as i32;
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![attached_span(text_range(start, start + 3))])
@@ -153,8 +153,10 @@ fn attached_reference_never_starts_wrapped_line_for_supported_breakers() {
                 as Box<dyn tiqian::layout::line_breaker::LineBreaker>,
         ),
     ] {
-        let mut engine = ExplainableStubParagraphLayoutEngine::default();
-        engine.line_breaker = breaker;
+        let line_breaker = breaker;
+        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .line_breaker(line_breaker)
+            .build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::builder(Text::from(text))

@@ -8,16 +8,15 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
+use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
@@ -342,7 +341,7 @@ fn empty_word_internal_quotes_stay_latin() {
 #[test]
 fn quote_roles_survive_style_and_source_boundaries() {
     let text = "中‘that’s’中";
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan {
@@ -471,9 +470,12 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
 #[test]
 fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
     let text = "所以这个和 “骑ji” “说shui”“斜xiá”不一样，港台是从众的，大陆读音大多数源自韵书。";
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.line_breaker = Box::new(LookaheadLineBreaker::default());
-    engine.hyphenator = &NoHyphenator;
+    let line_breaker = Box::new(LookaheadLineBreaker::default());
+    let hyphenator = &NoHyphenator;
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .line_breaker(line_breaker)
+        .hyphenator(hyphenator)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -702,8 +704,7 @@ fn proportional_quote_backend() -> impl tiqian::shaping::font_backend::FontBacke
 
 #[test]
 fn requests_full_width_cjk_quotes_and_synthesizes_cell_for_proportional_glyphs() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(proportional_quote_backend());
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(proportional_quote_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中“文”中")),

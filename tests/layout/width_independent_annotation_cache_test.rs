@@ -12,9 +12,7 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::RawFontMetrics;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::width_independent_annotation_cache::{
     LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
     WidthIndependentAnnotationKey, WidthIndependentParagraphAnnotation,
@@ -26,7 +24,7 @@ use tiqian::shaping::font_backend::{
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 struct CountingFontBackend {
     count: Arc<AtomicUsize>,
@@ -128,14 +126,16 @@ fn input(text: &str, width: f32) -> LayoutInput {
 fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
     let calls = Arc::new(AtomicUsize::new(0));
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(64)));
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(CountingFontBackend {
+    let font_backend = Box::new(CountingFontBackend {
         count: calls.clone(),
         fallback: DeterministicStubFontBackend::default(),
     });
-    engine.annotation_cache = Box::new(SharedLruCache {
+    let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
+    let mut engine = ParagraphLayoutEngineBuilder::new(font_backend)
+        .annotation_cache(annotation_cache)
+        .build();
     let normal = input("提椠是一个面向中文正文的 CJK 段落布局引擎。", 300.0);
 
     let normal_result = engine.layout(normal.clone());
@@ -153,10 +153,12 @@ fn relayout_at_three_widths_hits_annotation_cache_without_reshaping() {
 #[test]
 fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(64)));
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.annotation_cache = Box::new(SharedLruCache {
+    let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
     let base = input("中西混合排版与测试文本。", 300.0);
 
     engine.layout(base.clone());
@@ -184,10 +186,12 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
 #[test]
 fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(2)));
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.annotation_cache = Box::new(SharedLruCache {
+    let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
     let first = input("段落一文本内容", 300.0);
     let second = input("段落二文本内容", 300.0);
     let third = input("段落三文本内容", 300.0);
@@ -212,10 +216,12 @@ fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
 #[test]
 fn lru_cache_evicts_oldest_entries_when_capacity_exceeded() {
     let entries = Arc::new(Mutex::new(LruWidthIndependentAnnotationCache::new(2)));
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.annotation_cache = Box::new(SharedLruCache {
+    let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
     let first = input("段落一文本内容", 300.0);
     let second = input("段落二文本内容", 300.0);
     let third = input("段落三文本内容", 300.0);
@@ -244,9 +250,11 @@ fn lru_cache_evicts_oldest_entries_when_capacity_exceeded() {
 fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
     let text =
         "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。";
-    let mut cached = ExplainableStubParagraphLayoutEngine::default();
-    let mut uncached = ExplainableStubParagraphLayoutEngine::default();
-    uncached.annotation_cache = Box::new(DisabledCache);
+    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let annotation_cache = Box::new(DisabledCache);
+    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
 
     for width in [80.0, 300.0, 650.0] {
         let expected = uncached.layout(input(text, width));
@@ -299,9 +307,11 @@ fn cached_and_uncached_engines_produce_identical_layout_results_across_widths() 
         "在《中文排版需求》（CLREQ）中，要求正文「两端对齐」；当遇到『标点符号』与西文（如 OpenType / CSS Grid）混排时，应正确执行挤压与推入推出——即使在 120Hz 高频拖拽下也是如此！",
         "第一行缩进两个字身框。标点符号如……省略号、破折号——不应出现在行首，逗号、句号。也不得出现在行首。这就是避头尾（Kinsoku）规则的严格要求。",
     ];
-    let mut cached = ExplainableStubParagraphLayoutEngine::default();
-    let mut uncached = ExplainableStubParagraphLayoutEngine::default();
-    uncached.annotation_cache = Box::new(DisabledCache);
+    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let annotation_cache = Box::new(DisabledCache);
+    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
 
     let mut width = 80.0;
     while width <= 650.0 {
@@ -317,9 +327,11 @@ fn cached_and_uncached_engines_produce_identical_layout_results_across_widths() 
 #[test]
 fn reflow_fuzzing_random_sequence_produces_exact_output() {
     let fixture = "提椠段落排版：严格遵循简体中文 CLREQ 规范。包含“双引号”、‘单引号’、以及（括号）与【括号】；汉字与 English words 混排时自动添加 0.25em 间距，最后一行保持左对齐。";
-    let mut cached = ExplainableStubParagraphLayoutEngine::default();
-    let mut uncached = ExplainableStubParagraphLayoutEngine::default();
-    uncached.annotation_cache = Box::new(DisabledCache);
+    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let annotation_cache = Box::new(DisabledCache);
+    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .annotation_cache(annotation_cache)
+        .build();
 
     for width in [
         320.0, 150.0, 480.5, 95.2, 210.0, 600.0, 120.3, 450.0, 180.7, 300.0,

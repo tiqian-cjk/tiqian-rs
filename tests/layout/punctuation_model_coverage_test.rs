@@ -4,12 +4,14 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::core::geometry::{scalar_offset, text_range, Rect};
 use tiqian::core::text::Text;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::punctuation_model::{
     AdjustmentOpportunity, Glue, GlueKind, PunctuationAnchor, PunctuationAtom,
     PunctuationAtomBuilder, PunctuationInkInput, PunctuationSpacingAdjustment,
     PunctuationSpacingCompressionResult, PunctuationSpacingCompressor,
 };
-use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
+
+use crate::support::DeterministicStubFontBackend;
 
 const EM: f32 = 16.0;
 
@@ -50,8 +52,10 @@ fn punctuation_glue(natural: f32) -> Glue {
 }
 
 fn advance_of_mid_line_punctuation(text: &str, punctuation: &str, width: PunctuationWidthPolicy) -> f32 {
-    let mut engine = tiqian::layout::paragraph_layout_engine::ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(KaimingProfile { width });
+    let clreq_profile_resolver = Box::new(KaimingProfile { width });
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         tiqian::core::text_model::LayoutInput::builder(
             tiqian::core::text_model::TiqianTextContent::new(Text::from(text)),

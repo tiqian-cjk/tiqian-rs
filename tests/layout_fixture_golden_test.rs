@@ -1,5 +1,7 @@
 #[path = "fixture_layout/mod.rs"]
 mod fixture_layout;
+#[path = "support/mod.rs"]
+mod support;
 
 use std::collections::BTreeSet;
 use std::fs;

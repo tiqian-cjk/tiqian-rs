@@ -7,9 +7,9 @@ use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+
+use crate::support::DeterministicStubFontBackend;
 
 struct LetterOnlyAutoSpace;
 
@@ -36,7 +36,7 @@ impl ClreqProfileResolver for DisabledAutoSpace {
 }
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
@@ -86,8 +86,10 @@ fn auto_space_does_not_shrink_spaces_between_latin_words() {
 
 #[test]
 fn auto_space_disabled_keeps_typed_spaces_at_half_em() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(DisabledAutoSpace);
+    let clreq_profile_resolver = Box::new(DisabledAutoSpace);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文 CJK 段落")),
@@ -139,7 +141,7 @@ fn three_typed_spaces_still_one_gap() {
 }
 
 fn layout_with_attached_reference(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
                 .spans(vec![TextSpan {
@@ -247,8 +249,10 @@ fn absent_authored_space_inserts_one_gap_at_each_cjk_latin_edge() {
 
 #[test]
 fn letter_and_digit_boundaries_follow_separate_profile_modes() {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.clreq_profile_resolver = Box::new(LetterOnlyAutoSpace);
+    let clreq_profile_resolver = Box::new(LetterOnlyAutoSpace);
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(clreq_profile_resolver)
+        .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("甲A乙9丙")),

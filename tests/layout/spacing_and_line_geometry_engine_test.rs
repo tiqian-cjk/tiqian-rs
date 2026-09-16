@@ -1,3 +1,4 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
 use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
 use tiqian::core::text::Text;
@@ -5,9 +6,7 @@ use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
 use tiqian::core::units::{Ic, IcLiteral};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use crate::support::DeterministicStubFontBackend;
 
 struct FixedBasicProfile;
 
@@ -24,7 +23,7 @@ fn layout(
     text: &str,
     decorations: Vec<DecorationSpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(240.0),
@@ -62,7 +61,7 @@ fn cjk_line_box_uses_font_declared_ideographic_typo_metrics() {
 
 #[test]
 fn auto_space_gap_at_line_end_is_trimmed_like_any_line_edge_blank() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文 AB 中文中文中文")),
             LayoutConstraints::with_defaults(80.0),
@@ -85,7 +84,7 @@ fn auto_space_gap_at_line_end_is_trimmed_like_any_line_edge_blank() {
 
 #[test]
 fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("他强调：豆子新鲜最要紧，烘焙其次。")),
             LayoutConstraints::with_defaults(128.0),
@@ -115,7 +114,7 @@ fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
 
 #[test]
 fn block_indent_insets_every_line() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文中文中文中文中文")),
             LayoutConstraints::with_defaults(100.0),
@@ -136,7 +135,7 @@ fn block_indent_insets_every_line() {
 
 #[test]
 fn hanging_indent_flushes_first_line_and_insets_rest() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文中文中文中文中文")),
             LayoutConstraints::with_defaults(100.0),
@@ -158,7 +157,7 @@ fn hanging_indent_flushes_first_line_and_insets_rest() {
 
 #[test]
 fn first_line_indent_shrinks_first_line_measure_only() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文中文中文中文中文")),
             LayoutConstraints::with_defaults(160.0),
@@ -177,7 +176,7 @@ fn first_line_indent_shrinks_first_line_measure_only() {
 
 #[test]
 fn line_length_grid_floors_measure_to_whole_chars_and_offsets_body() {
-    let layout_with = |grid| ExplainableStubParagraphLayoutEngine::default().layout(
+    let layout_with = |grid| ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文中文中文中文")), LayoutConstraints::with_defaults(104.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).line_length_grid(grid).build())
             .build(),
@@ -201,7 +200,7 @@ fn line_length_grid_floors_measure_to_whole_chars_and_offsets_body() {
 
 #[test]
 fn line_length_grid_can_be_bypassed_for_exact_widths() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("中文中文中文中文")), LayoutConstraints::with_defaults(104.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).line_length_grid(LineLengthGrid::with_enabled(false)).build())
             .build(),
@@ -215,32 +214,33 @@ fn line_length_grid_can_be_bypassed_for_exact_widths() {
 
 #[test]
 fn first_line_indent_adapts_to_measure_and_can_be_overridden() {
-    let layout_with = |mut engine: ExplainableStubParagraphLayoutEngine, width, style: Option<ParagraphStyle>| {
+    let layout_with = |mut engine: tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine, width, style: Option<ParagraphStyle>| {
         engine.layout(
             LayoutInput::builder(TiqianTextContent::new(Text::from("中文")), LayoutConstraints::with_defaults(width))
                 .paragraph_style(style.unwrap_or_default())
                 .build(),
         )
     };
-    let long = layout_with(ExplainableStubParagraphLayoutEngine::default(), 240.0, None);
+    let long = layout_with(ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build(), 240.0, None);
     assert_eq!(32.0, long.lines[0].indent);
     assert_eq!("MeasureAdaptiveFirstLineIndent", long.debug.first_line_indent_decision.as_ref().unwrap().source);
     assert_eq!(2.0, long.debug.first_line_indent_decision.as_ref().unwrap().resolved_em);
-    let short = layout_with(ExplainableStubParagraphLayoutEngine::default(), 160.0, None);
+    let short = layout_with(ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build(), 160.0, None);
     assert_eq!(16.0, short.lines[0].indent);
     assert_eq!(1.0, short.debug.first_line_indent_decision.as_ref().unwrap().resolved_em);
-    let mut fixed = ExplainableStubParagraphLayoutEngine::default();
-    fixed.clreq_profile_resolver = Box::new(FixedBasicProfile);
+    let fixed = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(Box::new(FixedBasicProfile))
+        .build();
     assert_eq!(16.0, layout_with(fixed, 160.0, None).lines[0].indent);
-    assert_eq!(0.0, layout_with(ExplainableStubParagraphLayoutEngine::default(), 240.0, Some(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())).lines[0].indent);
-    let pinned = layout_with(ExplainableStubParagraphLayoutEngine::default(), 160.0, Some(ParagraphStyle::builder().first_line_indent(Some(2.0f32.ic())).build()));
+    assert_eq!(0.0, layout_with(ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build(), 240.0, Some(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())).lines[0].indent);
+    let pinned = layout_with(ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build(), 160.0, Some(ParagraphStyle::builder().first_line_indent(Some(2.0f32.ic())).build()));
     assert_eq!(32.0, pinned.lines[0].indent);
     assert_eq!("Explicit", pinned.debug.first_line_indent_decision.as_ref().unwrap().source);
 }
 
 #[test]
 fn mourning_span_is_kept_unbroken_and_framed_per_line() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("悼念：王小明同志、张大同同志。")),
             LayoutConstraints::with_defaults(72.0),
@@ -274,7 +274,7 @@ fn mourning_span_is_kept_unbroken_and_framed_per_line() {
 
 #[test]
 fn mourning_span_wider_than_measure_splits_with_open_edges() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("王小明大同先生")),
             LayoutConstraints::with_defaults(64.0),
@@ -295,7 +295,7 @@ fn mourning_span_wider_than_measure_splits_with_open_edges() {
 
 #[test]
 fn justify_stretches_punctuation_latin_boundary_in_tier_three() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文话：The quick brown fox jumps")),
             LayoutConstraints::with_defaults(160.0),
@@ -314,7 +314,7 @@ fn justify_stretches_punctuation_latin_boundary_in_tier_three() {
 
 #[test]
 fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
-    let result = ExplainableStubParagraphLayoutEngine::default().layout(
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("屈原写下离骚，顾炎武王夫之并称。")),
             LayoutConstraints::with_defaults(224.0),
@@ -356,7 +356,7 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
 
 #[test]
 fn interlinear_marks_raise_auto_line_height_to_spacing_floor() {
-    let layout_with = |line_height| ExplainableStubParagraphLayoutEngine::default().layout(
+    let layout_with = |line_height| ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("豆子新鲜")), LayoutConstraints::with_defaults(240.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).line_height(line_height).build())
             .decorations(vec![DecorationSpan { range: text_range(0, 4), kind: DecorationKind::Emphasis }])
@@ -371,7 +371,7 @@ fn interlinear_marks_raise_auto_line_height_to_spacing_floor() {
     let generous = layout_with(Some(28.0));
     assert_eq!(28.0, generous.lines[0].bottom);
     assert!(!generous.debug.line_spacing_decision.as_ref().unwrap().floor_applied);
-    let plain = ExplainableStubParagraphLayoutEngine::default().layout(
+    let plain = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
         LayoutInput::builder(TiqianTextContent::new(Text::from("豆子新鲜")), LayoutConstraints::with_defaults(240.0))
             .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
             .build(),

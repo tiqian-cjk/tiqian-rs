@@ -6,3 +6,4 @@ mod layout;
 mod layout_fixture_golden_test;
 mod linebreak;
 mod shaping;
+mod support;

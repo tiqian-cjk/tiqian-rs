@@ -3,13 +3,11 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult,
 };
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 
@@ -20,8 +18,7 @@ fn layout(
     ruby_spans: Vec<RubySpan>,
     font_backend: Box<dyn FontBackend>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = font_backend;
+    let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text)).spans(spans).build(),

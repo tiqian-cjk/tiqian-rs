@@ -1,10 +1,12 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::ClreqProfile;
 use tiqian::common::{HashMap, HashSet};
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{scalar_offset, text_range, TextRange};
+use tiqian::core::geometry::{scalar_offset, text_range, ScalarOffset, TextRange};
+use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
-use tiqian::core::text_model::InlineObjectSpan;
+use tiqian::core::text_model::{InlineObjectSpan, LayoutInput, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::font::font_policy::{
     CjkFontRoleClassifier, FontCandidate, FontDecision, FontRole, FontRoleContext,
 };
@@ -12,6 +14,7 @@ use tiqian::layout::cluster_role_resolution::{
     ClusterRoleRangeOptions, cluster_role_ranges, cluster_role_ranges_with_options,
     require_covered_by,
 };
+use crate::support::DeterministicStubFontBackend;
 
 fn role_ranges(text: &str) -> Vec<tiqian::layout::cluster_role_resolution::ResolvedClusterRange> {
     cluster_role_ranges(
@@ -70,6 +73,140 @@ fn cluster_role_ranges_with_inline_object() {
         &options,
     );
     assert_eq!(1, ranges.len());
+}
+
+#[test]
+fn complex_emoji_graphemes_reach_the_text_shaper_as_complete_ranges() {
+    let text = Text::from("前👩🏽‍💻后🇨🇳与1️⃣。");
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(text),
+            LayoutConstraints::with_defaults(1_000.0),
+        )
+        .build(),
+    );
+
+    assert_eq!(
+        result
+            .debug
+            .shaping_decisions
+            .iter()
+            .filter(|decision| {
+                decision
+                    .font_face
+                    .as_ref()
+                    .is_some_and(|face| face.resource_id() == "symbol-fallback")
+            })
+            .map(|decision| (decision.range, decision.source_text.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (text_range(1, 5), "👩🏽‍💻"),
+            (text_range(6, 8), "🇨🇳"),
+            (text_range(9, 12), "1️⃣"),
+        ],
+    );
+}
+
+#[test]
+fn complex_emoji_graphemes_ignore_geometry_only_source_boundaries() {
+    let options = ClusterRoleRangeOptions::builder()
+        .span_boundaries([scalar_offset(2)].into_iter().collect())
+        .emoji_shaping_boundaries(HashSet::new())
+        .build();
+    let text = Text::from("👩🏽‍💻");
+    let ranges = cluster_role_ranges_with_options(
+        &text,
+        &CjkFontRoleClassifier,
+        &FontRoleContext::default(),
+        &ClreqProfile::mainland_horizontal(),
+        &options,
+    );
+
+    assert_eq!(
+        ranges
+            .iter()
+            .map(|range| (range.range, range.role))
+            .collect::<Vec<_>>(),
+        vec![(text_range(0, 4), FontRole::Emoji)],
+    );
+
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::builder(Text::from("👩🏽‍💻"))
+                .source_boundaries([scalar_offset(2)].into_iter().collect())
+                .build(),
+            LayoutConstraints::with_defaults(1_000.0),
+        )
+        .build(),
+    );
+    assert_eq!(
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .filter(|decision| decision.role == "Emoji")
+            .map(|decision| decision.range)
+            .collect::<Vec<_>>(),
+        vec![text_range(0, 4)],
+    );
+}
+
+#[test]
+fn complex_emoji_graphemes_honor_layout_style_boundaries() {
+    let hard_boundary: HashSet<ScalarOffset> = [scalar_offset(1)].into_iter().collect();
+    let options = ClusterRoleRangeOptions::builder()
+        .span_boundaries(hard_boundary.clone())
+        .emoji_shaping_boundaries(hard_boundary)
+        .build();
+    let text = Text::from("👩🏽‍💻");
+    let ranges = cluster_role_ranges_with_options(
+        &text,
+        &CjkFontRoleClassifier,
+        &FontRoleContext::default(),
+        &ClreqProfile::mainland_horizontal(),
+        &options,
+    );
+
+    assert_eq!(
+        ranges
+            .iter()
+            .map(|range| (range.range, range.role))
+            .collect::<Vec<_>>(),
+        vec![
+                (text_range(0, 1), FontRole::Emoji),
+                (text_range(1, 4), FontRole::Emoji),
+        ],
+    );
+
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::builder(Text::from("👩🏽‍💻"))
+                .spans(vec![TextSpan {
+                    range: text_range(1, 4),
+                    style: TextStyle {
+                        font_weight: 700,
+                        ..TextStyle::default()
+                    },
+                }])
+                .source_boundaries([scalar_offset(1)].into_iter().collect())
+                .build(),
+            LayoutConstraints::with_defaults(1_000.0),
+        )
+        .build(),
+    );
+    assert_eq!(
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .filter(|decision| decision.role == "Emoji")
+            .map(|decision| decision.range)
+            .collect::<Vec<_>>(),
+        vec![text_range(0, 1), text_range(1, 4)],
+    );
 }
 
 fn latin_cluster(range: TextRange, text: &str) -> Cluster {

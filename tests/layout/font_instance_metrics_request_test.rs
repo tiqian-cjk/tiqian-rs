@@ -1,21 +1,20 @@
 use std::sync::{Arc, Mutex};
 
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{text_range, LayoutConstraints};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{FontRole, RawFontMetrics};
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
 use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult,
 };
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use tiqian::shaping::stub_font_backend::DeterministicStubFontBackend;
+use crate::support::DeterministicStubFontBackend;
 
 #[derive(Clone, Debug)]
 struct ShapingRecord {
@@ -62,14 +61,13 @@ impl FontBackend for RecordingFontBackend {
 fn engine_with_requests(
     shaping: Arc<Mutex<Vec<ShapingRecord>>>,
     metrics: Arc<Mutex<Vec<FontMetricsRequest>>>,
-) -> ExplainableStubParagraphLayoutEngine {
-    let mut engine = ExplainableStubParagraphLayoutEngine::default();
-    engine.font_backend = Box::new(RecordingFontBackend {
+) -> ParagraphLayoutEngine {
+    ParagraphLayoutEngineBuilder::new(Box::new(RecordingFontBackend {
         fallback: DeterministicStubFontBackend::default(),
         shaping,
         metrics,
-    });
-    engine
+    }))
+        .build()
 }
 
 #[test]

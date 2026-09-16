@@ -4,13 +4,12 @@ use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, RubyKind, RubySpan, TextSpan,
     TextStyle, TiqianTextContent,
 };
-use tiqian::layout::paragraph_layout_engine::{
-    ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use crate::support::DeterministicStubFontBackend;
 use tiqian::layout::prepared_paragraph::to_prepared_paragraph_json;
 
 fn layout(input: LayoutInput) -> tiqian::core::layout_model::LayoutResult {
-    ExplainableStubParagraphLayoutEngine::default().layout(input)
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(input)
 }
 
 #[test]
