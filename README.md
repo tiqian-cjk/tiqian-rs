@@ -31,11 +31,8 @@ tiqian = "0.1"
 使用 `ParagraphBuilder` 按内容顺序构造段落。它会为文本样式、行间注、装饰和富文本等生成 `LayoutInput`，调用方不需要手动维护这些范围的源文本边界。
 
 ```rust
-use tiqian::api::{ParagraphBuilder, RubyAnnotation, TextStyleOverride};
+use tiqian::api::{ParagraphBuilder, ParagraphLayoutEngineBuilder, RubyAnnotation, TextStyleOverride};
 use tiqian::core::geometry::LayoutConstraints;
-use tiqian::layout::paragraph_layout_engine::{
-	ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
@@ -49,7 +46,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	builder.emphasis("中文排版");
 
 	let input = builder.build()?;
-	let mut engine = ExplainableStubParagraphLayoutEngine::default();
+	// 由宿主实现；同一 backend 负责字体选择、完整 shaping、metrics 与重放所需的 face identity。
+	// 可参考 demo 中的 DemoFontCatalog。
+	let font_backend: Box<dyn tiqian::shaping::font_backend::FontBackend> = todo!();
+	let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
 	let result = engine.layout(input);
 
 	println!("段落大小：{} × {}", result.size.width, result.size.height);
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-示例中的 `ExplainableStubParagraphLayoutEngine` 使用确定性的 stub shaping 和字体度量，适合快速试用、测试和排版行为验证。接入平台字体时，需要实现并注入 `FontBackend`；它在同一个 backend 中完成字体选择、shaping 和 metrics 查询，`examples/paragraph-demo.rs` 展示了使用 HarfRust、SkRifa 和 Vello 的桌面接入路径。
+builder 要求显式提供 `FontBackend`；backend 负责字体选择、完整 shaping、metrics 查询，以及重放所需的 face identity。确定性 backend 仅在仓库测试支持中使用；桌面示例使用 HarfRust、SkRifa 和 Vello。
 
 `LayoutResult` 包含行、cluster、glyph replay 数据、注音和装饰几何，以及结构化的布局决策。宿主应用可以据此绘制字形、背景和装饰，也可以使用布局查询实现选择、复制和命中测试。测量与绘制应使用同一字体后端，避免重新 shaping 造成几何差异。
 

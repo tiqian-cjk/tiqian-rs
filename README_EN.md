@@ -31,11 +31,8 @@ Compared with the upstream version, the Rust version provides a more concise API
 Use `ParagraphBuilder` to construct a paragraph in content order. It generates a `LayoutInput` containing text styles, interlinear annotations, decorations, rich text, and related data, so callers do not need to maintain source-text boundaries for these ranges manually.
 
 ```rust
-use tiqian::api::{ParagraphBuilder, RubyAnnotation, TextStyleOverride};
+use tiqian::api::{ParagraphBuilder, ParagraphLayoutEngineBuilder, RubyAnnotation, TextStyleOverride};
 use tiqian::core::geometry::LayoutConstraints;
-use tiqian::layout::paragraph_layout_engine::{
-	ExplainableStubParagraphLayoutEngine, ParagraphLayoutEngine,
-};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
@@ -49,7 +46,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	builder.emphasis("中文排版");
 
 	let input = builder.build()?;
-	let mut engine = ExplainableStubParagraphLayoutEngine::default();
+	// Implemented by the host; one backend provides font selection, complete shaping, metrics, and replayable face identity.
+	// See the demo for a reference implementation in DemoFontCatalog.
+	let font_backend: Box<dyn tiqian::shaping::font_backend::FontBackend> = todo!();
+	let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
 	let result = engine.layout(input);
 
 	println!("Paragraph size: {} × {}", result.size.width, result.size.height);
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The `ExplainableStubParagraphLayoutEngine` in this example uses deterministic stub shaping and font metrics. It is suitable for quick experiments, tests, and layout behavior validation. To connect platform fonts, implement and inject `FontBackend`; the backend performs font selection, shaping, and metrics lookup as one contract. The desktop integration path in `examples/paragraph-demo.rs` uses HarfRust, SkRifa, and Vello.
+The builder requires an explicit `FontBackend`. The backend is responsible for font selection, complete shaping, metrics, and replayable face identity. Deterministic backends are used only in repository test support; the desktop demo path uses HarfRust, SkRifa, and Vello.
 
 `LayoutResult` contains lines, clusters, glyph replay data, ruby and decoration geometry, and structured layout decisions. A host application can use it to draw glyphs, backgrounds, and decorations, as well as to implement selection, copying, and hit testing through the layout queries. Measurement and drawing should use the same font backend to avoid geometry differences caused by reshaping.
 
