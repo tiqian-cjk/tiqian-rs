@@ -8,7 +8,7 @@ name = "tiqian"
 repository = "https://github.com/tiqian-cjk/tiqian-rs"
 version = "0.1.0"
 
-include = ["src/**/*", "resources/hyphenation/**/*", "Cargo.toml", "README.md", "LICENSE"]
+include = ["src/**/*", "resources/hyphenation/**/*", "Cargo.toml", "./README.md", "LICENSE"]
 
 [features]
 collections-hashbrown = ["dep:hashbrown"]
