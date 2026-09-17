@@ -2053,7 +2053,7 @@ dependencies = [
 
 [[package]]
 name = "tiqian"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "harfrust",
  "hashbrown 0.17.1",
