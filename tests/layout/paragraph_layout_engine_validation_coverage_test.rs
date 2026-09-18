@@ -3,8 +3,8 @@ use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectBoundaryAdjustment,
-    InlineObjectSpan, LayoutInput, LineBreakPolicy, LineBreakSpan, ParagraphStyle,
-    TiqianTextContent,
+    InlineObjectPreferredStretch, InlineObjectPreferredStretchKind, InlineObjectSpan, LayoutInput,
+    LineBreakPolicy, LineBreakSpan, ParagraphStyle, TiqianTextContent,
 };
 use crate::support::DeterministicStubFontBackend;
 
@@ -379,4 +379,40 @@ fn oversized_inline_object_trailing_boundary_is_clamped() {
             TiqianTextContent::new(Text::from("甲乙")),
         ),
     );
+}
+
+#[test]
+fn invalid_inline_object_preferred_stretch_uses_zero_capacity() {
+    let trailing = InlineObjectBoundaryAdjustment::builder()
+        .participates_in_uniform_stretch(true)
+        .preferred_stretch(InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::Relation,
+            f32::NAN,
+            12.0,
+        ))
+        .build();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let result = engine.layout(
+        input(
+            ParagraphStyle::default(),
+            Vec::new(),
+            vec![inline_object(
+                text_range(0, 1),
+                10.0,
+                8.0,
+                2.0,
+                InlineObjectBoundaryAdjustment::FIXED,
+                trailing,
+            )],
+            TiqianTextContent::new(Text::from("甲乙")),
+        ),
+    );
+    assert_eq!(0.0, result.debug.inline_object_decisions[0].trailing_preferred_stretch_capacity);
+    let next = engine.layout(input(
+        ParagraphStyle::default(),
+        Vec::new(),
+        Vec::new(),
+        TiqianTextContent::new(Text::from("后续文本")),
+    ));
+    assert!(!next.clusters.is_empty());
 }

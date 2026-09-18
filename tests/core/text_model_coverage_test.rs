@@ -58,7 +58,15 @@ fn test_inline_object_preferred_stretch_and_adjustment() {
     assert_eq!(InlineObjectPreferredStretchKind::Relation, stretch.kind);
     assert_eq!(5.0, stretch.capacity());
     for (natural, target) in [(-1.0, 10.0), (f32::NAN, 10.0), (f32::INFINITY, 10.0), (10.0, 10.0), (10.0, 8.0), (10.0, f32::NAN), (10.0, f32::INFINITY)] {
-        assert!(std::panic::catch_unwind(|| InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::PunctuationTrailing, natural, target)).is_err());
+        let invalid = InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::PunctuationTrailing,
+            natural,
+            target,
+        );
+        assert!(invalid.natural_width.is_finite());
+        assert!(invalid.natural_width >= 0.0);
+        assert_eq!(invalid.natural_width, invalid.target_width);
+        assert_eq!(0.0, invalid.capacity());
     }
     let fixed = InlineObjectBoundaryAdjustment::FIXED;
     assert!(!fixed.participates_in_uniform_stretch);
@@ -69,7 +77,12 @@ fn test_inline_object_preferred_stretch_and_adjustment() {
     assert_eq!(2.0, adjustment.shrink_capacity);
     assert_eq!(1.0, adjustment.line_end_discardable_advance);
     assert!(adjustment.prevents_line_break);
-    assert!(std::panic::catch_unwind(|| InlineObjectBoundaryAdjustment::builder().shrink_capacity(-0.5).build()).is_err());
+    let invalid_adjustment = InlineObjectBoundaryAdjustment::builder()
+        .shrink_capacity(-0.5)
+        .line_end_discardable_advance(f32::NAN)
+        .build();
+    assert_eq!(-0.5, invalid_adjustment.shrink_capacity);
+    assert!(invalid_adjustment.line_end_discardable_advance.is_nan());
     let object = InlineObjectSpan::new(text_range(0, 1), 16.0, 12.0, 4.0, fixed, adjustment);
     assert_eq!(16.0, object.advance);
     assert_eq!(12.0, object.ascent);

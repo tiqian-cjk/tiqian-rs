@@ -218,7 +218,7 @@ pub enum InlineObjectPreferredStretchKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-/// 禁止手工构造：必须使用 [`InlineObjectPreferredStretch::new`]，以保留 Kotlin 的构造校验。
+/// 优先拉伸参数；构造时将异常宽度规范化为零容量。
 pub struct InlineObjectPreferredStretch {
     pub kind: InlineObjectPreferredStretchKind,
     /// 已包含在 provider 测量的对象 advance 中的空白。
@@ -230,17 +230,17 @@ pub struct InlineObjectPreferredStretch {
 impl InlineObjectPreferredStretch {
     pub fn new(
         kind: InlineObjectPreferredStretchKind,
-        natural_width: f32,
-        target_width: f32,
+        mut natural_width: f32,
+        mut target_width: f32,
     ) -> Self {
-        assert!(
-            natural_width.is_finite() && natural_width >= 0.0,
-            "Inline-object preferred stretch natural width must be finite and non-negative"
-        );
-        assert!(
-            target_width.is_finite() && target_width > natural_width,
-            "Inline-object preferred stretch target must be finite and exceed its natural width"
-        );
+        if !natural_width.is_finite() || natural_width < 0.0 {
+            log::warn!("invalid inline object preferred stretch natural width; using zero capacity");
+            natural_width = 0.0;
+            target_width = 0.0;
+        } else if !target_width.is_finite() || target_width <= natural_width {
+            log::warn!("invalid inline object preferred stretch target width; using natural width");
+            target_width = natural_width;
+        }
         Self {
             kind,
             natural_width,
@@ -265,7 +265,7 @@ impl InlineObjectPreferredStretch {
 /// 保留。因为移除前导 shrink 或 discard 还需要移动对象 paint origin，故不支持它们。Opaque 对象
 /// 默认使用 `Fixed`。
 #[derive(Clone, Debug, PartialEq)]
-/// 禁止手工构造：使用 [`InlineObjectBoundaryAdjustment::FIXED`] 或 builder，以保留 Kotlin 的构造校验。
+/// 行内对象边界调整参数。
 pub struct InlineObjectBoundaryAdjustment {
     pub participates_in_uniform_stretch: bool,
     pub preferred_stretch: Option<InlineObjectPreferredStretch>,
@@ -296,14 +296,6 @@ impl InlineObjectBoundaryAdjustment {
         line_end_discardable_advance: f32,
         prevents_line_break: bool,
     ) -> Self {
-        assert!(
-            shrink_capacity.is_finite() && shrink_capacity >= 0.0,
-            "Inline-object boundary shrink capacity must be finite and non-negative"
-        );
-        assert!(
-            line_end_discardable_advance.is_finite() && line_end_discardable_advance >= 0.0,
-            "Inline-object line-end discardable advance must be finite and non-negative"
-        );
         Self {
             participates_in_uniform_stretch,
             preferred_stretch,
