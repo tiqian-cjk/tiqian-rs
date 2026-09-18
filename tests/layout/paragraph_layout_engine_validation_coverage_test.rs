@@ -53,6 +53,17 @@ fn expect_layout_continues(layout_input: LayoutInput) {
 }
 
 #[test]
+fn zero_layout_constraints_truncate_visible_output_without_stopping_layout() {
+    expect_layout_continues(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("甲乙")),
+            LayoutConstraints::new(0.0, 0.0, 0),
+        )
+        .build(),
+    );
+}
+
+#[test]
 fn invalid_emphasis_dot_gap_em_uses_local_default() {
     let nan_style = ParagraphStyle::builder().emphasis_dot_gap_em(f32::NAN).build();
     let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();

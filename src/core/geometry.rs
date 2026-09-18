@@ -14,9 +14,13 @@ pub struct ScalarOffset(i32);
 impl ScalarOffset {
     pub const ZERO: Self = Self(0);
 
-    pub const fn new(value: i32) -> Self {
-        assert!(value >= 0, "ScalarOffset must be non-negative.");
-        Self(value)
+    pub fn new(value: i32) -> Self {
+        if value < 0 {
+            log::warn!("negative scalar offset; using zero");
+            Self::ZERO
+        } else {
+            Self(value)
+        }
     }
 
     pub const fn value(self) -> i32 {
@@ -34,7 +38,7 @@ impl ScalarOffset {
 
 /// 从裸整数构造 Unicode scalar source offset。
 #[inline]
-pub const fn scalar_offset(value: i32) -> ScalarOffset {
+pub fn scalar_offset(value: i32) -> ScalarOffset {
     ScalarOffset::new(value)
 }
 
@@ -89,12 +93,15 @@ pub struct TextRange {
 
 impl TextRange {
     pub fn new(start: ScalarOffset, end: ScalarOffset) -> Self {
-        assert!(
-            start <= end,
-            "TextRange start must not be greater than end."
-        );
-
-        Self { start, end }
+        if start > end {
+            log::warn!("reversed text range; ordering endpoints");
+            Self {
+                start: end,
+                end: start,
+            }
+        } else {
+            Self { start, end }
+        }
     }
 
     pub fn start(self) -> ScalarOffset {
@@ -172,9 +179,24 @@ impl LayoutConstraints {
     }
 
     pub fn new(max_width: f32, max_height: f32, max_lines: i32) -> Self {
-        assert!(max_width > 0.0, "maxWidth must be positive.");
-        assert!(max_height > 0.0, "maxHeight must be positive.");
-        assert!(max_lines > 0, "maxLines must be positive.");
+        let max_width = if max_width > 0.0 {
+            max_width
+        } else {
+            log::warn!("non-positive layout max width; using zero");
+            0.0
+        };
+        let max_height = if max_height > 0.0 {
+            max_height
+        } else {
+            log::warn!("non-positive layout max height; using zero");
+            0.0
+        };
+        let max_lines = if max_lines > 0 {
+            max_lines
+        } else {
+            log::warn!("non-positive layout max lines; using zero");
+            0
+        };
 
         Self {
             max_width,

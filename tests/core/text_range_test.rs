@@ -6,7 +6,6 @@ fn exposes_length() {
 }
 
 #[test]
-#[should_panic(expected = "ScalarOffset must be non-negative.")]
-fn rejects_negative_start() {
-    TextRange::new(scalar_offset(-1), scalar_offset(1));
+fn negative_offsets_normalize_before_range_construction() {
+    assert_eq!(text_range(0, 1), TextRange::new(scalar_offset(-1), scalar_offset(1)));
 }

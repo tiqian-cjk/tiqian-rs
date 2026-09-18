@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
+use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
 use tiqian::core::layout_model::{LayoutDebugInfo, MaxLinesDecisionInfo};
 use tiqian::core::units::{Ic, IcLiteral};
 
@@ -38,27 +38,14 @@ fn rect_width_returns_difference() {
 }
 
 #[test]
-#[should_panic(expected = "TextRange start must not be greater than end.")]
-fn text_range_rejects_start_greater_than_end() {
-    text_range(5, 2);
-}
+fn geometry_constructors_normalize_invalid_values() {
+    assert_eq!(scalar_offset(0), scalar_offset(-1));
+    assert_eq!(text_range(2, 5), text_range(5, 2));
 
-#[test]
-#[should_panic(expected = "maxWidth must be positive.")]
-fn layout_constraints_rejects_non_positive_max_width() {
-    LayoutConstraints::with_defaults(-1.0);
-}
-
-#[test]
-#[should_panic(expected = "maxHeight must be positive.")]
-fn layout_constraints_rejects_non_positive_max_height() {
-    LayoutConstraints::with_max_height(100.0, -1.0);
-}
-
-#[test]
-#[should_panic(expected = "maxLines must be positive.")]
-fn layout_constraints_rejects_non_positive_max_lines() {
-    LayoutConstraints::with_max_lines(100.0, 0);
+    let constraints = LayoutConstraints::new(-1.0, 0.0, 0);
+    assert_eq!(0.0, constraints.max_width());
+    assert_eq!(0.0, constraints.max_height());
+    assert_eq!(0, constraints.max_lines());
 }
 
 #[test]
