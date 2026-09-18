@@ -58,27 +58,39 @@ impl ParagraphBuilder {
     }
 
     pub fn text_style(&mut self, style: TextStyle) -> &mut Self {
-        self.assert_paragraph_configuration_is_mutable();
-        self.text_style = style;
+        if self.paragraph_configuration_is_mutable() {
+            self.text_style = style;
+        } else {
+            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+        }
         self
     }
 
     /// 设置正文默认使用的 paint；文本写入后不能再修改段落级默认值。
     pub fn paints(&mut self, paints: &[RichTextPaint]) -> &mut Self {
-        self.assert_paragraph_configuration_is_mutable();
-        self.paints = paints.to_vec();
+        if self.paragraph_configuration_is_mutable() {
+            self.paints = paints.to_vec();
+        } else {
+            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+        }
         self
     }
 
     pub fn paragraph_style(&mut self, style: ParagraphStyle) -> &mut Self {
-        self.assert_paragraph_configuration_is_mutable();
-        self.paragraph_style = style;
+        if self.paragraph_configuration_is_mutable() {
+            self.paragraph_style = style;
+        } else {
+            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+        }
         self
     }
 
     pub fn profile_id(&mut self, profile_id: LayoutProfileId) -> &mut Self {
-        self.assert_paragraph_configuration_is_mutable();
-        self.profile_id = profile_id;
+        if self.paragraph_configuration_is_mutable() {
+            self.profile_id = profile_id;
+        } else {
+            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+        }
         self
     }
 
@@ -383,11 +395,8 @@ impl ParagraphBuilder {
         }
     }
 
-    pub(super) fn assert_paragraph_configuration_is_mutable(&self) {
-        assert!(
-            self.scalar_offset == ScalarOffset::ZERO,
-            "paragraph defaults cannot change after source text has been appended"
-        );
+    pub(super) fn paragraph_configuration_is_mutable(&self) -> bool {
+        self.scalar_offset == ScalarOffset::ZERO
     }
 
 }

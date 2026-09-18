@@ -3,8 +3,9 @@ use tiqian::core::geometry::{LayoutConstraints, TextRange, scalar_offset};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment, LineBreakPolicy,
-    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
-    RichTextLinePaint, RichTextPaint, RichTextSemantic, TextStyle, built_in_layout_profiles,
+    LineBreakSpan, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextPaint, RichTextSemantic, TextStyle, LayoutProfileId,
+    built_in_layout_profiles,
 };
 
 fn underline_layer() -> RichTextLayer {
@@ -98,16 +99,37 @@ fn try_with_error_prevents_a_later_build() {
 }
 
 #[test]
-fn paragraph_configuration_panics_after_source_text_is_appended() {
+fn paragraph_configuration_updates_after_source_text_are_ignored() {
+    let text_style = TextStyle::builder().font_size(18.0).build();
+    let paragraph_style = ParagraphStyle::builder().line_height(Some(30.0)).build();
+    let profile_id = LayoutProfileId {
+        value: "kept-profile".to_owned(),
+    };
+    let paint = RichTextPaint::Fill {
+        argb: 0xFF2563EB_u32 as i32,
+    };
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.text_style(text_style.clone());
+    builder.paragraph_style(paragraph_style.clone());
+    builder.profile_id(profile_id.clone());
+    builder.paints(&[paint.clone()]);
     builder.push("正文");
+    builder.text_style(TextStyle::builder().font_size(24.0).build());
+    builder.paragraph_style(ParagraphStyle::default());
+    builder.profile_id(built_in_layout_profiles::clreq_horizontal());
+    builder.paints(&[RichTextPaint::Fill {
+        argb: 0xFFDC2626_u32 as i32,
+    }]);
+    builder.push("后续");
 
-    assert!(
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            builder.profile_id(built_in_layout_profiles::clreq_horizontal());
-        }))
-        .is_err()
-    );
+    let output = builder.build().unwrap();
+    assert_eq!(text_style, output.text_style);
+    assert_eq!(paragraph_style, output.paragraph_style);
+    assert_eq!(profile_id, output.profile_id);
+    assert!(output.rich_text.iter().all(|span| span.layers == vec![RichTextLayer {
+        kind: RichTextLayerKind::Text,
+        paints: vec![paint.clone()],
+    }]));
 }
 
 #[test]
