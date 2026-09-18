@@ -39,3 +39,20 @@ fn content_without_inline_boxes_omits_inline_edges_array() {
 
     assert!(!to_prepared_paragraph_json(&result, true).contains("\"inlineEdges\":"));
 }
+
+#[test]
+fn non_finite_inline_box_edges_do_not_leak_into_render_plan() {
+    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中文正文")),
+            LayoutConstraints::with_defaults(320.0),
+        )
+        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .inline_boxes(vec![InlineBoxSpan::with_edges(text_range(0, 2), f32::NAN, f32::INFINITY)])
+        .build(),
+    );
+
+    let json = to_prepared_paragraph_json(&result, true);
+    assert!(!json.contains("NaN"), "{json}");
+    assert!(!json.contains("Infinity"), "{json}");
+}

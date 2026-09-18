@@ -2058,6 +2058,7 @@ dependencies = [
  "harfrust",
  "hashbrown 0.17.1",
  "icu_properties",
+ "log",
  "mimalloc",
  "pollster",
  "read-fonts 0.43.3",

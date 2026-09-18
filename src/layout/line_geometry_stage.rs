@@ -9,7 +9,8 @@ use super::super::core::layout_model::{
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
-    InlineObjectSpan, LastLineAlignment, LayoutInput, RubyLineHeightMode, RubySpan,
+    DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM, InlineObjectSpan, LastLineAlignment, LayoutInput,
+    RubyLineHeightMode, RubySpan,
 };
 use super::super::font::font_metrics::{FontMetricsRequest, MetricBox};
 use super::super::font::font_policy::{LayoutFontMetrics, RawFontMetrics};
@@ -310,7 +311,15 @@ pub fn resolve_line_vertical_geometry(
         .iter()
         .map(|descent| (descent - base_descent).max(0.0))
         .collect();
-    let minimum_clearance = input.paragraph_style.inline_object_minimum_clearance_em * font_size;
+    let minimum_clearance_em = input.paragraph_style.inline_object_minimum_clearance_em;
+    let minimum_clearance = if inline_object_by_cluster_index.is_empty() {
+        0.
+    } else if minimum_clearance_em.is_finite() && minimum_clearance_em >= 0. {
+        minimum_clearance_em * font_size
+    } else {
+        log::warn!("invalid inline object minimum clearance; using default clearance");
+        DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM * font_size
+    };
     let base_top = base_line_metrics.baseline;
     let base_bottom = base_line_metrics.height - base_line_metrics.baseline;
     let combined_extra: Vec<f32> = (0..line_solution.lines.len())

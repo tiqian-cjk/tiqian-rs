@@ -103,12 +103,15 @@ pub fn cluster_role_ranges_with_options(
     let mut index = ScalarOffset::ZERO;
     while index < text_length {
         if let Some(inline_object) = options.inline_objects_by_start.get(&index) {
-            ranges.push(ResolvedClusterRange::new(
-                inline_object.range,
-                FontRole::Unknown,
-            ));
-            index = inline_object.range.end();
-            continue;
+            if inline_object.range.end() > index && inline_object.range.end() <= text_length {
+                ranges.push(ResolvedClusterRange::new(
+                    inline_object.range,
+                    FontRole::Unknown,
+                ));
+                index = inline_object.range.end();
+                continue;
+            }
+            log::warn!("invalid inline object range; using source text");
         }
 
         let code_point = text

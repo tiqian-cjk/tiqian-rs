@@ -1021,13 +1021,19 @@ fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> Shapin
 }
 fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> ShapingResult {
     let source = text.slice_text(object.range);
+    let advance = if object.advance.is_finite() && object.advance > 0. {
+        object.advance
+    } else {
+        log::warn!("invalid inline object advance; using zero advance");
+        0.
+    };
     ShapingResult::with_decisions(
         vec![Cluster::synthetic(
             object.range,
             source.clone(),
             Text::new(),
             SyntheticClusterKind::InlineObject,
-            object.advance,
+            advance,
         )],
         Vec::new(),
         vec![
@@ -1037,7 +1043,7 @@ fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> Shapi
                 Text::new(),
                 None,
                 0,
-                object.advance,
+                advance,
                 "InlineObject".to_owned(),
                 "MeasurableOpaqueInlineObject:no-font-shaping".to_owned(),
             )

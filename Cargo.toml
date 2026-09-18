@@ -17,6 +17,7 @@ default = ["collections-hashbrown"]
 
 [dependencies]
 icu_properties = {version = "2.3", features = ["compiled_data"]}
+log = "0.4"
 
 hashbrown = {version = "0.17", optional = true}
 

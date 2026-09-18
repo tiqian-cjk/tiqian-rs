@@ -13,8 +13,8 @@ use super::super::core::layout_model::{
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
-    DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment, InlineObjectSpan, LayoutInput,
-    RubyKind, RubySpan, TextStyle,
+    DEFAULT_EMPHASIS_DOT_GAP_EM, DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment,
+    InlineObjectSpan, LayoutInput, RubyKind, RubySpan, TextStyle,
 };
 use super::super::font::font_policy::FontRole;
 use super::super::shaping::font_backend::{FontBackend, FontBackendRequest};
@@ -268,6 +268,14 @@ fn compute_decoration_decisions(
                             metric.layout_metrics.descent
                         });
                     let candidate_dot_diameter = cluster_em * EMPHASIS_DOT_DIAMETER_EM;
+                    let emphasis_dot_gap_em = input.paragraph_style.emphasis_dot_gap_em;
+                    let emphasis_dot_gap =
+                        if emphasis_dot_gap_em.is_finite() && emphasis_dot_gap_em >= 0. {
+                            cluster_em * emphasis_dot_gap_em
+                        } else {
+                            log::warn!("invalid emphasis dot gap; using default gap");
+                            cluster_em * DEFAULT_EMPHASIS_DOT_GAP_EM
+                        };
                     decisions.push(
                         DecorationDecisionInfo::builder(
                             cluster.range,
@@ -287,7 +295,7 @@ fn compute_decoration_decisions(
                             lines[line_index].baseline
                                 + cluster.baseline_shift
                                 + face_descent
-                                + cluster_em * input.paragraph_style.emphasis_dot_gap_em
+                                + emphasis_dot_gap
                                 + candidate_dot_diameter / 2.0,
                         )
                         .dot_diameter(if applied { candidate_dot_diameter } else { 0.0 })

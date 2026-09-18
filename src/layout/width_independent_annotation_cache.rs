@@ -240,12 +240,13 @@ pub fn prepare_width_independent_annotation(
 ) -> WidthIndependentParagraphAnnotation {
     let text = input.content.text.clone();
     let font_size = input.text_style.font_size;
-    let inline_object_by_range: HashMap<_, _> = input
-        .inline_objects
-        .iter()
-        .cloned()
-        .map(|object| (object.range, object))
-        .collect();
+    let mut inline_by_start = HashMap::new();
+    for object in &input.inline_objects {
+        inline_by_start
+            .entry(object.range.start())
+            .and_modify(|_| log::warn!("duplicate inline object start; ignoring later object"))
+            .or_insert_with(|| object.clone());
+    }
     let spans: Vec<_> = input
         .content
         .spans
@@ -341,8 +342,8 @@ pub fn prepare_width_independent_annotation(
         add_emoji_shaping_range(span.range)
     }
     for inline_box in &input.inline_boxes {
-        if inline_box.inline_start != 0.
-            || inline_box.inline_end != 0.
+        if (inline_box.inline_start.is_finite() && inline_box.inline_start != 0.)
+            || (inline_box.inline_end.is_finite() && inline_box.inline_end != 0.)
             || inline_box.outer_spacing == InlineBoxOuterSpacing::Narrow
         {
             add_emoji_shaping_range(inline_box.range)
@@ -404,12 +405,6 @@ pub fn prepare_width_independent_annotation(
             }
         })
         .collect();
-    let inline_by_start: HashMap<_, _> = input
-        .inline_objects
-        .iter()
-        .cloned()
-        .map(|object| (object.range.start(), object))
-        .collect();
     let options = ClusterRoleRangeOptions::builder()
         .span_boundaries(boundaries)
         .emoji_shaping_boundaries(emoji_shaping_boundaries)
@@ -434,6 +429,17 @@ pub fn prepare_width_independent_annotation(
         );
         cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
     };
+    let inline_object_by_range: HashMap<_, _> = cluster_ranges
+        .iter()
+        .filter_map(|range| {
+            options
+                .inline_objects_by_start
+                .get(&range.range.start())
+                .filter(|object| object.range == range.range)
+                .cloned()
+                .map(|object| (range.range, object))
+        })
+        .collect();
     let mut role_override_infos = quote_role_override_infos;
     role_override_infos.extend(dash_ellipsis_role_override_infos);
     role_override_infos.extend(
@@ -699,10 +705,10 @@ pub fn build_paragraph_layout_prep(
             cluster.range
         );
     }
-    let inline_ranges: Vec<TextRange> = input
-        .inline_objects
-        .iter()
-        .map(|object| object.range)
+    let inline_ranges: Vec<TextRange> = annotation
+        .inline_object_by_range
+        .keys()
+        .copied()
         .collect();
     let narrow_ranges: HashSet<TextRange> = input
         .inline_boxes
@@ -824,11 +830,60 @@ pub fn build_paragraph_layout_prep(
         .iter()
         .enumerate()
         .filter_map(|(index, cluster)| {
-            annotation
+            let mut object = annotation
                 .inline_object_by_range
                 .get(&cluster.range)
                 .cloned()
-                .map(|object| (index as i32, object))
+                ?;
+            if !object.ascent.is_finite() || object.ascent < 0. {
+                log::warn!("invalid inline object ascent; using zero ascent");
+                object.ascent = 0.;
+            }
+            if !object.descent.is_finite() || object.descent < 0. {
+                log::warn!("invalid inline object descent; using zero descent");
+                object.descent = 0.;
+            }
+            if object.leading_boundary.shrink_capacity != 0.
+                || object.leading_boundary.line_end_discardable_advance != 0.
+            {
+                log::warn!("invalid inline object leading boundary; using fixed boundary");
+                object.leading_boundary = super::super::core::text_model::InlineObjectBoundaryAdjustment::FIXED;
+            }
+            if !object.trailing_boundary.shrink_capacity.is_finite()
+                || object.trailing_boundary.shrink_capacity < 0.
+                || object.trailing_boundary.shrink_capacity > cluster.advance
+            {
+                log::warn!("invalid inline object trailing shrink; clamping to advance");
+                object.trailing_boundary.shrink_capacity = if object
+                    .trailing_boundary
+                    .shrink_capacity
+                    .is_finite()
+                {
+                    object.trailing_boundary.shrink_capacity.clamp(0., cluster.advance)
+                } else {
+                    0.
+                };
+            }
+            if !object.trailing_boundary.line_end_discardable_advance.is_finite()
+                || object.trailing_boundary.line_end_discardable_advance < 0.
+                || object.trailing_boundary.line_end_discardable_advance > cluster.advance
+            {
+                log::warn!("invalid inline object trailing discard; clamping to advance");
+                object.trailing_boundary.line_end_discardable_advance = if object
+                    .trailing_boundary
+                    .line_end_discardable_advance
+                    .is_finite()
+                {
+                    object
+                        .trailing_boundary
+                        .line_end_discardable_advance
+                        .clamp(0., cluster.advance)
+                } else {
+                    0.
+                };
+            }
+            object.advance = cluster.advance;
+            Some((index as i32, object))
         })
         .collect();
     let mut boundary: BTreeMap<

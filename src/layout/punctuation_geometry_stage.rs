@@ -554,16 +554,28 @@ pub fn apply_inline_box_spans(
         let Some((f, l)) = cluster_index_range_for(clusters, s.range) else {
             continue;
         };
-        if s.inline_start != 0. {
-            *lead.entry(f).or_insert(0.) += s.inline_start;
+        let inline_start = if s.inline_start.is_finite() {
+            s.inline_start
+        } else {
+            log::warn!("invalid inline box start edge; using zero edge");
+            0.
+        };
+        let inline_end = if s.inline_end.is_finite() {
+            s.inline_end
+        } else {
+            log::warn!("invalid inline box end edge; using zero edge");
+            0.
+        };
+        if inline_start != 0. {
+            *lead.entry(f).or_insert(0.) += inline_start;
         }
-        if s.inline_end != 0. {
-            *trail.entry(l).or_insert(0.) += s.inline_end;
+        if inline_end != 0. {
+            *trail.entry(l).or_insert(0.) += inline_end;
         }
         decisions.push(InlineBoxDecisionInfo {
             range: s.range,
-            inline_start: s.inline_start,
-            inline_end: s.inline_end,
+            inline_start,
+            inline_end,
             outer_spacing: format!("{:?}", s.outer_spacing),
             first_cluster_index: f,
             last_cluster_index: l,

@@ -4,7 +4,7 @@ use crate::common::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::super::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
-use super::super::core::geometry::{ScalarOffset, TextRange};
+use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::LayoutResult;
 use super::super::core::text_model::LayoutInput;
 use super::super::font::font_metrics::{FontMetricsNormalizer, ScriptAwareFontMetricsNormalizer};
@@ -114,7 +114,6 @@ impl ParagraphLayoutEngine {
         input: LayoutInput,
         rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     ) -> LayoutResult {
-        validate_layout_input(&input);
         let cache_key =
             to_width_independent_annotation_key(&input, rejected_technical_tiers_by_span.clone());
         let annotation = self.annotation_cache.get(&cache_key).unwrap_or_else(|| {
@@ -159,102 +158,4 @@ impl ParagraphLayoutEngine {
             } => self.layout_with_rejected_technical_tiers(input, rejected_technical_tiers_by_span),
         }
     }
-}
-
-fn validate_layout_input(input: &LayoutInput) {
-    let text_length = input.content.text.scalar_len();
-    assert!(
-        input.paragraph_style.emphasis_dot_gap_em.is_finite()
-            && input.paragraph_style.emphasis_dot_gap_em >= 0.0,
-        "ParagraphStyle.emphasisDotGapEm must be finite and non-negative"
-    );
-    assert!(
-        input
-            .paragraph_style
-            .inline_object_minimum_clearance_em
-            .is_finite()
-            && input.paragraph_style.inline_object_minimum_clearance_em >= 0.0,
-        "ParagraphStyle.inlineObjectMinimumClearanceEm must be finite and non-negative"
-    );
-    for inline_box in &input.inline_boxes {
-        assert!(
-            is_non_empty_source_range(inline_box.range, text_length),
-            "InlineBoxSpan {:?} must be a non-empty source range",
-            inline_box.range
-        );
-        assert!(
-            inline_box.inline_start.is_finite() && inline_box.inline_end.is_finite(),
-            "InlineBoxSpan {:?} must have finite inline edges",
-            inline_box.range
-        );
-    }
-    for span in &input.content.line_break_spans {
-        assert!(
-            is_non_empty_source_range(span.range, text_length),
-            "LineBreakSpan {:?} must be a non-empty source range",
-            span.range
-        );
-    }
-    for range in &input.content.auto_space_suppressed_ranges {
-        assert!(
-            is_non_empty_source_range(*range, text_length),
-            "Auto-space suppressed range {:?} must be a non-empty source range",
-            range
-        );
-    }
-    let mut objects = input.inline_objects.clone();
-    objects.sort_by_key(|object| object.range.start());
-    assert!(
-        objects
-            .windows(2)
-            .all(|pair| pair[0].range != pair[1].range),
-        "InlineObjectSpan ranges must be unique"
-    );
-    assert!(
-        objects
-            .windows(2)
-            .all(|pair| pair[0].range.end() <= pair[1].range.start()),
-        "InlineObjectSpan ranges must not overlap"
-    );
-    for object in &objects {
-        assert!(
-            is_non_empty_source_range(object.range, text_length),
-            "InlineObjectSpan {:?} must cover a non-empty source range",
-            object.range
-        );
-        assert!(
-            object.advance.is_finite()
-                && object.advance > 0.0
-                && object.ascent.is_finite()
-                && object.ascent >= 0.0
-                && object.descent.is_finite()
-                && object.descent >= 0.0,
-            "InlineObjectSpan {:?} must have finite positive geometry",
-            object.range
-        );
-        assert!(
-            object.leading_boundary.shrink_capacity == 0.0,
-            "InlineObjectSpan {:?} cannot shrink its leading boundary",
-            object.range
-        );
-        assert!(
-            object.leading_boundary.line_end_discardable_advance == 0.0,
-            "InlineObjectSpan {:?} cannot discard advance at its leading boundary",
-            object.range
-        );
-        assert!(
-            object.trailing_boundary.shrink_capacity <= object.advance,
-            "InlineObjectSpan {:?} trailing shrink capacity must not exceed its advance",
-            object.range
-        );
-        assert!(
-            object.trailing_boundary.line_end_discardable_advance <= object.advance,
-            "InlineObjectSpan {:?} trailing line-end discard must not exceed its advance",
-            object.range
-        );
-    }
-}
-
-fn is_non_empty_source_range(range: TextRange, text_length: ScalarOffset) -> bool {
-    range.start() < range.end() && range.end() <= text_length
 }

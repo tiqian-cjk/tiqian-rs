@@ -61,23 +61,39 @@ pub fn to_prepared_paragraph_json(
     let mut inline_start_by_offset: HashMap<ScalarOffset, f32> = HashMap::new();
     let mut inline_end_by_offset: HashMap<ScalarOffset, f32> = HashMap::new();
     for inline_box in &result.input.inline_boxes {
-        if inline_box.inline_start != 0.0 {
+        if inline_box.inline_start.is_finite() && inline_box.inline_start != 0.0 {
             *inline_start_by_offset
                 .entry(inline_box.range.start())
                 .or_insert(0.0) += inline_box.inline_start;
         }
-        if inline_box.inline_end != 0.0 {
+        if inline_box.inline_end.is_finite() && inline_box.inline_end != 0.0 {
             *inline_end_by_offset
                 .entry(inline_box.range.end())
                 .or_insert(0.0) += inline_box.inline_end;
         }
     }
-    let inline_object_advance_by_range: HashMap<_, _> = result
-        .input
-        .inline_objects
-        .iter()
-        .map(|inline_object| (inline_object.range, inline_object.advance))
-        .collect();
+    let inline_object_advance_by_range: HashMap<_, _> = if result.debug.inline_object_decisions.is_empty() {
+        result
+            .input
+            .inline_objects
+            .iter()
+            .map(|inline_object| {
+                (
+                    inline_object.range,
+                    (inline_object.advance.is_finite() && inline_object.advance > 0.)
+                        .then_some(inline_object.advance)
+                        .unwrap_or(0.),
+                )
+            })
+            .collect()
+    } else {
+        result
+            .debug
+            .inline_object_decisions
+            .iter()
+            .map(|decision| (decision.range, decision.advance))
+            .collect()
+    };
     let positioned = positioned_clusters(result);
     let mut out = String::from("{\"schema\":1,\"layoutRevision\":\"tiqian-layout-v2\",\"width\":");
     append_json_number(&mut out, result.input.constraints.max_width());
