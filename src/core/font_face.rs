@@ -21,10 +21,6 @@ impl FontFaceId {
         collection_index: u32,
         variation_instance: FontVariationInstance,
     ) -> Self {
-        assert!(
-            !resource_id.trim().is_empty(),
-            "FontFaceId resource_id must not be blank"
-        );
         Self(Arc::new(FontFaceIdData {
             resource_id,
             collection_index,
@@ -67,11 +63,26 @@ pub struct FontVariationInstance(Vec<FontVariationSetting>);
 
 impl FontVariationInstance {
     pub fn new(mut settings: Vec<FontVariationSetting>) -> Self {
+        settings.retain(|setting| {
+            if setting.tag.trim().is_empty() {
+                log::warn!("blank font variation axis tag; ignoring axis");
+                false
+            } else if !setting.value().is_finite() {
+                log::warn!("non-finite font variation axis value; ignoring axis");
+                false
+            } else {
+                true
+            }
+        });
         settings.sort_by(|left, right| left.tag.cmp(&right.tag));
-        assert!(
-            settings.windows(2).all(|pair| pair[0].tag != pair[1].tag),
-            "FontVariationInstance must not contain duplicate axis tags"
-        );
+        settings.dedup_by(|later, first| {
+            if later.tag == first.tag {
+                log::warn!("duplicate font variation axis tag; ignoring later axis");
+                true
+            } else {
+                false
+            }
+        });
         Self(settings)
     }
 
@@ -104,14 +115,6 @@ pub struct FontVariationSetting {
 
 impl FontVariationSetting {
     pub fn new(tag: String, value: f32) -> Self {
-        assert!(
-            !tag.trim().is_empty(),
-            "FontVariationSetting tag must not be blank"
-        );
-        assert!(
-            value.is_finite(),
-            "FontVariationSetting value must be finite"
-        );
         Self {
             tag,
             value_bits: value.to_bits(),

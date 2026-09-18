@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use tiqian::common::HashSet;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance, FontVariationSetting};
 use tiqian::font::font_policy::FontRole;
@@ -25,16 +23,6 @@ fn descriptor(id: FontFaceId, family: &str, role: FontRole) -> ReplayableFontFac
     )
 }
 
-fn panic_message(error: Box<dyn Any + Send>) -> String {
-    if let Some(message) = error.downcast_ref::<String>() {
-        message.clone()
-    } else if let Some(message) = error.downcast_ref::<&str>() {
-        (*message).to_owned()
-    } else {
-        "non-string panic payload".to_owned()
-    }
-}
-
 #[test]
 fn font_face_id_keeps_resource_collection_and_canonical_variations() {
     let id = FontFaceId::new(
@@ -52,16 +40,18 @@ fn font_face_id_keeps_resource_collection_and_canonical_variations() {
     assert_eq!("wght", id.variation_instance().settings()[1].tag());
     assert_eq!("noto-cjk#2@wdth=75,wght=700", id.to_string());
 
-    let blank = std::panic::catch_unwind(|| face_id(" "))
-        .expect_err("blank FontFaceId resource must panic");
-    assert!(panic_message(blank).contains("blank"));
-    assert!(std::panic::catch_unwind(|| {
-        FontVariationInstance::new(vec![
-            FontVariationSetting::new("wght".to_owned(), 400.0),
-            FontVariationSetting::new("wght".to_owned(), 700.0),
-        ])
-    })
-    .is_err());
+    assert_eq!(" ", face_id(" ").resource_id());
+    let variations = FontVariationInstance::new(vec![
+        FontVariationSetting::new("wght".to_owned(), 400.0),
+        FontVariationSetting::new(" ".to_owned(), 700.0),
+        FontVariationSetting::new("wdth".to_owned(), f32::NAN),
+        FontVariationSetting::new("wght".to_owned(), 700.0),
+        FontVariationSetting::new("opsz".to_owned(), 12.0),
+    ]);
+    assert_eq!(2, variations.settings().len());
+    assert_eq!("opsz", variations.settings()[0].tag());
+    assert_eq!("wght", variations.settings()[1].tag());
+    assert_eq!(400.0, variations.settings()[1].value());
 }
 
 #[test]
