@@ -1,7 +1,7 @@
+use skrifa::outline::pen::ControlBoundsPen;
 use tiqian::common::{HashMap, HashSet};
 
 use harfrust::{Direction, Feature, FontRef as HarfBuzzFontRef, ShaperData, Tag, UnicodeBuffer};
-use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance, FontVariationSetting};
