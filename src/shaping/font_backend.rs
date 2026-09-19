@@ -179,7 +179,7 @@ impl FontBackendShapingResult {
 }
 
 /// 段落布局所需的字体选择、shaping、metrics 和回放标识。
-pub trait FontBackend: ReplayableFontCatalog {
+pub trait FontBackend: ReplayableFontCatalog + Send + Sync {
     fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult;
 
     fn metrics(&self, request: &FontMetricsRequest) -> RawFontMetrics;

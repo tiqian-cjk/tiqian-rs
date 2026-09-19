@@ -16,7 +16,7 @@ use super::progressive_break_decisions::{
 };
 
 /// Kotlin `LineBreaker` 的 Rust trait；默认参数由 `LineBreakerConfig` 映射。
-pub trait LineBreaker {
+pub trait LineBreaker: Send + Sync {
     fn strategy_name(&self) -> &'static str {
         "custom"
     }

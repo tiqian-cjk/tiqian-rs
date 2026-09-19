@@ -13,7 +13,7 @@ use super::super::core::text::Text;
  * Western word。真实 hyphenation 是 platform/data capability，参见无数据的 [`NoHyphenator`] 与
  * 携带 TeX patterns 的 `EnglishHyphenation`。每个实例绑定一种语言。
  */
-pub trait Hyphenator {
+pub trait Hyphenator: Send + Sync {
     fn hyphenate(&self, word: &Text) -> Vec<i32>;
 }
 

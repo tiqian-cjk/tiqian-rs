@@ -73,7 +73,7 @@ HTML 报告位于 `target/llvm-cov/html/index.html`。
 
 - 优先使用 `api::ParagraphBuilder` 按内容顺序构造段落；`build()` 返回 `LayoutInput`。
 - `TextRange` 和布局查询使用 Unicode scalar offset；UTF-8 byte offset 仅用于 Rust 字符串的底层索引。
-- `ParagraphLayoutEngineBuilder::new(Box<dyn FontBackend>)` 是生产引擎的唯一构造入口；确定性 backend 仅位于 `tests/support/`，供 fixture、golden 和 integration test 使用。
+- `ParagraphLayoutEngineBuilder::new(Box<dyn FontBackend>)` 是生产引擎的唯一构造入口；`FontBackend` 及 builder 可替换的 profile、断行器、hyphenator 和 annotation cache 实现必须为 `Send + Sync`，以使引擎可安全跨线程转移或置于外部同步容器。确定性 backend 仅位于 `tests/support/`，供 fixture、golden 和 integration test 使用。
 - 接入平台字体时，实现一个 `FontBackend`，由它统一提供候选选择、完整 shaping、metrics 和可重放的 face identity。
 	段落 shaping 的每个 backend request 都是独立的字体选择原子范围；同一个旧 range 被内部切分后，不应在调用方
 	重新合并 `FontResolution`。桌面示例中的字体 backend 提供了参考实现。

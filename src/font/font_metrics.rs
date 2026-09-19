@@ -31,7 +31,7 @@ pub struct FontMetricsNormalizationInput {
     pub raw_metrics: RawFontMetrics,
 }
 
-pub trait FontMetricsNormalizer {
+pub trait FontMetricsNormalizer: Send + Sync {
     fn normalize(&self, input: &FontMetricsNormalizationInput) -> LayoutFontMetrics;
 }
 

@@ -610,7 +610,7 @@ pub enum AutoSpaceMode {
     Insert,
 }
 
-pub trait ClreqProfileResolver {
+pub trait ClreqProfileResolver: Send + Sync {
     fn resolve(&self, profile_id: &LayoutProfileId) -> ClreqProfile;
 }
 

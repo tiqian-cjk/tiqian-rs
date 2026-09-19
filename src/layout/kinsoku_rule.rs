@@ -10,7 +10,7 @@ use super::super::core::layout_model::Cluster;
  * 下读取 `clreq_punctuation_policies`。profile 专属覆盖应使用另一个 level 构造或替换此规则，
  * 而不是编辑引擎。
  */
-pub trait KinsokuRule {
+pub trait KinsokuRule: Send + Sync {
     fn forbidden_at_line_start(&self, cluster: &Cluster) -> bool;
     fn forbidden_at_line_end(&self, cluster: &Cluster) -> bool;
 }

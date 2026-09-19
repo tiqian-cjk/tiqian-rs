@@ -37,7 +37,7 @@ impl<F> ReplayableFontCatalog for StubResultTransformFontBackend<F> {
 
 impl<F> FontBackend for StubResultTransformFontBackend<F>
 where
-    F: Fn(&FontBackendRequest, FontBackendShapingResult) -> FontBackendShapingResult,
+    F: Fn(&FontBackendRequest, FontBackendShapingResult) -> FontBackendShapingResult + Send + Sync,
 {
     fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult {
         (self.transform)(request, self.fallback.shape(request))

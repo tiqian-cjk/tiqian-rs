@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use tiqian::common::HashMap;
 use tiqian::api::ParagraphLayoutEngineBuilder;
@@ -57,12 +57,12 @@ fn multi_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 }
 
 fn alternating_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
-    let call_count = Cell::new(0);
+    let call_count = AtomicI32::new(0);
     stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-        call_count.set(call_count.get() + 1);
+        let call_count = call_count.fetch_add(1, Ordering::Relaxed) + 1;
         for run in &mut result.shaping.glyph_runs {
             let face = run.font_face.clone();
-            run.glyphs = if call_count.get() % 2 == 0 {
+            run.glyphs = if call_count % 2 == 0 {
                 vec![
                     Glyph::builder(1, input.range, 5.0).render_font_face(Some(face.clone())).bounds(Some(Rect { left: 10.0, top: 10.0, right: 20.0, bottom: 20.0 })).build(),
                     Glyph::builder(2, input.range, 5.0).render_font_face(Some(face.clone())).x(5.0).bounds(Some(Rect { left: 5.0, top: 5.0, right: 25.0, bottom: 25.0 })).build(),

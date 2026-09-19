@@ -103,7 +103,7 @@ impl FontRoleContext {
     }
 }
 
-pub trait FontRoleClassifier {
+pub trait FontRoleClassifier: Send + Sync {
     fn classify(&self, text: &Text, range: TextRange, context: &FontRoleContext) -> FontRole;
 }
 

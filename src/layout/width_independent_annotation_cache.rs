@@ -113,7 +113,7 @@ pub struct WidthIndependentParagraphAnnotation {
     pub ruby_font_geometry_by_span: HashMap<RubySpan, RubyFontGeometry>,
     pub base_shaping_stage: ParagraphShapingStageResult,
 }
-pub trait WidthIndependentAnnotationCache {
+pub trait WidthIndependentAnnotationCache: Send + Sync {
     fn get(
         &mut self,
         key: &WidthIndependentAnnotationKey,
