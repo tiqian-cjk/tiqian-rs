@@ -51,17 +51,9 @@ pub mod unicode_east_asian_spacing {
         super::is_chinese_language_context(locale)
     }
 
-    /// 返回一个 Unicode 标量值尚未解析的属性值。
-    pub fn property_of(code_point: i32) -> EastAsianSpacingValue {
-        assert!(
-            (0..=0x10FFFF).contains(&code_point),
-            "Not a Unicode scalar value: {code_point}"
-        );
-        assert!(
-            !(0xD800..=0xDFFF).contains(&code_point),
-            "Surrogate is not a Unicode scalar value: {code_point}"
-        );
-        lookup(code_point)
+    /// 返回一个 Unicode 标量值的属性值。
+    pub fn property_of(character: char) -> EastAsianSpacingValue {
+        lookup(character as i32)
     }
 
     /**
@@ -84,11 +76,10 @@ pub mod unicode_east_asian_spacing {
         }) {
             return EastAsianSpacingValue::Other;
         }
-        let property = property_of(
-            grapheme_cluster
-                .code_point_at_or_none(ScalarOffset::ZERO)
-                .expect("非空字素簇必须包含 scalar"),
-        );
+        let Some(character) = grapheme_cluster.char_at_or_none(ScalarOffset::ZERO) else {
+            return EastAsianSpacingValue::Other;
+        };
+        let property = property_of(character);
         match property {
             EastAsianSpacingValue::Conditional => {
                 if super::is_chinese_language_context(locale) {

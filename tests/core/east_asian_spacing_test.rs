@@ -20,39 +20,39 @@ fn chinese_language_context_uses_pinned_macrolanguage_registry() {
 fn uses_pinned_unicode_draft_data_across_scripts() {
     assert_eq!(
         EastAsianSpacingValue::Wide,
-        unicode_east_asian_spacing::property_of('提' as i32)
+        unicode_east_asian_spacing::property_of('提')
     );
     assert_eq!(
         EastAsianSpacingValue::Wide,
-        unicode_east_asian_spacing::property_of(0x17000)
+        unicode_east_asian_spacing::property_of('\u{17000}')
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::property_of('A' as i32)
+        unicode_east_asian_spacing::property_of('A')
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::property_of('α' as i32)
+        unicode_east_asian_spacing::property_of('α')
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::property_of('я' as i32)
+        unicode_east_asian_spacing::property_of('я')
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::property_of('9' as i32)
+        unicode_east_asian_spacing::property_of('9')
     );
     assert_eq!(
         EastAsianSpacingValue::Conditional,
-        unicode_east_asian_spacing::property_of('%' as i32)
+        unicode_east_asian_spacing::property_of('%')
     );
     assert_eq!(
         EastAsianSpacingValue::Other,
-        unicode_east_asian_spacing::property_of('／' as i32)
+        unicode_east_asian_spacing::property_of('／')
     );
     assert_eq!(
         EastAsianSpacingValue::Other,
-        unicode_east_asian_spacing::property_of(0x1F600)
+        unicode_east_asian_spacing::property_of('😀')
     );
 }
 

@@ -197,9 +197,9 @@ fn is_western_bracket_cjk_inter_char_boundary(
     (left_bracket && roles.get(right) == Some(&FontRole::CjkText))
         || (roles.get(left) == Some(&FontRole::CjkText) && right_bracket)
 }
-fn is_western_bracket(cp: i32) -> bool {
+fn is_western_bracket(character: char) -> bool {
     matches!(
-        unicode_punctuation_line_break::class_of(cp),
+        unicode_punctuation_line_break::class_of(character),
         UnicodePunctuationLineBreakClass::OpenPunctuation
             | UnicodePunctuationLineBreakClass::ClosePunctuation
             | UnicodePunctuationLineBreakClass::CloseParenthesis
@@ -332,13 +332,13 @@ enum QuoteDirection {
 fn quote_direction(
     text: &Text,
     offset: ScalarOffset,
-    cp: i32,
+    character: char,
     cls: UnicodePunctuationLineBreakClass,
 ) -> QuoteDirection {
     if cls != UnicodePunctuationLineBreakClass::Quotation {
         return QuoteDirection::None;
     }
-    if cp == 0x2019 {
+    if character == '\u{2019}' {
         let l = text.code_point_before(offset).is_some_and(latin_word);
         let r = text
             .code_point_at_or_none(offset + 1)
@@ -351,9 +351,9 @@ fn quote_direction(
             QuoteDirection::Final
         };
     }
-    if matches!(cp, 0x00ab | 0x2018 | 0x201b | 0x201c | 0x201f | 0x2039) {
+    if matches!(character, '\u{00ab}' | '\u{2018}' | '\u{201b}' | '\u{201c}' | '\u{201f}' | '\u{2039}') {
         QuoteDirection::Initial
-    } else if matches!(cp, 0x00bb | 0x2019 | 0x201d | 0x203a) {
+    } else if matches!(character, '\u{00bb}' | '\u{2019}' | '\u{201d}' | '\u{203a}') {
         QuoteDirection::Final
     } else {
         QuoteDirection::Unresolved
@@ -374,16 +374,16 @@ fn rule_for_start(c: UnicodePunctuationLineBreakClass) -> &'static str {
 fn cluster_text(text: &Text, c: &Cluster) -> Option<Text> {
     Some(text.slice_text(c.range))
 }
-fn first_significant(s: &Text) -> Option<(ScalarOffset, i32)> {
+fn first_significant(s: &Text) -> Option<(ScalarOffset, char)> {
     s.scalar_indices().find_map(|(offset, character)| {
-        (!character.is_whitespace()).then_some((offset, character as i32))
+        (!character.is_whitespace()).then_some((offset, character))
     })
 }
-fn last_significant(s: &Text) -> Option<(ScalarOffset, i32)> {
+fn last_significant(s: &Text) -> Option<(ScalarOffset, char)> {
     s.scalar_indices()
         .filter(|(_, character)| !character.is_whitespace())
         .last()
-        .map(|(offset, character)| (offset, character as i32))
+        .map(|(offset, character)| (offset, character))
 }
 fn follows_authored_boundary(text: &Text, offset: ScalarOffset) -> bool {
     let Some(end) = text.utf8_byte_index_at(offset) else {

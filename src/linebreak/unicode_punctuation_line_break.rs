@@ -33,16 +33,8 @@ pub mod unicode_punctuation_line_break {
     pub const DATA_SHA256: &str =
         "e6a18fa91f8f6a6f8e534b1d3f128c21ada45bfe152eb6b1bcc5e15fd8ac92e6";
 
-    pub fn class_of(code_point: i32) -> UnicodePunctuationLineBreakClass {
-        assert!(
-            (0..=0x10FFFF).contains(&code_point),
-            "Not a Unicode scalar value: {code_point}"
-        );
-        assert!(
-            !(0xD800..=0xDFFF).contains(&code_point),
-            "Surrogate is not a Unicode scalar value: {code_point}"
-        );
-        match CodePointMapData::<LineBreak>::new().get32(code_point as u32) {
+    pub fn class_of(character: char) -> UnicodePunctuationLineBreakClass {
+        match CodePointMapData::<LineBreak>::new().get(character) {
             LineBreak::BreakAfter => UnicodePunctuationLineBreakClass::BreakAfter,
             LineBreak::BreakBoth => UnicodePunctuationLineBreakClass::BreakBoth,
             LineBreak::ClosePunctuation => UnicodePunctuationLineBreakClass::ClosePunctuation,

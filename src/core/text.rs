@@ -77,10 +77,26 @@ impl Text {
             .flatten()
     }
 
+    #[inline]
+    pub fn char_at_or_none(&self, offset: ScalarOffset) -> Option<char> {
+        let byte = self.absolute_byte_index_at(offset)?;
+        (byte < self.byte_end as usize)
+            .then(|| self.inner.utf8[byte..].chars().next())
+            .flatten()
+    }
+
     pub fn code_point_before(&self, offset: ScalarOffset) -> Option<i32> {
         let byte = self.absolute_byte_index_at(offset)?;
         (byte > self.byte_start as usize)
             .then(|| self.inner.utf8[..byte].chars().next_back().map(|character| character as i32))
+            .flatten()
+    }
+
+    #[inline]
+    pub fn char_before(&self, offset: ScalarOffset) -> Option<char> {
+        let byte = self.absolute_byte_index_at(offset)?;
+        (byte > self.byte_start as usize)
+            .then(|| self.inner.utf8[..byte].chars().next_back())
             .flatten()
     }
 
@@ -317,6 +333,8 @@ mod tests {
         assert_eq!(text.scalar_offset_at(9), Some(scalar_offset(4)));
         assert_eq!(text.code_point_at_or_none(scalar_offset(2)), Some(0x1F600));
         assert_eq!(text.code_point_before(scalar_offset(3)), Some(0x1F600));
+        assert_eq!(text.char_at_or_none(scalar_offset(2)), Some('😀'));
+        assert_eq!(text.char_before(scalar_offset(3)), Some('😀'));
     }
 
     #[test]

@@ -22,16 +22,8 @@ pub mod unicode_script_evidence_classifier {
     pub const DATA_SHA256: &str =
         "9f5e50d3abaee7d6ce09480f325c706f485ae3240912527e651954d2d6b035bf";
 
-    pub fn classify(code_point: i32) -> UnicodeScriptEvidence {
-        assert!(
-            (0..=0x10FFFF).contains(&code_point),
-            "Not a Unicode scalar value: {code_point}"
-        );
-        assert!(
-            !(0xD800..=0xDFFF).contains(&code_point),
-            "Surrogate is not a Unicode scalar value: {code_point}"
-        );
-        match CodePointMapData::<Script>::new().get32(code_point as u32) {
+    pub fn classify(character: char) -> UnicodeScriptEvidence {
+        match CodePointMapData::<Script>::new().get(character) {
             Script::Bopomofo
             | Script::Han
             | Script::Hangul

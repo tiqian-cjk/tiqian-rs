@@ -289,7 +289,7 @@ fn is_parenthetical_dash_pair(text: &Text, first: TextRange, second: TextRange) 
     }
     text.slice_text(TextRange::new(first.end(), second.start()))
         .chars()
-        .all(|character| character == ' ' || unicode_word_character::contains(character as i32))
+        .all(|character| character == ' ' || unicode_word_character::contains(character))
 }
 
 fn is_pure_dash_run(text: &Text, range: TextRange) -> bool {
@@ -308,7 +308,7 @@ impl StrongScriptContextIndex {
         let mut current_role = None;
         for (offset, character) in text.scalar_indices() {
             let scalar_end = offset + 1;
-            current_role = next_strong_script_role(character as i32, current_role);
+            current_role = next_strong_script_role(character, current_role);
             left_role_before_boundary[scalar_end.value() as usize] = current_role;
         }
 
@@ -317,10 +317,10 @@ impl StrongScriptContextIndex {
         let mut scalar_end = text_length;
         while scalar_end > ScalarOffset::ZERO {
             let scalar_start = scalar_end - 1;
-            let code_point = text
-                .code_point_at_or_none(scalar_start)
+            let character = text
+                .char_at_or_none(scalar_start)
                 .expect("scalar offset must be valid");
-            current_role = next_strong_script_role(code_point, current_role);
+            current_role = next_strong_script_role(character, current_role);
             right_role_from_boundary[scalar_start.value() as usize] = current_role;
             scalar_end = scalar_start;
         }
@@ -339,11 +339,11 @@ impl StrongScriptContextIndex {
     }
 }
 
-fn next_strong_script_role(code_point: i32, current_role: Option<FontRole>) -> Option<FontRole> {
-    if is_mandatory_break_code_point(code_point) {
+fn next_strong_script_role(character: char, current_role: Option<FontRole>) -> Option<FontRole> {
+    if is_mandatory_break_code_point(character as i32) {
         return None;
     }
-    match unicode_script_evidence_classifier::classify(code_point) {
+    match unicode_script_evidence_classifier::classify(character) {
         UnicodeScriptEvidence::EastAsian => Some(FontRole::CjkPunctuation),
         UnicodeScriptEvidence::Other => Some(FontRole::LatinText),
         UnicodeScriptEvidence::Neutral => current_role,

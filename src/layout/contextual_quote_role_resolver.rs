@@ -347,8 +347,8 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
     }
 
     fn strong_script_role(&self, index: ScalarOffset) -> Option<FontRole> {
-        let code_point = self.text.code_point_at_or_none(index)?;
-        match unicode_script_evidence_classifier::classify(code_point) {
+        let character = self.text.char_at_or_none(index)?;
+        match unicode_script_evidence_classifier::classify(character) {
             UnicodeScriptEvidence::Neutral => None,
             UnicodeScriptEvidence::EastAsian => Some(FontRole::CjkPunctuation),
             UnicodeScriptEvidence::Other => Some(FontRole::LatinText),
