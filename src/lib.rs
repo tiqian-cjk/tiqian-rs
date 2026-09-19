@@ -69,7 +69,6 @@ pub mod layout {
     pub mod paragraph_dp_line_breaker;
     pub mod paragraph_layout_engine;
     pub mod paragraph_shaping_stage;
-    pub mod prepared_paragraph;
     pub mod progressive_break_decisions;
     pub mod punctuation_geometry_ledger;
     pub mod punctuation_geometry_stage;

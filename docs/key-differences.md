@@ -105,6 +105,16 @@ Kotlin 上游若保留更严格的运行时检查，同步时应按 R0005 在 Ru
 [`R0005-runtime-layout-local-fallback.md`](adr/R0005-runtime-layout-local-fallback.md) 与
 [`2026-09-18-feat-runtime-layout-local-fallback.md`](iteration/2026-09-18-feat-runtime-layout-local-fallback.md)。
 
+### Prepared paragraph JSON 输出
+
+Kotlin 使用 `PreparedParagraph` JSON 作为 Web snapshot、prepared-DOM 和浏览器字体回退之间的计划 wire。
+tiqian-rs 当前没有对应的 Web 或 FFI 消费者，也没有外部调用者，因此不公开该 JSON 序列化 API。Rust 调用方
+直接消费 `LayoutResult` 中的行、cluster、glyph replay 数据和结构化 debug 信息；未来出现实际 wire 消费者时，
+再根据该消费者的输入输出定义设计单一接口。
+
+删除记录见
+[`2026-09-19-feat-remove-unused-prepared-paragraph-json.md`](iteration/2026-09-19-feat-remove-unused-prepared-paragraph-json.md)。
+
 ## 关键差异列表（其他）
 
 ### Rust 本地 layout fixture 与 golden
