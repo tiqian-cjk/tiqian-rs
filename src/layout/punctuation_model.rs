@@ -119,14 +119,26 @@ pub struct Glue {
 impl Glue {
     pub fn new(
         kind: GlueKind,
-        min: f32,
+        mut min: f32,
         natural: f32,
-        max: f32,
+        mut max: f32,
         priority: i32,
         penalty: i32,
     ) -> Self {
-        assert!(min <= natural, "Glue min must not exceed natural.");
-        assert!(natural <= max, "Glue natural must not exceed max.");
+        let natural = if natural.is_finite() {
+            natural
+        } else {
+            log::warn!("non-finite glue natural advance; using zero");
+            0.0
+        };
+        if !min.is_finite() || min > natural {
+            log::warn!("glue minimum exceeds natural advance; using natural advance");
+            min = natural;
+        }
+        if !max.is_finite() || max < natural {
+            log::warn!("glue maximum is below natural advance; using natural advance");
+            max = natural;
+        }
         Self {
             kind,
             min,

@@ -77,15 +77,30 @@ fn advance_of_mid_line_punctuation(text: &str, punctuation: &str, width: Punctua
 }
 
 #[test]
-#[should_panic(expected = "Glue min must not exceed natural.")]
-fn glue_rejects_minimum_above_natural() {
-    let _ = Glue::new(GlueKind::PunctuationTrailing, 2.0, 1.0, 3.0, 0, 0);
-}
-
-#[test]
-#[should_panic(expected = "Glue natural must not exceed max.")]
-fn glue_rejects_natural_above_maximum() {
-    let _ = Glue::new(GlueKind::PunctuationTrailing, 0.0, 3.0, 1.0, 0, 0);
+fn glue_normalizes_bounds_to_natural_advance() {
+    let minimum_above_natural = Glue::new(GlueKind::PunctuationTrailing, 2.0, 1.0, 3.0, 0, 0);
+    assert_eq!(1.0, minimum_above_natural.min);
+    assert_eq!(1.0, minimum_above_natural.natural);
+    assert_eq!(3.0, minimum_above_natural.max);
+    let maximum_below_natural = Glue::new(GlueKind::PunctuationTrailing, 0.0, 3.0, 1.0, 0, 0);
+    assert_eq!(0.0, maximum_below_natural.min);
+    assert_eq!(3.0, maximum_below_natural.natural);
+    assert_eq!(3.0, maximum_below_natural.max);
+    let both_bounds_invalid = Glue::new(GlueKind::PunctuationTrailing, 4.0, 2.0, 1.0, 0, 0);
+    assert_eq!(2.0, both_bounds_invalid.min);
+    assert_eq!(2.0, both_bounds_invalid.natural);
+    assert_eq!(2.0, both_bounds_invalid.max);
+    let non_finite = Glue::new(
+        GlueKind::PunctuationTrailing,
+        f32::NAN,
+        f32::NAN,
+        f32::INFINITY,
+        0,
+        0,
+    );
+    assert_eq!(0.0, non_finite.min);
+    assert_eq!(0.0, non_finite.natural);
+    assert_eq!(0.0, non_finite.max);
 }
 
 #[test]
