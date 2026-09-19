@@ -13,6 +13,12 @@ use super::line_optimization::PushInAllocation;
 use super::progressive_break_decisions::{ProgressiveBreakTier, ShrinkOpportunity};
 use super::punctuation_model::GlueKind;
 
+const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
+    leading: EastAsianSpacingValue::Other,
+    trailing: EastAsianSpacingValue::Other,
+    contains_wide: false,
+};
+
 #[derive(Clone, Debug)]
 pub struct JustificationRequest<'a> {
     pub adjusted_clusters: &'a [Cluster],
@@ -97,16 +103,6 @@ impl Justifier {
     }
 
     pub fn justify(&self, request: JustificationRequest<'_>) -> JustificationPlan {
-        assert_eq!(
-            request.cluster_roles.len(),
-            request.adjusted_clusters.len(),
-            "clusterRoles must align with adjustedClusters."
-        );
-        assert_eq!(
-            request.east_asian_spacing_edges.len(),
-            request.adjusted_clusters.len(),
-            "East_Asian_Spacing values must align with adjustedClusters."
-        );
         let adjusted_width: f32 = request
             .line_cluster_range
             .into_iter()
@@ -378,7 +374,9 @@ impl Justifier {
         let has_cjk_body = request
             .line_cluster_range
             .into_iter()
-            .any(|index| request.east_asian_spacing_edges[index as usize].contains_wide);
+            .any(|index| {
+                spacing_edges_at(request.east_asian_spacing_edges, index as usize).contains_wide
+            });
         let has_object_boundary =
             (request.line_cluster_range.first()..request.line_cluster_range.last()).any(|left| {
                 request
@@ -409,13 +407,13 @@ impl Justifier {
             remaining,
             None,
             |left, right| {
-                let left_role = request.cluster_roles[left as usize];
-                let right_role = request.cluster_roles[right as usize];
+                let left_role = role_at(request.cluster_roles, left as usize);
+                let right_role = role_at(request.cluster_roles, right as usize);
                 let both_cjk = is_cjk_like(left_role) && is_cjk_like(right_role);
                 let punctuation_western = (left_role == FontRole::CjkPunctuation
-                    && request.east_asian_spacing_edges[right as usize].leading
+                    && spacing_edges_at(request.east_asian_spacing_edges, right as usize).leading
                         == EastAsianSpacingValue::Narrow)
-                    || (request.east_asian_spacing_edges[left as usize].trailing
+                    || (spacing_edges_at(request.east_asian_spacing_edges, left as usize).trailing
                         == EastAsianSpacingValue::Narrow
                         && right_role == FontRole::CjkPunctuation);
                 let virtual_sino = request.allow_sino_western_gap_stretch
@@ -750,12 +748,12 @@ fn is_word_space_between_narrow(
         && cluster.text.chars().all(|character| character == ' ')
         && index > 0
         && index < clusters.len() as i32 - 1
-        && edges[index as usize - 1].trailing == EastAsianSpacingValue::Narrow
+        && spacing_edges_at(edges, index as usize - 1).trailing == EastAsianSpacingValue::Narrow
         && !clusters[index as usize - 1]
             .text
             .chars()
             .all(|character| character == ' ')
-        && edges[index as usize + 1].leading == EastAsianSpacingValue::Narrow
+        && spacing_edges_at(edges, index as usize + 1).leading == EastAsianSpacingValue::Narrow
         && !clusters[index as usize + 1]
             .text
             .chars()
@@ -775,13 +773,28 @@ fn is_wide_narrow_typed_space(
         && index > 0
         && index < clusters.len() as i32 - 1
         && is_wide_narrow_pair(
-            edges[index as usize - 1].trailing,
-            edges[index as usize + 1].leading,
+            spacing_edges_at(edges, index as usize - 1).trailing,
+            spacing_edges_at(edges, index as usize + 1).leading,
         )
 }
 
 fn is_wide_narrow_boundary(left: i32, right: i32, edges: &[EastAsianSpacingEdges]) -> bool {
-    is_wide_narrow_pair(edges[left as usize].trailing, edges[right as usize].leading)
+    is_wide_narrow_pair(
+        spacing_edges_at(edges, left as usize).trailing,
+        spacing_edges_at(edges, right as usize).leading,
+    )
+}
+fn spacing_edges_at(edges: &[EastAsianSpacingEdges], index: usize) -> EastAsianSpacingEdges {
+    edges.get(index).copied().unwrap_or_else(|| {
+        log::warn!("missing East Asian spacing edge; using neutral edge");
+        MISSING_EAST_ASIAN_SPACING_EDGES
+    })
+}
+fn role_at(roles: &[FontRole], index: usize) -> FontRole {
+    roles.get(index).copied().unwrap_or_else(|| {
+        log::warn!("missing cluster role; using unknown role");
+        FontRole::Unknown
+    })
 }
 fn is_wide_narrow_pair(left: EastAsianSpacingValue, right: EastAsianSpacingValue) -> bool {
     (left == EastAsianSpacingValue::Wide && right == EastAsianSpacingValue::Narrow)

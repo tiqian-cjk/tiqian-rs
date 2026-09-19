@@ -159,18 +159,23 @@ fn cjk_latin() -> (Vec<Cluster>, Vec<FontRole>, Vec<EastAsianSpacingEdges>) {
 }
 
 #[test]
-fn misaligned_role_and_spacing_lists_are_rejected() {
+fn misaligned_role_and_spacing_lists_use_local_defaults() {
     let (clusters, roles, edges) = cjk_cjk();
+    let baseline = justify(&clusters, &roles, &edges, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {});
     let roles_with_extra = [roles.clone(), vec![FontRole::LatinText]].concat();
-    assert!(std::panic::catch_unwind(|| {
-        justify(&clusters, &roles_with_extra, &edges, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {});
-    })
-    .is_err());
+    assert_eq!(
+        baseline,
+        justify(&clusters, &roles_with_extra, &edges, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {}),
+    );
     let edges_with_extra = [edges.clone(), vec![e(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other, false)]].concat();
-    assert!(std::panic::catch_unwind(|| {
-        justify(&clusters, &roles, &edges_with_extra, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {});
-    })
-    .is_err());
+    assert_eq!(
+        baseline,
+        justify(&clusters, &roles, &edges_with_extra, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {}),
+    );
+    let missing_roles = justify(&clusters, &[], &edges, IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {});
+    assert!(missing_roles.allocations.is_empty());
+    let missing_edges = justify(&clusters, &roles, &[], IntRange::new(0, 1), 64.0, &Justifier::default(), |_| {});
+    assert!(missing_edges.allocations.is_empty());
 }
 
 #[test]

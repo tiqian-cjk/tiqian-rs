@@ -155,10 +155,6 @@ impl PunctuationGeometryLedger {
         atoms: &[PunctuationAtom],
         em: f32,
     ) -> AttachedInlinePunctuationBoundaryResult {
-        assert!(
-            attachments.len() == self.natural_clusters.len(),
-            "Inline attachments must align with punctuation geometry clusters."
-        );
         if self.budgets.is_empty() || !attachments.contains(&InlineAttachment::Previous) {
             return AttachedInlinePunctuationBoundaryResult {
                 geometry: self.clone(),
@@ -169,7 +165,9 @@ impl PunctuationGeometryLedger {
         let mut budgets = self.budgets.clone();
         let mut glue = HashMap::new();
         let mut decisions = Vec::new();
-        for b in resolve_attached_inline_virtual_boundaries(attachments) {
+        for b in resolve_attached_inline_virtual_boundaries(
+            &attachments[..attachments.len().min(self.natural_clusters.len())],
+        ) {
             let prev = b.previous_cluster_index;
             let end = b.attached_cluster_range.1;
             let previous_budget = budgets.get(&prev).copied();

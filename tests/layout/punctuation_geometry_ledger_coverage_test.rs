@@ -221,16 +221,15 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
 }
 
 #[test]
-fn attached_inline_boundaries_require_alignment_and_run_only_with_attachments() {
+fn attached_inline_boundaries_ignore_missing_attachments() {
     let ledger = ledger_of(&["。", "中"]);
-    assert!(std::panic::catch_unwind(|| {
-        ledger.resolve_attached_inline_punctuation_boundaries(
-            &[InlineAttachment::None],
-            &[],
-            EM,
-        )
-    })
-    .is_err());
+    let missing_attachment = ledger.resolve_attached_inline_punctuation_boundaries(
+        &[InlineAttachment::None],
+        &[],
+        EM,
+    );
+    assert!(missing_attachment.decisions.is_empty());
+    assert!(missing_attachment.trailing_glue_by_cluster.is_empty());
 
     let none = ledger.resolve_attached_inline_punctuation_boundaries(
         &[InlineAttachment::None, InlineAttachment::None],

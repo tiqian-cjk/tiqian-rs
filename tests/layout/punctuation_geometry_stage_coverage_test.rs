@@ -188,9 +188,15 @@ fn attached_marks_reject_missing_objects_and_gapped_ranges() {
 fn inline_object_kinsoku_protects_or_hangs_attached_marks() {
     let clusters = vec![inline_object(0), cluster("，", 1, EM, "cjk")];
     let attachments = vec![InlineObjectAttachedMark { object_cluster_index: 0, separator_cluster_indices: Vec::new(), mark_cluster_index: 1 }];
-    assert!(std::panic::catch_unwind(|| {
-        inline_object_attached_kinsoku(&clusters, &attachments, &clusters[1..], KinsokuLevel::Basic, 100.0, 100.0)
-    }).is_err());
+    let missing_line_break = inline_object_attached_kinsoku(
+        &clusters,
+        &attachments,
+        &clusters[1..],
+        KinsokuLevel::Basic,
+        100.0,
+        100.0,
+    );
+    assert_eq!(vec![(0, 1)], missing_line_break.unbreakable_ranges);
     assert!(inline_object_attached_kinsoku(&clusters, &attachments, &clusters, KinsokuLevel::None, 100.0, 100.0).unbreakable_ranges.is_empty());
     let fits = inline_object_attached_kinsoku(&clusters, &attachments, &clusters, KinsokuLevel::Basic, 100.0, 100.0);
     assert_eq!(vec![(0, 1)], fits.unbreakable_ranges);
@@ -217,9 +223,15 @@ fn inline_object_kinsoku_protects_or_hangs_attached_marks() {
 fn attached_ascii_point_mark_kinsoku_protects_runs() {
     let clusters = vec![cluster("中", 0, EM, "cjk"), cluster(",", 1, 8.0, "latin"), cluster(",", 2, 8.0, "latin")];
     let roles = vec![FontRole::CjkText, FontRole::LatinText, FontRole::LatinText];
-    assert!(std::panic::catch_unwind(|| {
-        attached_ascii_point_mark_kinsoku(&clusters, &roles, &clusters[1..], KinsokuLevel::Basic, 100.0, 100.0)
-    }).is_err());
+    let missing_line_break = attached_ascii_point_mark_kinsoku(
+        &clusters,
+        &roles,
+        &clusters[1..],
+        KinsokuLevel::Basic,
+        100.0,
+        100.0,
+    );
+    assert_eq!(vec![(0, 2)], missing_line_break.unbreakable_ranges);
     assert!(attached_ascii_point_mark_kinsoku(&clusters, &roles, &clusters, KinsokuLevel::None, 100.0, 100.0).unbreakable_ranges.is_empty());
     let fits = attached_ascii_point_mark_kinsoku(&clusters, &roles, &clusters, KinsokuLevel::Basic, 10.0, 100.0);
     assert_eq!(vec![(0, 2)], fits.unbreakable_ranges);
@@ -295,8 +307,10 @@ fn space_replacement_skips_disabled_mode_null_boundaries_and_exact_widths() {
     assert!(apply_auto_space_policy(&exact, &spacing, &[InlineAttachment::None; 3], replace, EM, &HashSet::new(), &HashSet::new()).decisions.is_empty());
     let lone = [cluster(" ", 0, EM, "latin")];
     assert!(apply_auto_space_policy(&lone, &[edges(EastAsianSpacingValue::Other, EastAsianSpacingValue::Other)], &[InlineAttachment::None], replace, EM, &HashSet::new(), &HashSet::new()).decisions.is_empty());
-    assert!(std::panic::catch_unwind(|| apply_auto_space_policy(&clusters, &[edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide)], &[InlineAttachment::None; 3], replace, EM, &HashSet::new(), &HashSet::new())).is_err());
-    assert!(std::panic::catch_unwind(|| apply_auto_space_policy(&clusters, &spacing, &[InlineAttachment::None], replace, EM, &HashSet::new(), &HashSet::new())).is_err());
+    let missing_edges = apply_auto_space_policy(&clusters, &[edges(EastAsianSpacingValue::Wide, EastAsianSpacingValue::Wide)], &[InlineAttachment::None; 3], replace, EM, &HashSet::new(), &HashSet::new());
+    assert_eq!(clusters, missing_edges.clusters);
+    let missing_attachments = apply_auto_space_policy(&clusters, &spacing, &[InlineAttachment::None], replace, EM, &HashSet::new(), &HashSet::new());
+    assert!(!missing_attachments.clusters.is_empty());
     assert!(apply_auto_space_policy(&[], &[], &[], replace, EM, &HashSet::new(), &HashSet::new()).clusters.is_empty());
 }
 

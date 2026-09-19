@@ -281,6 +281,33 @@ fn resolve_attached_inline_inter_char_boundaries_sino_western_only() {
 }
 
 #[test]
+fn resolve_attached_inline_inter_char_boundaries_uses_neutral_values_for_missing_virtual_context() {
+    let text = Text::from("汉xa");
+    let result = resolve_attached_inline_inter_char_boundaries(
+        &text,
+        &[
+            Cluster::new(text_range(0, 1), Text::from("汉"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(text_range(1, 2), Text::from("x"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(text_range(2, 3), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
+        ],
+        &[FontRole::CjkText],
+        &[EastAsianSpacingEdges {
+            leading: EastAsianSpacingValue::Wide,
+            trailing: EastAsianSpacingValue::Wide,
+            contains_wide: false,
+        }],
+        &HashSet::new(),
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
+    );
+    assert!(result.virtual_boundary_after_clusters.is_empty());
+    assert!(result.virtual_sino_western_boundary_after_clusters.is_empty());
+}
+
+#[test]
 fn resolve_attached_inline_inter_char_boundaries_with_cjk_both_cjk() {
     let text = Text::from("中文");
     let result = resolve_attached_inline_inter_char_boundaries(
@@ -348,10 +375,9 @@ fn resolve_attached_inline_inter_char_boundaries_with_cjk_body_western_bracket()
 }
 
 #[test]
-#[should_panic(expected = "Clusters, roles and East_Asian_Spacing edges must align.")]
-fn resolve_attached_inline_inter_char_boundaries_requires_matching_cluster_role_edge_sizes() {
+fn resolve_attached_inline_inter_char_boundaries_ignores_extra_roles() {
     let text = Text::from("ab");
-    let _ = resolve_attached_inline_inter_char_boundaries(
+    let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0)],
         &[FontRole::LatinText, FontRole::LatinText],
@@ -363,13 +389,13 @@ fn resolve_attached_inline_inter_char_boundaries_requires_matching_cluster_role_
         &HashSet::new(),
         &[InlineAttachment::None],
     );
+    assert!(result.virtual_boundary_after_clusters.is_empty());
 }
 
 #[test]
-#[should_panic(expected = "Inline attachments must align with clusters.")]
-fn resolve_attached_inline_inter_char_boundaries_requires_matching_attachment_size() {
+fn resolve_attached_inline_inter_char_boundaries_treats_missing_attachments_as_none() {
     let text = Text::from("ab");
-    let _ = resolve_attached_inline_inter_char_boundaries(
+    let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &clusters(text.as_str(), "latin", 8.0),
         &[FontRole::LatinText, FontRole::LatinText],
@@ -381,6 +407,7 @@ fn resolve_attached_inline_inter_char_boundaries_requires_matching_attachment_si
         &HashSet::new(),
         &[InlineAttachment::None],
     );
+    assert!(result.virtual_boundary_after_clusters.is_empty());
 }
 
 #[test]
@@ -618,10 +645,9 @@ fn resolve_unicode_punctuation_boundaries_with_last_significant_code_point() {
 }
 
 #[test]
-#[should_panic(expected = "Clusters, roles and East_Asian_Spacing edges must align.")]
-fn resolve_attached_inline_inter_char_boundaries_requires_matching_edges_size() {
+fn resolve_attached_inline_inter_char_boundaries_ignores_extra_edges() {
     let text = Text::from("a");
-    let _ = resolve_attached_inline_inter_char_boundaries(
+    let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0)],
         &[FontRole::LatinText],
@@ -633,6 +659,7 @@ fn resolve_attached_inline_inter_char_boundaries_requires_matching_edges_size() 
         &HashSet::new(),
         &[InlineAttachment::None],
     );
+    assert!(result.virtual_boundary_after_clusters.is_empty());
 }
 
 #[test]

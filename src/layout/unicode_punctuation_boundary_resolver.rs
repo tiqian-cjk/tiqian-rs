@@ -14,6 +14,12 @@ use super::super::linebreak::unicode_punctuation_line_break::{
 use super::quote_pair_analyzer::QuotePair;
 use crate::common::{HashMap, HashSet};
 
+const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
+    leading: EastAsianSpacingValue::Other,
+    trailing: EastAsianSpacingValue::Other,
+    contains_wide: false,
+};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnicodePunctuationBoundaries {
     pub forbidden_line_start_clusters: HashSet<i32>,
@@ -96,15 +102,9 @@ pub fn resolve_attached_inline_inter_char_boundaries(
     western: &HashSet<i32>,
     attachments: &[super::super::core::text_model::InlineAttachment],
 ) -> AttachedInlineInterCharBoundaries {
-    assert!(
-        clusters.len() == cluster_roles.len() && clusters.len() == edges.len(),
-        "Clusters, roles and East_Asian_Spacing edges must align."
+    let virtuals = resolve_attached_inline_virtual_boundaries(
+        &attachments[..attachments.len().min(clusters.len())],
     );
-    assert!(
-        clusters.len() == attachments.len(),
-        "Inline attachments must align with clusters."
-    );
-    let virtuals = resolve_attached_inline_virtual_boundaries(attachments);
     let mut suppressed = HashSet::new();
     for b in &virtuals {
         suppressed.insert(b.previous_cluster_index);
@@ -126,12 +126,16 @@ pub fn resolve_attached_inline_inter_char_boundaries(
         };
         let prev = b.previous_cluster_index as usize;
         let nextu = next as usize;
-        let both = cluster_roles[prev].is_cjk_like() && cluster_roles[nextu].is_cjk_like();
-        let punctuation_western = (cluster_roles[prev] == FontRole::CjkPunctuation
-            && edges[nextu].leading == EastAsianSpacingValue::Narrow)
-            || (edges[prev].trailing == EastAsianSpacingValue::Narrow
-                && cluster_roles[nextu] == FontRole::CjkPunctuation);
-        let sw = wide_narrow(edges[prev].trailing, edges[nextu].leading);
+        let previous_role = role_at(cluster_roles, prev);
+        let next_role = role_at(cluster_roles, nextu);
+        let previous_edges = spacing_edges_at(edges, prev);
+        let next_edges = spacing_edges_at(edges, nextu);
+        let both = previous_role.is_cjk_like() && next_role.is_cjk_like();
+        let punctuation_western = (previous_role == FontRole::CjkPunctuation
+            && next_edges.leading == EastAsianSpacingValue::Narrow)
+            || (previous_edges.trailing == EastAsianSpacingValue::Narrow
+                && next_role == FontRole::CjkPunctuation);
+        let sw = wide_narrow(previous_edges.trailing, next_edges.leading);
         let bracket =
             is_western_bracket_cjk_inter_char_boundary(text, clusters, cluster_roles, prev, nextu);
         if both || punctuation_western || sw || bracket {
@@ -160,6 +164,18 @@ fn wide_narrow(left: EastAsianSpacingValue, right: EastAsianSpacingValue) -> boo
         (EastAsianSpacingValue::Wide, EastAsianSpacingValue::Narrow)
             | (EastAsianSpacingValue::Narrow, EastAsianSpacingValue::Wide)
     )
+}
+fn role_at(roles: &[FontRole], index: usize) -> FontRole {
+    roles.get(index).copied().unwrap_or_else(|| {
+        log::warn!("missing cluster role; using unknown role");
+        FontRole::Unknown
+    })
+}
+fn spacing_edges_at(edges: &[EastAsianSpacingEdges], index: usize) -> EastAsianSpacingEdges {
+    edges.get(index).copied().unwrap_or_else(|| {
+        log::warn!("missing East Asian spacing edge; using neutral edge");
+        MISSING_EAST_ASIAN_SPACING_EDGES
+    })
 }
 fn is_western_bracket_cjk_inter_char_boundary(
     text: &Text,

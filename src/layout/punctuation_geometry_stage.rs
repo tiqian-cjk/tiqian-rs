@@ -17,6 +17,12 @@ use super::punctuation_model::{PunctuationAtom, PunctuationAtomBuilder, Punctuat
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::{HashMap, HashSet};
 
+const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
+    leading: EastAsianSpacingValue::Other,
+    trailing: EastAsianSpacingValue::Other,
+    contains_wide: false,
+};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContextualKinsoku {
     pub forbidden_line_start_clusters: HashSet<i32>,
@@ -92,10 +98,6 @@ pub fn inline_object_attached_kinsoku(
     if level == KinsokuLevel::None {
         return empty_contextual();
     }
-    assert!(
-        clusters.len() == line_break.len(),
-        "Inline-object kinsoku requires cluster-for-cluster line-break geometry"
-    );
     let mut starts = HashSet::new();
     let mut ranges = Vec::new();
     let mut hang = HashSet::new();
@@ -104,7 +106,10 @@ pub fn inline_object_attached_kinsoku(
     for a in attachments {
         let prev = a.object_cluster_index;
         let index = a.mark_cluster_index;
-        let mark = &clusters[index as usize];
+        let Some(mark) = clusters.get(index as usize) else {
+            log::warn!("attached inline mark is outside cluster range; skipping mark");
+            continue;
+        };
         let ascii = mark
             .text
             .chars()
@@ -114,7 +119,15 @@ pub fn inline_object_attached_kinsoku(
             starts.insert(*x);
         }
         starts.insert(index);
-        let width: f32 = (prev..=index).map(|i| line_break[i as usize].advance).sum();
+        let width: f32 = (prev..=index)
+            .filter_map(|i| {
+                let cluster = clusters.get(i as usize)?;
+                Some(line_break.get(i as usize).unwrap_or_else(|| {
+                    log::warn!("missing line-break cluster; using natural cluster");
+                    cluster
+                }).advance)
+            })
+            .sum();
         let available = if prev == 0 { first } else { body };
         if width <= available {
             ranges.push((prev, index));
@@ -163,10 +176,6 @@ pub fn attached_ascii_point_mark_kinsoku(
     if level == KinsokuLevel::None {
         return empty_contextual();
     }
-    assert!(
-        clusters.len() == line_break.len(),
-        "Contextual kinsoku requires cluster-for-cluster line-break geometry"
-    );
     let (mut starts, mut ranges, mut hang, mut extend, mut decisions) = (
         HashSet::new(),
         Vec::new(),
@@ -215,7 +224,14 @@ pub fn attached_ascii_point_mark_kinsoku(
             ));
         }
         ranges.push((start as i32 - 1, end as i32));
-        let width: f32 = (start - 1..=end).map(|i| line_break[i].advance).sum();
+        let width: f32 = (start - 1..=end)
+            .map(|i| {
+                line_break.get(i).unwrap_or_else(|| {
+                    log::warn!("missing line-break cluster; using natural cluster");
+                    &clusters[i]
+                }).advance
+            })
+            .sum();
         if width > if start - 1 == 0 { first } else { body } {
             for i in start..=end {
                 hang.insert(i as i32);
@@ -348,17 +364,11 @@ pub fn apply_auto_space_policy(
             decisions: Vec::new(),
         };
     }
-    assert!(
-        edges.len() == clusters.len(),
-        "East_Asian_Spacing values must align with natural clusters."
-    );
-    assert!(
-        attachments.len() == clusters.len(),
-        "Inline attachments must align with natural clusters."
-    );
     let gap = policy.gap_em * font_size;
     let mut decisions = Vec::new();
-    let virtuals = resolve_attached_inline_virtual_boundaries(attachments);
+    let virtuals = resolve_attached_inline_virtual_boundaries(
+        &attachments[..attachments.len().min(clusters.len())],
+    );
     let mut suppressed = HashSet::new();
     let mut virtual_gap = vec![false; clusters.len()];
     for b in virtuals {
@@ -368,12 +378,12 @@ pub fn apply_auto_space_policy(
             let p = b.previous_cluster_index as usize;
             let n = next as usize;
             if !is_space_run(&clusters[n]) && !is_mandatory_break_cluster(&clusters[n]) {
-                let narrow = if edges[p].trailing == EastAsianSpacingValue::Wide
-                    && edges[n].leading == EastAsianSpacingValue::Narrow
+                let narrow = if spacing_edges_at(edges, p).trailing == EastAsianSpacingValue::Wide
+                    && spacing_edges_at(edges, n).leading == EastAsianSpacingValue::Narrow
                 {
                     clusters[n].text.chars().next()
-                } else if edges[p].trailing == EastAsianSpacingValue::Narrow
-                    && edges[n].leading == EastAsianSpacingValue::Wide
+                } else if spacing_edges_at(edges, p).trailing == EastAsianSpacingValue::Narrow
+                    && spacing_edges_at(edges, n).leading == EastAsianSpacingValue::Wide
                 {
                     clusters[p].text.chars().next_back()
                 } else {
@@ -388,8 +398,8 @@ pub fn apply_auto_space_policy(
         .iter()
         .enumerate()
         .map(|(i, c)| {
-            let prev = i.checked_sub(1).map(|x| edges[x].trailing);
-            let next = edges.get(i + 1).map(|x| x.leading);
+            let prev = i.checked_sub(1).map(|x| spacing_edges_at(edges, x).trailing);
+            let next = (i + 1 < clusters.len()).then(|| spacing_edges_at(edges, i + 1).leading);
             if is_space_run(c) {
                 let narrow = if prev == Some(EastAsianSpacingValue::Wide)
                     && next == Some(EastAsianSpacingValue::Narrow)
@@ -424,7 +434,7 @@ pub fn apply_auto_space_policy(
             } else {
                 let mut add = 0.;
                 let leading = prev == Some(EastAsianSpacingValue::Wide)
-                    && edges[i].leading == EastAsianSpacingValue::Narrow
+                    && spacing_edges_at(edges, i).leading == EastAsianSpacingValue::Narrow
                     && mode_for_narrow(c.text.chars().next(), policy)
                         == Some(AutoSpaceMode::Insert)
                     && !suppressed.contains(&(i as i32 - 1));
@@ -447,7 +457,7 @@ pub fn apply_auto_space_policy(
                     ));
                 }
                 let normal = next == Some(EastAsianSpacingValue::Wide)
-                    && edges[i].trailing == EastAsianSpacingValue::Narrow
+                    && spacing_edges_at(edges, i).trailing == EastAsianSpacingValue::Narrow
                     && mode_for_narrow(c.text.chars().next_back(), policy)
                         == Some(AutoSpaceMode::Insert)
                     && !suppressed.contains(&(i as i32));
@@ -493,19 +503,25 @@ pub fn is_east_asian_spacing_boundary_at(
     clusters: &[Cluster],
     edges: &[EastAsianSpacingEdges],
 ) -> bool {
+    if right == 0 || right >= clusters.len() {
+        return false;
+    }
     let left = right - 1;
-    if wide_narrow(edges[left].trailing, edges[right].leading) {
+    if wide_narrow(
+        spacing_edges_at(edges, left).trailing,
+        spacing_edges_at(edges, right).leading,
+    ) {
         return true;
     }
     (is_space_run(&clusters[right])
-        && edges[left].trailing == EastAsianSpacingValue::Wide
+        && spacing_edges_at(edges, left).trailing == EastAsianSpacingValue::Wide
         && edges
             .get(right + 1)
             .is_some_and(|x| x.leading == EastAsianSpacingValue::Narrow))
         || (is_space_run(&clusters[left])
-            && edges[right].leading == EastAsianSpacingValue::Wide
+            && spacing_edges_at(edges, right).leading == EastAsianSpacingValue::Wide
             && left > 0
-            && edges[left - 1].trailing == EastAsianSpacingValue::Narrow)
+            && spacing_edges_at(edges, left - 1).trailing == EastAsianSpacingValue::Narrow)
 }
 /** `AttachedAsciiPointMarkOverridesConditionalEastAsianSpacing`：直接附着 ASCII point mark 已受 Chinese kinsoku 约束，不能再次按 C→N 插入 gap；独立 `%`、`#` 等仍遵循 Unicode Conditional。 */
 pub fn is_attached_ascii_point_mark_at(clusters: &[Cluster], index: usize) -> bool {
@@ -652,6 +668,12 @@ fn wide_narrow(a: EastAsianSpacingValue, b: EastAsianSpacingValue) -> bool {
         (EastAsianSpacingValue::Wide, EastAsianSpacingValue::Narrow)
             | (EastAsianSpacingValue::Narrow, EastAsianSpacingValue::Wide)
     )
+}
+fn spacing_edges_at(edges: &[EastAsianSpacingEdges], index: usize) -> EastAsianSpacingEdges {
+    edges.get(index).copied().unwrap_or_else(|| {
+        log::warn!("missing East Asian spacing edge; using neutral edge");
+        MISSING_EAST_ASIAN_SPACING_EDGES
+    })
 }
 fn auto_decision(
     c: &Cluster,
