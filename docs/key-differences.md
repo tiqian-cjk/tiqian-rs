@@ -94,6 +94,17 @@ Rust 的对应单点查询采用更严格的公开 API 约定：
 `docs/iteration/2026-09-03-feat-unicode-scalar-source-coordinates.md` 的交互查询设计确认，作为 Rust
 scalar source coordinate API 的安全不变量，当前无需同步。
 
+### 运行时布局的局部回退
+
+Rust 已接受 R0005：运行时布局不以完整输入 validate、构造器 panic 或局部 `expect` 确认调用方数据、
+可插拔 backend 输出和 renderer 参数。异常只在消费点回退为当前 span、cluster、line、decision 或 layer 的
+局部结果，后续内容和下一次 layout 继续处理；回退通过固定 `warn` 交由调用方日志配置观察。
+
+Kotlin 上游若保留更严格的运行时检查，同步时应按 R0005 在 Rust 消费点实现局部回退，确保运行时布局
+继续处理后续内容。实现范围和验证记录见
+[`R0005-runtime-layout-local-fallback.md`](adr/R0005-runtime-layout-local-fallback.md) 与
+[`2026-09-18-feat-runtime-layout-local-fallback.md`](iteration/2026-09-18-feat-runtime-layout-local-fallback.md)。
+
 ## 关键差异列表（其他）
 
 ### Rust 本地 layout fixture 与 golden
@@ -106,4 +117,4 @@ Kotlin fixture、golden、recorded shaping evidence 和相邻 checkout 不属于
 
 Kotlin `ParagraphDpReferenceExperiment.kt` 保留为上游的算法实验，不迁移到 tiqian-rs。它包含 reference DP、fixture 扫描和基准输出，不属于 Rust 排版引擎的生产行为或默认回归测试。Rust 的 Paragraph-DP 正确性由独立的line-breaker、coverage 与 tier-pool 测试覆盖。
 
-Kotlin `ParagraphDpTuningProbe.kt` 的两个函数使用 JVM `AwtTextShaper` 和宿主字体 advance 评估中文正文的拉伸与压缩观感。tiqian-rs 没有同源 AWT 字体 shaping 后端，stub 的测量值不等价，因此这两个 AWT 调优 probe 不适用。
+Kotlin `ParagraphDpTuningProbe.kt` 的两个函数使用 JVM `AwtTextShaper` 和 AWT 字体 advance 评估中文正文的拉伸与压缩观感。tiqian-rs 没有同源 AWT 字体 shaping 后端，stub 的测量值不等价，因此这两个 AWT 调优 probe 不适用。
