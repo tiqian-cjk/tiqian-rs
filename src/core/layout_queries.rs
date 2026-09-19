@@ -213,19 +213,30 @@ impl LayoutResult {
         segment: &RichTextLineSegment,
         inset: f32,
     ) -> RichTextCornerRadii {
-    assert!(inset.is_finite() && inset >= 0.0);
-    let box_width = (segment.width() - inset * 2.0).max(0.0);
-    let box_height = (segment.height() - inset * 2.0).max(0.0);
-    let maximum = (box_width / 2.0).min(box_height / 2.0);
-    let resolve = |radius: f32| (radius - inset).clamp(0.0, maximum);
-
     let Some(RichTextLayer {
         kind: RichTextLayerKind::Background { background },
         ..
     }) = segment_layer(segment)
     else {
-        panic!("background corner radii require a background layer");
+        log::warn!("rich-text segment lacks background layer; using square corners");
+        return RichTextCornerRadii {
+            top_left: 0.0,
+            top_right: 0.0,
+            bottom_right: 0.0,
+            bottom_left: 0.0,
+        };
     };
+    let inset = if inset.is_finite() && inset >= 0.0 {
+        inset
+    } else {
+        log::warn!("invalid rich-text background inset; using zero");
+        0.0
+    };
+    let box_width = (segment.width() - inset * 2.0).max(0.0);
+    let box_height = (segment.height() - inset * 2.0).max(0.0);
+    let maximum = (box_width / 2.0).min(box_height / 2.0);
+    let resolve = |radius: f32| (radius - inset).clamp(0.0, maximum);
+
     let left = resolve(if segment.continues_from_previous_line() {
         background.continuation_corner_radius
     } else {
@@ -316,11 +327,14 @@ pub fn positioned_clusters_for_line_box(
     result: &LayoutResult,
     line: &LineBox,
 ) -> Vec<PositionedCluster> {
-    let line_index = result
+    let Some(line_index) = result
         .lines
         .iter()
         .position(|candidate| candidate == line)
-        .expect("line must belong to this LayoutResult.");
+    else {
+        log::warn!("line box does not belong to layout result; returning empty clusters");
+        return Vec::new();
+    };
     positioned_clusters_for_line(result, line_index as i32, line)
 }
 
@@ -993,17 +1007,20 @@ impl LayoutResult {
         segment: &RichTextLineSegment,
         stroke_width: f32,
     ) -> f32 {
-    assert!(
-        stroke_width.is_finite() && stroke_width >= 0.0,
-        "strokeWidth must be finite and non-negative"
-    );
     let Some(kind) = segment_layer(segment).map(|layer| &layer.kind) else {
-        panic!("richTextDecorationLineY requires a line layer");
+        log::warn!("rich-text segment lacks decoration layer; returning zero line position");
+        return 0.0;
     };
-    assert!(
-        matches!(kind, RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. }),
-        "richTextDecorationLineY only supports underline and line-through segments"
-    );
+    if !matches!(kind, RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. }) {
+        log::warn!("rich-text segment lacks decoration layer; returning zero line position");
+        return 0.0;
+    }
+    let stroke_width = if stroke_width.is_finite() && stroke_width >= 0.0 {
+        stroke_width
+    } else {
+        log::warn!("invalid rich-text decoration stroke width; using zero");
+        0.0
+    };
     let style = resolved_text_style_at(self, segment.range.start());
     let raw_line_y = if matches!(kind, RichTextLayerKind::Underline { .. }) {
         segment.baseline + style.font_size * INTERLINEAR_UNDERLINE_OFFSET_EM

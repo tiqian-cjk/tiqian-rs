@@ -12,14 +12,18 @@ pub fn fitted_dotted_line_centers(
     dot_diameter: f32,
     gap_length: f32,
 ) -> Vec<f32> {
-    assert!(
-        span_left.is_finite()
-            && span_right.is_finite()
-            && kept_left.is_finite()
-            && kept_right.is_finite()
-    );
-    assert!(dot_diameter.is_finite() && dot_diameter > 0.0);
-    assert!(gap_length.is_finite() && gap_length >= 0.0);
+    if !span_left.is_finite()
+        || !span_right.is_finite()
+        || !kept_left.is_finite()
+        || !kept_right.is_finite()
+        || !dot_diameter.is_finite()
+        || dot_diameter <= 0.0
+        || !gap_length.is_finite()
+        || gap_length < 0.0
+    {
+        log::warn!("invalid dotted line pattern geometry; skipping pattern");
+        return Vec::new();
+    }
     if span_right <= span_left || kept_right <= kept_left {
         return Vec::new();
     }
@@ -65,9 +69,16 @@ pub fn fitted_dashed_line_segments(
     dash_length: f32,
     gap_length: f32,
 ) -> Vec<f32> {
-    assert!(span_left.is_finite() && span_right.is_finite());
-    assert!(dash_length.is_finite() && dash_length > 0.0);
-    assert!(gap_length.is_finite() && gap_length >= 0.0);
+    if !span_left.is_finite()
+        || !span_right.is_finite()
+        || !dash_length.is_finite()
+        || dash_length <= 0.0
+        || !gap_length.is_finite()
+        || gap_length < 0.0
+    {
+        log::warn!("invalid dashed line pattern geometry; skipping pattern");
+        return Vec::new();
+    }
     if span_right <= span_left {
         return Vec::new();
     }

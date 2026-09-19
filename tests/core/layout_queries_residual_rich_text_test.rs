@@ -112,7 +112,7 @@ fn corner_radii_predicates_cover_every_comparison() {
 }
 
 #[test]
-fn resolved_corner_radii_rejects_invalid_insets_and_resolves_continuations() {
+fn resolved_corner_radii_normalizes_invalid_insets_and_resolves_continuations() {
     let content = result_with_rich_text(
         "abc",
         vec![cluster(text_range(1, 2), "b", 10.0)],
@@ -138,13 +138,29 @@ fn resolved_corner_radii_rejects_invalid_insets_and_resolves_continuations() {
         LayoutDebugInfo::default(),
     );
     let segment = content.positioned_rich_text_segments().remove(0);
-    assert!(
-        std::panic::catch_unwind(|| content.rich_text_background_corner_radii(&segment, -1.0))
-            .is_err()
+    let non_background_segment = tiqian::core::layout_queries::RichTextLineSegment {
+        span: std::sync::Arc::new(span(
+            text_range(0, 3),
+            underline(RichTextLinePaint::default()),
+        )),
+        ..segment.clone()
+    };
+    assert_eq!(
+        RichTextCornerRadii {
+            top_left: 0.0,
+            top_right: 0.0,
+            bottom_right: 0.0,
+            bottom_left: 0.0,
+        },
+        content.rich_text_background_corner_radii(&non_background_segment, 0.0)
     );
-    assert!(
-        std::panic::catch_unwind(|| content.rich_text_background_corner_radii(&segment, f32::NAN))
-            .is_err()
+    assert_eq!(
+        content.rich_text_background_corner_radii(&segment, 0.0),
+        content.rich_text_background_corner_radii(&segment, -1.0)
+    );
+    assert_eq!(
+        content.rich_text_background_corner_radii(&segment, 0.0),
+        content.rich_text_background_corner_radii(&segment, f32::NAN)
     );
     assert_eq!(
         RichTextCornerRadii {
@@ -516,7 +532,7 @@ fn adjacent_same_style_segments_share_clearance() {
 }
 
 #[test]
-fn decoration_line_y_requires_valid_stroke_and_decoration_roles() {
+fn decoration_line_y_normalizes_invalid_strokes_and_skips_non_decoration_roles() {
     let content = result_with_rich_text(
         "ab",
         vec![
@@ -540,15 +556,13 @@ fn decoration_line_y_requires_valid_stroke_and_decoration_roles() {
         LayoutDebugInfo::default(),
     );
     let underline_segment = content.positioned_rich_text_segments().remove(0);
-    assert!(
-        std::panic::catch_unwind(|| content.rich_text_decoration_line_y(&underline_segment, -1.0))
-            .is_err()
+    assert_eq!(
+        content.rich_text_decoration_line_y(&underline_segment, 0.0),
+        content.rich_text_decoration_line_y(&underline_segment, -1.0)
     );
-    assert!(
-        std::panic::catch_unwind(
-            || content.rich_text_decoration_line_y(&underline_segment, f32::NAN)
-        )
-        .is_err()
+    assert_eq!(
+        content.rich_text_decoration_line_y(&underline_segment, 0.0),
+        content.rich_text_decoration_line_y(&underline_segment, f32::NAN)
     );
     let background_content = result_with_rich_text(
         "ab",
@@ -573,11 +587,9 @@ fn decoration_line_y_requires_valid_stroke_and_decoration_roles() {
         LayoutDebugInfo::default(),
     );
     let background_segment = background_content.positioned_rich_text_segments().remove(0);
-    assert!(
-        std::panic::catch_unwind(
-            || background_content.rich_text_decoration_line_y(&background_segment, 1.0)
-        )
-        .is_err()
+    assert_eq!(
+        0.0,
+        background_content.rich_text_decoration_line_y(&background_segment, 1.0)
     );
 }
 

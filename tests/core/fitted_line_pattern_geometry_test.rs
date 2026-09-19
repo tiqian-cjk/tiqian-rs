@@ -38,3 +38,15 @@ fn a_span_shorter_than_one_dot_still_paints_one_centered_dot() {
         fitted_dotted_line_centers(0.0, 1.0, 0.0, 1.0, 2.0, 2.0),
     );
 }
+
+#[test]
+fn invalid_pattern_parameters_skip_only_the_current_pattern() {
+    assert!(fitted_dotted_line_centers(0.0, 10.0, 0.0, 10.0, 0.0, 2.0).is_empty());
+    assert!(fitted_dotted_line_centers(0.0, f32::NAN, 0.0, 10.0, 2.0, 2.0).is_empty());
+    assert!(fitted_dashed_line_segments(0.0, 10.0, 2.0, -1.0).is_empty());
+    assert!(fitted_dashed_line_segments(f32::INFINITY, 10.0, 2.0, 2.0).is_empty());
+    assert_eq!(
+        vec![0.0, 2.0, 4.5, 6.5, 9.0, 11.0],
+        fitted_dashed_line_segments(0.0, 11.0, 2.0, 2.0),
+    );
+}

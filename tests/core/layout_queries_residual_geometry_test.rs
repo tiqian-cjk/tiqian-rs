@@ -26,7 +26,7 @@ fn span(range: TextRange, kind: RichTextLayerKind) -> RichTextSpan {
 }
 
 #[test]
-fn positioned_clusters_by_line_rejects_foreign_lines() {
+fn positioned_clusters_by_line_skips_foreign_lines_without_affecting_owned_lines() {
     let owned = line(text_range(0, 2), IntRange::new(0, 0), 15.0, 0.0, 20.0, 20.0);
     let foreign = line(
         text_range(0, 2),
@@ -45,9 +45,8 @@ fn positioned_clusters_by_line_rejects_foreign_lines() {
         LayoutDebugInfo::default(),
     );
     assert_eq!(1, positioned_clusters_for_line_box(&content, &owned).len());
-    assert!(
-        std::panic::catch_unwind(|| positioned_clusters_for_line_box(&content, &foreign)).is_err()
-    );
+    assert!(positioned_clusters_for_line_box(&content, &foreign).is_empty());
+    assert_eq!(1, positioned_clusters_for_line_box(&content, &owned).len());
 }
 
 #[test]
