@@ -21,9 +21,6 @@ log = "0.4"
 
 hashbrown = {version = "0.17", optional = true}
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mimalloc = "0.1.47"
-
 [dev-dependencies]
 harfrust = "0.13"
 pollster = "1.0"
@@ -31,3 +28,6 @@ read-fonts = "0.43"
 skrifa = "0.46"
 vello = "0.10.0"
 winit = "0.30"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+mimalloc = "0.1.47"

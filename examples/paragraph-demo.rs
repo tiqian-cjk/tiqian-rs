@@ -1,3 +1,8 @@
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 #[path = "paragraph_demo/app.rs"]
 mod app;
 #[path = "paragraph_demo/font_backend.rs"]

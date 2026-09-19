@@ -6,8 +6,6 @@
 #[path = "api/mod.rs"]
 pub mod api;
 pub mod common;
-#[cfg(not(target_arch = "wasm32"))]
-mod mimalloc;
 
 pub mod core {
     pub mod east_asian_spacing;
