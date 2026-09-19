@@ -192,11 +192,3 @@ pub(crate) fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct UnimplementedTextShaper;
-
-impl TextShaper for UnimplementedTextShaper {
-    fn shape(&self, _input: &ShapingInput) -> ShapingResult {
-        panic!("Text shaping is platform-specific and has not been wired for this target yet.")
-    }
-}

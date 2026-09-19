@@ -4,9 +4,18 @@ use tiqian::core::text_model::TextStyle;
 use tiqian::font::font_policy::{FontCandidate, FontDecision, FontRole};
 use tiqian::shaping::text_shaper::{
     ExplainableStubTextShaper, ShapingInput, TextShaper,
-    ShapingSource, UnimplementedTextShaper, PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE,
+    ShapingResult, ShapingSource, PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE,
     UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
 };
+
+#[derive(Clone, Copy, Debug, Default)]
+struct UnimplementedTextShaper;
+
+impl TextShaper for UnimplementedTextShaper {
+    fn shape(&self, _input: &ShapingInput) -> ShapingResult {
+        panic!("Text shaping is platform-specific and has not been wired for this test helper.")
+    }
+}
 
 fn input(text: &str, role: FontRole, display_text: &str) -> ShapingInput {
     let range = text_range(0, Text::from(text).scalar_len().value());
