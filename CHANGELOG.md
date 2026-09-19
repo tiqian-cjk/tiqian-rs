@@ -5,7 +5,116 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.0 (2026-09-19)
+
+### Documentation
+
+ - <csr-id-96c4ab21ad821bfea004762eb2e11f7dd81a2168/> document runtime layout local fallback policy
+ - <csr-id-40d2a87a9395a9e1ee6471e24f0fbfa7403da958/> define runtime validation and layout pipeline tradeoffs
+
+### New Features
+
+ - <csr-id-9f5b131e283e7034c6bc2e93b5ae5dc08e9e6902/> remove unused prepared paragraph JSON API
+
+### Bug Fixes
+
+ - <csr-id-f142077c1c2f78c2d28c4c550596bf4d448fe8c7/> handle inconsistent internal state without panicking
+ - <csr-id-bf519bcfaace0773fa31743b91f790a17311cddd/> handle invalid geometry inputs with safe fallbacks
+ - <csr-id-58fc6455539f5627801fded0559386058d78010b/> handle misaligned layout metadata with safe fallbacks
+ - <csr-id-b881e29885c7c8cc4d0c00f920a22159b79ca1c9/> tolerate invalid layout and font evidence without panicking
+ - <csr-id-8b4760a3da25ba65ba141cac6e222e0b2c9af19b/> normalize invalid glue bounds without panicking
+ - <csr-id-b2cc3b07131c92dfc4ce3b744bd01f82801588e4/> normalize invalid inline object stretch inputs without panicking
+ - <csr-id-e9ff83dafd94175f3e96a494ae5df8de87c2e93d/> normalize invalid font variation inputs without panicking
+ - <csr-id-9ad61d5f7a83f3c2214038eea57c8aa152232811/> normalize invalid geometry inputs without panicking
+ - <csr-id-19cdb19ed53c3e01ff8dcb34f131c04ab0cff15a/> ignore paragraph configuration updates after text is appended
+ - <csr-id-5efcf4e372f99ac0bdfc0f5aa0716dbfa8b1f8d0/> handle invalid layout input gracefully
+ - <csr-id-3371e844f1dbfdd605e43bb47b588d1e3c0af7cd/> import ControlBoundsPen from skrifa
+
+### Refactor
+
+ - <csr-id-bdc815816f06ef003a9d8677bcd95dce034c580a/> move unimplemented text shaper to test helper
+ - <csr-id-d93271648ffab558ed70ba5fc00db59705171a34/> use char-based Unicode classification APIs
+ - <csr-id-48d1dbe3d1ec8811c0015aa27e33fea05095c900/> scope mimalloc to example binaries
+ - <csr-id-bd4542a9b72c1f46329281e1bfbbeafcbb22f914/> require layout traits to be thread-safe
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 18 commits contributed to the release over the course of 1 calendar day.
+ - 1 day passed between releases.
+ - 18 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Remove unused prepared paragraph JSON API ([`9f5b131`](https://github.com/tiqian-cjk/tiqian-rs/commit/9f5b131e283e7034c6bc2e93b5ae5dc08e9e6902))
+    - Document runtime layout local fallback policy ([`96c4ab2`](https://github.com/tiqian-cjk/tiqian-rs/commit/96c4ab21ad821bfea004762eb2e11f7dd81a2168))
+    - Move unimplemented text shaper to test helper ([`bdc8158`](https://github.com/tiqian-cjk/tiqian-rs/commit/bdc815816f06ef003a9d8677bcd95dce034c580a))
+    - Handle inconsistent internal state without panicking ([`f142077`](https://github.com/tiqian-cjk/tiqian-rs/commit/f142077c1c2f78c2d28c4c550596bf4d448fe8c7))
+    - Use char-based Unicode classification APIs ([`d932716`](https://github.com/tiqian-cjk/tiqian-rs/commit/d93271648ffab558ed70ba5fc00db59705171a34))
+    - Handle invalid geometry inputs with safe fallbacks ([`bf519bc`](https://github.com/tiqian-cjk/tiqian-rs/commit/bf519bcfaace0773fa31743b91f790a17311cddd))
+    - Handle misaligned layout metadata with safe fallbacks ([`58fc645`](https://github.com/tiqian-cjk/tiqian-rs/commit/58fc6455539f5627801fded0559386058d78010b))
+    - Tolerate invalid layout and font evidence without panicking ([`b881e29`](https://github.com/tiqian-cjk/tiqian-rs/commit/b881e29885c7c8cc4d0c00f920a22159b79ca1c9))
+    - Scope mimalloc to example binaries ([`48d1dbe`](https://github.com/tiqian-cjk/tiqian-rs/commit/48d1dbe3d1ec8811c0015aa27e33fea05095c900))
+    - Require layout traits to be thread-safe ([`bd4542a`](https://github.com/tiqian-cjk/tiqian-rs/commit/bd4542a9b72c1f46329281e1bfbbeafcbb22f914))
+    - Normalize invalid glue bounds without panicking ([`8b4760a`](https://github.com/tiqian-cjk/tiqian-rs/commit/8b4760a3da25ba65ba141cac6e222e0b2c9af19b))
+    - Normalize invalid inline object stretch inputs without panicking ([`b2cc3b0`](https://github.com/tiqian-cjk/tiqian-rs/commit/b2cc3b07131c92dfc4ce3b744bd01f82801588e4))
+    - Normalize invalid font variation inputs without panicking ([`e9ff83d`](https://github.com/tiqian-cjk/tiqian-rs/commit/e9ff83dafd94175f3e96a494ae5df8de87c2e93d))
+    - Normalize invalid geometry inputs without panicking ([`9ad61d5`](https://github.com/tiqian-cjk/tiqian-rs/commit/9ad61d5f7a83f3c2214038eea57c8aa152232811))
+    - Ignore paragraph configuration updates after text is appended ([`19cdb19`](https://github.com/tiqian-cjk/tiqian-rs/commit/19cdb19ed53c3e01ff8dcb34f131c04ab0cff15a))
+    - Define runtime validation and layout pipeline tradeoffs ([`40d2a87`](https://github.com/tiqian-cjk/tiqian-rs/commit/40d2a87a9395a9e1ee6471e24f0fbfa7403da958))
+    - Handle invalid layout input gracefully ([`5efcf4e`](https://github.com/tiqian-cjk/tiqian-rs/commit/5efcf4e372f99ac0bdfc0f5aa0716dbfa8b1f8d0))
+    - Import ControlBoundsPen from skrifa ([`3371e84`](https://github.com/tiqian-cjk/tiqian-rs/commit/3371e844f1dbfdd605e43bb47b588d1e3c0af7cd))
+</details>
+
 ## v0.2.0 (2026-09-17)
+
+<csr-id-29fd8374983c26d351698e519b783cb37d5ecc30/>
+<csr-id-211969777a0b417293afd604336fa704e15d5790/>
+<csr-id-403648fc60e7d37deefdbad05e00779964a5d9fd/>
+<csr-id-2024b725fc82bb3c5b69a3b7bd887120501a1794/>
+<csr-id-56631b631edffa529fca00d39b3f21da54cf5aab/>
+<csr-id-cec61ff6bb49e5235e2defe622c6b79163453279/>
+<csr-id-a6c40095c360e57d41c6d560ab8147bfb4fd368d/>
+<csr-id-dd82894507083d684d1ac1f86d5d1c3b12dbd3ff/>
+<csr-id-6f8631f8175d66f65f3b6df549d8e198aec12605/>
+<csr-id-8300137b8d2a92518a0196935f7ce9b096fbdaf1/>
+<csr-id-933891078b7e6c21fb9585d170a2a124d39c56b6/>
+<csr-id-c4b4c88b50582c0e641b1663d43e112a19e8f7fb/>
+<csr-id-e6b297272991c8a28a030adfc6686310efd31d4f/>
+<csr-id-4acc4e032783417fdfe46b0039778fb128f759bb/>
+<csr-id-02d95fbd3afd82e9ffda379cd279c767e84e472d/>
+<csr-id-26cd353ce45b102aa1780aad695d3ccac33a790a/>
+<csr-id-b42acc56e171d61bb74b8d293219ce6596c4482e/>
+<csr-id-14c093beb10389b6468910c56f48b86616c0ab46/>
+<csr-id-abde2acfa6afb1f3cd82d5597a1f917813e02039/>
+<csr-id-301de9b33ced0b6ea2279f9a94e18a3156c3892e/>
+<csr-id-a3e572b55b4dbde8afa77faff249ed9a98f79a9c/>
+<csr-id-1a1099c1bdc24dbc98da2c5945ba44a6475fc288/>
+<csr-id-14f9e8d0fc6efdd475ec34d0486dfa62f7b3588b/>
+<csr-id-25c6139eeef72a9c54bb2ee080427804ad4deac7/>
+<csr-id-fe36609907245d8a4693684c9c5c9301fbe62f7c/>
+<csr-id-e468356a2c3e70940cf71039ca60fba0b7e14966/>
+<csr-id-920a1d4ba5ceb9a68635987ccc5823e0c4b38d17/>
+<csr-id-ca08d0942880f1110af749382ef5f1f9b0a15c89/>
+<csr-id-06855beb2d11127d7fe517df81664450cf7d2a6f/>
+<csr-id-246b2146954697e2612b4dccac78e91d138b6d13/>
+<csr-id-df0d2a10c23d13747ed04e441c7195e0fa810e94/>
+<csr-id-9f7aed70c462202a23d321008ef294cd60d570a1/>
+<csr-id-e65278e7a82867516462f2594861c6495583fdf5/>
+<csr-id-d834015446d3c16c6c9342dd493b669052354be9/>
+<csr-id-46b89c6c8b4b8587377d359be26f65694acc2deb/>
+<csr-id-0d53353c97bb6fd7e092f49e1c1d944d3aa0659f/>
+<csr-id-95317310630489ce22332e7260f4f1dc2068551a/>
+<csr-id-b8ed5d75c646053f7aad0fdf3ca2af4c96586736/>
+<csr-id-569d5fb463944e408908dbbc090e53da50c20f70/>
+<csr-id-fbed5db7adc04e0f3170ef372a679ea8a7ac3ab5/>
 
 ### Chore
 
@@ -135,7 +244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 104 commits contributed to the release over the course of 20 calendar days.
+ - 105 commits contributed to the release over the course of 20 calendar days.
  - 20 days passed between releases.
  - 100 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -147,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release tiqian v0.2.0 ([`57e9407`](https://github.com/tiqian-cjk/tiqian-rs/commit/57e94078029cc45d2dde472fd7b53718f4c2818e))
     - Resolve README package include path ([`e74321e`](https://github.com/tiqian-cjk/tiqian-rs/commit/e74321e3eef249798a472acfe1e9735482706783))
     - Update readme ([`7977e18`](https://github.com/tiqian-cjk/tiqian-rs/commit/7977e18ba51f4b1db901ea45eed1edf1af461834))
     - Fix test ([`fe36609`](https://github.com/tiqian-cjk/tiqian-rs/commit/fe36609907245d8a4693684c9c5c9301fbe62f7c))
