@@ -8,7 +8,7 @@ use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
 use super::line_breaker::{
-    LineBreaker, LineBreakerConfig, adjust_break_for_line_end, close_filled_line,
+    LineBreaker, LineBreakerConfig, adjust_break_for_line_end, aligned_adjusted_clusters, close_filled_line,
     empty_line_candidate, find_greedy_end, rebuild_line,
 };
 use super::line_optimization::{LineCandidate, LineSolution};
@@ -70,6 +70,7 @@ struct DpContext<'a> {
     sino_western_stretch_cap: f32,
     non_rendering_control_clusters: &'a HashSet<i32>,
     gap_boundaries: HashSet<i32>,
+    candidate_window: i32,
     d_ref: f32,
     allow_compression_edges: bool,
     progressive_break_opportunities: &'a HashMap<i32, ProgressiveBreakOpportunity>,
@@ -88,6 +89,7 @@ impl<'a> DpContext<'a> {
         adjusted_clusters: &'a [Cluster],
         max_width: f32,
         config: &'a LineBreakerConfig,
+        candidate_window: i32,
     ) -> Self {
         let count = adjusted_clusters.len();
         let mut gap_boundaries = config.cjk_inter_char_boundaries.clone();
@@ -153,6 +155,7 @@ impl<'a> DpContext<'a> {
             sino_western_stretch_cap: config.sino_western_stretch_cap,
             non_rendering_control_clusters: &config.non_rendering_control_clusters,
             gap_boundaries,
+            candidate_window,
             d_ref: config.max_cjk_stretch_per_gap,
             allow_compression_edges: config.line_adjustment_push_in,
             progressive_break_opportunities: &config.progressive_break_opportunities,
@@ -277,7 +280,7 @@ impl ParagraphDpLineBreaker {
                 .map(|index| context.adjusted_clusters[index as usize].advance)
                 .sum();
             let mut end = raw_greedy + 1;
-            while end <= segment_end_exclusive && compressed.len() < self.candidate_window as usize
+            while end <= segment_end_exclusive && compressed.len() < context.candidate_window as usize
             {
                 width += context.adjusted_clusters[end as usize - 1].advance;
                 if width - limit > context.shrink_capacity(IntRange::new(start, end - 1)) {
@@ -305,7 +308,7 @@ impl ParagraphDpLineBreaker {
                 && resulting.tier.priority() < current.tier.priority()
         };
         let mut filtered = Vec::new();
-        for end in (raw_greedy - self.candidate_window)..=raw_greedy {
+        for end in (raw_greedy - context.candidate_window)..=raw_greedy {
             if end < start + 1
                 || end > segment_end_exclusive
                 || (ends_with_mandatory && end == segment_end_exclusive - 1)
@@ -849,19 +852,22 @@ impl LineBreaker for ParagraphDpLineBreaker {
         max_width: f32,
         config: &LineBreakerConfig,
     ) -> LineSolution {
+        let adjusted_clusters = aligned_adjusted_clusters(natural_clusters, adjusted_clusters);
+        let adjusted_clusters = adjusted_clusters.as_ref();
         if adjusted_clusters.is_empty() {
             return LineSolution::new(Vec::new());
         }
-        assert_eq!(
-            natural_clusters.len(),
-            adjusted_clusters.len(),
-            "naturalClusters and adjustedClusters must align cluster-for-cluster."
+        let candidate_window = self.candidate_window.max(0);
+        if self.candidate_window < 0 {
+            log::warn!("paragraph DP candidate window is negative; using zero window");
+        }
+        let context = DpContext::new(
+            natural_clusters,
+            adjusted_clusters,
+            max_width,
+            config,
+            candidate_window,
         );
-        assert!(
-            self.candidate_window >= 0,
-            "candidateWindow must be non-negative."
-        );
-        let context = DpContext::new(natural_clusters, adjusted_clusters, max_width, config);
         let mut committed = Vec::new();
         let mut sorted_breaks: Vec<_> = config.hard_break_after_clusters.iter().copied().collect();
         sorted_breaks.sort();

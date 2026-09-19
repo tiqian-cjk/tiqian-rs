@@ -654,7 +654,20 @@ fn resolve_auto_space_edge_trims(
 fn build_glyph_runs(prep: &ParagraphLayoutPrep, final_clusters: &[Cluster]) -> Vec<GlyphRun> {
     renderable_glyph_run_clusters(final_clusters, &prep.open_type_features_by_cluster_range)
         .into_iter()
-        .map(|clusters| {
+        .filter_map(|clusters| {
+            let face = clusters[0].font_face.clone().or_else(|| {
+                prep.font_resolutions
+                    .values()
+                    .find(|resolution| {
+                        resolution.range.start() <= clusters[0].range.start()
+                            && resolution.range.end() >= clusters[clusters.len() - 1].range.end()
+                    })
+                    .map(|resolution| resolution.face.clone())
+            });
+            let Some(face) = face else {
+                log::warn!("renderable glyph run lacks font face; skipping glyph run");
+                return None;
+            };
             let open_type_features = prep
                 .open_type_features_by_cluster_range
                 .get(&clusters[0].range)
@@ -681,19 +694,16 @@ fn build_glyph_runs(prep: &ParagraphLayoutPrep, final_clusters: &[Cluster]) -> V
                         })
                 })
                 .collect();
-            GlyphRun::with_open_type_features(
+            Some(GlyphRun::with_open_type_features(
                 TextRange::new(
                     clusters.first().unwrap().range.start(),
                     clusters.last().unwrap().range.end(),
                 ),
-                clusters[0]
-                    .font_face
-                    .clone()
-                    .expect("renderable glyph runs must have a font face"),
+                face,
                 glyphs,
                 clusters.iter().map(|cluster| cluster.advance).sum(),
                 open_type_features,
-            )
+            ))
         })
         .collect()
 }

@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineBreaker.kt
 
 use crate::common::{HashMap, HashSet};
+use std::borrow::Cow;
 
 use super::super::core::geometry::ScalarOffset;
 use super::super::core::int_range::IntRange;
@@ -10,8 +11,8 @@ pub use super::line_optimization::LineCandidate;
 use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
 use super::line_repair::{apply_kinsoku_repairs, with_fill_push_in};
 use super::progressive_break_decisions::{
-    ProgressiveBreakOpportunity, ShrinkOpportunity, adjust_break_for_unbreakables,
-    UnbreakableRanges, decide_hyphen_break, decide_progressive_break, line_limit,
+    ProgressiveBreakOpportunity, ShrinkOpportunity, UnbreakableRanges,
+    adjust_break_for_unbreakables, decide_hyphen_break, decide_progressive_break, line_limit,
     progressive_candidate_allowed,
 };
 
@@ -28,6 +29,25 @@ pub trait LineBreaker: Send + Sync {
         max_width: f32,
         config: &LineBreakerConfig,
     ) -> LineSolution;
+}
+
+pub(crate) fn aligned_adjusted_clusters<'a>(
+    natural_clusters: &'a [Cluster],
+    adjusted_clusters: &'a [Cluster],
+) -> Cow<'a, [Cluster]> {
+    if natural_clusters.len() == adjusted_clusters.len() {
+        return Cow::Borrowed(adjusted_clusters);
+    }
+    log::warn!(
+        "natural and adjusted clusters are misaligned; using natural values for unmatched clusters"
+    );
+    if natural_clusters.len() <= adjusted_clusters.len() {
+        Cow::Borrowed(&adjusted_clusters[..natural_clusters.len()])
+    } else {
+        let mut aligned = natural_clusters.to_vec();
+        aligned[..adjusted_clusters.len()].clone_from_slice(adjusted_clusters);
+        Cow::Owned(aligned)
+    }
 }
 
 /// `LineBreaker.breakLines` 的全部策略参数，严格保留 Kotlin 默认值。
@@ -148,11 +168,8 @@ impl GreedyLineBreaker {
                     &config.sino_western_boundaries,
                     config.sino_western_stretch_cap,
                 );
-                let after_unbreak = adjust_break_for_unbreakables(
-                    decided,
-                    line_start,
-                    &config.unbreakable_ranges,
-                );
+                let after_unbreak =
+                    adjust_break_for_unbreakables(decided, line_start, &config.unbreakable_ranges);
                 let break_at = adjust_break_for_line_end(
                     after_unbreak,
                     line_start,
@@ -228,14 +245,11 @@ impl LineBreaker for GreedyLineBreaker {
         max_width: f32,
         config: &LineBreakerConfig,
     ) -> LineSolution {
+        let adjusted_clusters = aligned_adjusted_clusters(natural_clusters, adjusted_clusters);
+        let adjusted_clusters = adjusted_clusters.as_ref();
         if adjusted_clusters.is_empty() {
             return LineSolution::new(Vec::new());
         }
-        assert_eq!(
-            natural_clusters.len(),
-            adjusted_clusters.len(),
-            "naturalClusters and adjustedClusters must align cluster-for-cluster."
-        );
         let greedy = self.greedy_fill(natural_clusters, adjusted_clusters, max_width, config);
         let repaired = apply_kinsoku_repairs(
             &greedy,
@@ -472,7 +486,10 @@ pub fn rebuild_line(
     candidate
 }
 
-pub fn empty_line_candidate(source_offset: ScalarOffset, end_reason: LineEndReason) -> LineCandidate {
+pub fn empty_line_candidate(
+    source_offset: ScalarOffset,
+    end_reason: LineEndReason,
+) -> LineCandidate {
     let mut line = LineCandidate::new(
         IntRange::EMPTY,
         super::super::core::geometry::TextRange::new(source_offset, source_offset),
@@ -575,7 +592,7 @@ impl LookaheadLineBreaker {
         if start >= end_exclusive {
             return Vec::new();
         }
-        assert!(max_lines > 0, "maxLines must be positive");
+        let max_lines = max_lines.max(1);
         let mut lines = Vec::new();
         let mut line_start = start;
         let mut accumulated = 0.0;
@@ -606,11 +623,8 @@ impl LookaheadLineBreaker {
                     &config.sino_western_boundaries,
                     config.sino_western_stretch_cap,
                 );
-                let break_at = adjust_break_for_unbreakables(
-                    hyphen,
-                    line_start,
-                    &config.unbreakable_ranges,
-                );
+                let break_at =
+                    adjust_break_for_unbreakables(hyphen, line_start, &config.unbreakable_ranges);
                 lines.push(rebuild_line(
                     IntRange::new(line_start, break_at - 1),
                     natural,
@@ -660,6 +674,7 @@ impl LookaheadLineBreaker {
         reference_density: f32,
         config: &LineBreakerConfig,
     ) -> f32 {
+        let future_line_horizon = self.future_line_horizon.max(0);
         let first_line = rebuild_line(
             IntRange::new(start, end - 1),
             natural,
@@ -674,7 +689,7 @@ impl LookaheadLineBreaker {
             adjusted,
             max_width,
             segment_end_exclusive,
-            self.future_line_horizon + 1,
+            future_line_horizon + 1,
             config,
         );
         let mut splice = vec![first_line];
@@ -682,7 +697,7 @@ impl LookaheadLineBreaker {
         let spliced = self
             .repair(&splice, natural, adjusted, max_width, config)
             .lines;
-        let horizon = (1 + self.future_line_horizon).min(spliced.len() as i32);
+        let horizon = (1 + future_line_horizon).min(spliced.len() as i32);
         let mut score = 0.0;
         let mut previous = previous_density;
         let mut synthetic_hyphen_run = previous_synthetic_hyphen_run;
@@ -764,19 +779,12 @@ impl LineBreaker for LookaheadLineBreaker {
         max_width: f32,
         config: &LineBreakerConfig,
     ) -> LineSolution {
+        let adjusted = aligned_adjusted_clusters(natural, adjusted);
+        let adjusted = adjusted.as_ref();
         if adjusted.is_empty() {
             return LineSolution::new(Vec::new());
         }
-        assert_eq!(
-            natural.len(),
-            adjusted.len(),
-            "naturalClusters and adjustedClusters must align cluster-for-cluster."
-        );
-        assert!(self.window >= 0, "window must be non-negative.");
-        assert!(
-            self.future_line_horizon >= 0,
-            "futureLineHorizon must be non-negative."
-        );
+        let window = self.window.max(0);
         let mut committed = Vec::new();
         let mut line_start = 0i32;
         let mut gap_boundaries = config.cjk_inter_char_boundaries.clone();
@@ -824,11 +832,8 @@ impl LineBreaker for LookaheadLineBreaker {
                 &config.sino_western_boundaries,
                 config.sino_western_stretch_cap,
             );
-            let greedy_end = adjust_break_for_unbreakables(
-                hyphen,
-                line_start,
-                &config.unbreakable_ranges,
-            );
+            let greedy_end =
+                adjust_break_for_unbreakables(hyphen, line_start, &config.unbreakable_ranges);
             if greedy_end >= segment_end_exclusive {
                 if let Some(mandatory_end) = mandatory_end {
                     committed.push(rebuild_line(
@@ -864,7 +869,7 @@ impl LineBreaker for LookaheadLineBreaker {
                 ));
                 break;
             }
-            let mut candidates: Vec<_> = ((greedy_end - self.window)..=greedy_end)
+            let mut candidates: Vec<_> = ((greedy_end - window)..=greedy_end)
                 .filter(|end| {
                     *end > line_start
                         && *end <= adjusted.len() as i32

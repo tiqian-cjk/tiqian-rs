@@ -48,12 +48,14 @@ fn test_line_breaker_strategy_name_default() {
 #[test]
 fn test_lookahead_line_breaker_preconditions() {
     let clusters = han_clusters(2, 16.0);
-    assert!(std::panic::catch_unwind(|| {
-        LookaheadLineBreaker::default().break_lines(&han_clusters(1, 16.0), &clusters, 100.0, &LineBreakerConfig::default());
-    })
-    .is_err());
-    assert!(std::panic::catch_unwind(|| {
-        LookaheadLineBreaker::new(
+    let mismatched = LookaheadLineBreaker::default().break_lines(
+        &han_clusters(1, 16.0),
+        &clusters,
+        100.0,
+        &LineBreakerConfig::default(),
+    );
+    assert_eq!(1, mismatched.lines.len());
+    let negative_window = LookaheadLineBreaker::new(
             Box::new(tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default()),
             -1,
             2,
@@ -64,10 +66,8 @@ fn test_lookahead_line_breaker_preconditions() {
             12.0,
         )
         .break_lines(&clusters, &clusters, 100.0, &LineBreakerConfig::default());
-    })
-    .is_err());
-    assert!(std::panic::catch_unwind(|| {
-        LookaheadLineBreaker::new(
+    assert!(!negative_window.lines.is_empty());
+    let negative_horizon = LookaheadLineBreaker::new(
             Box::new(tiqian::layout::kinsoku_rule::ClreqKinsokuRule::default()),
             2,
             -1,
@@ -78,8 +78,7 @@ fn test_lookahead_line_breaker_preconditions() {
             12.0,
         )
         .break_lines(&clusters, &clusters, 100.0, &LineBreakerConfig::default());
-    })
-    .is_err());
+    assert!(!negative_horizon.lines.is_empty());
 }
 
 #[test]

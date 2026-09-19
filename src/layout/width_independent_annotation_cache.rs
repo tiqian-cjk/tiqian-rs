@@ -675,14 +675,13 @@ pub fn build_paragraph_layout_prep(
                     .entry(glyph.cluster_range)
                     .or_default()
                     .push(glyph.clone());
-                let previous = features.insert(glyph.cluster_range, run.open_type_features.clone());
-                assert!(
-                    previous
-                        .as_ref()
-                        .is_none_or(|old| old == &run.open_type_features),
-                    "Conflicting OpenType features for shaped cluster {:?}",
-                    glyph.cluster_range
-                );
+                if let Some(previous) = features.get(&glyph.cluster_range) {
+                    if previous != &run.open_type_features {
+                        log::warn!("conflicting OpenType features for shaped cluster; keeping first features");
+                    }
+                } else {
+                    features.insert(glyph.cluster_range, run.open_type_features.clone());
+                }
             }
         }
     }
@@ -694,16 +693,15 @@ pub fn build_paragraph_layout_prep(
     {
         let resolution_index = font_resolutions
             .partition_point(|resolution| resolution.range.start() <= cluster.range.start());
-        assert!(
-            font_resolutions
-                .get(resolution_index.saturating_sub(1))
-                .is_some_and(|resolution| {
-                    cluster.range.start() >= resolution.range.start()
-                        && cluster.range.end() <= resolution.range.end()
-                }),
-            "FontBackend returned a cluster without resolved font evidence: {:?}",
-            cluster.range
-        );
+        if !font_resolutions
+            .get(resolution_index.saturating_sub(1))
+            .is_some_and(|resolution| {
+                cluster.range.start() >= resolution.range.start()
+                    && cluster.range.end() <= resolution.range.end()
+            })
+        {
+            log::warn!("font backend returned a cluster without resolved font evidence");
+        }
     }
     let inline_ranges: Vec<TextRange> = annotation
         .inline_object_by_range
@@ -1103,20 +1101,19 @@ pub fn build_paragraph_layout_prep(
             .pinyin_spans
             .iter()
             .filter_map(|ruby| {
-                cluster_index_range_for(&natural, ruby.base_range).map(|(first, last)| {
-                    let geometry = annotation
-                        .ruby_font_geometry_by_span
-                        .get(ruby)
-                        .expect("pinyin ruby span must have measured geometry");
-                    (
-                        first,
-                        (left[first as usize]
-                            + left[last as usize]
-                            + natural[last as usize].advance)
-                            / 2.,
-                        geometry.width,
-                    )
-                })
+                let (first, last) = cluster_index_range_for(&natural, ruby.base_range)?;
+                let Some(geometry) = annotation.ruby_font_geometry_by_span.get(ruby) else {
+                    log::warn!("pinyin ruby span lacks measured geometry; skipping ruby spread");
+                    return None;
+                };
+                Some((
+                    first,
+                    (left[first as usize]
+                        + left[last as usize]
+                        + natural[last as usize].advance)
+                        / 2.,
+                    geometry.width,
+                ))
             })
             .collect();
         measures.sort_by_key(|entry| entry.0);

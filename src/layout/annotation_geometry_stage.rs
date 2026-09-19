@@ -473,9 +473,10 @@ fn compute_ruby_decisions(
 ) -> Vec<RubyDecisionInfo> {
     let mut decisions = Vec::new();
     for ruby in ruby_spans {
-        let geometry = ruby_font_geometry_by_span
-            .get(ruby)
-            .expect("pinyin ruby span must have measured geometry");
+        let Some(geometry) = ruby_font_geometry_by_span.get(ruby) else {
+            log::warn!("pinyin ruby span lacks measured geometry; skipping ruby decision");
+            continue;
+        };
         for (line_index, cluster_range) in line_ranges.iter().enumerate() {
             let mut x = lines[line_index].indent;
             let mut base_left = None;

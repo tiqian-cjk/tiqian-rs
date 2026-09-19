@@ -754,7 +754,7 @@ mod tests {
         catalog.validate_demo_faces().unwrap();
         let result = catalog.shape(&request("中文", FontRole::CjkText, TextStyle::default()));
         assert_eq!(result.face.resource_id(), CJK_FONT_KEY);
-        assert_eq!(result.selected_attempt().candidate_key, CJK_FONT_KEY);
+        assert_eq!(result.selected_attempt().unwrap().candidate_key, CJK_FONT_KEY);
         assert!(
             result.shaping.glyph_runs[0]
                 .glyphs

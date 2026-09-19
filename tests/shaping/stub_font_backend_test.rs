@@ -50,7 +50,7 @@ fn stub_backend_shapes_display_text_with_the_role_selected_controlled_face() {
         assert_eq!(1, shaped.shaping.glyph_runs[0].glyphs.len());
         assert_eq!(Some(&shaped.face), shaped.shaping.glyph_runs[0].glyphs[0].render_font_face.as_ref());
         assert_eq!(40.0, shaped.shaping.glyph_runs[0].advance);
-        assert_eq!(0, shaped.selected_attempt().missing_glyphs);
+        assert_eq!(0, shaped.selected_attempt().unwrap().missing_glyphs);
     }
 }
 
@@ -113,12 +113,13 @@ fn font_backend_result_uses_the_first_complete_candidate_and_preserves_all_missi
             FontCandidateAttempt::new("fallback".to_owned(), fallback.clone(), 0),
         ],
     );
-    assert_eq!("fallback", fallback_result.selected_attempt().candidate_key);
+    assert_eq!("fallback", fallback_result.selected_attempt().unwrap().candidate_key);
     assert_eq!(
         fallback,
         fallback_result
             .resolution(text_range(0, 1), FontRole::LatinText)
             .selected_attempt()
+            .unwrap()
             .face
     );
 
@@ -130,8 +131,39 @@ fn font_backend_result_uses_the_first_complete_candidate_and_preserves_all_missi
             FontCandidateAttempt::new("fallback".to_owned(), fallback, 2),
         ],
     );
-    assert_eq!("primary", all_missing.selected_attempt().candidate_key);
+    assert_eq!("primary", all_missing.selected_attempt().unwrap().candidate_key);
     assert_eq!(2, all_missing.attempts.len());
     assert!(all_missing.attempts.iter().all(FontCandidateAttempt::has_missing_glyphs));
     assert_eq!(scalar_offset(0), all_missing.resolution(text_range(0, 1), FontRole::LatinText).range.start());
+}
+
+#[test]
+fn font_backend_result_allows_missing_selected_evidence() {
+    let primary = face("primary");
+    let fallback = face("fallback");
+    let shaping = ShapingResult::new(
+        vec![Cluster::new(text_range(0, 1), Text::from("A"), primary.clone(), 10.0)],
+        vec![GlyphRun::new(
+            text_range(0, 1),
+            primary.clone(),
+            vec![Glyph::builder(1, text_range(0, 1), 10.0).build()],
+            10.0,
+        )],
+    );
+
+    let empty_evidence = FontBackendShapingResult::new(primary.clone(), shaping.clone(), Vec::new());
+    assert_eq!(None, empty_evidence.selected_attempt());
+    assert_eq!(
+        None,
+        empty_evidence
+            .resolution(text_range(0, 1), FontRole::LatinText)
+            .selected_attempt(),
+    );
+
+    let inconsistent_evidence = FontBackendShapingResult::new(
+        primary,
+        shaping,
+        vec![FontCandidateAttempt::new("fallback".to_owned(), fallback, 0)],
+    );
+    assert_eq!(None, inconsistent_evidence.selected_attempt());
 }

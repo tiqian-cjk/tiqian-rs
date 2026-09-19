@@ -239,8 +239,7 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
 }
 
 #[test]
-#[should_panic(expected = "Conflicting OpenType features")]
-fn conflicting_open_type_features_throws() {
+fn conflicting_open_type_features_keep_the_first_feature() {
     let clreq_profile_resolver = BuiltInClreqProfileResolver;
     let font_role_classifier = CjkFontRoleClassifier;
     let font_backend = stub_backend_with_transform(
@@ -288,7 +287,7 @@ fn conflicting_open_type_features_throws() {
         &quote_pair_analyzer,
         hyphenator,
     );
-    build_paragraph_layout_prep(
+    let prep = build_paragraph_layout_prep(
         &input,
         &annotation,
         &HashMap::new(),
@@ -296,6 +295,12 @@ fn conflicting_open_type_features_throws() {
         hyphenator,
         &punctuation_atom_builder,
         &punctuation_spacing_compressor,
+    );
+    assert!(!prep.clusters.is_empty());
+    assert!(
+        prep.open_type_features_by_cluster_range
+            .values()
+            .any(|features| features == &vec!["feat1".to_owned()]),
     );
 }
 

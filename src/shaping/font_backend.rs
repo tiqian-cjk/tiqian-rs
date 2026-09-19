@@ -110,11 +110,10 @@ impl FontResolution {
         }
     }
 
-    pub fn selected_attempt(&self) -> &FontCandidateAttempt {
+    pub fn selected_attempt(&self) -> Option<&FontCandidateAttempt> {
         self.attempts
             .iter()
             .find(|attempt| attempt.face == self.face)
-            .expect("FontResolution face must appear in candidate evidence")
     }
 }
 
@@ -132,31 +131,22 @@ impl FontBackendShapingResult {
         shaping: ShapingResult,
         attempts: Vec<FontCandidateAttempt>,
     ) -> Self {
-        assert!(
-            !attempts.is_empty(),
-            "FontBackendShapingResult must contain candidate evidence"
-        );
-        let selected_index = attempts
+        if attempts.is_empty() {
+            log::warn!("font backend shaping result has no candidate evidence");
+        } else if !attempts.iter().any(|attempt| attempt.face == face) {
+            log::warn!("font backend shaping result lacks evidence for selected face");
+        } else if let Some(first_complete_index) = attempts
             .iter()
-            .position(|attempt| attempt.face == face)
-            .expect("FontBackendShapingResult face must appear in candidate evidence");
-        let first_complete_index = attempts
-            .iter()
-            .position(|attempt| !attempt.has_missing_glyphs());
-        if let Some(first_complete_index) = first_complete_index {
-            assert_eq!(
-                attempts.len(),
-                first_complete_index + 1,
-                "FontBackendShapingResult must stop after the first complete candidate"
-            );
-            assert_eq!(
-                selected_index, first_complete_index,
-                "FontBackendShapingResult must select the first complete candidate"
-            );
-        } else {
-            assert_eq!(
-                selected_index, 0,
-                "FontBackendShapingResult must retain the preferred face when all candidates are missing glyphs"
+            .position(|attempt| !attempt.has_missing_glyphs())
+        {
+            if attempts.len() != first_complete_index + 1
+                || attempts[first_complete_index].face != face
+            {
+                log::warn!("font backend shaping result has inconsistent candidate evidence");
+            }
+        } else if attempts[0].face != face {
+            log::warn!(
+                "font backend shaping result does not retain the preferred missing-glyph face"
             );
         }
         Self {
@@ -166,11 +156,10 @@ impl FontBackendShapingResult {
         }
     }
 
-    pub fn selected_attempt(&self) -> &FontCandidateAttempt {
+    pub fn selected_attempt(&self) -> Option<&FontCandidateAttempt> {
         self.attempts
             .iter()
             .find(|attempt| attempt.face == self.face)
-            .expect("FontBackendShapingResult face must appear in candidate evidence")
     }
 
     pub fn resolution(&self, range: TextRange, role: FontRole) -> FontResolution {

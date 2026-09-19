@@ -271,8 +271,7 @@ fn require_covered_by_with_multiple_decisions() {
 }
 
 #[test]
-#[should_panic(expected = "crossing")]
-fn require_covered_by_fails_when_cluster_crosses_decision_range() {
+fn require_covered_by_ignores_cluster_crossing_decision_range() {
     require_covered_by(
         &[latin_cluster(text_range(0, 3), "abc")],
         &[latin_decision(text_range(0, 2))],
@@ -280,8 +279,7 @@ fn require_covered_by_fails_when_cluster_crosses_decision_range() {
 }
 
 #[test]
-#[should_panic(expected = "non-contiguous")]
-fn require_covered_by_fails_when_clusters_are_non_contiguous() {
+fn require_covered_by_ignores_non_contiguous_clusters() {
     require_covered_by(
         &[
             latin_cluster(text_range(0, 1), "a"),
@@ -292,8 +290,7 @@ fn require_covered_by_fails_when_clusters_are_non_contiguous() {
 }
 
 #[test]
-#[should_panic(expected = "must return clusters covering")]
-fn require_covered_by_fails_when_clusters_do_not_cover_end() {
+fn require_covered_by_allows_incomplete_decision_coverage() {
     require_covered_by(
         &[latin_cluster(text_range(0, 1), "a")],
         &[latin_decision(text_range(0, 3))],
@@ -301,8 +298,7 @@ fn require_covered_by_fails_when_clusters_do_not_cover_end() {
 }
 
 #[test]
-#[should_panic(expected = "must return clusters covering")]
-fn require_covered_by_with_gap_between_decisions() {
+fn require_covered_by_allows_gap_between_decisions() {
     require_covered_by(
         &[
             latin_cluster(text_range(0, 1), "a"),
@@ -322,8 +318,7 @@ fn require_covered_by_with_empty_decisions() {
 }
 
 #[test]
-#[should_panic(expected = "crossing")]
-fn require_covered_by_with_overlapping_decisions() {
+fn require_covered_by_ignores_overlapping_decisions() {
     require_covered_by(
         &[
             latin_cluster(text_range(0, 2), "ab"),

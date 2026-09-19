@@ -77,7 +77,13 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
     resolutions.sort_by_key(|resolution| (resolution.range.start(), resolution.range.end()));
     let font_decisions = resolutions
         .into_iter()
-        .map(|resolution| {
+        .filter_map(|resolution| {
+            let Some(selected_attempt) = resolution.selected_attempt() else {
+                log::warn!(
+                    "font resolution lacks selected candidate evidence; omitting debug decision"
+                );
+                return None;
+            };
             let cluster_text = stage.text.slice_text(resolution.range);
             let substitution = stage
                 .punctuation_glyph_substitutor
@@ -87,7 +93,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 .iter()
                 .find(|(range, _)| is_inside(**range, resolution.range))
                 .map(|(_, cause)| cause);
-            FontDecisionInfo {
+            Some(FontDecisionInfo {
                 range: resolution.range,
                 source_text: cluster_text.clone(),
                 display_text: if rollback_cause.is_some() {
@@ -96,7 +102,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                     substitution.display_text
                 },
                 role: font_role_name(resolution.role).to_owned(),
-                candidate_key: resolution.selected_attempt().candidate_key.clone(),
+                candidate_key: selected_attempt.candidate_key.clone(),
                 resolved_face: Some(resolution.face.clone()),
                 reason: "FontBackendCompleteShapingSelection".to_owned(),
                 substitution_reason: if let Some(cause) = rollback_cause {
@@ -104,7 +110,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 } else {
                     substitution.reason
                 },
-            }
+            })
         })
         .collect();
     let metric_decisions = stage

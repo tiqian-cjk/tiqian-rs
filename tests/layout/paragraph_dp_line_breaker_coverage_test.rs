@@ -45,43 +45,28 @@ fn empty_clusters_return_an_empty_solution() {
 }
 
 #[test]
-fn mismatched_natural_and_adjusted_sizes_are_rejected() {
-    let error = std::panic::catch_unwind(|| {
-        ParagraphDpLineBreaker::default().break_lines(
-            &han_clusters(2, 16.0),
-            &han_clusters(1, 16.0),
-            100.0,
-            &LineBreakerConfig::default(),
-        );
-    })
-    .expect_err("expected natural/adjusted alignment rejection");
-    let message = error
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| error.downcast_ref::<&str>().copied())
-        .expect("panic message");
-    assert!(message.contains("cluster-for-cluster"), "{message}");
+fn mismatched_natural_and_adjusted_sizes_use_natural_tail() {
+    let solution = ParagraphDpLineBreaker::default().break_lines(
+        &han_clusters(2, 16.0),
+        &han_clusters(1, 16.0),
+        100.0,
+        &LineBreakerConfig::default(),
+    );
+    assert_eq!(1, solution.lines.len());
+    assert_eq!(IntRange::new(0, 1), solution.lines[0].cluster_range);
 }
 
 #[test]
-fn negative_candidate_window_is_rejected() {
-    let error = std::panic::catch_unwind(|| {
-        let mut breaker = ParagraphDpLineBreaker::default();
-        breaker.candidate_window = -1;
-        breaker.break_lines(
-            &han_clusters(2, 16.0),
-            &han_clusters(2, 16.0),
-            100.0,
-            &LineBreakerConfig::default(),
-        );
-    })
-    .expect_err("expected negative candidate window rejection");
-    let message = error
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| error.downcast_ref::<&str>().copied())
-        .expect("panic message");
-    assert!(message.contains("non-negative"), "{message}");
+fn negative_candidate_window_uses_zero_window() {
+    let mut breaker = ParagraphDpLineBreaker::default();
+    breaker.candidate_window = -1;
+    let solution = breaker.break_lines(
+        &han_clusters(2, 16.0),
+        &han_clusters(2, 16.0),
+        100.0,
+        &LineBreakerConfig::default(),
+    );
+    assert!(!solution.lines.is_empty());
 }
 
 #[test]

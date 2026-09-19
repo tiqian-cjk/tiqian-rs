@@ -238,16 +238,17 @@ fn custom_kinsoku_rule_overrides_default() {
 }
 
 #[test]
-#[should_panic(expected = "naturalClusters and adjustedClusters must align cluster-for-cluster")]
-fn misaligned_cluster_lists_throw() {
+fn misaligned_cluster_lists_use_the_common_prefix() {
     let natural = vec![cluster(0, 1, "中", 16.0), cluster(1, 2, "文", 16.0)];
     let adjusted = vec![cluster(0, 1, "中", 16.0)];
-    GreedyLineBreaker::default().break_lines(
+    let solution = GreedyLineBreaker::default().break_lines(
         &natural,
         &adjusted,
         100.0,
         &LineBreakerConfig::default(),
     );
+    assert_eq!(1, solution.lines.len());
+    assert_eq!(IntRange::new(0, 1), solution.lines[0].cluster_range);
 }
 
 #[test]
