@@ -220,14 +220,12 @@ impl GreedyLineBreaker {
             .hard_break_after_clusters
             .contains(&(adjusted_clusters.len() as i32 - 1))
         {
-            lines.push(empty_line_candidate(
-                adjusted_clusters
-                    .last()
-                    .expect("non-empty clusters have last cluster")
-                    .range
-                    .end(),
-                LineEndReason::ParagraphEnd,
-            ));
+            if let Some(last) = adjusted_clusters.last() {
+                lines.push(empty_line_candidate(
+                    last.range.end(),
+                    LineEndReason::ParagraphEnd,
+                ));
+            }
         }
         lines
     }
@@ -848,14 +846,12 @@ impl LineBreaker for LookaheadLineBreaker {
                     committed_synthetic_hyphen_run = 0;
                     line_start = mandatory_end + 1;
                     if line_start == adjusted.len() as i32 {
-                        committed.push(empty_line_candidate(
-                            adjusted
-                                .last()
-                                .expect("non-empty clusters have last cluster")
-                                .range
-                                .end(),
-                            LineEndReason::ParagraphEnd,
-                        ));
+                        if let Some(last) = adjusted.last() {
+                            committed.push(empty_line_candidate(
+                                last.range.end(),
+                                LineEndReason::ParagraphEnd,
+                            ));
+                        }
                     }
                     continue;
                 }
@@ -946,37 +942,35 @@ impl LineBreaker for LookaheadLineBreaker {
                 committed_synthetic_hyphen_run = 0;
                 line_start = committed_end + 1;
                 if line_start == adjusted.len() as i32 {
-                    committed.push(empty_line_candidate(
-                        adjusted
-                            .last()
-                            .expect("non-empty clusters have last cluster")
-                            .range
-                            .end(),
-                        LineEndReason::ParagraphEnd,
-                    ));
+                    if let Some(last) = adjusted.last() {
+                        committed.push(empty_line_candidate(
+                            last.range.end(),
+                            LineEndReason::ParagraphEnd,
+                        ));
+                    }
                 }
                 continue;
             }
-            committed.push(close_filled_line(
+            let line = close_filled_line(
                 IntRange::new(line_start, committed_end - 1),
                 best_end,
                 natural,
                 adjusted,
-            ));
-            let line = committed.last().expect("committed line was pushed");
+            );
             let line_limit_value = line_limit(
                 max_width,
                 config.first_line_indent,
                 line.cluster_range.first(),
             );
             committed_density =
-                line_adjustment_density_with_gap_prefix(line, line_limit_value, false, &gap_prefix);
+                line_adjustment_density_with_gap_prefix(&line, line_limit_value, false, &gap_prefix);
             committed_synthetic_hyphen_run =
-                if ends_with_synthetic_hyphen(line, &config.hyphen_break_clusters) {
+                if ends_with_synthetic_hyphen(&line, &config.hyphen_break_clusters) {
                     committed_synthetic_hyphen_run + 1
                 } else {
                     0
                 };
+            committed.push(line);
             line_start = committed_end;
         }
         let repaired = self.repair(&committed, natural, adjusted, max_width, config);

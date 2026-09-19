@@ -345,13 +345,14 @@ impl Justifier {
             )
             .into_iter()
             .map(|mut opportunity| {
-                opportunity.reason = Some(format!(
-                    "TerminalTechnicalEmergencyTracking:{}",
-                    request
-                        .preferred_emergency_tracking_boundary_after_clusters
-                        .get(&opportunity.target_cluster_index)
-                        .expect("authorized terminal boundary")
-                ));
+                if let Some(reason) = request
+                    .preferred_emergency_tracking_boundary_after_clusters
+                    .get(&opportunity.target_cluster_index)
+                {
+                    opportunity.reason = Some(format!(
+                        "TerminalTechnicalEmergencyTracking:{reason}"
+                    ));
+                }
                 opportunity
             })
             .collect();
@@ -553,13 +554,12 @@ impl Justifier {
             )
             .into_iter()
             .map(|mut opportunity| {
-                opportunity.reason = Some(format!(
-                    "EmergencyGraphemeTracking:{}",
-                    request
-                        .emergency_tracking_boundary_after_clusters
-                        .get(&opportunity.target_cluster_index)
-                        .expect("authorized emergency boundary")
-                ));
+                if let Some(reason) = request
+                    .emergency_tracking_boundary_after_clusters
+                    .get(&opportunity.target_cluster_index)
+                {
+                    opportunity.reason = Some(format!("EmergencyGraphemeTracking:{reason}"));
+                }
                 opportunity
             })
             .collect();

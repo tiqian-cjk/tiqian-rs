@@ -396,34 +396,36 @@ impl ParagraphDpLineBreaker {
         let tier_preferred_pool: Vec<_> = if promotions.is_empty() {
             pool
         } else {
-            let best_priority = promotions
-                .iter()
-                .map(|end| {
-                    context
-                        .progressive_break_opportunities
-                        .get(end)
-                        .expect("promotion has opportunity")
-                        .tier
-                        .priority()
-                })
-                .min()
-                .expect("non-empty promotions");
-            let promoted_span = context
-                .progressive_break_opportunities
-                .get(&promotions[0])
-                .expect("promotion has opportunity")
-                .span_range;
-            pool.into_iter()
-                .filter(|end| {
-                    context
-                        .progressive_break_opportunities
-                        .get(end)
-                        .is_none_or(|opportunity| {
-                            opportunity.span_range != promoted_span
-                                || opportunity.tier.priority() <= best_priority
-                        })
-                })
-                .collect()
+            let mut best_priority: Option<i32> = None;
+            let mut promoted_span = None;
+            let mut promotions_complete = true;
+            for end in &promotions {
+                let Some(opportunity) = context.progressive_break_opportunities.get(end) else {
+                    promotions_complete = false;
+                    break;
+                };
+                best_priority = Some(best_priority.map_or(opportunity.tier.priority(), |priority| {
+                    priority.min(opportunity.tier.priority())
+                }));
+                promoted_span.get_or_insert(opportunity.span_range);
+            }
+            if let (Some(best_priority), Some(promoted_span)) = (best_priority, promoted_span)
+                && promotions_complete
+            {
+                pool.into_iter()
+                    .filter(|end| {
+                        context
+                            .progressive_break_opportunities
+                            .get(end)
+                            .is_none_or(|opportunity| {
+                                opportunity.span_range != promoted_span
+                                    || opportunity.tier.priority() <= best_priority
+                            })
+                    })
+                    .collect()
+            } else {
+                pool
+            }
         };
         let mut candidates = tier_preferred_pool;
         if baseline > start && baseline <= segment_end_exclusive && promotions.is_empty() {
@@ -691,12 +693,15 @@ impl ParagraphDpLineBreaker {
         context: &DpContext<'_>,
         hard_break_after_clusters: &HashSet<i32>,
     ) {
+        let Some(last_end) = ends.last().copied() else {
+            return;
+        };
         let mut line_start = segment_start;
         for chosen_end in ends {
             if line_start >= *chosen_end {
                 continue;
             }
-            let is_final = *chosen_end == *ends.last().expect("non-empty DP ends");
+            let is_final = *chosen_end == last_end;
             let end_reason = if is_final && mandatory_end.is_some() {
                 LineEndReason::MandatoryBreak
             } else if is_final {
@@ -725,7 +730,7 @@ impl ParagraphDpLineBreaker {
                     context.adjusted_clusters,
                     line_start,
                     limit,
-                    *ends.last().expect("non-empty DP ends"),
+                    last_end,
                     context.non_rendering_control_clusters,
                 );
                 let original_break =
@@ -790,15 +795,12 @@ impl ParagraphDpLineBreaker {
                 committed.push(compressed_line.unwrap_or(natural_line));
                 line_start = mandatory_end + 1;
                 if line_start == context.adjusted_clusters.len() as i32 {
-                    committed.push(empty_line_candidate(
-                        context
-                            .adjusted_clusters
-                            .last()
-                            .expect("non-empty clusters")
-                            .range
-                            .end(),
-                        LineEndReason::ParagraphEnd,
-                    ));
+                    if let Some(last) = context.adjusted_clusters.last() {
+                        committed.push(empty_line_candidate(
+                            last.range.end(),
+                            LineEndReason::ParagraphEnd,
+                        ));
+                    }
                 }
                 continue;
             }

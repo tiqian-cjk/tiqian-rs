@@ -56,10 +56,12 @@ pub mod bopomofo_parser {
             };
         }
 
-        let last = reading
-            .chars()
-            .next_back()
-            .expect("非空注音读音必须包含最后一个字符");
+        let Some(last) = reading.chars().next_back() else {
+            return BopomofoReading {
+                symbols: Vec::new(),
+                tone: BopomofoTone::Yinping,
+            };
+        };
         let tone = match last {
             YANGPING => BopomofoTone::Yangping,
             SHANG => BopomofoTone::Shang,

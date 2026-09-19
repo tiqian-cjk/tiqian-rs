@@ -291,14 +291,16 @@ fn append_cell_render_evidence(
         out.push_str(",\"renderFontFamily\":");
         append_json_string(out, render_font_family);
     }
-    if let Some(strategy) = shaping_decision.and_then(|decision| decision.strategy.as_ref()) {
+    if let Some(shaping_decision) = shaping_decision
+        && let Some(strategy) = shaping_decision.strategy.as_ref()
+    {
         out.push_str(",\"dashStrategy\":");
         append_json_string(out, strategy);
-        if let Some(language) = shaping_decision.and_then(|decision| decision.language.as_ref()) {
+        if let Some(language) = shaping_decision.language.as_ref() {
             out.push_str(",\"shapingLanguage\":");
             append_json_string(out, language);
         }
-        if let Some(resolved_face) = shaping_decision.and_then(|decision| decision.font_face.as_ref()) {
+        if let Some(resolved_face) = shaping_decision.font_face.as_ref() {
             out.push_str(",\"resolvedFace\":");
             append_json_string(out, &resolved_face.to_string());
         }
@@ -307,7 +309,7 @@ fn append_cell_render_evidence(
             append_json_string(out, &glyph_ids.iter().map(u32::to_string).collect::<Vec<_>>().join(","));
         }
         out.push_str(",\"shapingEvidence\":");
-        append_json_string(out, &shaping_decision.expect("strategy has a shaping decision").reason);
+        append_json_string(out, &shaping_decision.reason);
     }
     if let Some(punctuation_decision) = punctuation_decision
         && punctuation_decision.ink_containment_applied
@@ -586,7 +588,7 @@ pub fn ecma_json_number(value: f32) -> String {
     let exponent = exponent_at.map_or(0, |at| {
         body[at + 1..]
             .parse::<i32>()
-            .expect("Rust float exponent is decimal")
+            .unwrap_or(0)
     });
     if let Some(at) = exponent_at {
         body.truncate(at);
@@ -612,9 +614,9 @@ pub fn ecma_json_number(value: f32) -> String {
         digits = digits[first..].to_owned();
         decimal_exponent -= first as i32;
     }
-    let last = digits
-        .rfind(|character: char| character != '0')
-        .expect("nonzero digit exists");
+    let Some(last) = digits.rfind(|character: char| character != '0') else {
+        return "0".to_owned();
+    };
     if last + 1 < digits.len() {
         digits.truncate(last + 1);
     }
@@ -713,13 +715,13 @@ fn increment_decimal(digits: &str) -> String {
     for index in (0..chars.len()).rev() {
         if chars[index] < b'9' {
             chars[index] += 1;
-            return String::from_utf8(chars).expect("decimal digits are UTF-8");
+            return chars.into_iter().map(char::from).collect();
         }
         chars[index] = b'0';
     }
     format!(
         "1{}",
-        String::from_utf8(chars).expect("decimal digits are UTF-8")
+        chars.into_iter().map(char::from).collect::<String>()
     )
 }
 

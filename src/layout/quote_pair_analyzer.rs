@@ -72,8 +72,9 @@ impl QuotePairAnalyzer {
                         .last()
                         .is_some_and(|(_, quote_type)| *quote_type == QuoteType::Double) =>
                 {
-                    let (open_index, quote_type) = stack.pop().expect("stack was checked above");
-                    pairs.push(QuotePair::new(open_index, index, quote_type));
+                    if let Some((open_index, quote_type)) = stack.pop() {
+                        pairs.push(QuotePair::new(open_index, index, quote_type));
+                    }
                 }
                 0x2019
                     if !is_non_cjk_in_word_apostrophe(text, index)
@@ -81,8 +82,9 @@ impl QuotePairAnalyzer {
                             .last()
                             .is_some_and(|(_, quote_type)| *quote_type == QuoteType::Single) =>
                 {
-                    let (open_index, quote_type) = stack.pop().expect("stack was checked above");
-                    pairs.push(QuotePair::new(open_index, index, quote_type));
+                    if let Some((open_index, quote_type)) = stack.pop() {
+                        pairs.push(QuotePair::new(open_index, index, quote_type));
+                    }
                 }
                 _ => {}
             }

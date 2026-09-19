@@ -45,23 +45,23 @@ pub mod number_symbol_cohesion {
                     break;
                 };
                 if is_digit(next_character) {
-                    let (_, character) = scalars
-                        .next()
-                        .expect("peek 的 scalar 必须可被消费");
+                    let Some((_, character)) = scalars.next() else {
+                        break;
+                    };
                     end = next_offset + 1;
                     previous = Some((next_offset, character));
                     continue;
                 }
                 if next_character == '.' || next_character == ',' {
-                    let separator = scalars
-                        .next()
-                        .expect("peek 的 scalar 必须可被消费");
+                    let Some(separator) = scalars.next() else {
+                        break;
+                    };
                     if let Some((digit_offset, digit)) = scalars.peek().copied()
                         && is_digit(digit)
                     {
-                        let (_, digit) = scalars
-                            .next()
-                            .expect("peek 的 scalar 必须可被消费");
+                        let Some((_, digit)) = scalars.next() else {
+                            break;
+                        };
                         end = digit_offset + 1;
                         previous = Some((digit_offset, digit));
                         continue;
@@ -76,9 +76,9 @@ pub mod number_symbol_cohesion {
                 .peek()
                 .is_some_and(|(_, character)| SUFFIX_UNIT.contains(character))
             {
-                let (offset, character) = scalars
-                    .next()
-                    .expect("peek 的 scalar 必须可被消费");
+                let Some((offset, character)) = scalars.next() else {
+                    break;
+                };
                 end = offset + 1;
                 previous = Some((offset, character));
             }
@@ -86,11 +86,10 @@ pub mod number_symbol_cohesion {
                 .peek()
                 .is_some_and(|(_, character)| BACK_CURRENCY.contains(character))
             {
-                let (offset, character) = scalars
-                    .next()
-                    .expect("peek 的 scalar 必须可被消费");
-                end = offset + 1;
-                previous = Some((offset, character));
+                if let Some((offset, character)) = scalars.next() {
+                    end = offset + 1;
+                    previous = Some((offset, character));
+                }
             }
 
             result.push(TextRange::new(start, end));

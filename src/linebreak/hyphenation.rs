@@ -164,13 +164,9 @@ pub fn parse_tex_hyphenation_patterns(
         let mut levels = vec![0_i32];
         for character in token.chars() {
             if character.is_ascii_digit() {
-                let last = levels
-                    .last_mut()
-                    .expect("hyphenation pattern levels must contain an initial gap");
-                *last = character
-                    .to_digit(10)
-                    .expect("ASCII digit must have a radix-10 value")
-                    as i32;
+                if let Some(last) = levels.last_mut() {
+                    *last = (character as u8 - b'0') as i32;
+                }
             } else {
                 key.push(character);
                 levels.push(0);

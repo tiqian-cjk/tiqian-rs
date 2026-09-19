@@ -452,9 +452,12 @@ impl ParagraphBuilder {
             .last()
             .is_some_and(|scope| scope.sequence == sequence)
         {
-            let scope = self.open_scopes.pop().expect("scope stack was checked");
-            if let Err(error) = self.finish_scope(scope) {
-                self.record_error(error);
+            if let Some(scope) = self.open_scopes.pop() {
+                if let Err(error) = self.finish_scope(scope) {
+                    self.record_error(error);
+                }
+            } else {
+                self.record_error(ParagraphBuildError::ClosureScopeBoundary { scope: scope_kind });
             }
         } else {
             self.record_error(ParagraphBuildError::ClosureScopeBoundary { scope: scope_kind });
