@@ -5,7 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.0 (2026-09-21)
+
+### New Features
+
+ - <csr-id-390f9e4c8fd391209727dc6ca9c00708c10daf03/> add font synthesis strategy and final face identity
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 2 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add font synthesis strategy and final face identity ([`390f9e4`](https://github.com/tiqian-cjk/tiqian-rs/commit/390f9e4c8fd391209727dc6ca9c00708c10daf03))
+</details>
+
 ## v0.3.0 (2026-09-19)
+
+<csr-id-bdc815816f06ef003a9d8677bcd95dce034c580a/>
+<csr-id-d93271648ffab558ed70ba5fc00db59705171a34/>
+<csr-id-48d1dbe3d1ec8811c0015aa27e33fea05095c900/>
+<csr-id-bd4542a9b72c1f46329281e1bfbbeafcbb22f914/>
 
 ### Documentation
 
@@ -41,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 18 commits contributed to the release over the course of 1 calendar day.
+ - 19 commits contributed to the release over the course of 1 calendar day.
  - 1 day passed between releases.
  - 18 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -53,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release tiqian v0.3.0 ([`e46ac26`](https://github.com/tiqian-cjk/tiqian-rs/commit/e46ac26db1c5b4ecf2c2c7513fcceb74db6b9771))
     - Remove unused prepared paragraph JSON API ([`9f5b131`](https://github.com/tiqian-cjk/tiqian-rs/commit/9f5b131e283e7034c6bc2e93b5ae5dc08e9e6902))
     - Document runtime layout local fallback policy ([`96c4ab2`](https://github.com/tiqian-cjk/tiqian-rs/commit/96c4ab21ad821bfea004762eb2e11f7dd81a2168))
     - Move unimplemented text shaper to test helper ([`bdc8158`](https://github.com/tiqian-cjk/tiqian-rs/commit/bdc815816f06ef003a9d8677bcd95dce034c580a))
