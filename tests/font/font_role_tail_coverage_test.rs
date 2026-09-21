@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
 

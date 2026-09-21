@@ -123,9 +123,11 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         resolved_pairs: &HashMap<QuotePair, FontRole>,
     ) -> Resolution {
         let parent = self.parent_by_pair[&pair];
-        let enclosing_start = parent.map_or(ScalarOffset::ZERO, |parent_pair| parent_pair.open_index + 1);
-        let enclosing_end =
-            parent.map_or(self.text.scalar_len(), |parent_pair| parent_pair.close_index);
+        let enclosing_start =
+            parent.map_or(ScalarOffset::ZERO, |parent_pair| parent_pair.open_index + 1);
+        let enclosing_end = parent.map_or(self.text.scalar_len(), |parent_pair| {
+            parent_pair.close_index
+        });
         let mut outer_evidence = ScriptEvidence::default();
         self.add_script_evidence_range(&mut outer_evidence, enclosing_start, pair.open_index);
         self.add_script_evidence_range(&mut outer_evidence, pair.close_index + 1, enclosing_end);

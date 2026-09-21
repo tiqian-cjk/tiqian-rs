@@ -1,9 +1,9 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
 
@@ -29,23 +29,25 @@ fn layout_with(
         .hyphenator(hyphenator)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .line_length_grid(LineLengthGrid::with_enabled(false))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .line_length_grid(LineLengthGrid::with_enabled(false))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 #[test]
 fn hyphenation_is_on_by_default() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中 coffee")),
@@ -177,9 +179,10 @@ fn hyphen_is_reserved_inside_measure() {
 #[test]
 fn tight_cjk_stretch_avoids_hyphenation_with_push_out_only() {
     let clreq_profile_resolver = Box::new(PushOutOnlyProfile);
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(clreq_profile_resolver)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(clreq_profile_resolver)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文中文中文 coffee")),

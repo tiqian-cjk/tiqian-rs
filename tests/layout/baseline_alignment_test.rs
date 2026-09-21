@@ -1,22 +1,24 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
 fn layout(content: TiqianTextContent) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(content, LayoutConstraints::with_defaults(400.0))
-            .paragraph_style(
-                ParagraphStyle::builder()
-                    .first_line_indent(Some(Ic::ZERO))
-                    .build(),
-            )
-            .build(),
-    )
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(content, LayoutConstraints::with_defaults(400.0))
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
+                .build(),
+        )
 }
 
 #[test]

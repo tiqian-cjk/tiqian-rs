@@ -1,4 +1,5 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, TextRange};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, TextRange, scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -6,12 +7,11 @@ use tiqian::core::text_model::{
     TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::english_hyphenation::english_hyphenation;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 fn no_indent_style() -> ParagraphStyle {
     ParagraphStyle::builder()
@@ -23,9 +23,10 @@ fn no_indent_style() -> ParagraphStyle {
 fn technical_layout(text: &str, max_width: f32) -> tiqian::core::layout_model::LayoutResult {
     let range = text_range(0, text.chars().count() as i32);
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(text))
@@ -75,9 +76,11 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
             result.shaping.glyph_runs = vec![GlyphRun::new(
                 input.range,
                 face.clone(),
-                vec![Glyph::builder(0, input.range, advance)
-                    .render_font_face(Some(face))
-                    .build()],
+                vec![
+                    Glyph::builder(0, input.range, advance)
+                        .render_font_face(Some(face))
+                        .build(),
+                ],
                 advance,
             )];
             result
@@ -102,10 +105,12 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
     );
 
     assert_eq!(text_range(0, 8), result.lines[0].range);
-    assert!(result.debug.line_decisions[0]
-        .notes
-        .iter()
-        .any(|note| note == "technical-break:Emergency"));
+    assert!(
+        result.debug.line_decisions[0]
+            .notes
+            .iter()
+            .any(|note| note == "technical-break:Emergency")
+    );
     assert_eq!(0.0, result.lines[0].hyphen_advance);
 }
 
@@ -126,7 +131,8 @@ fn hash_inside_technical_url_skips_syllable_classification() {
     assert!(
         syllable_offsets
             .iter()
-            .all(|offset| offset.value() <= hash_start || offset.value() >= text.chars().count() as i32),
+            .all(|offset| offset.value() <= hash_start
+                || offset.value() >= text.chars().count() as i32),
         "{syllable_offsets:?}"
     );
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
@@ -165,9 +171,10 @@ fn technical_hash_uses_emergency_tracking_to_fill_auto_wrapped_lines() {
 fn long_all_caps_word_is_not_tracking_eligible() {
     let text = "SUPERCALIFRAGILISTICEXPIALIDOCIOUS";
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -197,9 +204,10 @@ fn long_all_caps_word_is_not_tracking_eligible() {
 fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
     let text = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -209,14 +217,16 @@ fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
         .build(),
     );
 
-    assert!(result
-        .debug
-        .emergency_tracking_eligibility_decisions
-        .iter()
-        .any(|decision| {
-            decision.range == text_range(0, text.chars().count() as i32)
-                && decision.reason == "LongRepeatedLetterRun"
-        }));
+    assert!(
+        result
+            .debug
+            .emergency_tracking_eligibility_decisions
+            .iter()
+            .any(|decision| {
+                decision.range == text_range(0, text.chars().count() as i32)
+                    && decision.reason == "LongRepeatedLetterRun"
+            })
+    );
     for line in result
         .lines
         .iter()
@@ -229,11 +239,13 @@ fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
 #[test]
 fn opaque_hard_break_keeps_combining_grapheme_intact() {
     let text = "abc123e\u{0301}def456ghi";
-    let combining_mark_offset = scalar_offset(text[..text.find('\u{0301}').unwrap()].chars().count() as i32);
+    let combining_mark_offset =
+        scalar_offset(text[..text.find('\u{0301}').unwrap()].chars().count() as i32);
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -254,7 +266,9 @@ fn opaque_hard_break_keeps_combining_grapheme_intact() {
 fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_controls() {
     let object_text = "aaaaaaaaaaaa\u{fffc}bbbbbbbbbbbb";
     let object_range = text_range(12, 13);
-    let mut object_engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut object_engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let object_result = object_engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(object_text))
@@ -289,7 +303,9 @@ fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_
 
     let zero_width_text = "aaaaaaaaaaaa\u{200b}bbbbbbbbbbbb";
     let zero_width_range = text_range(12, 13);
-    let mut zero_width_engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut zero_width_engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let zero_width_result = zero_width_engine.layout(
         LayoutInput::builder(
             TiqianTextContent::builder(Text::from(zero_width_text))
@@ -327,9 +343,10 @@ fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components()
             .count() as i32,
     );
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text.as_str())),
@@ -340,7 +357,10 @@ fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components()
     );
 
     assert_eq!(
-        vec![TextRange::new(identity_start, scalar_offset(text.chars().count() as i32))],
+        vec![TextRange::new(
+            identity_start,
+            scalar_offset(text.chars().count() as i32)
+        )],
         result
             .debug
             .emergency_tracking_eligibility_decisions
@@ -348,22 +368,25 @@ fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components()
             .map(|decision| decision.range)
             .collect::<Vec<_>>(),
     );
-    assert!(result
-        .debug
-        .justification_decisions
-        .iter()
-        .flat_map(|decision| &decision.allocations)
-        .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
-        .all(|allocation| allocation.cluster_range.start() >= identity_start));
+    assert!(
+        result
+            .debug
+            .justification_decisions
+            .iter()
+            .flat_map(|decision| &decision.allocations)
+            .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+            .all(|allocation| allocation.cluster_range.start() >= identity_start)
+    );
 }
 
 #[test]
 fn ordinary_western_prose_is_never_inferred_as_tracking_eligible() {
     let text = "ordinary Western paragraphs keep their natural word spacing";
     let hyphenator = english_hyphenation::en_us();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -373,19 +396,25 @@ fn ordinary_western_prose_is_never_inferred_as_tracking_eligible() {
         .build(),
     );
 
-    assert!(result
-        .debug
-        .emergency_tracking_eligibility_decisions
-        .is_empty());
-    assert!(result
-        .debug
-        .justification_decisions
-        .iter()
-        .flat_map(|decision| &decision.allocations)
-        .all(|allocation| allocation.kind != "EmergencyGraphemeTracking"));
-    assert!(result
-        .debug
-        .justification_decisions
-        .iter()
-        .any(|decision| decision.deficit_after > 0.0));
+    assert!(
+        result
+            .debug
+            .emergency_tracking_eligibility_decisions
+            .is_empty()
+    );
+    assert!(
+        result
+            .debug
+            .justification_decisions
+            .iter()
+            .flat_map(|decision| &decision.allocations)
+            .all(|allocation| allocation.kind != "EmergencyGraphemeTracking")
+    );
+    assert!(
+        result
+            .debug
+            .justification_decisions
+            .iter()
+            .any(|decision| decision.deficit_after > 0.0)
+    );
 }

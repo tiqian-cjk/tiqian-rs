@@ -1,7 +1,7 @@
 use tiqian::clreq::clreq_profile::{
     InteriorPunctuationStyle, PunctuationGluePlacement, PunctuationWidthPolicy,
 };
-use tiqian::core::geometry::{text_range, Rect};
+use tiqian::core::geometry::{Rect, text_range};
 use tiqian::layout::punctuation_model::{
     PunctuationAnchor, PunctuationAtomBuilder, PunctuationInkInput,
 };
@@ -15,14 +15,7 @@ fn atom(
     width: PunctuationWidthPolicy,
 ) -> tiqian::layout::punctuation_model::PunctuationAtom {
     PunctuationAtomBuilder::new(placement, width)
-        .build(
-            character,
-            text_range(0, 1),
-            EM,
-            Some(ink),
-            placement,
-            width,
-        )
+        .build(character, text_range(0, 1), EM, Some(ink), placement, width)
         .unwrap()
 }
 
@@ -197,7 +190,12 @@ fn equal_halt_advance_falls_through_to_ink_bounds() {
     assert_eq!("InkBoundsFittedBodyCompression", result.geometry_source);
 }
 
-fn font_unit_atom(character: char, units_per_em: f32, left: f32, right: f32) -> tiqian::layout::punctuation_model::PunctuationAtom {
+fn font_unit_atom(
+    character: char,
+    units_per_em: f32,
+    left: f32,
+    right: f32,
+) -> tiqian::layout::punctuation_model::PunctuationAtom {
     atom(
         character,
         PunctuationInkInput::builder(16.0)

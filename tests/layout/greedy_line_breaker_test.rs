@@ -1,7 +1,7 @@
 use tiqian::common::HashSet;
 
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -195,10 +195,7 @@ fn leave_ragged_when_carry_previous_would_overflow() {
 
 #[test]
 fn kinsoku_leave_ragged_when_prev_line_is_single_cluster() {
-    let clusters = vec![
-        cluster(0, 7, "English", 112.0),
-        cluster(7, 8, "。", 16.0),
-    ];
+    let clusters = vec![cluster(0, 7, "English", 112.0), cluster(7, 8, "。", 16.0)];
     let solution = break_lines(&clusters, 64.0, LineBreakerConfig::default());
 
     assert_eq!(2, solution.lines.len());
@@ -377,15 +374,30 @@ fn push_in_consumes_word_space_before_mid_line_punct_glue() {
     let solution = break_lines(&clusters, 112.0, config);
 
     assert_eq!(1, solution.lines.len());
-    let Some(RepairOption::PushIn { total_shrink, allocations, .. }) = &solution.lines[0].repair else {
+    let Some(RepairOption::PushIn {
+        total_shrink,
+        allocations,
+        ..
+    }) = &solution.lines[0].repair
+    else {
         panic!("expected PushIn repair")
     };
     assert_eq!(16.0, *total_shrink);
-    assert_eq!(vec![5, 1], allocations.iter().map(|allocation| allocation.cluster_index).collect::<Vec<_>>());
+    assert_eq!(
+        vec![5, 1],
+        allocations
+            .iter()
+            .map(|allocation| allocation.cluster_index)
+            .collect::<Vec<_>>()
+    );
     assert_eq!(8.0, allocations[0].shrink);
     assert_eq!(8.0, allocations[1].shrink);
     assert_eq!(ShrinkChannel::RawAdvance, allocations[1].channel);
-    assert!(allocations.iter().all(|allocation| allocation.cluster_index != 3));
+    assert!(
+        allocations
+            .iter()
+            .all(|allocation| allocation.cluster_index != 3)
+    );
 }
 
 #[test]

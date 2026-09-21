@@ -1,6 +1,6 @@
 use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::progressive_break_decisions::{
@@ -19,8 +19,14 @@ fn cluster(index: i32) -> Cluster {
 fn opportunities() -> HashMap<i32, ProgressiveBreakOpportunity> {
     let span = text_range(0, 5);
     HashMap::from([
-        (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
-        (4, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span),
+        ),
+        (
+            4,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
     ])
 }
 

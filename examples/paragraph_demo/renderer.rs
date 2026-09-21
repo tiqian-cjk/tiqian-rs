@@ -1,7 +1,7 @@
-use tiqian::core::geometry::{ScalarOffset, TextRange};
 use tiqian::core::fitted_line_pattern_geometry::{
     fitted_dashed_line_segments, fitted_dotted_line_centers,
 };
+use tiqian::core::geometry::{ScalarOffset, TextRange};
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_result_replay_index::LayoutResultReplayIndex;
 use tiqian::core::text_model::{
@@ -87,7 +87,10 @@ impl<'a> DemoRenderer<'a> {
         }
         for line in &result.lines {
             for glyph in &line.hyphen_glyphs {
-                for color in text_fill_colors(result, result.clusters[line.cluster_range.last() as usize].range) {
+                for color in text_fill_colors(
+                    result,
+                    result.clusters[line.cluster_range.last() as usize].range,
+                ) {
                     self.catalog.paint_glyph(
                         scene,
                         self.transform(),
@@ -142,7 +145,9 @@ impl<'a> DemoRenderer<'a> {
         for bopomofo in &result.debug.bopomofo_decisions {
             for placement in &bopomofo.placements {
                 for glyph in &placement.glyphs {
-                    for color in annotation_fill_colors(result, bopomofo.base_range, RubyKind::Bopomofo) {
+                    for color in
+                        annotation_fill_colors(result, bopomofo.base_range, RubyKind::Bopomofo)
+                    {
                         self.paint_annotation_glyph(
                             scene,
                             glyph,
@@ -216,14 +221,24 @@ impl<'a> DemoRenderer<'a> {
         }
         for segment in &result.debug.decoration_segments {
             let Some(kind) = decoration_kind(&segment.kind) else {
-                return Err(format!("unsupported decoration segment kind: {}", segment.kind));
+                return Err(format!(
+                    "unsupported decoration segment kind: {}",
+                    segment.kind
+                ));
             };
             for color in decoration_fill_colors(result, segment.source_range, kind) {
                 match kind {
-                    DecorationKind::Mourning => self.stroke_mourning_segment(scene, segment, color, stroke_width)?,
-                    DecorationKind::ProperNoun => {
-                        self.stroke_interlinear_segment(scene, result, replay_index, segment, color, stroke_width)?
+                    DecorationKind::Mourning => {
+                        self.stroke_mourning_segment(scene, segment, color, stroke_width)?
                     }
+                    DecorationKind::ProperNoun => self.stroke_interlinear_segment(
+                        scene,
+                        result,
+                        replay_index,
+                        segment,
+                        color,
+                        stroke_width,
+                    )?,
                     DecorationKind::BookTitle => self.stroke_book_title_segment(
                         scene,
                         replay_index,
@@ -286,7 +301,10 @@ impl<'a> DemoRenderer<'a> {
                         color,
                         line.thickness,
                     )?,
-                    RichTextLinePattern::Dashed { dash_length, gap_length } => self.stroke_fitted_dashed_rich_line(
+                    RichTextLinePattern::Dashed {
+                        dash_length,
+                        gap_length,
+                    } => self.stroke_fitted_dashed_rich_line(
                         scene,
                         result,
                         replay_index,
@@ -298,9 +316,13 @@ impl<'a> DemoRenderer<'a> {
                     )?,
                     RichTextLinePattern::Dotted { gap_length } => {
                         let y = result.rich_text_decoration_line_y(&segment, line.thickness);
-                        for (left, right) in
-                            self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, line.thickness)
-                        {
+                        for (left, right) in self.kept_intervals_for_rich_text_line(
+                            result,
+                            replay_index,
+                            segment,
+                            y,
+                            line.thickness,
+                        ) {
                             for x in fitted_dotted_line_centers(
                                 segment.left,
                                 segment.right,
@@ -314,8 +336,11 @@ impl<'a> DemoRenderer<'a> {
                                     self.transform(),
                                     color,
                                     None,
-                                    &Circle::new((x as f64, y as f64), (line.thickness / 2.0) as f64)
-                                        .to_path(0.1),
+                                    &Circle::new(
+                                        (x as f64, y as f64),
+                                        (line.thickness / 2.0) as f64,
+                                    )
+                                    .to_path(0.1),
                                 );
                             }
                         }
@@ -360,12 +385,8 @@ impl<'a> DemoRenderer<'a> {
     ) -> Result<(), String> {
         let y = result.rich_text_decoration_line_y(segment, stroke_width);
         let stroke = Stroke::new(stroke_width as f64).with_caps(Cap::Round);
-        let dashes = fitted_dashed_line_segments(
-            segment.left,
-            segment.right,
-            dash_length,
-            gap_length,
-        );
+        let dashes =
+            fitted_dashed_line_segments(segment.left, segment.right, dash_length, gap_length);
         for (kept_left, kept_right) in
             self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, stroke_width)
         {
@@ -853,6 +874,7 @@ fn decoration_kind(name: &str) -> Option<DecorationKind> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tiqian::api::ParagraphLayoutEngineBuilder;
     use tiqian::core::geometry::{LayoutConstraints, text_range};
     use tiqian::core::text::Text;
     use tiqian::core::text_model::{
@@ -862,7 +884,6 @@ mod tests {
         TiqianTextContent,
     };
     use tiqian::core::units::Ic;
-    use tiqian::api::ParagraphLayoutEngineBuilder;
 
     fn layer(kind: RichTextLayerKind, argb: i32) -> RichTextLayer {
         RichTextLayer {
@@ -1222,7 +1243,9 @@ mod tests {
         renderer
             .paint_rich_text_backgrounds(&mut scene, &result, &replay_index)
             .unwrap();
-        renderer.paint_body(&mut scene, &result, &replay_index).unwrap();
+        renderer
+            .paint_body(&mut scene, &result, &replay_index)
+            .unwrap();
         renderer
             .paint_rich_text_lines(&mut scene, &result, &replay_index)
             .unwrap();

@@ -1,4 +1,6 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -6,24 +8,24 @@ use tiqian::core::text_model::{
     TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
 fn layout(text: &str, boxes: Vec<InlineBoxSpan>) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(400.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(400.0),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .line_length_grid(LineLengthGrid::with_enabled(false))
+                    .build(),
+            )
+            .inline_boxes(boxes)
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .line_length_grid(LineLengthGrid::with_enabled(false))
-                .build(),
-        )
-        .inline_boxes(boxes)
-        .build(),
-    )
 }
 
 #[test]

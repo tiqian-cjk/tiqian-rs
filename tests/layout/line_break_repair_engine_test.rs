@@ -1,4 +1,5 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
@@ -6,7 +7,6 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
 
 use crate::support::DeterministicStubFontBackend;
@@ -26,20 +26,20 @@ fn layout(
         .hyphenator(hyphenator)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text))
-                .line_break_spans(spans)
-                .build(),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::builder(Text::from(text))
+                    .line_break_spans(spans)
+                    .build(),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .line_length_grid(LineLengthGrid::with_enabled(false))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .line_length_grid(LineLengthGrid::with_enabled(false))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 fn layout_with_default_grid(
@@ -56,17 +56,17 @@ fn layout_with_default_grid(
         .hyphenator(hyphenator)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 fn layout_with_breaker(
@@ -83,20 +83,20 @@ fn layout_with_breaker(
         .hyphenator(hyphenator)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text))
-                .line_break_spans(spans)
-                .build(),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::builder(Text::from(text))
+                    .line_break_spans(spans)
+                    .build(),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .line_length_grid(LineLengthGrid::with_enabled(false))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .line_length_grid(LineLengthGrid::with_enabled(false))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 fn layout_with_default_grid_breaker(
@@ -111,17 +111,17 @@ fn layout_with_default_grid_breaker(
         .hyphenator(hyphenator)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 struct FourSevenHyphenator;
@@ -181,7 +181,13 @@ fn greedy_breaker_produces_multiple_lines_when_width_overflows() {
     assert_eq!(24.0, second.top);
     assert_eq!(48.0, second.bottom);
     assert_eq!(2, result.debug.line_decisions.len());
-    assert!(result.debug.line_decisions.iter().all(|decision| decision.kind == "greedy"));
+    assert!(
+        result
+            .debug
+            .line_decisions
+            .iter()
+            .all(|decision| decision.kind == "greedy")
+    );
     assert_eq!(48.0, result.size.height);
 }
 
@@ -209,7 +215,12 @@ fn camel_case_token_breaks_at_hump_without_synthetic_hyphen() {
 fn all_caps_abbreviation_is_never_broken() {
     let result = layout_with_default_grid("INTERNATIONALIZATION中", 128.0, false);
 
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "INTERNATIONALIZATION"));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "INTERNATIONALIZATION")
+    );
 }
 
 #[test]
@@ -243,7 +254,12 @@ fn url_separator_break_keeps_solidus_with_preceding_piece() {
 fn overlong_latin_word_hard_breaks_with_a_hanging_hyphen() {
     let result = layout_with_default_grid("中English", 80.0, true);
 
-    assert!(result.clusters.iter().all(|cluster| cluster.text != "English"));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .all(|cluster| cluster.text != "English")
+    );
     assert!(result.clusters.iter().any(|cluster| cluster.text == "En"));
     assert!(result.clusters.iter().any(|cluster| cluster.text == "ish"));
     assert_eq!(2, result.lines.len());
@@ -258,8 +274,18 @@ fn url_like_latin_token_breaks_at_separators_without_synthetic_hyphen() {
     assert!(result.lines.len() > 1);
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
     assert!(result.clusters.iter().all(|cluster| cluster.text != url));
-    assert!(result.clusters.iter().any(|cluster| cluster.text.as_str().ends_with('/')));
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "example."));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text.as_str().ends_with('/'))
+    );
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "example.")
+    );
     assert!(result.debug.line_decisions.iter().all(|decision| {
         decision
             .repair_decision
@@ -306,7 +332,8 @@ fn opaque_latin_token_after_cjk_pulls_prefix_onto_loose_line() {
 fn non_lexical_letter_run_after_cjk_pulls_prefix_onto_loose_line_without_synthetic_hyphen() {
     let prefix = "为什么历史是 ";
     let token = "s".repeat(40) + "herstory";
-    let result = layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 160.0, &NoHyphenator);
+    let result =
+        layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 160.0, &NoHyphenator);
 
     assert!(line_text(&result, 0).len() > prefix.len());
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
@@ -316,7 +343,8 @@ fn non_lexical_letter_run_after_cjk_pulls_prefix_onto_loose_line_without_synthet
 fn long_letter_blob_stays_opaque_even_when_tail_looks_hyphenatable() {
     let prefix = "为什么历史是 ";
     let token = "s".repeat(40) + "herstory";
-    let result = layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 160.0, &TAIL_HYPHENATOR);
+    let result =
+        layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 160.0, &TAIL_HYPHENATOR);
 
     assert!(line_text(&result, 0).len() > prefix.len());
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
@@ -327,7 +355,8 @@ fn long_letter_blob_stays_opaque_even_when_tail_looks_hyphenatable() {
 fn long_opaque_token_can_break_even_when_it_fits_alone_but_not_after_cjk_prefix() {
     let prefix = "为什么历史是 ";
     let token = "s".repeat(40) + "herstory";
-    let result = layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 800.0, &TAIL_HYPHENATOR);
+    let result =
+        layout_with_default_grid_breaker(&(prefix.to_owned() + &token), 800.0, &TAIL_HYPHENATOR);
 
     assert!(line_text(&result, 0).len() > prefix.len());
     assert!(result.clusters.iter().all(|cluster| cluster.text != token));
@@ -358,20 +387,24 @@ fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() 
         );
         assert_eq!(scalar_offset(6), result.lines[0].range.end());
         assert_eq!(0.0, result.lines[0].hyphen_advance);
-        assert!(result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency"));
+        assert!(
+            result.debug.line_decisions[0]
+                .notes
+                .iter()
+                .any(|note| note == "technical-break:Emergency")
+        );
         let adjustment = result
             .debug
             .justification_decisions
             .iter()
             .find(|decision| decision.line_range == result.lines[0].range)
             .expect("expected justification decision for technical line");
-        assert!(adjustment
-            .allocations
-            .iter()
-            .all(|allocation| allocation.kind != "CjkInterChar"));
+        assert!(
+            adjustment
+                .allocations
+                .iter()
+                .all(|allocation| allocation.kind != "CjkInterChar")
+        );
         assert!(adjustment.allocations.iter().any(|allocation| {
             allocation.kind == "EmergencyGraphemeTracking"
                 && allocation.cluster_range.start() >= technical_range.start()
@@ -395,19 +428,25 @@ fn progressive_technical_structural_break_falls_through_to_emergency_before_trac
     );
 
     assert_eq!("中文ab.cd", line_text(&result, 0));
-    assert!(result.debug.line_decisions[0]
-        .notes
-        .iter()
-        .any(|note| note == "technical-break:Emergency"));
+    assert!(
+        result.debug.line_decisions[0]
+            .notes
+            .iter()
+            .any(|note| note == "technical-break:Emergency")
+    );
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
     let adjustment = &result.debug.justification_decisions[0];
-    assert!(adjustment
-        .allocations
-        .iter()
-        .all(|allocation| allocation.kind != "CjkInterChar"));
+    assert!(
+        adjustment
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind != "CjkInterChar")
+    );
     assert!(adjustment.allocations.iter().any(|allocation| {
         allocation.kind == "EmergencyGraphemeTracking"
-            && allocation.reason.starts_with("TerminalTechnicalEmergencyTracking")
+            && allocation
+                .reason
+                .starts_with("TerminalTechnicalEmergencyTracking")
     }));
 }
 
@@ -427,10 +466,12 @@ fn progressive_technical_hard_break_overrides_number_run_cohesion() {
     for breaker in breakers {
         let result = layout_with_breaker(text, 160.0, vec![span.clone()], breaker, &NoHyphenator);
         assert_eq!("aaaaa12345", line_text(&result, 0));
-        assert!(result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency"));
+        assert!(
+            result.debug.line_decisions[0]
+                .notes
+                .iter()
+                .any(|note| note == "technical-break:Emergency")
+        );
     }
 }
 
@@ -453,12 +494,19 @@ fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
         .debug
         .line_decisions
         .iter()
-        .position(|decision| decision.notes.iter().any(|note| note.starts_with("technical-break:")))
+        .position(|decision| {
+            decision
+                .notes
+                .iter()
+                .any(|note| note.starts_with("technical-break:"))
+        })
         .expect("expected technical break decision");
-    assert!(result.debug.line_decisions[affected_line_index]
-        .notes
-        .iter()
-        .any(|note| note == "technical-break:Emergency"));
+    assert!(
+        result.debug.line_decisions[affected_line_index]
+            .notes
+            .iter()
+            .any(|note| note == "technical-break:Emergency")
+    );
     let affected_range = result.lines[affected_line_index].range;
     let adjustment = result
         .debug
@@ -472,9 +520,11 @@ fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
         .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
         .collect();
     assert!(!tracking.is_empty());
-    assert!(tracking
-        .iter()
-        .all(|allocation| allocation.cluster_range.start() >= technical_range.start()));
+    assert!(
+        tracking
+            .iter()
+            .all(|allocation| allocation.cluster_range.start() >= technical_range.start())
+    );
 }
 
 #[test]
@@ -491,13 +541,21 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
     ];
 
     for breaker in breakers {
-        let result = layout_with_breaker(text, 100.0, vec![span.clone()], breaker, &TWO_FOUR_SIX_HYPHENATOR);
+        let result = layout_with_breaker(
+            text,
+            100.0,
+            vec![span.clone()],
+            breaker,
+            &TWO_FOUR_SIX_HYPHENATOR,
+        );
         assert_eq!(scalar_offset(7), result.lines[0].range.end());
         assert_eq!(0.0, result.lines[0].hyphen_advance);
-        assert!(result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Syllable"));
+        assert!(
+            result.debug.line_decisions[0]
+                .notes
+                .iter()
+                .any(|note| note == "technical-break:Syllable")
+        );
         let adjustment = result
             .debug
             .justification_decisions
@@ -544,10 +602,12 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
         "erialization 再桥接回 Objective-C，swift_dy",
         line_text(&result, affected_line_index)
     );
-    assert!(result.debug.line_decisions[affected_line_index]
-        .notes
-        .iter()
-        .any(|note| note == "technical-break:Emergency"));
+    assert!(
+        result.debug.line_decisions[affected_line_index]
+            .notes
+            .iter()
+            .any(|note| note == "technical-break:Emergency")
+    );
     let adjustment = result
         .debug
         .justification_decisions
@@ -563,20 +623,33 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
                 .fold(0.0_f32, f32::max)
         })
         .unwrap_or(0.0);
-    assert!(cjk_stretch <= 0.001, "current line still stretched CJK body: {cjk_stretch}");
-    assert!(result.debug.break_opportunity_decisions.iter().any(|decision| {
-        decision.range == swift_range
-            && decision.tier.as_deref() == Some("Emergency")
-            && decision.reason == "CurrentLineTechnicalEmergencyBreak"
-    }));
-    assert!(result
-        .debug
-        .emergency_tracking_eligibility_decisions
-        .iter()
-        .any(|decision| {
-            decision.range == swift_range
-                && decision.reason.starts_with("CurrentLineTechnicalTierRejection:")
-        }));
+    assert!(
+        cjk_stretch <= 0.001,
+        "current line still stretched CJK body: {cjk_stretch}"
+    );
+    assert!(
+        result
+            .debug
+            .break_opportunity_decisions
+            .iter()
+            .any(|decision| {
+                decision.range == swift_range
+                    && decision.tier.as_deref() == Some("Emergency")
+                    && decision.reason == "CurrentLineTechnicalEmergencyBreak"
+            })
+    );
+    assert!(
+        result
+            .debug
+            .emergency_tracking_eligibility_decisions
+            .iter()
+            .any(|decision| {
+                decision.range == swift_range
+                    && decision
+                        .reason
+                        .starts_with("CurrentLineTechnicalTierRejection:")
+            })
+    );
 }
 
 #[test]
@@ -601,15 +674,25 @@ fn unbroken_progressive_span_uses_source_space_then_keeps_body_opportunities_ava
         &NoHyphenator,
     );
 
-    assert!(result.debug.line_decisions[0]
-        .notes
-        .iter()
-        .all(|note| !note.starts_with("technical-break:")));
+    assert!(
+        result.debug.line_decisions[0]
+            .notes
+            .iter()
+            .all(|note| !note.starts_with("technical-break:"))
+    );
     let adjustment = &result.debug.justification_decisions[0];
     assert!(!adjustment.allocations.is_empty());
     assert_eq!(
-        baseline.lines.iter().map(|line| line.range).collect::<Vec<_>>(),
-        result.lines.iter().map(|line| line.range).collect::<Vec<_>>(),
+        baseline
+            .lines
+            .iter()
+            .map(|line| line.range)
+            .collect::<Vec<_>>(),
+        result
+            .lines
+            .iter()
+            .map(|line| line.range)
+            .collect::<Vec<_>>(),
     );
     assert!(adjustment.deficit_after.abs() < 0.001);
     assert!(adjustment.allocations.iter().any(|allocation| {

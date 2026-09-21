@@ -2,8 +2,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tiqian::common::HashMap;
 
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, LayoutInput, ParagraphStyle, RubySpan,
@@ -12,19 +14,15 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::RawFontMetrics;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::width_independent_annotation_cache::{
     LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
     WidthIndependentAnnotationKey, WidthIndependentParagraphAnnotation,
     to_width_independent_annotation_key,
 };
-use tiqian::shaping::font_backend::{
-    FontBackend, FontBackendRequest, FontBackendShapingResult,
-};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use crate::support::DeterministicStubFontBackend;
 
 struct CountingFontBackend {
     count: Arc<AtomicUsize>,
@@ -156,9 +154,10 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
     let base = input("中西混合排版与测试文本。", 300.0);
 
     engine.layout(base.clone());
@@ -176,8 +175,7 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     ruby_changed.ruby_spans = vec![RubySpan::new(text_range(0, 2), Text::from("zhōngxī"))];
     engine.layout(ruby_changed);
     let mut inline_box_changed = base;
-    inline_box_changed.inline_boxes =
-        vec![InlineBoxSpan::with_edges(text_range(2, 4), 4.0, 4.0)];
+    inline_box_changed.inline_boxes = vec![InlineBoxSpan::with_edges(text_range(2, 4), 4.0, 4.0)];
     engine.layout(inline_box_changed);
 
     assert_eq!(6, entries.lock().unwrap().size());
@@ -189,9 +187,10 @@ fn lru_refreshes_accessed_entry_before_evicting_least_recently_used_entry() {
     let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
     let first = input("段落一文本内容", 300.0);
     let second = input("段落二文本内容", 300.0);
     let third = input("段落三文本内容", 300.0);
@@ -219,9 +218,10 @@ fn lru_cache_evicts_oldest_entries_when_capacity_exceeded() {
     let annotation_cache = Box::new(SharedLruCache {
         entries: entries.clone(),
     });
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
     let first = input("段落一文本内容", 300.0);
     let second = input("段落二文本内容", 300.0);
     let third = input("段落三文本内容", 300.0);
@@ -250,11 +250,14 @@ fn lru_cache_evicts_oldest_entries_when_capacity_exceeded() {
 fn cached_and_uncached_layouts_match_at_narrow_normal_and_wide_widths() {
     let text =
         "提椠是一个面向中文正文的段落排版引擎，遵循中文排版需求规范，支持两端对齐与标点挤压。";
-    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut cached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let annotation_cache = Box::new(DisabledCache);
-    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut uncached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
 
     for width in [80.0, 300.0, 650.0] {
         let expected = uncached.layout(input(text, width));
@@ -287,16 +290,49 @@ fn body_input(text: &str, width: f32) -> LayoutInput {
     .build()
 }
 
-fn assert_cached_and_uncached_match(expected: &tiqian::core::layout_model::LayoutResult, actual: &tiqian::core::layout_model::LayoutResult, width: f32) {
-    assert_eq!(expected.lines.len(), actual.lines.len(), "line count at width {width}");
-    for (index, (expected_line, actual_line)) in expected.lines.iter().zip(&actual.lines).enumerate() {
-        assert_eq!(expected_line.range, actual_line.range, "line {index} range at width {width}");
-        assert!((expected_line.visual_width - actual_line.visual_width).abs() < 0.001, "line {index} visual width at width {width}");
-        assert!((expected_line.adjusted_width - actual_line.adjusted_width).abs() < 0.001, "line {index} adjusted width at width {width}");
-        assert!((expected_line.natural_width - actual_line.natural_width).abs() < 0.001, "line {index} natural width at width {width}");
-        assert!((expected_line.indent - actual_line.indent).abs() < 0.001, "line {index} indent at width {width}");
-        assert!((expected_line.hanging_punctuation_advance - actual_line.hanging_punctuation_advance).abs() < 0.001, "line {index} hanging punctuation at width {width}");
-        assert_eq!(expected_line.end_reason, actual_line.end_reason, "line {index} end reason at width {width}");
+fn assert_cached_and_uncached_match(
+    expected: &tiqian::core::layout_model::LayoutResult,
+    actual: &tiqian::core::layout_model::LayoutResult,
+    width: f32,
+) {
+    assert_eq!(
+        expected.lines.len(),
+        actual.lines.len(),
+        "line count at width {width}"
+    );
+    for (index, (expected_line, actual_line)) in
+        expected.lines.iter().zip(&actual.lines).enumerate()
+    {
+        assert_eq!(
+            expected_line.range, actual_line.range,
+            "line {index} range at width {width}"
+        );
+        assert!(
+            (expected_line.visual_width - actual_line.visual_width).abs() < 0.001,
+            "line {index} visual width at width {width}"
+        );
+        assert!(
+            (expected_line.adjusted_width - actual_line.adjusted_width).abs() < 0.001,
+            "line {index} adjusted width at width {width}"
+        );
+        assert!(
+            (expected_line.natural_width - actual_line.natural_width).abs() < 0.001,
+            "line {index} natural width at width {width}"
+        );
+        assert!(
+            (expected_line.indent - actual_line.indent).abs() < 0.001,
+            "line {index} indent at width {width}"
+        );
+        assert!(
+            (expected_line.hanging_punctuation_advance - actual_line.hanging_punctuation_advance)
+                .abs()
+                < 0.001,
+            "line {index} hanging punctuation at width {width}"
+        );
+        assert_eq!(
+            expected_line.end_reason, actual_line.end_reason,
+            "line {index} end reason at width {width}"
+        );
     }
 }
 
@@ -307,11 +343,14 @@ fn cached_and_uncached_engines_produce_identical_layout_results_across_widths() 
         "在《中文排版需求》（CLREQ）中，要求正文「两端对齐」；当遇到『标点符号』与西文（如 OpenType / CSS Grid）混排时，应正确执行挤压与推入推出——即使在 120Hz 高频拖拽下也是如此！",
         "第一行缩进两个字身框。标点符号如……省略号、破折号——不应出现在行首，逗号、句号。也不得出现在行首。这就是避头尾（Kinsoku）规则的严格要求。",
     ];
-    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut cached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let annotation_cache = Box::new(DisabledCache);
-    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut uncached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
 
     let mut width = 80.0;
     while width <= 650.0 {
@@ -327,15 +366,18 @@ fn cached_and_uncached_engines_produce_identical_layout_results_across_widths() 
 #[test]
 fn reflow_fuzzing_random_sequence_produces_exact_output() {
     let fixture = "提椠段落排版：严格遵循简体中文 CLREQ 规范。包含“双引号”、‘单引号’、以及（括号）与【括号】；汉字与 English words 混排时自动添加 0.25em 间距，最后一行保持左对齐。";
-    let mut cached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut cached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let annotation_cache = Box::new(DisabledCache);
-    let mut uncached = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .annotation_cache(annotation_cache)
-        .build();
+    let mut uncached =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .annotation_cache(annotation_cache)
+            .build();
 
     for width in [
-        320.0, 150.0, 480.5, 95.2, 210.0, 600.0, 120.3, 450.0, 180.7, 300.0,
-        75.0, 520.0, 133.3, 266.6, 399.9, 110.0, 470.0, 195.0, 345.0, 580.0,
+        320.0, 150.0, 480.5, 95.2, 210.0, 600.0, 120.3, 450.0, 180.7, 300.0, 75.0, 520.0, 133.3,
+        266.6, 399.9, 110.0, 470.0, 195.0, 345.0, 580.0,
     ] {
         let expected = uncached.layout(body_input(fixture, width));
         let actual = cached.layout(body_input(fixture, width));

@@ -13,14 +13,22 @@ fn decisions(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDe
 #[test]
 fn nested_pair_inside_neutral_enclosing_inherits_the_outer_quotation() {
     let decisions = decisions("“—‘文’—”");
-    let outer = decisions.iter().find(|decision| decision.index.value() == 0).unwrap();
-    let inner = decisions.iter().find(|decision| decision.index.value() == 2).unwrap();
+    let outer = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 0)
+        .unwrap();
+    let inner = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 2)
+        .unwrap();
     assert_eq!("PairedPunctuationEnclosingQuoteContext", inner.source);
     assert_eq!("quote-pair-inherits-enclosing-quotation", inner.reason);
     assert_eq!(outer.role, inner.role);
-    assert!(decisions
-        .iter()
-        .all(|decision| decision.source != "DelimitedWesternQuotationRun"));
+    assert!(
+        decisions
+            .iter()
+            .all(|decision| decision.source != "DelimitedWesternQuotationRun")
+    );
 }
 
 #[test]
@@ -94,8 +102,14 @@ fn private_use_char_before_a_quote_fails_the_low_surrogate_range_above() {
 #[test]
 fn sibling_pairs_inside_one_quotation_each_inherit_the_outer_role() {
     let decisions = decisions("“‘a’‘b’”");
-    let first = decisions.iter().find(|decision| decision.index.value() == 1).unwrap();
-    let second = decisions.iter().find(|decision| decision.index.value() == 4).unwrap();
+    let first = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 1)
+        .unwrap();
+    let second = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 4)
+        .unwrap();
     assert_eq!("PairedPunctuationEnclosingQuoteContext", first.source);
     assert_eq!("PairedPunctuationEnclosingQuoteContext", second.source);
     assert_eq!(first.role, second.role);

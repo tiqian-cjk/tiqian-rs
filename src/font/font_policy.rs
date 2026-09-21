@@ -1,6 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
-use icu_properties::{CodePointMapData, CodePointSetData, props::{EmojiPresentation, GeneralCategory}};
+use icu_properties::{
+    CodePointMapData, CodePointSetData,
+    props::{EmojiPresentation, GeneralCategory},
+};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::text::Text;

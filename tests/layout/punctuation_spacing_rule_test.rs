@@ -1,5 +1,5 @@
 use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::layout::punctuation_model::{
     PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,

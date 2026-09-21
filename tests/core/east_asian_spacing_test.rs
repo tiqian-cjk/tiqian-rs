@@ -60,24 +60,15 @@ fn uses_pinned_unicode_draft_data_across_scripts() {
 fn resolves_conditional_values_from_chinese_language_context() {
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
-            &Text::from("%"),
-            "zh-Hans",
-        )
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(&Text::from("%"), "zh-Hans",)
     );
     assert_eq!(
         EastAsianSpacingValue::Narrow,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
-            &Text::from("%"),
-            "yue-Hant-HK",
-        )
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(&Text::from("%"), "yue-Hant-HK",)
     );
     assert_eq!(
         EastAsianSpacingValue::Other,
-        unicode_east_asian_spacing::resolved_for_grapheme_cluster(
-            &Text::from("%"),
-            "en",
-        )
+        unicode_east_asian_spacing::resolved_for_grapheme_cluster(&Text::from("%"), "en",)
     );
 }
 
@@ -108,10 +99,7 @@ fn resolves_actual_source_units_at_each_shaping_cluster_edge() {
             trailing: EastAsianSpacingValue::Other,
             contains_wide: false,
         },
-        unicode_east_asian_spacing::resolved_edges(
-            &Text::from("A\u{20DD}"),
-            "zh-Hans",
-        ),
+        unicode_east_asian_spacing::resolved_edges(&Text::from("A\u{20DD}"), "zh-Hans",),
     );
 }
 
@@ -144,10 +132,18 @@ fn edges_keep_middle_wide_and_empty_text() {
     use EastAsianSpacingValue::{Narrow, Other};
     assert_eq!(
         unicode_east_asian_spacing::resolved_edges(&Text::from("A中B"), "zh-Hans"),
-        EastAsianSpacingEdges { leading: Narrow, trailing: Narrow, contains_wide: true },
+        EastAsianSpacingEdges {
+            leading: Narrow,
+            trailing: Narrow,
+            contains_wide: true
+        },
     );
     assert_eq!(
         unicode_east_asian_spacing::resolved_edges(&Text::from(""), "zh-Hans"),
-        EastAsianSpacingEdges { leading: Other, trailing: Other, contains_wide: false },
+        EastAsianSpacingEdges {
+            leading: Other,
+            trailing: Other,
+            contains_wide: false
+        },
     );
 }

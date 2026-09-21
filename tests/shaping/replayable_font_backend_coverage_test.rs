@@ -7,11 +7,7 @@ use tiqian::shaping::replayable_font_backend::{
 };
 
 fn face_id(resource_id: &str) -> FontFaceId {
-    FontFaceId::new(
-        resource_id.to_owned(),
-        0,
-        FontVariationInstance::default(),
-    )
+    FontFaceId::new(resource_id.to_owned(), 0, FontVariationInstance::default())
 }
 
 fn descriptor(id: FontFaceId, family: &str, role: FontRole) -> ReplayableFontFaceDescriptor {
@@ -67,10 +63,7 @@ fn face_descriptor_defaults_are_stable() {
         FontFaceId::new(
             "face-a".to_owned(),
             2,
-            FontVariationInstance::new(vec![FontVariationSetting::new(
-                "wght".to_owned(),
-                700.0,
-            )]),
+            FontVariationInstance::new(vec![FontVariationSetting::new("wght".to_owned(), 700.0)]),
         ),
         descriptor.family_aliases.clone(),
         descriptor.roles.clone(),
@@ -142,7 +135,11 @@ fn catalog_exposes_exact_replayable_face_identity() {
         faces: vec![cjk, latin.clone()],
     };
 
-    assert!(catalog.capability_report().can_replay_from_controlled_bytes());
+    assert!(
+        catalog
+            .capability_report()
+            .can_replay_from_controlled_bytes()
+    );
     assert_eq!(2, catalog.faces().len());
     assert_eq!(Some(&latin), catalog.face(&face_id("face-latin")));
     assert!(catalog.face(&face_id("missing")).is_none());

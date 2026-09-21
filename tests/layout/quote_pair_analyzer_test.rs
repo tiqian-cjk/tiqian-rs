@@ -17,13 +17,25 @@ fn decisions(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDe
 fn matches_simple_and_nested_quote_pairs() {
     let analyzer = QuotePairAnalyzer;
     assert_eq!(
-        vec![QuotePair::new(scalar_offset(2), scalar_offset(5), QuoteType::Double)],
+        vec![QuotePair::new(
+            scalar_offset(2),
+            scalar_offset(5),
+            QuoteType::Double
+        )],
         analyzer.analyze(&Text::from("他说“你好”")),
     );
     let nested = analyzer.analyze(&Text::from("他说：“她说‘你好’。”"));
     assert_eq!(2, nested.len());
-    assert!(nested.contains(&QuotePair::new(scalar_offset(6), scalar_offset(9), QuoteType::Single)));
-    assert!(nested.contains(&QuotePair::new(scalar_offset(3), scalar_offset(11), QuoteType::Double)));
+    assert!(nested.contains(&QuotePair::new(
+        scalar_offset(6),
+        scalar_offset(9),
+        QuoteType::Single
+    )));
+    assert!(nested.contains(&QuotePair::new(
+        scalar_offset(3),
+        scalar_offset(11),
+        QuoteType::Double
+    )));
 }
 
 #[test]
@@ -31,7 +43,11 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
     let analyzer = QuotePairAnalyzer;
     let text = "‘that’s’";
     assert_eq!(
-        vec![QuotePair::new(scalar_offset(0), scalar_offset(7), QuoteType::Single)],
+        vec![QuotePair::new(
+            scalar_offset(0),
+            scalar_offset(7),
+            QuoteType::Single
+        )],
         analyzer.analyze(&Text::from(text))
     );
 
@@ -141,7 +157,12 @@ fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
     let result = decisions("（如 ‘O’, ‘Q’）");
 
     assert_eq!(
-        vec![scalar_offset(3), scalar_offset(5), scalar_offset(8), scalar_offset(10)],
+        vec![
+            scalar_offset(3),
+            scalar_offset(5),
+            scalar_offset(8),
+            scalar_offset(10)
+        ],
         result
             .iter()
             .map(|decision| decision.index)

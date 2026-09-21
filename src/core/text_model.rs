@@ -269,7 +269,9 @@ impl InlineObjectPreferredStretch {
         mut target_width: f32,
     ) -> Self {
         if !natural_width.is_finite() || natural_width < 0.0 {
-            log::warn!("invalid inline object preferred stretch natural width; using zero capacity");
+            log::warn!(
+                "invalid inline object preferred stretch natural width; using zero capacity"
+            );
             natural_width = 0.0;
             target_width = 0.0;
         } else if !target_width.is_finite() || target_width <= natural_width {
@@ -616,39 +618,24 @@ pub enum RichTextLayerKind {
     /// 正文 glyph 使用的 paint layer。
     Text,
     /// 覆盖正文区域的背景 layer。
-    Background {
-        background: RichTextBackgroundPaint,
-    },
+    Background { background: RichTextBackgroundPaint },
     /// 位于正文下方的下划线 layer。
-    Underline {
-        line: RichTextLinePaint,
-    },
+    Underline { line: RichTextLinePaint },
     /// 穿过正文的删除线 layer。
-    LineThrough {
-        line: RichTextLinePaint,
-    },
+    LineThrough { line: RichTextLinePaint },
     /// 由 layout 生成的强调、着重等装饰 layer。
-    Decoration {
-        kind: DecorationKind,
-    },
+    Decoration { kind: DecorationKind },
     /// 与 ruby 或 bopomofo layout placement 关联的注音 layer。
-    Annotation {
-        kind: RubyKind,
-    },
+    Annotation { kind: RubyKind },
 }
 
 /// 一项平台无关的绘制描述，由前端根据具体绘制 API 重放。
 #[derive(Clone, Debug, PartialEq)]
 pub enum RichTextPaint {
     /// 使用指定颜色填充图形或 glyph。
-    Fill {
-        argb: i32,
-    },
+    Fill { argb: i32 },
     /// 使用指定颜色和宽度描边。
-    Stroke {
-        argb: i32,
-        width: f32,
-    },
+    Stroke { argb: i32, width: f32 },
     /// 使用指定颜色绘制阴影。
     Shadow {
         argb: i32,
@@ -672,10 +659,7 @@ impl Default for RichTextPaint {
 #[derive(Clone, Debug, PartialEq)]
 pub enum RichTextSemantic {
     /// 可交互链接的调用方标识和目标地址。
-    Link {
-        id: Option<String>,
-        target: String,
-    },
+    Link { id: Option<String>, target: String },
     /// 采用技术文本断行和空格策略的范围。
     TechnicalInline,
 }
@@ -740,7 +724,6 @@ impl RichTextBackgroundPaint {
             continuation_corner_radius_was_set: false,
         }
     }
-
 }
 
 pub struct RichTextBackgroundPaintBuilder {
@@ -798,14 +781,9 @@ pub enum RichTextLinePattern {
     /// 连续实线。
     Solid,
     /// 按线段长度和间隔重复的虚线。
-    Dashed {
-        dash_length: f32,
-        gap_length: f32,
-    },
+    Dashed { dash_length: f32, gap_length: f32 },
     /// 按间隔重复的点线。
-    Dotted {
-        gap_length: f32,
-    },
+    Dotted { gap_length: f32 },
 }
 
 /// 行间注（ruby, ADR 0032）：在 base SOURCE `base_range` 上方的、小字号 annotation `text`——本 slice

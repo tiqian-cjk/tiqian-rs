@@ -98,17 +98,12 @@ pub mod number_symbol_cohesion {
     }
 
     fn is_digit(character: char) -> bool {
-        CodePointMapData::<GeneralCategory>::new().get(character)
-            == GeneralCategory::DecimalNumber
+        CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber
     }
 
     const PREFIX_SIGN: [char; 3] = ['+', '-', '±'];
-    const SUFFIX_UNIT: [char; 7] = [
-        '%', '‰', '°', '℃', '℉', '′', '″',
-    ];
-    const FRONT_CURRENCY: [char; 10] = [
-        '¥', '￥', '$', '＄', '€', '£', '₩', '₽', '₹', '฿',
-    ];
+    const SUFFIX_UNIT: [char; 7] = ['%', '‰', '°', '℃', '℉', '′', '″'];
+    const FRONT_CURRENCY: [char; 10] = ['¥', '￥', '$', '＄', '€', '£', '₩', '₽', '₹', '฿'];
     const BACK_CURRENCY: [char; 1] = ['₫'];
 
     #[cfg(test)]

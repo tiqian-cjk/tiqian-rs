@@ -1,5 +1,5 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::layout::line_optimization::{
     BreakCandidate, LineCandidate, LineOptimizationStrategy, LineSolution, RepairCandidate,
@@ -53,7 +53,11 @@ fn break_candidate_carries_explicit_forbidden_reason_and_repairs() {
 
 #[test]
 fn line_candidate_rejects_hanging_that_is_not_a_trailing_suffix() {
-    for hanging in [HashSet::from([0, 1]), HashSet::from([2, 3]), HashSet::from([7])] {
+    for hanging in [
+        HashSet::from([0, 1]),
+        HashSet::from([2, 3]),
+        HashSet::from([7]),
+    ] {
         assert!(
             std::panic::catch_unwind(|| line_with_hanging(hanging)).is_err(),
             "expected hanging suffix rejection"
@@ -105,7 +109,13 @@ fn carry_next_records_the_moved_mark() {
 
     assert_eq!(15, carry_next.penalty());
     assert_eq!("ForbiddenAtLineEnd:“:carry-next", carry_next.reason());
-    assert!(matches!(carry_next, RepairOption::CarryNext { moved_cluster_index: 4, .. }));
+    assert!(matches!(
+        carry_next,
+        RepairOption::CarryNext {
+            moved_cluster_index: 4,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -135,9 +145,15 @@ fn line_solution_defaults_to_zero_badness() {
 #[test]
 fn optimization_strategy_enumerates_all_three_strategies() {
     assert_eq!("Greedy", format!("{:?}", LineOptimizationStrategy::Greedy));
-    assert_eq!("Lookahead", format!("{:?}", LineOptimizationStrategy::Lookahead));
+    assert_eq!(
+        "Lookahead",
+        format!("{:?}", LineOptimizationStrategy::Lookahead)
+    );
     assert_eq!(
         "ParagraphDynamicProgramming",
-        format!("{:?}", LineOptimizationStrategy::ParagraphDynamicProgramming)
+        format!(
+            "{:?}",
+            LineOptimizationStrategy::ParagraphDynamicProgramming
+        )
     );
 }

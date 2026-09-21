@@ -1,48 +1,42 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::layout_model::BopomofoGlyphRole;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
 fn layout(
     ruby_spans: Vec<RubySpan>,
     spans: Vec<TextSpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from("中文"))
-                .spans(spans)
-                .build(),
-            LayoutConstraints::with_defaults(4000.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::builder(Text::from("中文"))
+                    .spans(spans)
+                    .build(),
+                LayoutConstraints::with_defaults(4000.0),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .ruby_spans(ruby_spans)
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .ruby_spans(ruby_spans)
-        .build(),
-    )
 }
 
 #[test]
 fn bopomofo_symbols_and_tones_occupy_right_side_annotation_zone() {
     let result = layout(
         vec![
-            RubySpan::with_kind(
-                text_range(0, 1),
-                Text::from("ㄓㄨㄥ"),
-                RubyKind::Bopomofo,
-            ),
-            RubySpan::with_kind(
-                text_range(1, 2),
-                Text::from("ㄔㄤˊ"),
-                RubyKind::Bopomofo,
-            ),
+            RubySpan::with_kind(text_range(0, 1), Text::from("ㄓㄨㄥ"), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(1, 2), Text::from("ㄔㄤˊ"), RubyKind::Bopomofo),
         ],
         Vec::new(),
     );
@@ -112,16 +106,8 @@ fn bopomofo_reserves_annotated_base_without_changing_unannotated_neighbor() {
 fn bopomofo_font_weight_follows_annotated_base_plus_three_steps() {
     let weighted = layout(
         vec![
-            RubySpan::with_kind(
-                text_range(0, 1),
-                Text::from("ㄓㄨㄥ"),
-                RubyKind::Bopomofo,
-            ),
-            RubySpan::with_kind(
-                text_range(1, 2),
-                Text::from("ㄨㄣˊ"),
-                RubyKind::Bopomofo,
-            ),
+            RubySpan::with_kind(text_range(0, 1), Text::from("ㄓㄨㄥ"), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(1, 2), Text::from("ㄨㄣˊ"), RubyKind::Bopomofo),
         ],
         vec![
             TextSpan {

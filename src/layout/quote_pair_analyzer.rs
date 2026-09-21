@@ -194,11 +194,8 @@ fn is_non_cjk_word_character(character: char) -> bool {
 
 fn is_non_cjk_non_numeric_word_character(character: char) -> bool {
     is_non_cjk_word_character(character)
-        && !super::super::core::unicode_word_character::unicode_word_character::is_number(
-            character,
-        )
-        && CodePointMapData::<EastAsianWidth>::new().get(character)
-            != EastAsianWidth::Fullwidth
+        && !super::super::core::unicode_word_character::unicode_word_character::is_number(character)
+        && CodePointMapData::<EastAsianWidth>::new().get(character) != EastAsianWidth::Fullwidth
 }
 
 /**

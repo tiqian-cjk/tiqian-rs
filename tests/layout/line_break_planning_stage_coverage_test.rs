@@ -1,12 +1,12 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, LineBreakPolicy,
-    LineBreakSpan, LineLengthGrid, ParagraphStyle, TiqianTextContent,
+    INLINE_OBJECT_REPLACEMENT_CHAR, InlineObjectSpan, LayoutInput, LineBreakPolicy, LineBreakSpan,
+    LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 
 use crate::support::DeterministicStubFontBackend;
@@ -33,17 +33,19 @@ fn layout(
         .line_length_grid(LineLengthGrid::with_enabled(false))
         .line_height(line_height)
         .build();
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text))
-                .line_break_spans(line_break_spans)
-                .build(),
-            LayoutConstraints::with_defaults(max_width),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::builder(Text::from(text))
+                    .line_break_spans(line_break_spans)
+                    .build(),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(style)
+            .inline_objects(inline_objects)
+            .build(),
         )
-        .paragraph_style(style)
-        .inline_objects(inline_objects)
-        .build(),
-    )
 }
 
 #[test]
@@ -93,7 +95,12 @@ fn emergency_boundary_eligibility_skips_inline_object_boundaries() {
             range: text_range(0, 3),
             policy: LineBreakPolicy::ProgressiveTechnical,
         }],
-        vec![InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 16.0, 8.0, 8.0)],
+        vec![InlineObjectSpan::with_fixed_boundaries(
+            text_range(1, 2),
+            16.0,
+            8.0,
+            8.0,
+        )],
     );
     assert_eq!(1, result.lines.len());
     assert_eq!(0, result.lines[0].cluster_range.first());
@@ -113,9 +120,16 @@ fn dash_and_solidus_boundaries_inside_technical_spans_never_stretch() {
             Vec::new(),
         );
         assert!(!result.lines.is_empty(), "{text}: {:?}", result.lines);
-        assert!(result.debug.justification_decisions.iter().flat_map(|decision| &decision.allocations).all(|allocation| {
-            allocation.kind != "EmergencyGraphemeTracking" || allocation.delta <= 0.0
-        }));
+        assert!(
+            result
+                .debug
+                .justification_decisions
+                .iter()
+                .flat_map(|decision| &decision.allocations)
+                .all(|allocation| {
+                    allocation.kind != "EmergencyGraphemeTracking" || allocation.delta <= 0.0
+                })
+        );
     }
 }
 
@@ -126,8 +140,14 @@ fn overlapping_technical_spans_keep_the_first_boundary_reason() {
         200.0,
         None,
         vec![
-            LineBreakSpan { range: text_range(0, 4), policy: LineBreakPolicy::ProgressiveTechnical },
-            LineBreakSpan { range: text_range(2, 6), policy: LineBreakPolicy::ProgressiveTechnical },
+            LineBreakSpan {
+                range: text_range(0, 4),
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
+            LineBreakSpan {
+                range: text_range(2, 6),
+                policy: LineBreakPolicy::ProgressiveTechnical,
+            },
         ],
         Vec::new(),
     );
@@ -140,10 +160,11 @@ fn push_out_first_takes_fewer_fill_push_ins_than_push_in_first() {
     let layout_with = |strategy| {
         let line_breaker = Box::new(LookaheadLineBreaker::default());
         let clreq_profile_resolver = Box::new(AdjustmentProfile(strategy));
-        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-            .line_breaker(line_breaker)
-            .clreq_profile_resolver(clreq_profile_resolver)
-            .build();
+        let mut engine =
+            ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+                .line_breaker(line_breaker)
+                .clreq_profile_resolver(clreq_profile_resolver)
+                .build();
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from(TEXT)),
@@ -168,7 +189,11 @@ fn push_out_first_takes_fewer_fill_push_ins_than_push_in_first() {
 
     let push_in_first = layout_with(LineAdjustmentStrategy::PushInFirst);
     let push_out_first = layout_with(LineAdjustmentStrategy::PushOutFirst);
-    assert!(fill_push_in_count(&push_in_first) > 0, "{:?}", push_in_first.debug.line_decisions);
+    assert!(
+        fill_push_in_count(&push_in_first) > 0,
+        "{:?}",
+        push_in_first.debug.line_decisions
+    );
     assert!(fill_push_in_count(&push_out_first) <= fill_push_in_count(&push_in_first));
     assert!(push_out_first.lines.len() >= push_in_first.lines.len());
 }

@@ -2,8 +2,8 @@ use crate::core::geometry::TextRange;
 use crate::core::text::Text;
 use crate::core::text_model::{
     DecorationKind, DecorationSpan, InlineBoxSpan, InlineObjectSpan, LineBreakPolicy,
-    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextPaint,
-    RichTextLinePaint, RichTextSemantic, RubySpan,
+    LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
+    RichTextPaint, RichTextSemantic, RubySpan,
 };
 
 use super::builder::ParagraphBuilder;
@@ -326,11 +326,7 @@ impl ParagraphBuilder {
     }
 
     /// 在内容范围上声明下划线 layer，并在进入 scope 时复制当前 paint。
-    pub fn with_underline(
-        &mut self,
-        line: RichTextLinePaint,
-        content: impl FnOnce(&mut Self),
-    ) {
+    pub fn with_underline(&mut self, line: RichTextLinePaint, content: impl FnOnce(&mut Self)) {
         let paints = self.current_paints();
         self.with_scope(
             OpenScopeKind::RichText(vec![RichTextLayer {
@@ -358,11 +354,7 @@ impl ParagraphBuilder {
     }
 
     /// 在内容范围上声明删除线 layer，并在进入 scope 时复制当前 paint。
-    pub fn with_line_through(
-        &mut self,
-        line: RichTextLinePaint,
-        content: impl FnOnce(&mut Self),
-    ) {
+    pub fn with_line_through(&mut self, line: RichTextLinePaint, content: impl FnOnce(&mut Self)) {
         let paints = self.current_paints();
         self.with_scope(
             OpenScopeKind::RichText(vec![RichTextLayer {

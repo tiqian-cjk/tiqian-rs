@@ -1,7 +1,7 @@
 use tiqian::common::HashSet;
 
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::progressive_break_decisions::decide_hyphen_break;

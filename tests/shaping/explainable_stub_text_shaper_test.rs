@@ -1,11 +1,10 @@
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::TextStyle;
 use tiqian::font::font_policy::{FontCandidate, FontDecision, FontRole};
 use tiqian::shaping::text_shaper::{
-    ExplainableStubTextShaper, ShapingInput, TextShaper,
-    ShapingResult, ShapingSource, PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE,
-    UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
+    ExplainableStubTextShaper, PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE, ShapingInput, ShapingResult,
+    ShapingSource, TextShaper, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
 };
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -159,10 +158,7 @@ fn explainable_stub_nominal_advance_branches() {
     );
     assert_eq!(
         8.0,
-        shaper
-            .shape(&input(" ", FontRole::LatinText, " "))
-            .clusters[0]
-            .advance
+        shaper.shape(&input(" ", FontRole::LatinText, " ")).clusters[0].advance
     );
     assert_eq!(
         24.0,

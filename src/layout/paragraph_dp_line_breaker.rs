@@ -8,14 +8,14 @@ use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
 use super::line_breaker::{
-    LineBreaker, LineBreakerConfig, adjust_break_for_line_end, aligned_adjusted_clusters, close_filled_line,
-    empty_line_candidate, find_greedy_end, rebuild_line,
+    LineBreaker, LineBreakerConfig, adjust_break_for_line_end, aligned_adjusted_clusters,
+    close_filled_line, empty_line_candidate, find_greedy_end, rebuild_line,
 };
 use super::line_optimization::{LineCandidate, LineSolution};
 use super::line_repair::{apply_kinsoku_repairs, try_push_in};
 use super::progressive_break_decisions::{
-    ProgressiveBreakOpportunity, ShrinkOpportunity, adjust_break_for_unbreakables,
-    UnbreakableRanges, decide_hyphen_break, decide_progressive_break, line_limit,
+    ProgressiveBreakOpportunity, ShrinkOpportunity, UnbreakableRanges,
+    adjust_break_for_unbreakables, decide_hyphen_break, decide_progressive_break, line_limit,
     progressive_candidate_allowed,
 };
 
@@ -280,7 +280,8 @@ impl ParagraphDpLineBreaker {
                 .map(|index| context.adjusted_clusters[index as usize].advance)
                 .sum();
             let mut end = raw_greedy + 1;
-            while end <= segment_end_exclusive && compressed.len() < context.candidate_window as usize
+            while end <= segment_end_exclusive
+                && compressed.len() < context.candidate_window as usize
             {
                 width += context.adjusted_clusters[end as usize - 1].advance;
                 if width - limit > context.shrink_capacity(IntRange::new(start, end - 1)) {
@@ -404,9 +405,11 @@ impl ParagraphDpLineBreaker {
                     promotions_complete = false;
                     break;
                 };
-                best_priority = Some(best_priority.map_or(opportunity.tier.priority(), |priority| {
-                    priority.min(opportunity.tier.priority())
-                }));
+                best_priority = Some(
+                    best_priority.map_or(opportunity.tier.priority(), |priority| {
+                        priority.min(opportunity.tier.priority())
+                    }),
+                );
                 promoted_span.get_or_insert(opportunity.span_range);
             }
             if let (Some(best_priority), Some(promoted_span)) = (best_priority, promoted_span)

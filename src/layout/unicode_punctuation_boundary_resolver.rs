@@ -351,7 +351,10 @@ fn quote_direction(
             QuoteDirection::Final
         };
     }
-    if matches!(character, '\u{00ab}' | '\u{2018}' | '\u{201b}' | '\u{201c}' | '\u{201f}' | '\u{2039}') {
+    if matches!(
+        character,
+        '\u{00ab}' | '\u{2018}' | '\u{201b}' | '\u{201c}' | '\u{201f}' | '\u{2039}'
+    ) {
         QuoteDirection::Initial
     } else if matches!(character, '\u{00bb}' | '\u{2019}' | '\u{201d}' | '\u{203a}') {
         QuoteDirection::Final
@@ -375,9 +378,8 @@ fn cluster_text(text: &Text, c: &Cluster) -> Option<Text> {
     Some(text.slice_text(c.range))
 }
 fn first_significant(s: &Text) -> Option<(ScalarOffset, char)> {
-    s.scalar_indices().find_map(|(offset, character)| {
-        (!character.is_whitespace()).then_some((offset, character))
-    })
+    s.scalar_indices()
+        .find_map(|(offset, character)| (!character.is_whitespace()).then_some((offset, character)))
 }
 fn last_significant(s: &Text) -> Option<(ScalarOffset, char)> {
     s.scalar_indices()

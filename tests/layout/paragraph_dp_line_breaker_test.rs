@@ -1,7 +1,7 @@
 use tiqian::common::HashSet;
 
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -148,12 +148,16 @@ fn consecutive_synthetic_hyphen_penalty_avoids_second_hyphenated_line() {
     let mut no_consecutive_penalty = ParagraphDpLineBreaker::default();
     no_consecutive_penalty.synthetic_hyphen_break_penalty = 0.0;
     no_consecutive_penalty.consecutive_synthetic_hyphen_penalty = 0.0;
-    let without_penalty =
-        no_consecutive_penalty.break_lines(&clusters, &clusters, 30.0, &config);
-    let with_penalty = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
+    let without_penalty = no_consecutive_penalty.break_lines(&clusters, &clusters, 30.0, &config);
+    let with_penalty =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
 
     assert_eq!(
-        vec![IntRange::new(0, 2), IntRange::new(3, 5), IntRange::new(6, 7)],
+        vec![
+            IntRange::new(0, 2),
+            IntRange::new(3, 5),
+            IntRange::new(6, 7)
+        ],
         without_penalty
             .lines
             .iter()
@@ -161,7 +165,11 @@ fn consecutive_synthetic_hyphen_penalty_avoids_second_hyphenated_line() {
             .collect::<Vec<_>>(),
     );
     assert_eq!(
-        vec![IntRange::new(0, 1), IntRange::new(2, 4), IntRange::new(5, 7)],
+        vec![
+            IntRange::new(0, 1),
+            IntRange::new(2, 4),
+            IntRange::new(5, 7)
+        ],
         with_penalty
             .lines
             .iter()
@@ -194,16 +202,15 @@ fn compressed_same_tier_boundary_is_not_reported_as_promotion() {
             ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
         ),
     ]);
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
 
     assert_eq!(IntRange::new(0, 2), solution.lines[0].cluster_range);
-    assert!(
-        matches!(
-            &solution.lines[0].repair,
-            Some(RepairOption::PushIn { reason, .. })
-                if reason.starts_with("LineAdjustmentPushIn")
-        )
-    );
+    assert!(matches!(
+        &solution.lines[0].repair,
+        Some(RepairOption::PushIn { reason, .. })
+            if reason.starts_with("LineAdjustmentPushIn")
+    ));
 }
 
 #[test]
@@ -251,15 +258,11 @@ fn compression_disabled_without_push_in_flag() {
     let solution = break_lines(&clusters, 56.0, disabled);
 
     assert_tiles(&solution, 5);
-    assert!(
-        solution.lines.iter().all(
-            |line| !matches!(
-                &line.repair,
-                Some(RepairOption::PushIn { reason, .. })
-                    if reason.starts_with("LineAdjustmentPushIn")
-            )
-        )
-    );
+    assert!(solution.lines.iter().all(|line| !matches!(
+        &line.repair,
+        Some(RepairOption::PushIn { reason, .. })
+            if reason.starts_with("LineAdjustmentPushIn")
+    )));
 }
 
 #[test]

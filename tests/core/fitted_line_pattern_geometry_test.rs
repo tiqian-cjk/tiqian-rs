@@ -12,7 +12,10 @@ fn dashed_remainder_is_shared_between_full_edge_anchored_dashes() {
 
 #[test]
 fn short_dashed_span_becomes_one_visible_dash() {
-    assert_eq!(vec![0.0, 3.0], fitted_dashed_line_segments(0.0, 3.0, 2.0, 2.0));
+    assert_eq!(
+        vec![0.0, 3.0],
+        fitted_dashed_line_segments(0.0, 3.0, 2.0, 2.0)
+    );
 }
 
 #[test]

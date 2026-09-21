@@ -42,7 +42,9 @@ pub enum ParagraphBuildError {
 impl fmt::Display for ParagraphBuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptyScopeStack => formatter.write_str("cannot close an empty paragraph scope stack"),
+            Self::EmptyScopeStack => {
+                formatter.write_str("cannot close an empty paragraph scope stack")
+            }
             Self::EmptyInlineObjectReplacementText => {
                 formatter.write_str("inline object requires non-empty replacement text")
             }

@@ -39,7 +39,8 @@ pub struct JustificationRequest<'a> {
     pub attached_inline_virtual_boundary_after_clusters: &'a HashMap<i32, i32>,
     pub attached_inline_virtual_sino_western_boundary_after_clusters: &'a HashSet<i32>,
     pub uniform_inline_object_boundary_after_clusters: &'a HashSet<i32>,
-    pub preferred_inline_object_boundary_after_clusters: &'a HashMap<i32, InlineObjectPreferredStretch>,
+    pub preferred_inline_object_boundary_after_clusters:
+        &'a HashMap<i32, InlineObjectPreferredStretch>,
     pub technical_boundary_after_clusters: &'a HashMap<i32, ProgressiveBreakTier>,
     pub emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
     pub preferred_emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
@@ -128,7 +129,9 @@ impl Justifier {
                 || request.no_stretch_boundary_clusters.contains(&right)
         };
         let space_gap_is_closed = |space: i32| {
-            request.no_stretch_boundary_after_clusters.contains(&(space - 1))
+            request
+                .no_stretch_boundary_after_clusters
+                .contains(&(space - 1))
                 || request.no_stretch_boundary_after_clusters.contains(&space)
                 || request.no_stretch_boundary_clusters.contains(&(space - 1))
                 || request.no_stretch_boundary_clusters.contains(&(space + 1))
@@ -349,9 +352,8 @@ impl Justifier {
                     .preferred_emergency_tracking_boundary_after_clusters
                     .get(&opportunity.target_cluster_index)
                 {
-                    opportunity.reason = Some(format!(
-                        "TerminalTechnicalEmergencyTracking:{reason}"
-                    ));
+                    opportunity.reason =
+                        Some(format!("TerminalTechnicalEmergencyTracking:{reason}"));
                 }
                 opportunity
             })
@@ -372,12 +374,9 @@ impl Justifier {
             );
         }
 
-        let has_cjk_body = request
-            .line_cluster_range
-            .into_iter()
-            .any(|index| {
-                spacing_edges_at(request.east_asian_spacing_edges, index as usize).contains_wide
-            });
+        let has_cjk_body = request.line_cluster_range.into_iter().any(|index| {
+            spacing_edges_at(request.east_asian_spacing_edges, index as usize).contains_wide
+        });
         let has_object_boundary =
             (request.line_cluster_range.first()..request.line_cluster_range.last()).any(|left| {
                 request

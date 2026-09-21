@@ -79,7 +79,12 @@ impl Cluster {
             glyph_inline_shift: 0.0,
         }
     }
-    pub fn builder(range: TextRange, text: Text, font_face: FontFaceId, advance: f32) -> ClusterBuilder {
+    pub fn builder(
+        range: TextRange,
+        text: Text,
+        font_face: FontFaceId,
+        advance: f32,
+    ) -> ClusterBuilder {
         ClusterBuilder {
             cluster: Self::new(range, text, font_face, advance),
         }

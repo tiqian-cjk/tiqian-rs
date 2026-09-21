@@ -1,8 +1,11 @@
-use tiqian::common::HashMap;
+use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver, PunctuationClass};
+use tiqian::clreq::clreq_profile::{
+    BuiltInClreqProfileResolver, ClreqProfileResolver, PunctuationClass,
+};
+use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, EmergencyTrackingEligibilityDecisionInfo};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -13,20 +16,19 @@ use tiqian::font::font_metrics::ScriptAwareFontMetricsNormalizer;
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
 use tiqian::layout::default_hyphenator::default_hyphenator;
 use tiqian::layout::justifier::Justifier;
-use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker};
 use tiqian::layout::line_break_planning_stage::{
-    plan_paragraph_lines, LineBreakPlanningRequest, ParagraphLayoutPrep,
+    LineBreakPlanningRequest, ParagraphLayoutPrep, plan_paragraph_lines,
 };
-use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
-use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
+use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker};
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier,
 };
+use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
+use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
 };
 use tiqian::shaping::font_backend::{FontCandidateAttempt, FontResolution};
-use crate::support::DeterministicStubFontBackend;
 
 fn base_prep(text: &str) -> ParagraphLayoutPrep {
     let input = LayoutInput::builder(
@@ -61,7 +63,9 @@ fn base_prep(text: &str) -> ParagraphLayoutPrep {
     )
 }
 
-fn plan(prep: &ParagraphLayoutPrep) -> tiqian::layout::line_break_planning_stage::LineBreakPlanningStageResult {
+fn plan(
+    prep: &ParagraphLayoutPrep,
+) -> tiqian::layout::line_break_planning_stage::LineBreakPlanningStageResult {
     let font_backend = DeterministicStubFontBackend::default();
     let font_metrics_normalizer = ScriptAwareFontMetricsNormalizer;
     let justifier = Justifier::default();
@@ -78,7 +82,12 @@ fn plan(prep: &ParagraphLayoutPrep) -> tiqian::layout::line_break_planning_stage
 #[test]
 fn test_font_resolution_metrics_use_resolved_face() {
     let mut prep = base_prep("abcdef");
-    let bad_cluster = Cluster::new(text_range(0, 5), Text::from("abcde"), FontFaceId::with_resource_id("test"), 50.0);
+    let bad_cluster = Cluster::new(
+        text_range(0, 5),
+        Text::from("abcde"),
+        FontFaceId::with_resource_id("test"),
+        50.0,
+    );
     let bad_resolution = FontResolution::new(
         text_range(0, 3),
         FontRole::LatinText,
@@ -96,7 +105,10 @@ fn test_font_resolution_metrics_use_resolved_face() {
     let result = plan(&prep);
     assert_eq!(1, result.metric_decisions.len());
     assert_eq!(text_range(0, 3), result.metric_decisions[0].range);
-    assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
+    assert_eq!(
+        FontFaceId::with_resource_id("test"),
+        result.metric_decisions[0].request.face
+    );
     assert_eq!(FontRole::LatinText, result.metric_decisions[0].request.role);
 }
 
@@ -113,20 +125,30 @@ fn test_font_decision_with_no_matching_clusters_uses_text_substring() {
             0,
         )],
     );
-    let cluster = Cluster::new(text_range(0, 2), Text::from("ab"), FontFaceId::with_resource_id("test"), 20.0);
+    let cluster = Cluster::new(
+        text_range(0, 2),
+        Text::from("ab"),
+        FontFaceId::with_resource_id("test"),
+        20.0,
+    );
     prep.natural_clusters = vec![cluster.clone()];
     prep.clusters = vec![cluster];
     prep.font_resolutions = HashMap::from([(resolution.range, resolution)]);
 
     let result = plan(&prep);
     assert_eq!(1, result.metric_decisions.len());
-    assert_eq!(FontFaceId::with_resource_id("test"), result.metric_decisions[0].request.face);
+    assert_eq!(
+        FontFaceId::with_resource_id("test"),
+        result.metric_decisions[0].request.face
+    );
     assert_eq!(text_range(4, 6), result.metric_decisions[0].range);
 }
 
 #[test]
 fn test_ascii_point_mark_kinsoku_line_start() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("hello, world")),
@@ -140,7 +162,9 @@ fn test_ascii_point_mark_kinsoku_line_start() {
 #[test]
 fn test_inline_object_kinsoku_line_start() {
     let text = format!("{INLINE_OBJECT_REPLACEMENT_CHAR}hello");
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -197,23 +221,42 @@ fn test_emergency_tracking_eligibility_decisions_branches() {
 fn test_emergency_tracking_boundary_whitespace_and_empty() {
     let mut prep = base_prep("ab");
     let clusters = vec![
-        Cluster::new(text_range(0, 0), Text::from(""), FontFaceId::with_resource_id("test"), 0.0),
-        Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("test"), 10.0),
-        Cluster::new(text_range(1, 1), Text::from(""), FontFaceId::with_resource_id("test"), 0.0),
-        Cluster::new(text_range(1, 2), Text::from("b"), FontFaceId::with_resource_id("test"), 10.0),
+        Cluster::new(
+            text_range(0, 0),
+            Text::from(""),
+            FontFaceId::with_resource_id("test"),
+            0.0,
+        ),
+        Cluster::new(
+            text_range(0, 1),
+            Text::from("a"),
+            FontFaceId::with_resource_id("test"),
+            10.0,
+        ),
+        Cluster::new(
+            text_range(1, 1),
+            Text::from(""),
+            FontFaceId::with_resource_id("test"),
+            0.0,
+        ),
+        Cluster::new(
+            text_range(1, 2),
+            Text::from("b"),
+            FontFaceId::with_resource_id("test"),
+            10.0,
+        ),
     ];
     prep.natural_clusters = clusters.clone();
     prep.clusters = clusters;
     prep.cluster_roles = vec![FontRole::LatinText; 4];
     prep.east_asian_spacing_edges = vec![prep.east_asian_spacing_edges[0]; 4];
     prep.natural_inline_attachments = vec![Default::default(); 4];
-    prep.emergency_tracking_eligibility_decisions = vec![
-        EmergencyTrackingEligibilityDecisionInfo {
+    prep.emergency_tracking_eligibility_decisions =
+        vec![EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(0, 2),
             source_text: Text::from("ab"),
             reason: "reason".to_owned(),
-        },
-    ];
+        }];
 
     assert!(!plan(&prep).line_solution.lines.is_empty());
 }

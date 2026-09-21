@@ -962,8 +962,12 @@ impl LineBreaker for LookaheadLineBreaker {
                 config.first_line_indent,
                 line.cluster_range.first(),
             );
-            committed_density =
-                line_adjustment_density_with_gap_prefix(&line, line_limit_value, false, &gap_prefix);
+            committed_density = line_adjustment_density_with_gap_prefix(
+                &line,
+                line_limit_value,
+                false,
+                &gap_prefix,
+            );
             committed_synthetic_hyphen_run =
                 if ends_with_synthetic_hyphen(&line, &config.hyphen_break_clusters) {
                     committed_synthetic_hyphen_run + 1

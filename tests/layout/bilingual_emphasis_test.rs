@@ -1,22 +1,25 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{DecorationKind, DecorationSpan, LayoutInput, TiqianTextContent};
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn emphasis_dots_han_but_not_western_text() {
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from("强调中A中")),
-            LayoutConstraints::with_defaults(400.0),
-        )
-        .decorations(vec![DecorationSpan {
-            range: text_range(2, 5),
-            kind: DecorationKind::Emphasis,
-        }])
-        .build(),
-    );
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from("强调中A中")),
+                    LayoutConstraints::with_defaults(400.0),
+                )
+                .decorations(vec![DecorationSpan {
+                    range: text_range(2, 5),
+                    kind: DecorationKind::Emphasis,
+                }])
+                .build(),
+            );
     let decisions = result
         .debug
         .decoration_decisions

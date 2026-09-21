@@ -3,8 +3,8 @@
 use crate::common::HashSet;
 
 use super::super::core::text::Text;
-use super::super::font::font_policy::FontRole;
 use super::super::core::text_model::{LayoutProfileId, built_in_layout_profiles};
+use super::super::font::font_policy::FontRole;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClreqStrictness {
@@ -922,8 +922,7 @@ impl ClreqPunctuationGlyphSubstitutor {
 }
 
 fn to_clreq_recommended_display_text(source_text: &Text) -> Text {
-    if source_text.chars().all(|character| character == '…')
-    {
+    if source_text.chars().all(|character| character == '…') {
         Text::from("⋯".repeat(source_text.scalar_len().value() as usize))
     } else if source_text == "——" {
         Text::from("⸺")

@@ -615,21 +615,21 @@ fn fitted_body_frame(advance: f32, target_body: f32, ink_bounds: Rect) -> BodyFr
         },
     ];
     let ink_center = (ink_bounds.left + ink_bounds.right) / 2.0;
-    *candidates.iter().skip(1).fold(&candidates[0], |best, candidate| {
-        let order = candidate.width
-            .total_cmp(&best.width)
-            .then_with(|| {
-                ((candidate.start + candidate.width / 2.0) - ink_center)
-                    .abs()
-                    .total_cmp(&((best.start + best.width / 2.0) - ink_center).abs())
-            })
-            .then_with(|| anchor_ordinal(candidate.anchor).cmp(&anchor_ordinal(best.anchor)));
-        if order.is_lt() {
-            candidate
-        } else {
-            best
-        }
-    })
+    *candidates
+        .iter()
+        .skip(1)
+        .fold(&candidates[0], |best, candidate| {
+            let order = candidate
+                .width
+                .total_cmp(&best.width)
+                .then_with(|| {
+                    ((candidate.start + candidate.width / 2.0) - ink_center)
+                        .abs()
+                        .total_cmp(&((best.start + best.width / 2.0) - ink_center).abs())
+                })
+                .then_with(|| anchor_ordinal(candidate.anchor).cmp(&anchor_ordinal(best.anchor)));
+            if order.is_lt() { candidate } else { best }
+        })
 }
 
 fn anchor_ordinal(anchor: PunctuationAnchor) -> i32 {

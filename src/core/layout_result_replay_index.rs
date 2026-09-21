@@ -31,11 +31,12 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             line.push(positioned.clone());
         }
     }
-    let rich_text_segments = result.positioned_rich_text_segments_from_clusters(&positioned_clusters);
-    let rich_text_background_segments = result.rich_text_background_segments_from_occupied(
-        &rich_text_segments, &positioned_clusters,
-    );
-    let rich_text_decoration_segments = result.rich_text_decoration_segments_from_occupied(&rich_text_segments);
+    let rich_text_segments =
+        result.positioned_rich_text_segments_from_clusters(&positioned_clusters);
+    let rich_text_background_segments = result
+        .rich_text_background_segments_from_occupied(&rich_text_segments, &positioned_clusters);
+    let rich_text_decoration_segments =
+        result.rich_text_decoration_segments_from_occupied(&rich_text_segments);
     let mut glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>> = HashMap::new();
     for glyph in result.glyph_runs.iter().flat_map(|run| &run.glyphs) {
         glyphs_by_cluster_range
@@ -56,7 +57,9 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
         let features = result
             .glyph_runs
             .get(run_index)
-            .filter(|run| cluster.range.start() >= run.range.start() && cluster.range.end() <= run.range.end())
+            .filter(|run| {
+                cluster.range.start() >= run.range.start() && cluster.range.end() <= run.range.end()
+            })
             .map(|run| run.open_type_features.clone())
             .unwrap_or_default();
         open_type_features_by_cluster_range.insert(cluster.range, features);
@@ -77,7 +80,9 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             .debug
             .font_decisions
             .get(decision_index)
-            .filter(|decision| range.start() >= decision.range.start() && range.end() <= decision.range.end())
+            .filter(|decision| {
+                range.start() >= decision.range.start() && range.end() <= decision.range.end()
+            })
             .map(|decision| decision.role.clone());
         font_role_by_cluster_range.insert(range, role);
     }
@@ -117,7 +122,11 @@ pub fn selection_offset_for_position(
         );
     }
     if x <= positioned[0].left {
-        return coerce_selection_offset(result, positioned[0].range.start(), SourceBoundaryBias::Nearest);
+        return coerce_selection_offset(
+            result,
+            positioned[0].range.start(),
+            SourceBoundaryBias::Nearest,
+        );
     }
     if x >= positioned[positioned.len() - 1].right {
         return coerce_selection_offset(
@@ -181,7 +190,12 @@ pub fn cursor_rect(
     offset: ScalarOffset,
 ) -> Rect {
     if result.lines.is_empty() {
-        return Rect { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 };
+        return Rect {
+            left: 0.0,
+            top: 0.0,
+            right: 0.0,
+            bottom: 0.0,
+        };
     }
     let clamped = offset.min(result.input.content.text.scalar_len());
     let line_index = get_line_for_offset(result, clamped).max(0) as usize;
@@ -206,7 +220,12 @@ pub fn cursor_rect(
             clamped,
         )
     };
-    Rect { left: x, top: line.top, right: x + 1.0, bottom: line.bottom }
+    Rect {
+        left: x,
+        top: line.top,
+        right: x + 1.0,
+        bottom: line.bottom,
+    }
 }
 
 /// Returns one continuous selection rectangle per visible line using immutable replay geometry.
@@ -224,8 +243,10 @@ pub fn selection_boxes(
     if start == end {
         return Vec::new();
     }
-    let first_line = get_line_for_offset(result, start).clamp(0, result.lines.len() as i32 - 1) as usize;
-    let last_line = get_line_for_offset(result, end).clamp(first_line as i32, result.lines.len() as i32 - 1) as usize;
+    let first_line =
+        get_line_for_offset(result, start).clamp(0, result.lines.len() as i32 - 1) as usize;
+    let last_line = get_line_for_offset(result, end)
+        .clamp(first_line as i32, result.lines.len() as i32 - 1) as usize;
     let mut boxes = Vec::new();
     for line_index in first_line..=last_line {
         let positioned = index
@@ -253,7 +274,12 @@ pub fn selection_boxes(
         };
         if right > left {
             let line = &result.lines[line_index];
-            boxes.push(Rect { left, top: line.top, right, bottom: line.bottom });
+            boxes.push(Rect {
+                left,
+                top: line.top,
+                right,
+                bottom: line.bottom,
+            });
         }
     }
     boxes

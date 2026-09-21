@@ -1,16 +1,14 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, Rect, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LayoutInput, ParagraphStyle, RubyLineHeightMode, RubySpan, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::shaping::font_backend::{
-    FontBackend, FontBackendRequest, FontBackendShapingResult,
-};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 fn layout(
     text: &str,
@@ -18,41 +16,45 @@ fn layout(
     style: ParagraphStyle,
     ruby_spans: Vec<RubySpan>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(max_width),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(style)
+            .ruby_spans(ruby_spans)
+            .build(),
         )
-        .paragraph_style(style)
-        .ruby_spans(ruby_spans)
-        .build(),
-    )
 }
 
 fn contradictory_ruby_ink_backend() -> impl FontBackend {
-    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-        let bounds = if input.display_text == "pg" {
-            Rect {
-                left: 0.0,
-                top: -100.0,
-                right: 16.0,
-                bottom: 100.0,
+    stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let bounds = if input.display_text == "pg" {
+                Rect {
+                    left: 0.0,
+                    top: -100.0,
+                    right: 16.0,
+                    bottom: 100.0,
+                }
+            } else {
+                Rect {
+                    left: 0.0,
+                    top: -1.0,
+                    right: 16.0,
+                    bottom: 1.0,
+                }
+            };
+            for run in &mut result.shaping.glyph_runs {
+                for glyph in &mut run.glyphs {
+                    glyph.bounds = Some(bounds);
+                }
             }
-        } else {
-            Rect {
-                left: 0.0,
-                top: -1.0,
-                right: 16.0,
-                bottom: 1.0,
-            }
-        };
-        for run in &mut result.shaping.glyph_runs {
-            for glyph in &mut run.glyphs {
-                glyph.bounds = Some(bounds);
-            }
-        }
-        result
-    })
+            result
+        },
+    )
 }
 
 #[test]
@@ -140,7 +142,9 @@ fn uniform_paragraph_mode_expands_every_line_by_same_ruby_deficit() {
 
 #[test]
 fn ruby_on_one_line_keeps_the_whole_baseline_grid_stable() {
-    let style = ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build();
+    let style = ParagraphStyle::builder()
+        .first_line_indent(Some(Ic::ZERO))
+        .build();
     let plain = layout("甲乙丙丁戊己庚辛", 64.0, style.clone(), Vec::new());
     let annotated = layout(
         "甲乙丙丁戊己庚辛",
@@ -165,7 +169,8 @@ fn ruby_vertical_geometry_uses_metrics_not_reading_ink() {
         .line_height(Some(18.0))
         .build();
     let layout_with_ink = |reading| {
-        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(contradictory_ruby_ink_backend())).build();
+        let mut engine =
+            ParagraphLayoutEngineBuilder::new(Box::new(contradictory_ruby_ink_backend())).build();
         engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::new(Text::from("甲乙丙丁")),
@@ -208,7 +213,9 @@ fn no_ruby_is_unchanged() {
     let result = layout(
         "中文排版",
         400.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
         Vec::new(),
     );
     assert!(result.debug.ruby_decisions.is_empty());
@@ -220,11 +227,18 @@ fn wide_adjacent_readings_spread_but_narrow_do_not() {
         layout(
             "中文排版",
             4000.0,
-            ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
             readings
                 .iter()
                 .enumerate()
-                .map(|(index, reading)| RubySpan::new(text_range(index as i32, index as i32 + 1), Text::from(*reading)))
+                .map(|(index, reading)| {
+                    RubySpan::new(
+                        text_range(index as i32, index as i32 + 1),
+                        Text::from(*reading),
+                    )
+                })
                 .collect(),
         )
         .clusters
@@ -235,6 +249,12 @@ fn wide_adjacent_readings_spread_but_narrow_do_not() {
     let plain = total_width(["", "", "", ""]);
     let narrow = total_width(["yī", "rén", "yī", "rén"]);
     let wide = total_width(["zhuāng", "chuáng", "shuāng", "guāng"]);
-    assert!(narrow >= plain, "spread never shrinks the line ({narrow} vs {plain})");
-    assert!(wide > narrow, "wider readings spread more ({wide} vs {narrow})");
+    assert!(
+        narrow >= plain,
+        "spread never shrinks the line ({narrow} vs {plain})"
+    );
+    assert!(
+        wide > narrow,
+        "wider readings spread more ({wide} vs {narrow})"
+    );
 }

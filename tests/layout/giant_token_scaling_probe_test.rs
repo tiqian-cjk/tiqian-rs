@@ -1,9 +1,9 @@
 use std::time::Instant;
 
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::width_independent_annotation_cache::LruWidthIndependentAnnotationCache;
 
@@ -45,7 +45,10 @@ fn giant_token_layout_stays_far_below_the_quadratic_ceiling() {
         })
         .min()
         .unwrap();
-    println!("giant-token 80k warm layout: {:.3} ms", warm.as_secs_f64() * 1_000.0);
+    println!(
+        "giant-token 80k warm layout: {:.3} ms",
+        warm.as_secs_f64() * 1_000.0
+    );
     assert!(
         warm.as_millis() < 1_500,
         "80k single-token layout took {:.3} ms; the quadratic planning regression is back",

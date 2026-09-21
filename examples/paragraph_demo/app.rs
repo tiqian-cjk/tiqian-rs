@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_result_replay_index::{LayoutResultReplayIndex, to_replay_index};
 use tiqian::core::text_model::LineLengthGrid;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
 use vello::peniko::color::palette::css::WHITE;
 use vello::util::{RenderContext, RenderSurface};
@@ -264,13 +264,15 @@ impl DesktopParagraphDemo {
                     let mut marker_measurement = marker.clone();
                     marker_measurement.input.paragraph_style.line_length_grid =
                         LineLengthGrid::with_enabled(false);
-                    let marker_measurement_layout = self.layout_document(marker_measurement, 100_000.0);
+                    let marker_measurement_layout =
+                        self.layout_document(marker_measurement, 100_000.0);
                     let gutter = (marker_measurement_layout.size.width / font_size)
                         .ceil()
                         .max(1.0)
                         * font_size;
                     let marker_layout = self.layout_document(marker, gutter);
-                    let body_layout = self.layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
+                    let body_layout = self
+                        .layout_document(body, (physical_content_width as f32 - gutter).max(1.0));
                     let marker_replay_index = to_replay_index(&marker_layout);
                     let body_replay_index = to_replay_index(&body_layout);
                     let marker_y = body_layout
@@ -661,8 +663,8 @@ impl ApplicationHandler for DesktopParagraphDemo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tiqian::core::geometry::ScalarOffset;
     use crate::sample::build_document;
+    use tiqian::core::geometry::ScalarOffset;
 
     fn layout_signature(result: &LayoutResult) -> Vec<(ScalarOffset, ScalarOffset, String)> {
         result
@@ -678,10 +680,7 @@ mod tests {
             .collect()
     }
 
-    fn assert_replayable(
-        catalog: &DemoFontCatalog,
-        result: &LayoutResult,
-    ) {
+    fn assert_replayable(catalog: &DemoFontCatalog, result: &LayoutResult) {
         assert!(
             result
                 .glyph_runs
@@ -705,9 +704,7 @@ mod tests {
         renderer
             .paint_decorations(&mut scene, result, &replay_index)
             .unwrap();
-        renderer
-            .paint_annotations(&mut scene, result)
-            .unwrap();
+        renderer.paint_annotations(&mut scene, result).unwrap();
         assert!(!scene.encoding().draw_tags.is_empty());
     }
 

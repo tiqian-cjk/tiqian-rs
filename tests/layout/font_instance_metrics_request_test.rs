@@ -1,20 +1,18 @@
 use std::sync::{Arc, Mutex};
 
+use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{FontRole, RawFontMetrics};
 use tiqian::layout::paragraph_layout_engine::ParagraphLayoutEngine;
-use tiqian::shaping::font_backend::{
-    FontBackend, FontBackendRequest, FontBackendShapingResult,
-};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use crate::support::DeterministicStubFontBackend;
 
 #[derive(Clone, Debug)]
 struct ShapingRecord {
@@ -67,7 +65,7 @@ fn engine_with_requests(
         shaping,
         metrics,
     }))
-        .build()
+    .build()
 }
 
 #[test]
@@ -118,11 +116,13 @@ fn per_span_weight_and_italic_reach_the_font_backend_before_metrics() {
                 && record.request.display_text == "A")
     );
     let selected_faces: Vec<_> = shaping.iter().map(|record| record.face.clone()).collect();
-    assert!(metrics
-        .lock()
-        .unwrap()
-        .iter()
-        .all(|request| selected_faces.contains(&request.face)));
+    assert!(
+        metrics
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| selected_faces.contains(&request.face))
+    );
 }
 
 #[test]
@@ -151,11 +151,13 @@ fn display_substitution_selects_before_metrics_are_resolved() {
             .any(|record| record.request.display_text == "⸺")
     );
     let selected_faces: Vec<_> = shaping.iter().map(|record| record.face.clone()).collect();
-    assert!(metrics
-        .lock()
-        .unwrap()
-        .iter()
-        .all(|request| selected_faces.contains(&request.face)));
+    assert!(
+        metrics
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|request| selected_faces.contains(&request.face))
+    );
 }
 
 #[test]
@@ -175,17 +177,16 @@ fn ruby_metrics_use_the_same_final_face_as_ruby_shaping() {
                 .italic(true)
                 .build(),
         )
-        .ruby_spans(vec![RubySpan::new(
-            text_range(0, 1),
-            Text::from("zhōng"),
-        )])
+        .ruby_spans(vec![RubySpan::new(text_range(0, 1), Text::from("zhōng"))])
         .build(),
     );
 
     let shaping = shaping.lock().unwrap();
     let ruby_shaping = shaping
         .iter()
-        .find(|record| record.request.role == FontRole::LatinText && record.request.display_text == "zhōng")
+        .find(|record| {
+            record.request.role == FontRole::LatinText && record.request.display_text == "zhōng"
+        })
         .expect("ruby text must be shaped by the font backend");
     assert!(
         metrics

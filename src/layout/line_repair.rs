@@ -9,8 +9,7 @@ use super::line_optimization::{
     LineCandidate, LineSolution, PushInAllocation, RepairCandidate, RepairOption,
 };
 use super::progressive_break_decisions::{
-    ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, line_limit,
-    UnbreakableRanges,
+    ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges, line_limit,
 };
 use crate::common::{HashMap, HashSet};
 
@@ -166,8 +165,7 @@ pub fn apply_kinsoku_repairs(
             continue;
         }
         let carried = previous.cluster_range.last();
-        if unbreakable.contains_boundary(carried)
-        {
+        if unbreakable.contains_boundary(carried) {
             lines[i] = leave_ragged(
                 curr,
                 first_cluster,
@@ -627,8 +625,7 @@ fn fill_push_in_group_end(
 ) -> Option<i32> {
     let mut end = current.cluster_range.first();
     while end <= current.cluster_range.last() {
-        if let Some(range) = unbreakable.containing_from_closed_start_or_null(end)
-        {
+        if let Some(range) = unbreakable.containing_from_closed_start_or_null(end) {
             end = range.last();
             if end > current.cluster_range.last() {
                 return None;

@@ -193,7 +193,9 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
                 request: metric_request,
                 raw_metrics,
             };
-            let layout_metrics = request.font_metrics_normalizer.normalize(&normalization_input);
+            let layout_metrics = request
+                .font_metrics_normalizer
+                .normalize(&normalization_input);
             ClusterMetricDecision {
                 range: resolution.range,
                 source_text: prep.text.slice_text(resolution.range),
@@ -263,9 +265,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             &metric_decisions,
             |decision| decision.range,
         ))
-        .filter_map(|(cluster, decision)| {
-            decision.map(|index| (cluster.range, index))
-        })
+        .filter_map(|(cluster, decision)| decision.map(|index| (cluster.range, index)))
         .collect();
     let base_face_height = base_ascent + base_descent;
     let existing_interline_space = (base_line_metrics.height - base_face_height).max(0.0);
@@ -480,8 +480,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         number_symbol_cohesion::unbreakable_ranges(&prep.text)
             .into_iter()
             .filter(|source_range| {
-                !progressive_technical_overlap
-                    .overlaps(source_range.start(), source_range.end())
+                !progressive_technical_overlap.overlaps(source_range.start(), source_range.end())
             })
             .filter_map(|source_range| {
                 cluster_index_range_for_source_range(&prep.natural_clusters, source_range)
@@ -533,8 +532,12 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             let left_cluster = &prep.natural_clusters[left];
             let right_cluster = &prep.natural_clusters[right];
             left_cluster.range.end() == right_cluster.range.start()
-                && !prep.inline_object_by_cluster_index.contains_key(&(left as i32))
-                && !prep.inline_object_by_cluster_index.contains_key(&(right as i32))
+                && !prep
+                    .inline_object_by_cluster_index
+                    .contains_key(&(left as i32))
+                && !prep
+                    .inline_object_by_cluster_index
+                    .contains_key(&(right as i32))
                 && !prep.zero_width_break_clusters.contains(&(left as i32))
                 && !prep.zero_width_break_clusters.contains(&(right as i32))
                 && !prep.mandatory_break_clusters.contains(&(left as i32))

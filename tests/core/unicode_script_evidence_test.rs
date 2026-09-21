@@ -8,7 +8,8 @@ fn common_and_inherited_scalars_do_not_vote() {
         assert_eq!(
             UnicodeScriptEvidence::Neutral,
             unicode_script_evidence_classifier::classify(character),
-            "U+{:04X}", character as u32,
+            "U+{:04X}",
+            character as u32,
         );
     }
 }
@@ -19,14 +20,16 @@ fn east_asian_scripts_are_distinct_from_other_strong_scripts() {
         assert_eq!(
             UnicodeScriptEvidence::EastAsian,
             unicode_script_evidence_classifier::classify(character),
-            "U+{:04X}", character as u32,
+            "U+{:04X}",
+            character as u32,
         );
     }
     for character in ['A', 'π', 'Ж', 'ا'] {
         assert_eq!(
             UnicodeScriptEvidence::Other,
             unicode_script_evidence_classifier::classify(character),
-            "U+{:04X}", character as u32,
+            "U+{:04X}",
+            character as u32,
         );
     }
 }

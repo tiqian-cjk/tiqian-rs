@@ -1,5 +1,5 @@
-use tiqian::core::geometry::{text_range};
 use tiqian::core::font_face::FontFaceId;
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;

@@ -1,11 +1,11 @@
 use tiqian::common::HashSet;
 
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 
 use crate::support::DeterministicStubFontBackend;
 
@@ -34,7 +34,8 @@ fn layout(
     text: &str,
     profile: Option<Box<dyn ClreqProfileResolver>>,
 ) -> tiqian::core::layout_model::LayoutResult {
-    let mut builder = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()));
+    let mut builder =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()));
     if let Some(profile) = profile {
         let clreq_profile_resolver = profile;
         builder = builder.clreq_profile_resolver(clreq_profile_resolver);
@@ -81,19 +82,14 @@ fn recommended_display_glyphs_preserve_source_text() {
     assert_eq!("⸺", dash.display_text);
     assert_eq!("·", interpunct.display_text);
     assert_eq!("／", solidus.display_text);
-    assert!(
-        result
-            .clusters
-            .iter()
-            .all(|cluster| {
-                cluster
-                    .font_face
-                    .as_ref()
-                    .expect("cluster must have a final font face")
-                    .resource_id()
-                    == "cjk-primary"
-            })
-    );
+    assert!(result.clusters.iter().all(|cluster| {
+        cluster
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
+            == "cjk-primary"
+    }));
 }
 
 #[test]

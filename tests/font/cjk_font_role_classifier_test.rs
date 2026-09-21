@@ -1,10 +1,9 @@
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
 
 fn classify(text: &str, start: i32, end: i32) -> FontRole {
-    CjkFontRoleClassifier
-        .classify_with_default_context(&Text::from(text), text_range(start, end))
+    CjkFontRoleClassifier.classify_with_default_context(&Text::from(text), text_range(start, end))
 }
 
 #[test]

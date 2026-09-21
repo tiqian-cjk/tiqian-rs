@@ -1,4 +1,4 @@
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
+use tiqian::core::geometry::{LayoutConstraints, Rect, scalar_offset, text_range};
 use tiqian::core::layout_model::{LayoutDebugInfo, MaxLinesDecisionInfo};
 use tiqian::core::units::{Ic, IcLiteral};
 
@@ -29,12 +29,30 @@ fn ic_to_px_multiplies_by_em_size() {
 
 #[test]
 fn rect_height_returns_difference() {
-    assert_eq!(20.0, Rect { left: 0.0, top: 0.0, right: 10.0, bottom: 20.0 }.height());
+    assert_eq!(
+        20.0,
+        Rect {
+            left: 0.0,
+            top: 0.0,
+            right: 10.0,
+            bottom: 20.0
+        }
+        .height()
+    );
 }
 
 #[test]
 fn rect_width_returns_difference() {
-    assert_eq!(10.0, Rect { left: 0.0, top: 0.0, right: 10.0, bottom: 20.0 }.width());
+    assert_eq!(
+        10.0,
+        Rect {
+            left: 0.0,
+            top: 0.0,
+            right: 10.0,
+            bottom: 20.0
+        }
+        .width()
+    );
 }
 
 #[test]
@@ -61,6 +79,18 @@ fn layout_debug_info_accepts_max_lines_decision() {
     let debug = LayoutDebugInfo::builder()
         .max_lines_decision(Some(MaxLinesDecisionInfo::new(5, 3)))
         .build();
-    assert_eq!(Some(5), debug.max_lines_decision.as_ref().map(|info| info.laid_out_lines));
-    assert_eq!(Some(3), debug.max_lines_decision.as_ref().map(|info| info.visible_lines));
+    assert_eq!(
+        Some(5),
+        debug
+            .max_lines_decision
+            .as_ref()
+            .map(|info| info.laid_out_lines)
+    );
+    assert_eq!(
+        Some(3),
+        debug
+            .max_lines_decision
+            .as_ref()
+            .map(|info| info.visible_lines)
+    );
 }

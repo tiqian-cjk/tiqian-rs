@@ -47,9 +47,8 @@ impl Options {
                 }
                 "--warmup" => options.warmup = value.parse().map_err(|_| "invalid warmup")?,
                 "--calls-per-sample" => {
-                    options.calls_per_sample = value
-                        .parse()
-                        .map_err(|_| "invalid calls-per-sample")?
+                    options.calls_per_sample =
+                        value.parse().map_err(|_| "invalid calls-per-sample")?
                 }
                 _ => unreachable!(),
             }
@@ -129,16 +128,13 @@ impl Fixture {
                 } else {
                     0
                 };
-            sino_prefix[index + 1] = sino_prefix[index]
-                + if self.sino.contains(&boundary) { 1 } else { 0 };
-            cjk_prefix[index + 1] = cjk_prefix[index]
-                + if self.cjk.contains(&boundary) { 1 } else { 0 };
+            sino_prefix[index + 1] =
+                sino_prefix[index] + if self.sino.contains(&boundary) { 1 } else { 0 };
+            cjk_prefix[index + 1] =
+                cjk_prefix[index] + if self.cjk.contains(&boundary) { 1 } else { 0 };
         }
         self.intervals.iter().fold(0, |total, &(start, end)| {
-            total
-                + gap_prefix[end] - gap_prefix[start]
-                + sino_prefix[end]
-                - sino_prefix[start]
+            total + gap_prefix[end] - gap_prefix[start] + sino_prefix[end] - sino_prefix[start]
                 + cjk_prefix[end]
                 - cjk_prefix[start]
         })
@@ -166,12 +162,7 @@ fn print_stats(label: &str, samples: &[Duration], calls_per_sample: usize) {
     );
 }
 
-fn measure(
-    label: &str,
-    expected: i32,
-    options: &Options,
-    mut operation: impl FnMut() -> i32,
-) {
+fn measure(label: &str, expected: i32, options: &Options, mut operation: impl FnMut() -> i32) {
     for _ in 0..options.warmup {
         for _ in 0..options.calls_per_sample {
             black_box(operation());
@@ -197,7 +188,10 @@ fn main() -> Result<(), String> {
         eprintln!("Warning: debug build; use --release for performance comparisons.");
     }
     let scenarios = [
-        ("greedy-like", Fixture::new(options.length, options.intervals, 64)),
+        (
+            "greedy-like",
+            Fixture::new(options.length, options.intervals, 64),
+        ),
         (
             "lookahead-like",
             Fixture::new(options.length, options.intervals * 8, 64),
@@ -234,15 +228,12 @@ fn main() -> Result<(), String> {
                     .filter(|index| fixture.cjk.contains(&(*index as i32)))
                     .count() as i32
         });
-                assert_eq!(expected_all, fixture.all_prefixes());
-                assert_eq!(expected_gap, fixture.gap_prefix());
         assert_eq!(expected_all, fixture.all_prefixes());
-        measure(
-            &format!("current[{label}]"),
-            expected_gap,
-            &options,
-            || fixture.current_gap(),
-        );
+        assert_eq!(expected_gap, fixture.gap_prefix());
+        assert_eq!(expected_all, fixture.all_prefixes());
+        measure(&format!("current[{label}]"), expected_gap, &options, || {
+            fixture.current_gap()
+        });
         measure(
             &format!("gap-prefix[{label}]"),
             expected_gap,

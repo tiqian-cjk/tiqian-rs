@@ -1,5 +1,5 @@
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
@@ -20,7 +20,9 @@ fn cluster(index: i32, text: &str, advance: f32) -> Cluster {
 }
 
 fn han_clusters(count: i32, advance: f32) -> Vec<Cluster> {
-    (0..count).map(|index| cluster(index, "中", advance)).collect()
+    (0..count)
+        .map(|index| cluster(index, "中", advance))
+        .collect()
 }
 
 fn latin_clusters() -> Vec<Cluster> {
@@ -45,7 +47,8 @@ fn test_shrink_opportunities_negative_and_out_of_range() {
         ShrinkOpportunity::with_line_end_only(2, 1, 4.0, ShrinkChannel::TrailingGlue, true),
     ];
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 100.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 100.0, &config);
     assert_eq!(1, solution.lines.len());
 }
 
@@ -73,16 +76,18 @@ fn test_progressive_tier_promotion_branches() {
     let other_span = text_range(1, 3);
 
     let mut no_promotion_config = LineBreakerConfig::default();
-    no_promotion_config.shrink_opportunities = vec![ShrinkOpportunity::new(
-        2,
-        2,
-        5.0,
-        ShrinkChannel::RawAdvance,
-    )];
+    no_promotion_config.shrink_opportunities =
+        vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     no_promotion_config.line_adjustment_push_in = true;
     no_promotion_config.progressive_break_opportunities = tiqian::common::HashMap::from([
-        (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
     ]);
     let no_promotion_solution = ParagraphDpLineBreaker::default().break_lines(
         &clusters,
@@ -94,8 +99,14 @@ fn test_progressive_tier_promotion_branches() {
 
     let mut different_span_config = no_promotion_config.clone();
     different_span_config.progressive_break_opportunities = tiqian::common::HashMap::from([
-        (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, other_span)),
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, other_span),
+        ),
     ]);
     let different_span_solution = ParagraphDpLineBreaker::default().break_lines(
         &clusters,
@@ -108,23 +119,21 @@ fn test_progressive_tier_promotion_branches() {
     let mut breaker = ParagraphDpLineBreaker::default();
     breaker.candidate_window = 4;
     let mut mixed_promotion_config = LineBreakerConfig::default();
-    mixed_promotion_config.shrink_opportunities = vec![ShrinkOpportunity::new(
-        2,
-        2,
-        5.0,
-        ShrinkChannel::RawAdvance,
-    )];
+    mixed_promotion_config.shrink_opportunities =
+        vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     mixed_promotion_config.line_adjustment_push_in = true;
     mixed_promotion_config.progressive_break_opportunities = tiqian::common::HashMap::from([
-        (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span),
+        ),
     ]);
-    let mixed_promotion_solution = breaker.break_lines(
-        &clusters,
-        &clusters,
-        80.0,
-        &mixed_promotion_config,
-    );
+    let mixed_promotion_solution =
+        breaker.break_lines(&clusters, &clusters, 80.0, &mixed_promotion_config);
     assert!(!mixed_promotion_solution.lines.is_empty());
 }
 
@@ -133,14 +142,16 @@ fn test_commit_segment_original_break_not_null_resulting_break_null() {
     let clusters = latin_clusters();
     let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
-    config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
+    config.shrink_opportunities =
+        vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;
     config.progressive_break_opportunities = tiqian::common::HashMap::from([(
         2,
         ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span),
     )]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
     assert!(!solution.lines.is_empty());
 }
 
@@ -150,7 +161,8 @@ fn test_tier_preferred_pool_empty_fallback() {
     let mut config = LineBreakerConfig::default();
     config.unbreakable_ranges = UnbreakableRanges::new(vec![IntRange::new(0, 3)]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 30.0, &config);
 
     assert!(!solution.lines.is_empty());
 }
@@ -161,7 +173,8 @@ fn test_hard_break_after_clusters_in_dp_commit() {
     let mut config = LineBreakerConfig::default();
     config.hard_break_after_clusters = tiqian::common::HashSet::from([1]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 50.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 50.0, &config);
     assert_eq!(2, solution.lines.len());
     assert_eq!(LineEndReason::MandatoryBreak, solution.lines[0].end_reason);
     assert_eq!(LineEndReason::ParagraphEnd, solution.lines[1].end_reason);

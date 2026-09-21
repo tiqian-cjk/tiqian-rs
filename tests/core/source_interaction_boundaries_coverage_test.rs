@@ -126,15 +126,30 @@ fn coercion_honours_every_bias_and_edge_case() {
     assert_eq!(family.scalar_len(), scalar_offset(7));
     assert_eq!(
         scalar_offset(0),
-        coerce_to_interaction_boundary(&family, scalar_offset(2), family_range, SourceBoundaryBias::Nearest),
+        coerce_to_interaction_boundary(
+            &family,
+            scalar_offset(2),
+            family_range,
+            SourceBoundaryBias::Nearest
+        ),
     );
     assert_eq!(
         scalar_offset(0),
-        coerce_to_interaction_boundary(&family, scalar_offset(2), family_range, SourceBoundaryBias::Backward),
+        coerce_to_interaction_boundary(
+            &family,
+            scalar_offset(2),
+            family_range,
+            SourceBoundaryBias::Backward
+        ),
     );
     assert_eq!(
         family.scalar_len(),
-        coerce_to_interaction_boundary(&family, scalar_offset(2), family_range, SourceBoundaryBias::Forward),
+        coerce_to_interaction_boundary(
+            &family,
+            scalar_offset(2),
+            family_range,
+            SourceBoundaryBias::Forward
+        ),
     );
 
     let text = Text::from("😀b");
@@ -145,7 +160,12 @@ fn coercion_honours_every_bias_and_edge_case() {
     );
     assert_eq!(
         scalar_offset(2),
-        coerce_to_interaction_boundary(&text, scalar_offset(9), range, SourceBoundaryBias::Backward),
+        coerce_to_interaction_boundary(
+            &text,
+            scalar_offset(9),
+            range,
+            SourceBoundaryBias::Backward
+        ),
     );
     assert_eq!(
         scalar_offset(0),

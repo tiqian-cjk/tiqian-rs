@@ -1,5 +1,6 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints, Rect};
+use tiqian::core::geometry::{LayoutConstraints, Rect, scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
@@ -8,26 +9,27 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(320.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(320.0),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 #[test]
@@ -42,19 +44,14 @@ fn latin_technical_punctuation_stays_in_latin_run() {
             .map(|cluster| cluster.text.as_str())
             .collect::<String>()
     );
-    assert!(
-        result
-            .clusters
-            .iter()
-            .all(|cluster| {
-                cluster
-                    .font_face
-                    .as_ref()
-                    .expect("cluster must have a final font face")
-                    .resource_id()
-                    == "latin-primary"
-            })
-    );
+    assert!(result.clusters.iter().all(|cluster| {
+        cluster
+            .font_face
+            .as_ref()
+            .expect("cluster must have a final font face")
+            .resource_id()
+            == "latin-primary"
+    }));
     assert!(
         result
             .clusters
@@ -110,7 +107,9 @@ fn western_quote_pair_reaches_latin_font_pipeline_without_cjk_geometry() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| [scalar_offset(0), scalar_offset(6)].contains(&override_info.range.start()))
+        .filter(|override_info| {
+            [scalar_offset(0), scalar_offset(6)].contains(&override_info.range.start())
+        })
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(
@@ -135,7 +134,9 @@ fn cjk_quote_pair_reaches_punctuation_geometry_with_outer_context_evidence() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| [scalar_offset(1), scalar_offset(3)].contains(&override_info.range.start()))
+        .filter(|override_info| {
+            [scalar_offset(1), scalar_offset(3)].contains(&override_info.range.start())
+        })
         .collect::<Vec<_>>();
     assert_eq!(2, quote_overrides.len());
     assert!(
@@ -168,7 +169,9 @@ fn mixed_paragraph_start_quote_uses_paragraph_language_fallback() {
         .debug
         .role_overrides
         .iter()
-        .filter(|override_info| [scalar_offset(0), scalar_offset(8)].contains(&override_info.range.start()))
+        .filter(|override_info| {
+            [scalar_offset(0), scalar_offset(8)].contains(&override_info.range.start())
+        })
         .collect::<Vec<_>>();
     assert_eq!(2, quote_overrides.len());
     assert!(
@@ -216,8 +219,7 @@ fn latin_word_internal_curly_quotes_stay_in_latin_run_inside_mixed_paragraph() {
         .unwrap();
     assert_eq!(
         "latin-primary",
-        word
-            .font_face
+        word.font_face
             .as_ref()
             .expect("cluster must have a final font face")
             .resource_id()
@@ -341,24 +343,34 @@ fn empty_word_internal_quotes_stay_latin() {
 #[test]
 fn quote_roles_survive_style_and_source_boundaries() {
     let text = "中‘that’s’中";
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text))
-                .spans(vec![TextSpan {
-                    range: text_range(2, 7),
-                    style: TextStyle::builder().font_weight(700).build(),
-                }])
-                .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(6), scalar_offset(7), scalar_offset(8), scalar_offset(9)]))
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::builder(Text::from(text))
+                        .spans(vec![TextSpan {
+                            range: text_range(2, 7),
+                            style: TextStyle::builder().font_weight(700).build(),
+                        }])
+                        .source_boundaries(HashSet::from([
+                            scalar_offset(1),
+                            scalar_offset(2),
+                            scalar_offset(6),
+                            scalar_offset(7),
+                            scalar_offset(8),
+                            scalar_offset(9),
+                        ]))
+                        .build(),
+                    LayoutConstraints::with_defaults(320.0),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
                 .build(),
-            LayoutConstraints::with_defaults(320.0),
-        )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    );
+            );
 
     let roles_by_index = result
         .debug
@@ -371,9 +383,15 @@ fn quote_roles_survive_style_and_source_boundaries() {
             )
         })
         .collect::<std::collections::HashMap<_, _>>();
-    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&scalar_offset(1)));
+    assert_eq!(
+        Some(&"CjkPunctuation"),
+        roles_by_index.get(&scalar_offset(1))
+    );
     assert_eq!(Some(&"LatinText"), roles_by_index.get(&scalar_offset(6)));
-    assert_eq!(Some(&"CjkPunctuation"), roles_by_index.get(&scalar_offset(8)));
+    assert_eq!(
+        Some(&"CjkPunctuation"),
+        roles_by_index.get(&scalar_offset(8))
+    );
     assert_eq!(
         "latin-primary",
         result
@@ -439,13 +457,17 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         let final_open = text
             .chars()
             .enumerate()
-            .filter_map(|(index, character)| (character == '“').then_some(scalar_offset(index as i32)))
+            .filter_map(|(index, character)| {
+                (character == '“').then_some(scalar_offset(index as i32))
+            })
             .last()
             .unwrap();
         let final_close = text
             .chars()
             .enumerate()
-            .filter_map(|(index, character)| (character == '”').then_some(scalar_offset(index as i32)))
+            .filter_map(|(index, character)| {
+                (character == '”').then_some(scalar_offset(index as i32))
+            })
             .last()
             .unwrap();
         let final_overrides = result
@@ -453,7 +475,8 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
             .role_overrides
             .iter()
             .filter(|override_info| {
-                override_info.range.start() == final_open || override_info.range.start() == final_close
+                override_info.range.start() == final_open
+                    || override_info.range.start() == final_close
             })
             .collect::<Vec<_>>();
         assert_eq!(2, final_overrides.len(), "{text}");
@@ -472,10 +495,11 @@ fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
     let text = "所以这个和 “骑ji” “说shui”“斜xiá”不一样，港台是从众的，大陆读音大多数源自韵书。";
     let line_breaker = Box::new(LookaheadLineBreaker::default());
     let hyphenator = &NoHyphenator;
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .line_breaker(line_breaker)
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .line_breaker(line_breaker)
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
@@ -695,7 +719,10 @@ fn proportional_quote_backend() -> impl tiqian::shaping::font_backend::FontBacke
                 .decisions
                 .iter()
                 .cloned()
-                .map(|decision| ShapingDecisionInfo { advance, ..decision })
+                .map(|decision| ShapingDecisionInfo {
+                    advance,
+                    ..decision
+                })
                 .collect();
             result
         },
@@ -704,7 +731,8 @@ fn proportional_quote_backend() -> impl tiqian::shaping::font_backend::FontBacke
 
 #[test]
 fn requests_full_width_cjk_quotes_and_synthesizes_cell_for_proportional_glyphs() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(proportional_quote_backend())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(proportional_quote_backend())).build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中“文”中")),

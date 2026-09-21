@@ -1,3 +1,4 @@
+use crate::support::DeterministicStubFontBackend;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance};
 use tiqian::font::font_metrics::{
     BaselineClass, FontMetricSource, FontMetricsNormalizationInput, FontMetricsNormalizer,
@@ -5,15 +6,10 @@ use tiqian::font::font_metrics::{
 };
 use tiqian::font::font_policy::{FontMetricsPolicy, FontRole, RawFontMetrics};
 use tiqian::shaping::font_backend::FontBackend;
-use crate::support::DeterministicStubFontBackend;
 
 fn request(resource_id: &str, role: FontRole, locale: &str) -> FontMetricsRequest {
     FontMetricsRequest::new(
-        FontFaceId::new(
-            resource_id.to_owned(),
-            0,
-            FontVariationInstance::default(),
-        ),
+        FontFaceId::new(resource_id.to_owned(), 0, FontVariationInstance::default()),
         16.0,
         role,
         locale.to_owned(),

@@ -186,7 +186,8 @@ impl PunctuationGeometryLedger {
                     .iter()
                     .find(|a| inside(a.range, self.natural_clusters[n as usize].range))
             });
-            let next_char = next.and_then(|n| self.natural_clusters[n as usize].text.chars().next());
+            let next_char =
+                next.and_then(|n| self.natural_clusters[n as usize].text.chars().next());
             let natural = left + right;
             let adjusted=if next.is_none(){0.}else if left_atom.is_some()&&right_atom.is_some(){(natural-em/2.).max(0.)}else if left_atom.is_some_and(|a|a.punctuation_class==PunctuationClass::Closing)&&next_char.is_some_and(super::super::clreq::clreq_profile::clreq_punctuation_policies::is_ascii_point_mark){(natural-em/2.).max(0.)}else{natural};
             if let Some(mut p) = previous_budget {
@@ -614,13 +615,18 @@ mod tests {
     use crate::core::geometry::text_range;
     use crate::core::text::Text;
     use crate::layout::punctuation_geometry_stage::punctuation_atoms;
-    use crate::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressionResult};
+    use crate::layout::punctuation_model::{
+        PunctuationAtomBuilder, PunctuationSpacingCompressionResult,
+    };
 
     #[test]
     fn derived_ledger_shares_geometry_and_preserves_original_budget() {
-        let clusters = vec![
-            Cluster::new(text_range(0, 1), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
-        ];
+        let clusters = vec![Cluster::new(
+            text_range(0, 1),
+            Text::from("「"),
+            FontFaceId::with_resource_id("cjk"),
+            16.0,
+        )];
         let atoms = punctuation_atoms(
             &clusters[0],
             16.0,
@@ -639,7 +645,10 @@ mod tests {
         let derived = ledger
             .consume_leading_by_cluster(&HashMap::from([(0, 100.0)]))
             .consume_trailing_by_cluster(&HashMap::from([(0, 100.0)]));
-        assert!(Arc::ptr_eq(&ledger.natural_clusters, &derived.natural_clusters));
+        assert!(Arc::ptr_eq(
+            &ledger.natural_clusters,
+            &derived.natural_clusters
+        ));
         assert!(Arc::ptr_eq(&ledger.geometries, &derived.geometries));
         assert_eq!(ledger.resolve_clusters(), original);
         assert_eq!(ledger.budgets[&0], budget);
@@ -651,8 +660,18 @@ mod tests {
     #[test]
     fn geometry_without_budget_falls_back_to_body_width() {
         let clusters = vec![
-            Cluster::new(text_range(0, 1), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("「"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ];
         let builder = PunctuationAtomBuilder::default();
         let atoms = punctuation_atoms(
@@ -681,8 +700,18 @@ mod tests {
     #[test]
     fn attached_boundary_records_null_characters_for_empty_text_clusters() {
         let textless_next = vec![
-            Cluster::new(text_range(0, 1), Text::from("」"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("r"), FontFaceId::with_resource_id("latin"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("」"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("r"),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
             Cluster::with_display_text(
                 text_range(2, 2),
                 Text::from(""),
@@ -715,7 +744,10 @@ mod tests {
             16.0,
         );
         assert_eq!('\0', result.decisions[0].right_char);
-        assert_eq!("AttachedInlineVirtualPunctuationBoundary:natural", result.decisions[0].reason);
+        assert_eq!(
+            "AttachedInlineVirtualPunctuationBoundary:natural",
+            result.decisions[0].reason
+        );
         assert_eq!(8.0, result.trailing_glue_by_cluster[&1]);
 
         let textless_previous = vec![
@@ -726,8 +758,18 @@ mod tests {
                 FontFaceId::with_resource_id("cjk"),
                 16.0,
             ),
-            Cluster::new(text_range(0, 1), Text::from("r"), FontFaceId::with_resource_id("latin"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("「"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("r"),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("「"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ];
         let previous_atoms: Vec<_> = textless_previous
             .iter()
@@ -757,6 +799,9 @@ mod tests {
             16.0,
         );
         assert_eq!('\0', result.decisions[0].left_char);
-        assert_eq!("AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation", result.decisions[0].reason);
+        assert_eq!(
+            "AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation",
+            result.decisions[0].reason
+        );
     }
 }

@@ -1,15 +1,15 @@
 use tiqian::common::{HashMap, HashSet};
 
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy};
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::layout::line_breaker::rebuild_line;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
+use tiqian::layout::line_breaker::rebuild_line;
 use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{

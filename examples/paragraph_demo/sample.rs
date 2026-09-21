@@ -1,11 +1,8 @@
-use tiqian::api::{
-    ParagraphBuilder, RubyAnnotation, TextStyleOverride,
-};
+use tiqian::api::{ParagraphBuilder, RubyAnnotation, TextStyleOverride};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text_model::{
-    LastLineAlignment, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer,
-    RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
-    RubyLineHeightMode, TextStyle,
+    LastLineAlignment, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextLinePattern, RichTextPaint, RubyLineHeightMode, TextStyle,
 };
 use tiqian::core::units::Ic;
 
@@ -47,16 +44,17 @@ pub fn build_document(physical_content_width: f32, physical_scale: f32) -> DemoD
         |builder| {
             builder.with_background(
                 background_paint(physical_scale),
-                &[RichTextPaint::Fill { argb: 0xFFFDE68A_u32 as i32 }],
+                &[RichTextPaint::Fill {
+                    argb: 0xFFFDE68A_u32 as i32,
+                }],
                 |builder| builder.push("中文"),
             );
             builder.push("，。……——");
             builder.with_text_style(inter_style(16.0 * physical_scale), |builder| {
                 builder.with_color(0xFF2563EB_u32 as i32, |builder| {
-                    builder.with_underline(
-                        dashed_paint(physical_scale),
-                        |builder| builder.push("English"),
-                    );
+                    builder.with_underline(dashed_paint(physical_scale), |builder| {
+                        builder.push("English")
+                    });
                 });
             });
             builder.push("\n");
@@ -117,39 +115,64 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
         .font_weight(700)
         .build();
 
-    let proof = paragraph(physical_content_width, body.clone(), indented.clone(), |builder| {
-        builder.with_underline(RichTextLinePaint::default(), |builder| {
-            builder.push("「第三次校样」");
-        });
-        builder.push("据编辑批注修订，日期为二〇二六年八月二十六日。");
-    });
-    let title = paragraph(physical_content_width, body.clone(), title_paragraph, |builder| {
-        builder.with_text_style(title_style, |builder| {
-            builder.with_ruby(RubyAnnotation::pinyin("tíqiàn"), |builder| {
-                builder.push("提椠");
+    let proof = paragraph(
+        physical_content_width,
+        body.clone(),
+        indented.clone(),
+        |builder| {
+            builder.with_underline(RichTextLinePaint::default(), |builder| {
+                builder.push("「第三次校样」");
             });
-            builder.push("中文正文排版样张");
-        });
-    });
-    let overview = paragraph(physical_content_width, body.clone(), indented.clone(), |builder| {
-        builder.push("汉字排版讲究的不只是字形端正，也包括");
-        builder.emphasis("行列疏密");
-        builder.push("、标点位置与");
-        builder.emphasis("段落节奏");
-        builder.push("。本页选取书刊校样中常见的文字形式，集中呈现简体中文横排、中西文混排、行间注文和传统标注。窗口宽度改变时，文字会依照新的版心重新成行；标题、列表与注文也随正文一同调整。");
-    });
-    let punctuation = paragraph(physical_content_width, body.clone(), indented.clone(), |builder| {
-        builder.push("编辑在批注中写道：“排版并非把文字摆下去，而是让每一行都获得清楚、安稳而从容的秩序。”括号（包括圆括号、方括号和书名号）应与正文相接，逗号、句号、问号和感叹号都在恰当的位置。遇到“真的如此吗？！”一类连续标点时，字面仍须紧凑，不宜留下突兀的空白。");
-    });
-    let mixed = paragraph(physical_content_width, body.clone(), indented.clone(), |builder| {
-        builder.push("中文书刊经常夹用 Latin letters、");
-        builder.styled(inter_style(body.font_size), "OpenType");
-        builder.push(" 字体名称、");
-        builder.styled(inter_style(body.font_size), "Unicode");
-        builder.push(" 字符编号和 ");
-        builder.styled(inter_style(body.font_size), "HTTP/2");
-        builder.push(" 协议名称。汉字与西文字母或数字相邻时，应留有细微而稳定的间隔；行首与行尾则不额外添空。较长的英文词如 internationalization 和 interoperability，可以在合适的音节处使用连字符转行，但不应任意拆开。");
-    });
+            builder.push("据编辑批注修订，日期为二〇二六年八月二十六日。");
+        },
+    );
+    let title = paragraph(
+        physical_content_width,
+        body.clone(),
+        title_paragraph,
+        |builder| {
+            builder.with_text_style(title_style, |builder| {
+                builder.with_ruby(RubyAnnotation::pinyin("tíqiàn"), |builder| {
+                    builder.push("提椠");
+                });
+                builder.push("中文正文排版样张");
+            });
+        },
+    );
+    let overview = paragraph(
+        physical_content_width,
+        body.clone(),
+        indented.clone(),
+        |builder| {
+            builder.push("汉字排版讲究的不只是字形端正，也包括");
+            builder.emphasis("行列疏密");
+            builder.push("、标点位置与");
+            builder.emphasis("段落节奏");
+            builder.push("。本页选取书刊校样中常见的文字形式，集中呈现简体中文横排、中西文混排、行间注文和传统标注。窗口宽度改变时，文字会依照新的版心重新成行；标题、列表与注文也随正文一同调整。");
+        },
+    );
+    let punctuation = paragraph(
+        physical_content_width,
+        body.clone(),
+        indented.clone(),
+        |builder| {
+            builder.push("编辑在批注中写道：“排版并非把文字摆下去，而是让每一行都获得清楚、安稳而从容的秩序。”括号（包括圆括号、方括号和书名号）应与正文相接，逗号、句号、问号和感叹号都在恰当的位置。遇到“真的如此吗？！”一类连续标点时，字面仍须紧凑，不宜留下突兀的空白。");
+        },
+    );
+    let mixed = paragraph(
+        physical_content_width,
+        body.clone(),
+        indented.clone(),
+        |builder| {
+            builder.push("中文书刊经常夹用 Latin letters、");
+            builder.styled(inter_style(body.font_size), "OpenType");
+            builder.push(" 字体名称、");
+            builder.styled(inter_style(body.font_size), "Unicode");
+            builder.push(" 字符编号和 ");
+            builder.styled(inter_style(body.font_size), "HTTP/2");
+            builder.push(" 协议名称。汉字与西文字母或数字相邻时，应留有细微而稳定的间隔；行首与行尾则不额外添空。较长的英文词如 internationalization 和 interoperability，可以在合适的音节处使用连字符转行，但不应任意拆开。");
+        },
+    );
     let list_intro = plain_paragraph(
         physical_content_width,
         body.clone(),
@@ -164,57 +187,48 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
         DemoDocumentDemoBlock::Paragraph(punctuation),
         DemoDocumentDemoBlock::Paragraph(mixed),
         DemoDocumentDemoBlock::Paragraph(list_intro),
-        list_item(
-            "一、",
-            physical_content_width,
-            body.clone(),
-            |builder| builder.push("每个非末行在版心内保持齐整，末行则依段落用途自然收束。"),
-        ),
-        list_item(
-            "二、",
-            physical_content_width,
-            body.clone(),
-            |builder| builder.push("标点临近行首或行尾时，系统优先调整可用空隙，避免出现突兀的断行。"),
-        ),
-        list_item(
-            "三、",
-            physical_content_width,
-            body.clone(),
-            |builder| {
-                builder.push("中文可使用");
-                builder.styled(
-                    TextStyleOverride::builder()
-                        .font_families(vec!["Source Han Sans SC".to_owned()])
-                        .build(),
-                    "黑体",
-                );
-                builder.push("或");
-                builder.styled(
-                    TextStyleOverride::builder()
-                        .font_families(vec!["serif".to_owned()])
-                        .build(),
-                    "宋体",
-                );
-                builder.push("；英文可能为 ");
-                builder.styled(inter_style(body.font_size), "sans-serif");
-                builder.push(" 或 ");
-                builder.styled(
-                    TextStyleOverride::builder()
-                        .font_families(vec!["serif".to_owned()])
-                        .build(),
-                    "serif",
-                );
-                builder.push("，亦可能为 ");
-                builder.styled(
-                    TextStyleOverride::builder()
-                        .font_families(vec!["monospace".to_owned()])
-                        .build(),
-                    "monospace",
-                );
-                builder.push(" （等宽字体）。混排时，仍须保持稳定的基线和行距。");
-            },
-        ),
-        DemoDocumentDemoBlock::Section { height: section_height },
+        list_item("一、", physical_content_width, body.clone(), |builder| {
+            builder.push("每个非末行在版心内保持齐整，末行则依段落用途自然收束。")
+        }),
+        list_item("二、", physical_content_width, body.clone(), |builder| {
+            builder.push("标点临近行首或行尾时，系统优先调整可用空隙，避免出现突兀的断行。")
+        }),
+        list_item("三、", physical_content_width, body.clone(), |builder| {
+            builder.push("中文可使用");
+            builder.styled(
+                TextStyleOverride::builder()
+                    .font_families(vec!["Source Han Sans SC".to_owned()])
+                    .build(),
+                "黑体",
+            );
+            builder.push("或");
+            builder.styled(
+                TextStyleOverride::builder()
+                    .font_families(vec!["serif".to_owned()])
+                    .build(),
+                "宋体",
+            );
+            builder.push("；英文可能为 ");
+            builder.styled(inter_style(body.font_size), "sans-serif");
+            builder.push(" 或 ");
+            builder.styled(
+                TextStyleOverride::builder()
+                    .font_families(vec!["serif".to_owned()])
+                    .build(),
+                "serif",
+            );
+            builder.push("，亦可能为 ");
+            builder.styled(
+                TextStyleOverride::builder()
+                    .font_families(vec!["monospace".to_owned()])
+                    .build(),
+                "monospace",
+            );
+            builder.push(" （等宽字体）。混排时，仍须保持稳定的基线和行距。");
+        }),
+        DemoDocumentDemoBlock::Section {
+            height: section_height,
+        },
     ];
 
     blocks.extend([
@@ -528,9 +542,14 @@ fn plain_paragraph(
     paragraph_style: ParagraphStyle,
     text: &str,
 ) -> DemoDocument {
-    paragraph(physical_content_width, text_style, paragraph_style, |builder| {
-        builder.push(text);
-    })
+    paragraph(
+        physical_content_width,
+        text_style,
+        paragraph_style,
+        |builder| {
+            builder.push(text);
+        },
+    )
 }
 
 fn styled_paragraph(
@@ -540,9 +559,14 @@ fn styled_paragraph(
     style: TextStyleOverride,
     text: &str,
 ) -> DemoDocument {
-    paragraph(physical_content_width, text_style, paragraph_style, |builder| {
-        builder.styled(style, text);
-    })
+    paragraph(
+        physical_content_width,
+        text_style,
+        paragraph_style,
+        |builder| {
+            builder.styled(style, text);
+        },
+    )
 }
 
 fn paragraph(
@@ -611,4 +635,3 @@ fn dotted_paint(physical_scale: f32) -> RichTextLinePaint {
         adjacent_same_style_clearance: 0.0,
     }
 }
-

@@ -293,7 +293,9 @@ fn is_parenthetical_dash_pair(text: &Text, first: TextRange, second: TextRange) 
 }
 
 fn is_pure_dash_run(text: &Text, range: TextRange) -> bool {
-    text.slice_text(range).chars().all(|character| character == '\u{2014}')
+    text.slice_text(range)
+        .chars()
+        .all(|character| character == '\u{2014}')
 }
 
 struct StrongScriptContextIndex {
@@ -349,4 +351,3 @@ fn next_strong_script_role(character: char, current_role: Option<FontRole>) -> O
         UnicodeScriptEvidence::Neutral => current_role,
     }
 }
-

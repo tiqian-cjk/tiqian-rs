@@ -1,25 +1,34 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    built_in_layout_profiles, link_address_display, DecorationKind, DecorationSpan,
-    InlineAttachment, InlineBoxOuterSpacing, InlineBoxSpan, InlineObjectBoundaryAdjustment,
-    InlineObjectPreferredStretch, InlineObjectPreferredStretchKind, InlineObjectSpan,
-    LastLineAlignment, LayoutInput, LayoutProfileId, LineBreakPolicy, LineBreakSpan,
-    LineLengthGrid, MeasureAdaptiveFirstLineIndent, ParagraphStyle,
-    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
-    RichTextLinePaint, RichTextLinePattern, RichTextPaint, RichTextSemantic, RichTextSpan,
-    RubyKind, RubyLineHeightMode, RubySpan, TextSpan, TextStyle, TiqianTextContent, WritingMode, DEFAULT_EMPHASIS_DOT_GAP_EM,
-    DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM, INLINE_OBJECT_REPLACEMENT_CHAR,
+    DEFAULT_EMPHASIS_DOT_GAP_EM, DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM, DecorationKind,
+    DecorationSpan, INLINE_OBJECT_REPLACEMENT_CHAR, InlineAttachment, InlineBoxOuterSpacing,
+    InlineBoxSpan, InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch,
+    InlineObjectPreferredStretchKind, InlineObjectSpan, LastLineAlignment, LayoutInput,
+    LayoutProfileId, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
+    MeasureAdaptiveFirstLineIndent, ParagraphStyle, RichTextBackgroundMetricPolicy,
+    RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
+    RichTextLinePattern, RichTextPaint, RichTextSemantic, RichTextSpan, RubyKind,
+    RubyLineHeightMode, RubySpan, TextSpan, TextStyle, TiqianTextContent, WritingMode,
+    built_in_layout_profiles, link_address_display,
 };
 
 #[test]
 fn test_tiqian_text_content_and_link_address_display() {
     let content = TiqianTextContent::builder(Text::from("Hello Tiqian"))
-        .spans(vec![TextSpan { range: text_range(0, 5), style: TextStyle::default() }])
-        .source_boundaries(HashSet::from([scalar_offset(0), scalar_offset(5), scalar_offset(12)]))
+        .spans(vec![TextSpan {
+            range: text_range(0, 5),
+            style: TextStyle::default(),
+        }])
+        .source_boundaries(HashSet::from([
+            scalar_offset(0),
+            scalar_offset(5),
+            scalar_offset(12),
+        ]))
         .line_break_spans(vec![LineBreakSpan {
-            range: text_range(0, 5), policy: LineBreakPolicy::ProgressiveTechnical,
+            range: text_range(0, 5),
+            policy: LineBreakPolicy::ProgressiveTechnical,
         }])
         .auto_space_suppressed_ranges(vec![text_range(6, 12)])
         .build();
@@ -29,22 +38,36 @@ fn test_tiqian_text_content_and_link_address_display() {
     assert_eq!(1, content.line_break_spans.len());
     assert_eq!(1, content.auto_space_suppressed_ranges.len());
     for (display, target, expected) in [
-        ("", "", false), ("tiqian.org", "", false), ("", "https://tiqian.org", false),
-        ("tiqian.org", "tiqian.org", true), ("tiqian.org", "https://tiqian.org", true),
-        ("tiqian.org", "http://tiqian.org", true), ("dev@tiqian.org", "mailto:dev@tiqian.org", true),
-        ("tiqian.org", "https://other.org", false), ("tiqian.org", "ftp://tiqian.org", false),
+        ("", "", false),
+        ("tiqian.org", "", false),
+        ("", "https://tiqian.org", false),
+        ("tiqian.org", "tiqian.org", true),
+        ("tiqian.org", "https://tiqian.org", true),
+        ("tiqian.org", "http://tiqian.org", true),
+        ("dev@tiqian.org", "mailto:dev@tiqian.org", true),
+        ("tiqian.org", "https://other.org", false),
+        ("tiqian.org", "ftp://tiqian.org", false),
     ] {
-        assert_eq!(expected, link_address_display::displays_address(&Text::from(display), target));
+        assert_eq!(
+            expected,
+            link_address_display::displays_address(&Text::from(display), target)
+        );
     }
 }
 
 #[test]
 fn test_spans_and_inline_box() {
-    let line_break = LineBreakSpan { range: text_range(0, 4), policy: LineBreakPolicy::ProgressiveTechnical };
+    let line_break = LineBreakSpan {
+        range: text_range(0, 4),
+        policy: LineBreakPolicy::ProgressiveTechnical,
+    };
     assert_eq!(text_range(0, 4), line_break.range);
     assert_eq!(LineBreakPolicy::ProgressiveTechnical, line_break.policy);
     let inline_box = InlineBoxSpan::builder(text_range(1, 3))
-        .inline_start(2.0).inline_end(3.0).outer_spacing(InlineBoxOuterSpacing::Source).build();
+        .inline_start(2.0)
+        .inline_end(3.0)
+        .outer_spacing(InlineBoxOuterSpacing::Source)
+        .build();
     assert_eq!(text_range(1, 3), inline_box.range);
     assert_eq!(2.0, inline_box.inline_start);
     assert_eq!(3.0, inline_box.inline_end);
@@ -54,10 +77,19 @@ fn test_spans_and_inline_box() {
 
 #[test]
 fn test_inline_object_preferred_stretch_and_adjustment() {
-    let stretch = InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 10.0, 15.0);
+    let stretch =
+        InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 10.0, 15.0);
     assert_eq!(InlineObjectPreferredStretchKind::Relation, stretch.kind);
     assert_eq!(5.0, stretch.capacity());
-    for (natural, target) in [(-1.0, 10.0), (f32::NAN, 10.0), (f32::INFINITY, 10.0), (10.0, 10.0), (10.0, 8.0), (10.0, f32::NAN), (10.0, f32::INFINITY)] {
+    for (natural, target) in [
+        (-1.0, 10.0),
+        (f32::NAN, 10.0),
+        (f32::INFINITY, 10.0),
+        (10.0, 10.0),
+        (10.0, 8.0),
+        (10.0, f32::NAN),
+        (10.0, f32::INFINITY),
+    ] {
         let invalid = InlineObjectPreferredStretch::new(
             InlineObjectPreferredStretchKind::PunctuationTrailing,
             natural,
@@ -71,7 +103,13 @@ fn test_inline_object_preferred_stretch_and_adjustment() {
     let fixed = InlineObjectBoundaryAdjustment::FIXED;
     assert!(!fixed.participates_in_uniform_stretch);
     assert_eq!(None, fixed.preferred_stretch);
-    let adjustment = InlineObjectBoundaryAdjustment::builder().participates_in_uniform_stretch(true).preferred_stretch(stretch).shrink_capacity(2.0).line_end_discardable_advance(1.0).prevents_line_break(true).build();
+    let adjustment = InlineObjectBoundaryAdjustment::builder()
+        .participates_in_uniform_stretch(true)
+        .preferred_stretch(stretch)
+        .shrink_capacity(2.0)
+        .line_end_discardable_advance(1.0)
+        .prevents_line_break(true)
+        .build();
     assert!(adjustment.participates_in_uniform_stretch);
     assert_eq!(Some(stretch), adjustment.preferred_stretch);
     assert_eq!(2.0, adjustment.shrink_capacity);
@@ -90,7 +128,15 @@ fn test_inline_object_preferred_stretch_and_adjustment() {
 
 #[test]
 fn test_text_style_and_decorations() {
-    let style = TextStyle::builder().font_families(vec!["Noto Serif CJK SC".to_owned()]).font_size(18.0).locale("zh-CN".to_owned()).font_weight(700).italic(true).baseline_shift(-2.0).inline_attachment(InlineAttachment::Previous).build();
+    let style = TextStyle::builder()
+        .font_families(vec!["Noto Serif CJK SC".to_owned()])
+        .font_size(18.0)
+        .locale("zh-CN".to_owned())
+        .font_weight(700)
+        .italic(true)
+        .baseline_shift(-2.0)
+        .inline_attachment(InlineAttachment::Previous)
+        .build();
     assert_eq!(vec!["Noto Serif CJK SC"], style.font_families);
     assert_eq!(18.0, style.font_size);
     assert_eq!("zh-CN", style.locale);
@@ -98,41 +144,104 @@ fn test_text_style_and_decorations() {
     assert!(style.italic);
     assert_eq!(-2.0, style.baseline_shift);
     assert_eq!(InlineAttachment::Previous, style.inline_attachment);
-    let decoration = DecorationSpan { range: text_range(2, 4), kind: DecorationKind::Emphasis };
+    let decoration = DecorationSpan {
+        range: text_range(2, 4),
+        kind: DecorationKind::Emphasis,
+    };
     assert_eq!(text_range(2, 4), decoration.range);
     assert_eq!(DecorationKind::Emphasis, decoration.kind);
 }
 
 #[test]
 fn test_rich_text_spans_and_patterns() {
-    let background = RichTextBackgroundPaint::builder().horizontal_padding(-2.0).vertical_padding(f32::NAN).corner_radius(4.0).metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle).adjacent_same_style_clearance(f32::NEG_INFINITY).build();
+    let background = RichTextBackgroundPaint::builder()
+        .horizontal_padding(-2.0)
+        .vertical_padding(f32::NAN)
+        .corner_radius(4.0)
+        .metric_policy(RichTextBackgroundMetricPolicy::UniformTextStyle)
+        .adjacent_same_style_clearance(f32::NEG_INFINITY)
+        .build();
     let line = RichTextLinePaint {
         thickness: -1.5,
-        pattern: RichTextLinePattern::Dashed { dash_length: f32::NAN, gap_length: -2.0 },
+        pattern: RichTextLinePattern::Dashed {
+            dash_length: f32::NAN,
+            gap_length: -2.0,
+        },
         adjacent_same_style_clearance: f32::INFINITY,
     };
     let paints = vec![
-        RichTextPaint::Fill { argb: 0xFF000000_u32 as i32 },
-        RichTextPaint::Stroke { argb: 0x33000000, width: f32::NEG_INFINITY },
-        RichTextPaint::Shadow { argb: 0x11000000, offset_x: f32::NAN, offset_y: -3.0, blur_radius: f32::INFINITY, spread_radius: -4.0 },
+        RichTextPaint::Fill {
+            argb: 0xFF000000_u32 as i32,
+        },
+        RichTextPaint::Stroke {
+            argb: 0x33000000,
+            width: f32::NEG_INFINITY,
+        },
+        RichTextPaint::Shadow {
+            argb: 0x11000000,
+            offset_x: f32::NAN,
+            offset_y: -3.0,
+            blur_radius: f32::INFINITY,
+            spread_radius: -4.0,
+        },
     ];
     let span = RichTextSpan {
         range: text_range(0, 2),
         layers: vec![
-            RichTextLayer { kind: RichTextLayerKind::Text, paints: paints.clone() },
-            RichTextLayer { kind: RichTextLayerKind::Background { background: background.clone() }, paints: paints.clone() },
-            RichTextLayer { kind: RichTextLayerKind::Underline { line: line.clone() }, paints: paints.clone() },
-            RichTextLayer { kind: RichTextLayerKind::LineThrough { line: line.clone() }, paints: paints.clone() },
-            RichTextLayer { kind: RichTextLayerKind::Decoration { kind: DecorationKind::Emphasis }, paints: paints.clone() },
-            RichTextLayer { kind: RichTextLayerKind::Annotation { kind: RubyKind::Pinyin }, paints: paints.clone() },
+            RichTextLayer {
+                kind: RichTextLayerKind::Text,
+                paints: paints.clone(),
+            },
+            RichTextLayer {
+                kind: RichTextLayerKind::Background {
+                    background: background.clone(),
+                },
+                paints: paints.clone(),
+            },
+            RichTextLayer {
+                kind: RichTextLayerKind::Underline { line: line.clone() },
+                paints: paints.clone(),
+            },
+            RichTextLayer {
+                kind: RichTextLayerKind::LineThrough { line: line.clone() },
+                paints: paints.clone(),
+            },
+            RichTextLayer {
+                kind: RichTextLayerKind::Decoration {
+                    kind: DecorationKind::Emphasis,
+                },
+                paints: paints.clone(),
+            },
+            RichTextLayer {
+                kind: RichTextLayerKind::Annotation {
+                    kind: RubyKind::Pinyin,
+                },
+                paints: paints.clone(),
+            },
         ],
-        semantics: vec![RichTextSemantic::Link { id: None, target: "https://tiqian.org".to_owned() }, RichTextSemantic::TechnicalInline],
+        semantics: vec![
+            RichTextSemantic::Link {
+                id: None,
+                target: "https://tiqian.org".to_owned(),
+            },
+            RichTextSemantic::TechnicalInline,
+        ],
     };
     let [
         RichTextPaint::Fill { argb: fill_argb },
-        RichTextPaint::Stroke { argb: stroke_argb, width: stroke_width },
-        RichTextPaint::Shadow { argb: shadow_argb, offset_x, offset_y, blur_radius, spread_radius },
-    ] = span.layers[0].paints.as_slice() else {
+        RichTextPaint::Stroke {
+            argb: stroke_argb,
+            width: stroke_width,
+        },
+        RichTextPaint::Shadow {
+            argb: shadow_argb,
+            offset_x,
+            offset_y,
+            blur_radius,
+            spread_radius,
+        },
+    ] = span.layers[0].paints.as_slice()
+    else {
         panic!("text layer must retain all paints");
     };
     assert_eq!(0xFF000000_u32 as i32, *fill_argb);
@@ -148,7 +257,11 @@ fn test_rich_text_spans_and_patterns() {
     };
     assert_eq!(-1.5, stored_line.thickness);
     assert_eq!(f32::INFINITY, stored_line.adjacent_same_style_clearance);
-    let RichTextLinePattern::Dashed { dash_length, gap_length } = stored_line.pattern else {
+    let RichTextLinePattern::Dashed {
+        dash_length,
+        gap_length,
+    } = stored_line.pattern
+    else {
         panic!("underline pattern must remain dashed");
     };
     assert!(dash_length.is_nan());
@@ -156,17 +269,30 @@ fn test_rich_text_spans_and_patterns() {
     assert_eq!(-2.0, background.horizontal_padding);
     assert!(background.vertical_padding.is_nan());
     assert_eq!(f32::NEG_INFINITY, background.adjacent_same_style_clearance);
-    let RichTextLinePattern::Dashed { dash_length, gap_length } = line.pattern else {
+    let RichTextLinePattern::Dashed {
+        dash_length,
+        gap_length,
+    } = line.pattern
+    else {
         panic!("line pattern must remain dashed");
     };
     assert!(dash_length.is_nan());
     assert_eq!(-2.0, gap_length);
-    assert_eq!(5.0, RichTextBackgroundPaint::builder().corner_radius(5.0).build().continuation_corner_radius);
+    assert_eq!(
+        5.0,
+        RichTextBackgroundPaint::builder()
+            .corner_radius(5.0)
+            .build()
+            .continuation_corner_radius
+    );
 }
 
 #[test]
 fn test_ruby_and_paragraph_models() {
-    let pinyin = RubySpan::builder(text_range(0, 1), Text::from("hàn")).font_families(vec!["CustomFont".to_owned()]).kind(RubyKind::Pinyin).build();
+    let pinyin = RubySpan::builder(text_range(0, 1), Text::from("hàn"))
+        .font_families(vec!["CustomFont".to_owned()])
+        .kind(RubyKind::Pinyin)
+        .build();
     assert_eq!(RubyKind::Pinyin, pinyin.kind);
     assert_eq!(None, pinyin.locale);
     let bopomofo = RubySpan::with_kind(text_range(0, 1), Text::from("ㄏㄢˋ"), RubyKind::Bopomofo);
@@ -176,14 +302,46 @@ fn test_ruby_and_paragraph_models() {
     let indent = MeasureAdaptiveFirstLineIndent::new(14.0, 1.0, 2.0);
     assert_eq!(1.0, indent.resolve_em(10.0));
     assert_eq!(2.0, indent.resolve_em(14.0));
-    let style = ParagraphStyle::builder().last_line_alignment(LastLineAlignment::End).writing_mode(WritingMode::VerticalRl).line_height(Some(32.0)).first_line_indent_policy(indent).line_length_grid(LineLengthGrid::new(true, Some(LastLineAlignment::Center))).ruby_line_height_mode(RubyLineHeightMode::UniformParagraph).inline_object_minimum_clearance_em(0.2).emphasis_dot_gap_em(0.15).build();
+    let style = ParagraphStyle::builder()
+        .last_line_alignment(LastLineAlignment::End)
+        .writing_mode(WritingMode::VerticalRl)
+        .line_height(Some(32.0))
+        .first_line_indent_policy(indent)
+        .line_length_grid(LineLengthGrid::new(true, Some(LastLineAlignment::Center)))
+        .ruby_line_height_mode(RubyLineHeightMode::UniformParagraph)
+        .inline_object_minimum_clearance_em(0.2)
+        .emphasis_dot_gap_em(0.15)
+        .build();
     assert_eq!(LastLineAlignment::End, style.last_line_alignment);
     assert_eq!(WritingMode::VerticalRl, style.writing_mode);
     assert_eq!(Some(32.0), style.line_height);
-    let profile = LayoutProfileId { value: "custom-profile".to_owned() };
+    let profile = LayoutProfileId {
+        value: "custom-profile".to_owned(),
+    };
     assert_eq!("custom-profile", profile.value);
-    assert_eq!("clreq-horizontal", built_in_layout_profiles::clreq_horizontal().value);
-    let input = LayoutInput::builder(TiqianTextContent::new(Text::from("Test")), LayoutConstraints::with_defaults(300.0)).paragraph_style(style).profile_id(profile).decorations(vec![DecorationSpan { range: text_range(0, 2), kind: DecorationKind::Emphasis }]).ruby_spans(vec![pinyin]).inline_boxes(vec![InlineBoxSpan::new(text_range(0, 1))]).inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(text_range(0, 1), 10.0, 8.0, 2.0)]).build();
+    assert_eq!(
+        "clreq-horizontal",
+        built_in_layout_profiles::clreq_horizontal().value
+    );
+    let input = LayoutInput::builder(
+        TiqianTextContent::new(Text::from("Test")),
+        LayoutConstraints::with_defaults(300.0),
+    )
+    .paragraph_style(style)
+    .profile_id(profile)
+    .decorations(vec![DecorationSpan {
+        range: text_range(0, 2),
+        kind: DecorationKind::Emphasis,
+    }])
+    .ruby_spans(vec![pinyin])
+    .inline_boxes(vec![InlineBoxSpan::new(text_range(0, 1))])
+    .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
+        text_range(0, 1),
+        10.0,
+        8.0,
+        2.0,
+    )])
+    .build();
     assert_eq!("custom-profile", input.profile_id.value);
     assert_eq!(1, input.inline_objects.len());
 }

@@ -14,7 +14,9 @@ use super::super::core::text_model::{InlineObjectSpan, LayoutInput, LineBreakPol
 use super::super::font::font_policy::FontRole;
 use super::super::linebreak::hyphenation::Hyphenator;
 use super::super::shaping::font_backend::{FontBackend, FontBackendRequest, FontResolution};
-use super::super::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
+use super::super::shaping::text_shaper::{
+    ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
+};
 use super::cluster_role_resolution::ResolvedClusterRange;
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use crate::common::{HashMap, HashSet};
@@ -63,8 +65,7 @@ pub fn shape_paragraph(
             }
         }
         let source = text.slice_text(range);
-        let substitution =
-            punctuation_glyph_substitutor.substitute_for_role(&source, role);
+        let substitution = punctuation_glyph_substitutor.substitute_for_role(&source, role);
         let base = style_at(range.start());
         let mut style = base.clone();
         if role == FontRole::LatinText && emphasis_italic_at(range.start()) {
@@ -85,14 +86,18 @@ pub fn shape_paragraph(
             it.capability_issue.as_deref() == Some(UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE)
         }) {
             Some("SubstitutionRollbackOnUnverifiedGlyphCoverage")
-        } else if shaped.shaping.decisions.iter().any(|it| it.missing_glyphs > 0) {
+        } else if shaped
+            .shaping
+            .decisions
+            .iter()
+            .any(|it| it.missing_glyphs > 0)
+        {
             Some("SubstitutionRollbackOnMissingGlyph")
         } else if dash_ink_coverage_deficient(
             &shaped.shaping,
             &substitution.display_text,
             style.font_size,
-        )
-        {
+        ) {
             Some("DashSubstitutionInkCoverageRollback")
         } else {
             None
@@ -195,35 +200,33 @@ pub fn shape_paragraph(
                     .get(&span.range)
                     .cloned()
                     .unwrap_or_default();
-                let span_advance = if let Some(cached) =
-                    progressive_span_advance_cache.get(&span.range)
-                {
-                    *cached
-                } else {
-                    let mut total = 0.;
-                    for range in cluster_ranges {
-                        if range.mandatory_break
-                            || range.zero_width_soft_break
-                            || inline_object_by_range.contains_key(&range.range)
-                        {
-                            continue;
-                        }
-                        for candidate in shaping_segments(range.role, range.range, text) {
-                            let start = candidate.start().max(span.range.start());
-                            let end = candidate.end().min(span.range.end());
-                            if start < end {
-                                total +=
-                                    shape_segment(range.role, TextRange::new(start, end))
+                let span_advance =
+                    if let Some(cached) = progressive_span_advance_cache.get(&span.range) {
+                        *cached
+                    } else {
+                        let mut total = 0.;
+                        for range in cluster_ranges {
+                            if range.mandatory_break
+                                || range.zero_width_soft_break
+                                || inline_object_by_range.contains_key(&range.range)
+                            {
+                                continue;
+                            }
+                            for candidate in shaping_segments(range.role, range.range, text) {
+                                let start = candidate.start().max(span.range.start());
+                                let end = candidate.end().min(span.range.end());
+                                if start < end {
+                                    total += shape_segment(range.role, TextRange::new(start, end))
                                         .clusters
                                         .iter()
                                         .map(|cluster| cluster.advance)
                                         .sum::<f32>();
+                                }
                             }
                         }
-                    }
-                    progressive_span_advance_cache.insert(span.range, total);
-                    total
-                };
+                        progressive_span_advance_cache.insert(span.range, total);
+                        total
+                    };
                 let mut cuts = Vec::new();
                 let mut bounds = vec![segment.start()];
                 bounds.extend_from_slice(&structural);
@@ -424,14 +427,7 @@ pub fn shape_paragraph(
                 && !word.as_str().contains('-')
                 && clean.is_empty()
             {
-                latin_word_cuts(
-                    text,
-                    segment,
-                    &syllable,
-                    measure,
-                    &mut shape_segment,
-                    role,
-                )
+                latin_word_cuts(text, segment, &syllable, measure, &mut shape_segment, role)
             } else {
                 Vec::new()
             };

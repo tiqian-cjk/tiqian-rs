@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/Geometry.kt
 
-use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::fmt;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// 从 source text 起点开始的 Unicode scalar 数量。
 ///

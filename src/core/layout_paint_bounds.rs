@@ -105,9 +105,21 @@ pub fn visible_paint_overhang(
         let Some(occupied_left) = base.iter().map(|cluster| cluster.left).reduce(f32::min) else {
             continue;
         };
-        let occupied_top = base.iter().map(|cluster| cluster.top).reduce(f32::min).unwrap();
-        let occupied_right = base.iter().map(|cluster| cluster.right).reduce(f32::max).unwrap();
-        let occupied_bottom = base.iter().map(|cluster| cluster.bottom).reduce(f32::max).unwrap();
+        let occupied_top = base
+            .iter()
+            .map(|cluster| cluster.top)
+            .reduce(f32::min)
+            .unwrap();
+        let occupied_right = base
+            .iter()
+            .map(|cluster| cluster.right)
+            .reduce(f32::max)
+            .unwrap();
+        let occupied_bottom = base
+            .iter()
+            .map(|cluster| cluster.bottom)
+            .reduce(f32::max)
+            .unwrap();
         if occupied_right <= 0.0
             || occupied_left >= viewport_width
             || occupied_bottom <= 0.0

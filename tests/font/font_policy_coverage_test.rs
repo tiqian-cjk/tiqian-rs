@@ -1,5 +1,6 @@
+use crate::support::DeterministicStubFontBackend;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance};
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::font::font_metrics::{
     BaselineClass, FontMetricSource, FontMetricsNormalizationInput, FontMetricsNormalizer,
@@ -11,7 +12,6 @@ use tiqian::font::font_policy::{
     RawFontMetrics, font_role_name_uses_latin_face,
 };
 use tiqian::shaping::font_backend::FontBackend;
-use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn test_font_request_and_roles() {
@@ -100,7 +100,12 @@ fn test_prefer_cjk_for_ambiguous_punctuation_resolver() {
         ("A", text_range(0, 1), FontRole::LatinText, "latin-key"),
         ("©", text_range(0, 1), FontRole::Symbol, "symbol-key"),
         ("😀", text_range(0, 2), FontRole::Emoji, "symbol-key"),
-        ("\u{0001}", text_range(0, 1), FontRole::Unknown, "symbol-key"),
+        (
+            "\u{0001}",
+            text_range(0, 1),
+            FontRole::Unknown,
+            "symbol-key",
+        ),
     ] {
         let decision = resolver.resolve(
             &Text::from(text),

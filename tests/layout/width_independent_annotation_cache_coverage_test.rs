@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
-use tiqian::common::{HashMap, HashSet};
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfile, ClreqProfileResolver};
+use tiqian::clreq::clreq_profile::{
+    BuiltInClreqProfileResolver, ClreqProfile, ClreqProfileResolver,
+};
+use tiqian::common::{HashMap, HashSet};
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
-    DecorationKind, DecorationSpan, LastLineAlignment, LayoutInput, LineBreakPolicy,
-    InlineBoxOuterSpacing, InlineBoxSpan, LineBreakSpan, LineLengthGrid, ParagraphStyle,
-    InlineAttachment, InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch,
-    InlineObjectPreferredStretchKind, InlineObjectSpan, RubySpan, TextSpan, TextStyle,
-    RubyKind, TiqianTextContent,
+    DecorationKind, DecorationSpan, InlineAttachment, InlineBoxOuterSpacing, InlineBoxSpan,
+    InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch, InlineObjectPreferredStretchKind,
+    InlineObjectSpan, LastLineAlignment, LayoutInput, LineBreakPolicy, LineBreakSpan,
+    LineLengthGrid, ParagraphStyle, RubyKind, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
 use tiqian::font::font_policy::CjkFontRoleClassifier;
@@ -21,14 +22,14 @@ use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
 use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
 use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
-    LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache, containing_items,
-    first_contained_item, build_paragraph_layout_prep, prepare_width_independent_annotation,
-    to_width_independent_annotation_key,
+    LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
+    build_paragraph_layout_prep, containing_items, first_contained_item,
+    prepare_width_independent_annotation, to_width_independent_annotation_key,
 };
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn lru_cache_update_existing_key_and_clear() {
@@ -87,16 +88,32 @@ fn lru_cache_update_existing_key_and_clear() {
 fn containing_items_and_first_contained_item_branches() {
     let clusters = vec![
         Cluster::with_display_text(
-            text_range(0, 2), Text::from("aa"), Text::from("aa"), FontFaceId::with_resource_id("k"), 10.0,
+            text_range(0, 2),
+            Text::from("aa"),
+            Text::from("aa"),
+            FontFaceId::with_resource_id("k"),
+            10.0,
         ),
         Cluster::with_display_text(
-            text_range(2, 5), Text::from("bbb"), Text::from("bbb"), FontFaceId::with_resource_id("k"), 15.0,
+            text_range(2, 5),
+            Text::from("bbb"),
+            Text::from("bbb"),
+            FontFaceId::with_resource_id("k"),
+            15.0,
         ),
         Cluster::with_display_text(
-            text_range(5, 7), Text::from("cc"), Text::from("cc"), FontFaceId::with_resource_id("k"), 10.0,
+            text_range(5, 7),
+            Text::from("cc"),
+            Text::from("cc"),
+            FontFaceId::with_resource_id("k"),
+            10.0,
         ),
         Cluster::with_display_text(
-            text_range(7, 9), Text::from("dd"), Text::from("dd"), FontFaceId::with_resource_id("k"), 10.0,
+            text_range(7, 9),
+            Text::from("dd"),
+            Text::from("dd"),
+            FontFaceId::with_resource_id("k"),
+            10.0,
         ),
     ];
     let items = vec![
@@ -249,19 +266,23 @@ fn conflicting_open_type_features_keep_the_first_feature() {
                 GlyphRun::with_open_type_features(
                     input.range,
                     face.clone(),
-                    vec![Glyph::builder(1, input.range, 8.0)
-                        .render_font_face(Some(face.clone()))
-                        .build()],
+                    vec![
+                        Glyph::builder(1, input.range, 8.0)
+                            .render_font_face(Some(face.clone()))
+                            .build(),
+                    ],
                     8.0,
                     vec!["feat1".to_owned()],
                 ),
                 GlyphRun::with_open_type_features(
                     input.range,
                     face.clone(),
-                    vec![Glyph::builder(2, input.range, 8.0)
-                        .render_font_face(Some(face))
-                        .x(8.0)
-                        .build()],
+                    vec![
+                        Glyph::builder(2, input.range, 8.0)
+                            .render_font_face(Some(face))
+                            .x(8.0)
+                            .build(),
+                    ],
                     8.0,
                     vec!["feat2".to_owned()],
                 ),
@@ -359,7 +380,13 @@ fn ruby_spread_accumulation_and_edges() {
     let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("中文测试段落"))
-            .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5)]))
+            .source_boundaries(HashSet::from([
+                scalar_offset(1),
+                scalar_offset(2),
+                scalar_offset(3),
+                scalar_offset(4),
+                scalar_offset(5),
+            ]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
@@ -402,7 +429,16 @@ fn ruby_spread_second_visit_and_zero_first_cluster() {
     let punctuation_spacing_compressor = PunctuationSpacingCompressor;
     let input = LayoutInput::builder(
         TiqianTextContent::builder(Text::from("一二三四五六七八"))
-            .source_boundaries(HashSet::from([scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(5), scalar_offset(6), scalar_offset(7)]))
+            .source_boundaries(HashSet::from([
+                scalar_offset(0),
+                scalar_offset(1),
+                scalar_offset(2),
+                scalar_offset(3),
+                scalar_offset(4),
+                scalar_offset(5),
+                scalar_offset(6),
+                scalar_offset(7),
+            ]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
@@ -685,22 +721,37 @@ fn prepare_width_independent_annotation_branches() {
                 },
                 TextSpan {
                     range: text_range(0, 1),
-                    style: TextStyle::builder().font_size(18.0).font_weight(500).build(),
+                    style: TextStyle::builder()
+                        .font_size(18.0)
+                        .font_weight(500)
+                        .build(),
                 },
                 TextSpan {
                     range: text_range(1, 4),
-                    style: TextStyle::builder().font_size(18.0).font_weight(500).build(),
+                    style: TextStyle::builder()
+                        .font_size(18.0)
+                        .font_weight(500)
+                        .build(),
                 },
                 TextSpan {
                     range: text_range(4, 8),
-                    style: TextStyle::builder().font_size(14.0).font_weight(300).build(),
+                    style: TextStyle::builder()
+                        .font_size(14.0)
+                        .font_weight(300)
+                        .build(),
                 },
             ])
             .line_break_spans(vec![LineBreakSpan {
                 range: text_range(8, 15),
                 policy: LineBreakPolicy::ProgressiveTechnical,
             }])
-            .source_boundaries(HashSet::from([scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4), scalar_offset(6)]))
+            .source_boundaries(HashSet::from([
+                scalar_offset(1),
+                scalar_offset(2),
+                scalar_offset(3),
+                scalar_offset(4),
+                scalar_offset(6),
+            ]))
             .build(),
         LayoutConstraints::with_defaults(300.0),
     )
@@ -728,7 +779,11 @@ fn prepare_width_independent_annotation_branches() {
         RubySpan::new(text_range(2, 4), Text::new()),
         RubySpan::with_kind(text_range(0, 1), Text::from("˙ㄅ"), RubyKind::Bopomofo),
         RubySpan::with_kind(text_range(0, 1), Text::from("ㄆ"), RubyKind::Bopomofo),
-        RubySpan::with_kind(text_range(99, 100), Text::from("invalid"), RubyKind::Bopomofo),
+        RubySpan::with_kind(
+            text_range(99, 100),
+            Text::from("invalid"),
+            RubyKind::Bopomofo,
+        ),
     ])
     .inline_boxes(vec![
         InlineBoxSpan::with_edges(text_range(15, 17), 4.0, 0.0),
@@ -794,8 +849,11 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
     let hyphenator = default_hyphenator();
     let punctuation_atom_builder = PunctuationAtomBuilder::default();
     let punctuation_spacing_compressor = PunctuationSpacingCompressor;
-    let text = Text::from("「引用」·中点‧间隔•中点，逗号。句号！问号？．点号、顿号以及 English words 间距");
-    let spans: Vec<TextSpan> = text.scalar_indices()
+    let text = Text::from(
+        "「引用」·中点‧间隔•中点，逗号。句号！问号？．点号、顿号以及 English words 间距",
+    );
+    let spans: Vec<TextSpan> = text
+        .scalar_indices()
         .map(|(offset, _)| TextSpan {
             range: tiqian::core::geometry::TextRange::new(offset, offset + 1),
             style: TextStyle::builder().font_size(16.0).build(),
@@ -829,9 +887,14 @@ fn shrink_opportunities_cover_all_punctuation_classes_and_spaces() {
                 &quote_pair_analyzer,
                 hyphenator,
             );
-            annotation.clreq_profile.adjustment.allow_inline_stop_compression = allow_inline_stop;
-            annotation.clreq_profile.adjustment.allow_sino_western_gap_adjustment =
-                allow_sino_western;
+            annotation
+                .clreq_profile
+                .adjustment
+                .allow_inline_stop_compression = allow_inline_stop;
+            annotation
+                .clreq_profile
+                .adjustment
+                .allow_sino_western_gap_adjustment = allow_sino_western;
             let prep = build_paragraph_layout_prep(
                 &input,
                 &annotation,
@@ -891,7 +954,10 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
     assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(8)));
     assert_eq!(24.0, (annotation.font_size_at)(scalar_offset(9)));
     for offset in [0, 7, 10, 20, 100] {
-        assert_eq!(input.text_style.font_size, (annotation.font_size_at)(scalar_offset(offset)));
+        assert_eq!(
+            input.text_style.font_size,
+            (annotation.font_size_at)(scalar_offset(offset))
+        );
     }
     let rejected = HashMap::from([(
         text_range(0, 7),

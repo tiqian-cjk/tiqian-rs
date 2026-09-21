@@ -1,14 +1,14 @@
 use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
 use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, Rect};
+use tiqian::core::geometry::{Rect, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, SyntheticClusterKind};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineAttachment;
 use tiqian::layout::line_breaker::LineCandidate;
 use tiqian::layout::punctuation_geometry_ledger::{
-    cluster_index_range_for, PunctuationGeometryLedger,
+    PunctuationGeometryLedger, cluster_index_range_for,
 };
 use tiqian::layout::punctuation_geometry_stage::punctuation_atoms;
 use tiqian::layout::punctuation_model::{
@@ -17,7 +17,6 @@ use tiqian::layout::punctuation_model::{
 };
 
 const EM: f32 = 16.0;
-
 
 fn cluster(text: &str, start: i32, advance: f32, resource_id: &str) -> Cluster {
     Cluster::new(
@@ -189,7 +188,12 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
             EM,
             Some(
                 PunctuationInkInput::builder(16.0)
-                    .ink_bounds(Some(Rect { left: 2.0, top: 4.0, right: 10.0, bottom: 12.0 }))
+                    .ink_bounds(Some(Rect {
+                        left: 2.0,
+                        top: 4.0,
+                        right: 10.0,
+                        bottom: 12.0,
+                    }))
                     .halt_advance(Some(8.0))
                     .halt_placement_x(Some(-2.0))
                     .build(),
@@ -223,11 +227,8 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
 #[test]
 fn attached_inline_boundaries_ignore_missing_attachments() {
     let ledger = ledger_of(&["。", "中"]);
-    let missing_attachment = ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None],
-        &[],
-        EM,
-    );
+    let missing_attachment =
+        ledger.resolve_attached_inline_punctuation_boundaries(&[InlineAttachment::None], &[], EM);
     assert!(missing_attachment.decisions.is_empty());
     assert!(missing_attachment.trailing_glue_by_cluster.is_empty());
 
@@ -266,7 +267,10 @@ fn attached_inline_boundary_at_line_end_consumes_trailing_glue() {
     assert_eq!(text_range(0, 4), decision.range);
     assert_eq!('」', decision.left_char);
     assert_eq!('\0', decision.right_char);
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:line-end", decision.reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:line-end",
+        decision.reason
+    );
     assert_eq!(8.0, decision.reduction);
     assert_eq!(8.0, result.geometry.resolve_clusters()[0].advance);
     assert!(result.trailing_glue_by_cluster.is_empty());
@@ -285,10 +289,17 @@ fn attached_inline_boundary_adjacent_punctuation_halves_virtual_glue() {
         &atoms,
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
-    let attachments = [InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None];
+    let attachments = [
+        InlineAttachment::None,
+        InlineAttachment::Previous,
+        InlineAttachment::None,
+    ];
     let result = ledger.resolve_attached_inline_punctuation_boundaries(&attachments, &atoms, EM);
     let decision = &result.decisions[0];
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation", decision.reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation",
+        decision.reason
+    );
     assert_eq!(16.0, decision.natural_inner_glue);
     assert_eq!(8.0, decision.adjusted_inner_glue);
     assert_eq!(8.0, decision.reduction);
@@ -317,12 +328,19 @@ fn attached_inline_boundary_before_ascii_point_mark_collapses_like_adjacent() {
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
     let result = ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
         &atoms,
         EM,
     );
     let decision = &result.decisions[0];
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:ascii-point-mark", decision.reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:ascii-point-mark",
+        decision.reason
+    );
     assert_eq!(8.0, decision.natural_inner_glue);
     assert_eq!(0.0, decision.adjusted_inner_glue);
     assert_eq!(',', decision.right_char);
@@ -337,7 +355,11 @@ fn attached_inline_boundary_skips_mandatory_break_neighbour() {
         SyntheticClusterKind::MandatoryBreak,
         0.0,
     );
-    let clusters = vec![cluster("」", 0, EM, "cjk"), cluster("ref", 1, EM, "latin"), mandatory];
+    let clusters = vec![
+        cluster("」", 0, EM, "cjk"),
+        cluster("ref", 1, EM, "latin"),
+        mandatory,
+    ];
     let atoms = atoms_for(&clusters);
     let ledger = PunctuationGeometryLedger::from(
         clusters,
@@ -345,11 +367,18 @@ fn attached_inline_boundary_skips_mandatory_break_neighbour() {
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
     let result = ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
         &atoms,
         EM,
     );
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:line-end", result.decisions[0].reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:line-end",
+        result.decisions[0].reason
+    );
 }
 
 #[test]
@@ -366,7 +395,11 @@ fn attached_inline_boundary_without_glue_emits_no_decision() {
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
     let result = ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
         &atoms,
         EM,
     );
@@ -384,11 +417,18 @@ fn attached_inline_boundary_without_glue_emits_no_decision() {
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
     let natural = closing_ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
         &closing_atoms,
         EM,
     );
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:natural", natural.decisions[0].reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:natural",
+        natural.decisions[0].reason
+    );
     assert_eq!(8.0, natural.decisions[0].natural_inner_glue);
     assert_eq!(8.0, natural.decisions[0].adjusted_inner_glue);
 
@@ -414,21 +454,43 @@ fn attached_inline_boundary_without_glue_emits_no_decision() {
         &PunctuationSpacingCompressionResult::new(Vec::new()),
     );
     let residual = wide_ledger.resolve_attached_inline_punctuation_boundaries(
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
         &wide_atoms,
         EM,
     );
-    assert_eq!(HashMap::from([(1, 12.0)]), residual.trailing_glue_by_cluster);
+    assert_eq!(
+        HashMap::from([(1, 12.0)]),
+        residual.trailing_glue_by_cluster
+    );
     assert_eq!(28.0, residual.geometry.resolve_clusters()[1].advance);
 }
 
 #[test]
 fn line_edge_trim_consumes_half_width_at_edges_and_skips_empty_inputs() {
     let ledger = ledger_of(&["」", "中"]);
-    assert!(ledger.consume_line_edge_glue(&[], true).decisions.is_empty());
+    assert!(
+        ledger
+            .consume_line_edge_glue(&[], true)
+            .decisions
+            .is_empty()
+    );
     let plain = ledger_of(&["中", "中"]);
-    assert!(plain.consume_line_edge_glue(&[line(IntRange::new(0, 1), 0, 2)], true).decisions.is_empty());
-    assert!(ledger.consume_line_edge_glue(&[line(IntRange::new(1, 0), 0, 0)], true).decisions.is_empty());
+    assert!(
+        plain
+            .consume_line_edge_glue(&[line(IntRange::new(0, 1), 0, 2)], true)
+            .decisions
+            .is_empty()
+    );
+    assert!(
+        ledger
+            .consume_line_edge_glue(&[line(IntRange::new(1, 0), 0, 0)], true)
+            .decisions
+            .is_empty()
+    );
 
     let trimmed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], true);
     let decision = &trimmed.decisions[0];
@@ -454,7 +516,12 @@ fn line_edge_trim_consumes_centred_punctuation_once_per_line() {
             EM,
             Some(
                 PunctuationInkInput::builder(16.0)
-                    .ink_bounds(Some(Rect { left: 2.0, top: 4.0, right: 10.0, bottom: 12.0 }))
+                    .ink_bounds(Some(Rect {
+                        left: 2.0,
+                        top: 4.0,
+                        right: 10.0,
+                        bottom: 12.0,
+                    }))
                     .halt_advance(Some(8.0))
                     .halt_placement_x(Some(-2.0))
                     .build(),
@@ -473,7 +540,10 @@ fn line_edge_trim_consumes_centred_punctuation_once_per_line() {
     assert_eq!("both", decision.side);
     assert_eq!(4.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
-    assert_eq!("LineEndCenteredPunctuationPairedCompression", decision.reason);
+    assert_eq!(
+        "LineEndCenteredPunctuationPairedCompression",
+        decision.reason
+    );
     let capacity = trimmed.geometry.glue_capacities()[&0];
     assert_eq!(0.0, capacity.leading);
     assert_eq!(4.0, capacity.trailing);
@@ -487,8 +557,17 @@ fn cluster_index_range_finds_covered_clusters() {
         cluster("中", 2, EM, "cjk"),
     ];
     assert_eq!(None, cluster_index_range_for(&[], text_range(0, 3)));
-    assert_eq!(Some((0, 2)), cluster_index_range_for(&clusters, text_range(0, 3)));
-    assert_eq!(Some((1, 1)), cluster_index_range_for(&clusters, text_range(1, 2)));
+    assert_eq!(
+        Some((0, 2)),
+        cluster_index_range_for(&clusters, text_range(0, 3))
+    );
+    assert_eq!(
+        Some((1, 1)),
+        cluster_index_range_for(&clusters, text_range(1, 2))
+    );
     assert_eq!(None, cluster_index_range_for(&clusters, text_range(5, 6)));
-    assert_eq!(Some((0, 0)), cluster_index_range_for(&clusters, text_range(0, 1)));
+    assert_eq!(
+        Some((0, 0)),
+        cluster_index_range_for(&clusters, text_range(0, 1))
+    );
 }

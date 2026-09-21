@@ -1,9 +1,9 @@
-use tiqian::core::geometry::scalar_offset;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
+use tiqian::core::geometry::scalar_offset;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::linebreak::hyphenation::NoHyphenator;
 

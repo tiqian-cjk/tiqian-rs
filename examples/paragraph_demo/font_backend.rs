@@ -83,17 +83,14 @@ impl DemoFontCatalog {
         let garamond = DemoFontFace::load(GARAMOND_FONT_KEY, "EB Garamond", GARAMOND_FONT_BYTES)?;
         let emoji = DemoFontFace::load(EMOJI_FONT_KEY, "Noto Color Emoji", EMOJI_FONT_BYTES)?;
         let faces = HashMap::from([
-                (CJK_FONT_KEY, cjk),
-                (LATIN_FONT_KEY, latin),
-                (SERIF_FONT_KEY, serif),
-                (MONOSPACE_FONT_KEY, monospace),
-                (GARAMOND_FONT_KEY, garamond),
-                (EMOJI_FONT_KEY, emoji),
-            ]);
-        let descriptors: Vec<_> = faces
-            .values()
-            .map(DemoFontFace::descriptor)
-            .collect();
+            (CJK_FONT_KEY, cjk),
+            (LATIN_FONT_KEY, latin),
+            (SERIF_FONT_KEY, serif),
+            (MONOSPACE_FONT_KEY, monospace),
+            (GARAMOND_FONT_KEY, garamond),
+            (EMOJI_FONT_KEY, emoji),
+        ]);
+        let descriptors: Vec<_> = faces.values().map(DemoFontFace::descriptor).collect();
         let capability_report = FontBackendCapabilityReport::new(
             "ParagraphDemoHarfRustFontBackend".to_owned(),
             "controlled-font-bytes".to_owned(),
@@ -141,7 +138,11 @@ impl DemoFontCatalog {
         for family in &request.style.font_families {
             let key = match family.as_str() {
                 "Source Han Sans SC" if request.role != FontRole::LatinText => Some(CJK_FONT_KEY),
-                "Inter" | "serif" | "Source Han Serif CN" | "monospace" | "FiraCode Nerd Font"
+                "Inter"
+                | "serif"
+                | "Source Han Serif CN"
+                | "monospace"
+                | "FiraCode Nerd Font"
                 | "EB Garamond" => self.face_key_for_family(family),
                 "emoji" | "Noto Color Emoji" => Some(EMOJI_FONT_KEY),
                 _ => None,
@@ -205,7 +206,10 @@ impl DemoFontCatalog {
             }
             None if weight == 400.0 => font.axes().location(Vec::<(&str, f32)>::new()),
             None => {
-                return Err(format!("font {} cannot replay non-regular face {render_font_face}", face.family));
+                return Err(format!(
+                    "font {} cannot replay non-regular face {render_font_face}",
+                    face.family
+                ));
             }
         };
         let normalized_coords: Vec<vello::NormalizedCoord> = location
@@ -268,10 +272,14 @@ impl DemoFontFace {
     }
 
     fn face_id(&self, weight: f32) -> FontFaceId {
-        let variation_instance = self.weight_axis.map_or_else(
-            FontVariationInstance::default,
-            |_| FontVariationInstance::new(vec![FontVariationSetting::new("wght".to_owned(), weight)]),
-        );
+        let variation_instance =
+            self.weight_axis
+                .map_or_else(FontVariationInstance::default, |_| {
+                    FontVariationInstance::new(vec![FontVariationSetting::new(
+                        "wght".to_owned(),
+                        weight,
+                    )])
+                });
         FontFaceId::new(self.key.to_owned(), 0, variation_instance)
     }
 
@@ -281,7 +289,10 @@ impl DemoFontFace {
             Some(_) if settings.len() == 1 && settings[0].tag() == "wght" => {
                 self.weight_for(settings[0].value() as i32)
             }
-            Some(_) => Err(format!("font {} requires one wght variation setting", self.family)),
+            Some(_) => Err(format!(
+                "font {} requires one wght variation setting",
+                self.family
+            )),
             None if settings.is_empty() => Ok(400.0),
             None => Err(format!("font {} has no variation axes", self.family)),
         }
@@ -550,7 +561,8 @@ impl FontBackend for DemoFontCatalog {
                 return FontBackendShapingResult::new(font_face, shaping, attempts);
             }
         }
-        let (font_face, shaping) = preferred.expect("paragraph-demo candidate list must not be empty");
+        let (font_face, shaping) =
+            preferred.expect("paragraph-demo candidate list must not be empty");
         FontBackendShapingResult::new(font_face, shaping, attempts)
     }
 
@@ -754,19 +766,19 @@ mod tests {
         catalog.validate_demo_faces().unwrap();
         let result = catalog.shape(&request("中文", FontRole::CjkText, TextStyle::default()));
         assert_eq!(result.face.resource_id(), CJK_FONT_KEY);
-        assert_eq!(result.selected_attempt().unwrap().candidate_key, CJK_FONT_KEY);
+        assert_eq!(
+            result.selected_attempt().unwrap().candidate_key,
+            CJK_FONT_KEY
+        );
         assert!(
             result.shaping.glyph_runs[0]
                 .glyphs
                 .iter()
                 .all(|glyph| glyph.id != 0)
         );
-        assert!(
-            result.shaping.glyph_runs[0]
-                .glyphs
-                .iter()
-                .all(|glyph| glyph.render_font_face.as_ref() == Some(&result.face) && glyph.bounds.is_some())
-        );
+        assert!(result.shaping.glyph_runs[0].glyphs.iter().all(|glyph| {
+            glyph.render_font_face.as_ref() == Some(&result.face) && glyph.bounds.is_some()
+        }));
         let metrics = catalog.metrics(&FontMetricsRequest::new(
             result.face,
             16.0,
@@ -791,12 +803,9 @@ mod tests {
                     .font_families(vec![family.to_owned()])
                     .build(),
             ));
-            assert!(
-                shaped.shaping.glyph_runs[0]
-                    .glyphs
-                    .iter()
-                    .all(|glyph| glyph.id != 0 && glyph.render_font_face.as_ref() == Some(&shaped.face))
-            );
+            assert!(shaped.shaping.glyph_runs[0].glyphs.iter().all(
+                |glyph| glyph.id != 0 && glyph.render_font_face.as_ref() == Some(&shaped.face)
+            ));
             assert_eq!(shaped.face.resource_id(), expected_key);
         }
     }
@@ -814,7 +823,10 @@ mod tests {
             .open_type_features(vec!["fwid=1".to_owned()])
             .build(),
         );
-        assert_eq!(halt.shaping.glyph_runs[0].open_type_features, vec!["fwid=1"]);
+        assert_eq!(
+            halt.shaping.glyph_runs[0].open_type_features,
+            vec!["fwid=1"]
+        );
         assert_eq!(
             halt.shaping.decisions[0].feature_evidence.as_deref(),
             Some("fwid=1")
@@ -836,7 +848,10 @@ mod tests {
             .open_type_features(vec!["vert=1".to_owned()])
             .build(),
         );
-        assert_eq!(vertical.shaping.glyph_runs[0].open_type_features, vec!["vert=1"]);
+        assert_eq!(
+            vertical.shaping.glyph_runs[0].open_type_features,
+            vec!["vert=1"]
+        );
         assert_eq!(
             vertical.shaping.decisions[0].feature_evidence.as_deref(),
             Some("vert=1")
@@ -867,9 +882,9 @@ mod tests {
 
     #[test]
     fn catalog_replaces_the_engine_stub_font_path() {
+        use tiqian::api::ParagraphLayoutEngineBuilder;
         use tiqian::core::geometry::LayoutConstraints;
         use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-        use tiqian::api::ParagraphLayoutEngineBuilder;
 
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
@@ -897,69 +912,74 @@ mod tests {
         );
     }
 
-        #[test]
-        fn cjk_dashes_share_the_ideograph_vertical_center() {
-            use tiqian::core::geometry::LayoutConstraints;
-            use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-            use tiqian::api::ParagraphLayoutEngineBuilder;
+    #[test]
+    fn cjk_dashes_share_the_ideograph_vertical_center() {
+        use tiqian::api::ParagraphLayoutEngineBuilder;
+        use tiqian::core::geometry::LayoutConstraints;
+        use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
 
-            for source in ["中—中", "中——中"] {
-                let catalog = DemoFontCatalog::load().unwrap();
-                let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
-                let result = engine.layout(
-                    LayoutInput::builder(
-                        TiqianTextContent::new(source.into()),
-                        LayoutConstraints::with_defaults(320.0),
-                    )
-                    .text_style(
-                        TextStyle::builder()
-                            .font_families(vec!["Source Han Sans SC".to_owned()])
-                            .font_size(16.0)
-                            .build(),
-                    )
-                    .build(),
-                );
+        for source in ["中—中", "中——中"] {
+            let catalog = DemoFontCatalog::load().unwrap();
+            let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
+            let result = engine.layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(source.into()),
+                    LayoutConstraints::with_defaults(320.0),
+                )
+                .text_style(
+                    TextStyle::builder()
+                        .font_families(vec!["Source Han Sans SC".to_owned()])
+                        .font_size(16.0)
+                        .build(),
+                )
+                .build(),
+            );
 
-                let ideograph = result.clusters.iter().find(|cluster| cluster.text == "中").unwrap();
-                let dash = result
-                    .clusters
-                    .iter()
-                    .find(|cluster| cluster.text.as_str().contains('—'))
-                    .unwrap();
-                let ideograph_glyph = result
-                    .glyph_runs
-                    .iter()
-                    .flat_map(|run| &run.glyphs)
-                    .find(|glyph| glyph.cluster_range == ideograph.range)
-                    .unwrap();
-                let dash_glyph = result
-                    .glyph_runs
-                    .iter()
-                    .flat_map(|run| &run.glyphs)
-                    .find(|glyph| glyph.cluster_range == dash.range)
-                    .unwrap();
-                let ideograph_bounds = ideograph_glyph.bounds.unwrap();
-                let dash_bounds = dash_glyph.bounds.unwrap();
-                let baseline = result
-                    .lines
-                    .iter()
-                    .find(|line| line.range.start() <= ideograph.range.start()
-                        && ideograph.range.end() <= line.range.end())
-                    .unwrap()
-                    .baseline;
-                let ideograph_center = baseline
-                    + ideograph_glyph.y
-                    + (ideograph_bounds.top + ideograph_bounds.bottom) / 2.0;
-                let dash_center = baseline
-                    + dash_glyph.y
-                    + (dash_bounds.top + dash_bounds.bottom) / 2.0;
+            let ideograph = result
+                .clusters
+                .iter()
+                .find(|cluster| cluster.text == "中")
+                .unwrap();
+            let dash = result
+                .clusters
+                .iter()
+                .find(|cluster| cluster.text.as_str().contains('—'))
+                .unwrap();
+            let ideograph_glyph = result
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .find(|glyph| glyph.cluster_range == ideograph.range)
+                .unwrap();
+            let dash_glyph = result
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .find(|glyph| glyph.cluster_range == dash.range)
+                .unwrap();
+            let ideograph_bounds = ideograph_glyph.bounds.unwrap();
+            let dash_bounds = dash_glyph.bounds.unwrap();
+            let baseline = result
+                .lines
+                .iter()
+                .find(|line| {
+                    line.range.start() <= ideograph.range.start()
+                        && ideograph.range.end() <= line.range.end()
+                })
+                .unwrap()
+                .baseline;
+            let ideograph_center = baseline
+                + ideograph_glyph.y
+                + (ideograph_bounds.top + ideograph_bounds.bottom) / 2.0;
+            let dash_center =
+                baseline + dash_glyph.y + (dash_bounds.top + dash_bounds.bottom) / 2.0;
 
-                assert!(
-                    (dash_center - ideograph_center).abs() <= 1.0,
-                    "{source}: dash center={dash_center}, ideograph center={ideograph_center}"
-                );
-            }
+            assert!(
+                (dash_center - ideograph_center).abs() <= 1.0,
+                "{source}: dash center={dash_center}, ideograph center={ideograph_center}"
+            );
         }
+    }
 
     #[test]
     fn font_face_replays_a_shaped_glyph_outline() {
@@ -1019,9 +1039,9 @@ mod tests {
 
     #[test]
     fn complex_emoji_layout_keeps_the_noto_face_and_source_range() {
+        use tiqian::api::ParagraphLayoutEngineBuilder;
         use tiqian::core::geometry::LayoutConstraints;
         use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
-        use tiqian::api::ParagraphLayoutEngineBuilder;
 
         let catalog = DemoFontCatalog::load().unwrap();
         let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();

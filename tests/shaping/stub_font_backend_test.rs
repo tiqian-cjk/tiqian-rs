@@ -1,5 +1,6 @@
+use crate::support::DeterministicStubFontBackend;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance};
-use tiqian::core::geometry::{text_range, scalar_offset};
+use tiqian::core::geometry::{scalar_offset, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::TextStyle;
@@ -9,7 +10,6 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontCandidateAttempt,
 };
 use tiqian::shaping::replayable_font_backend::ReplayableFontCatalog;
-use crate::support::DeterministicStubFontBackend;
 use tiqian::shaping::text_shaper::ShapingResult;
 
 fn request(text: &str, display_text: &str, role: FontRole) -> FontBackendRequest {
@@ -25,11 +25,7 @@ fn request(text: &str, display_text: &str, role: FontRole) -> FontBackendRequest
 }
 
 fn face(resource_id: &str) -> FontFaceId {
-    FontFaceId::new(
-        resource_id.to_owned(),
-        0,
-        FontVariationInstance::default(),
-    )
+    FontFaceId::new(resource_id.to_owned(), 0, FontVariationInstance::default())
 }
 
 #[test]
@@ -48,7 +44,12 @@ fn stub_backend_shapes_display_text_with_the_role_selected_controlled_face() {
         assert_eq!(Text::from("——"), shaped.shaping.clusters[0].text);
         assert_eq!(Text::from("⸺"), shaped.shaping.clusters[0].display_text);
         assert_eq!(1, shaped.shaping.glyph_runs[0].glyphs.len());
-        assert_eq!(Some(&shaped.face), shaped.shaping.glyph_runs[0].glyphs[0].render_font_face.as_ref());
+        assert_eq!(
+            Some(&shaped.face),
+            shaped.shaping.glyph_runs[0].glyphs[0]
+                .render_font_face
+                .as_ref()
+        );
         assert_eq!(40.0, shaped.shaping.glyph_runs[0].advance);
         assert_eq!(0, shaped.selected_attempt().unwrap().missing_glyphs);
     }
@@ -69,8 +70,15 @@ fn stub_backend_keeps_a_replayable_placeholder_for_empty_display_text() {
 fn stub_backend_exposes_catalog_and_metrics_for_the_same_controlled_face() {
     let backend = DeterministicStubFontBackend::default();
     assert_eq!(3, backend.faces().len());
-    assert_eq!("DeterministicStubFontBackend", backend.capability_report().backend);
-    assert!(backend.capability_report().can_replay_from_controlled_bytes());
+    assert_eq!(
+        "DeterministicStubFontBackend",
+        backend.capability_report().backend
+    );
+    assert!(
+        backend
+            .capability_report()
+            .can_replay_from_controlled_bytes()
+    );
     assert!(backend.face(&face("cjk-primary")).is_some());
     assert!(backend.face(&face("missing")).is_none());
 
@@ -97,7 +105,12 @@ fn font_backend_result_uses_the_first_complete_candidate_and_preserves_all_missi
     let primary = face("primary");
     let fallback = face("fallback");
     let shaping = ShapingResult::new(
-        vec![Cluster::new(text_range(0, 1), Text::from("A"), fallback.clone(), 10.0)],
+        vec![Cluster::new(
+            text_range(0, 1),
+            Text::from("A"),
+            fallback.clone(),
+            10.0,
+        )],
         vec![GlyphRun::new(
             text_range(0, 1),
             fallback.clone(),
@@ -113,7 +126,10 @@ fn font_backend_result_uses_the_first_complete_candidate_and_preserves_all_missi
             FontCandidateAttempt::new("fallback".to_owned(), fallback.clone(), 0),
         ],
     );
-    assert_eq!("fallback", fallback_result.selected_attempt().unwrap().candidate_key);
+    assert_eq!(
+        "fallback",
+        fallback_result.selected_attempt().unwrap().candidate_key
+    );
     assert_eq!(
         fallback,
         fallback_result
@@ -131,10 +147,24 @@ fn font_backend_result_uses_the_first_complete_candidate_and_preserves_all_missi
             FontCandidateAttempt::new("fallback".to_owned(), fallback, 2),
         ],
     );
-    assert_eq!("primary", all_missing.selected_attempt().unwrap().candidate_key);
+    assert_eq!(
+        "primary",
+        all_missing.selected_attempt().unwrap().candidate_key
+    );
     assert_eq!(2, all_missing.attempts.len());
-    assert!(all_missing.attempts.iter().all(FontCandidateAttempt::has_missing_glyphs));
-    assert_eq!(scalar_offset(0), all_missing.resolution(text_range(0, 1), FontRole::LatinText).range.start());
+    assert!(
+        all_missing
+            .attempts
+            .iter()
+            .all(FontCandidateAttempt::has_missing_glyphs)
+    );
+    assert_eq!(
+        scalar_offset(0),
+        all_missing
+            .resolution(text_range(0, 1), FontRole::LatinText)
+            .range
+            .start()
+    );
 }
 
 #[test]
@@ -142,7 +172,12 @@ fn font_backend_result_allows_missing_selected_evidence() {
     let primary = face("primary");
     let fallback = face("fallback");
     let shaping = ShapingResult::new(
-        vec![Cluster::new(text_range(0, 1), Text::from("A"), primary.clone(), 10.0)],
+        vec![Cluster::new(
+            text_range(0, 1),
+            Text::from("A"),
+            primary.clone(),
+            10.0,
+        )],
         vec![GlyphRun::new(
             text_range(0, 1),
             primary.clone(),
@@ -151,7 +186,8 @@ fn font_backend_result_allows_missing_selected_evidence() {
         )],
     );
 
-    let empty_evidence = FontBackendShapingResult::new(primary.clone(), shaping.clone(), Vec::new());
+    let empty_evidence =
+        FontBackendShapingResult::new(primary.clone(), shaping.clone(), Vec::new());
     assert_eq!(None, empty_evidence.selected_attempt());
     assert_eq!(
         None,
@@ -163,7 +199,11 @@ fn font_backend_result_allows_missing_selected_evidence() {
     let inconsistent_evidence = FontBackendShapingResult::new(
         primary,
         shaping,
-        vec![FontCandidateAttempt::new("fallback".to_owned(), fallback, 0)],
+        vec![FontCandidateAttempt::new(
+            "fallback".to_owned(),
+            fallback,
+            0,
+        )],
     );
     assert_eq!(None, inconsistent_evidence.selected_attempt());
 }

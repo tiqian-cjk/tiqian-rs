@@ -677,7 +677,9 @@ pub fn build_paragraph_layout_prep(
                     .push(glyph.clone());
                 if let Some(previous) = features.get(&glyph.cluster_range) {
                     if previous != &run.open_type_features {
-                        log::warn!("conflicting OpenType features for shaped cluster; keeping first features");
+                        log::warn!(
+                            "conflicting OpenType features for shaped cluster; keeping first features"
+                        );
                     }
                 } else {
                     features.insert(glyph.cluster_range, run.open_type_features.clone());
@@ -703,11 +705,7 @@ pub fn build_paragraph_layout_prep(
             log::warn!("font backend returned a cluster without resolved font evidence");
         }
     }
-    let inline_ranges: Vec<TextRange> = annotation
-        .inline_object_by_range
-        .keys()
-        .copied()
-        .collect();
+    let inline_ranges: Vec<TextRange> = annotation.inline_object_by_range.keys().copied().collect();
     let narrow_ranges: HashSet<TextRange> = input
         .inline_boxes
         .iter()
@@ -831,8 +829,7 @@ pub fn build_paragraph_layout_prep(
             let mut object = annotation
                 .inline_object_by_range
                 .get(&cluster.range)
-                .cloned()
-                ?;
+                .cloned()?;
             if !object.ascent.is_finite() || object.ascent < 0. {
                 log::warn!("invalid inline object ascent; using zero ascent");
                 object.ascent = 0.;
@@ -845,24 +842,28 @@ pub fn build_paragraph_layout_prep(
                 || object.leading_boundary.line_end_discardable_advance != 0.
             {
                 log::warn!("invalid inline object leading boundary; using fixed boundary");
-                object.leading_boundary = super::super::core::text_model::InlineObjectBoundaryAdjustment::FIXED;
+                object.leading_boundary =
+                    super::super::core::text_model::InlineObjectBoundaryAdjustment::FIXED;
             }
             if !object.trailing_boundary.shrink_capacity.is_finite()
                 || object.trailing_boundary.shrink_capacity < 0.
                 || object.trailing_boundary.shrink_capacity > cluster.advance
             {
                 log::warn!("invalid inline object trailing shrink; clamping to advance");
-                object.trailing_boundary.shrink_capacity = if object
-                    .trailing_boundary
-                    .shrink_capacity
-                    .is_finite()
-                {
-                    object.trailing_boundary.shrink_capacity.clamp(0., cluster.advance)
-                } else {
-                    0.
-                };
+                object.trailing_boundary.shrink_capacity =
+                    if object.trailing_boundary.shrink_capacity.is_finite() {
+                        object
+                            .trailing_boundary
+                            .shrink_capacity
+                            .clamp(0., cluster.advance)
+                    } else {
+                        0.
+                    };
             }
-            if !object.trailing_boundary.line_end_discardable_advance.is_finite()
+            if !object
+                .trailing_boundary
+                .line_end_discardable_advance
+                .is_finite()
                 || object.trailing_boundary.line_end_discardable_advance < 0.
                 || object.trailing_boundary.line_end_discardable_advance > cluster.advance
             {
@@ -1108,9 +1109,7 @@ pub fn build_paragraph_layout_prep(
                 };
                 Some((
                     first,
-                    (left[first as usize]
-                        + left[last as usize]
-                        + natural[last as usize].advance)
+                    (left[first as usize] + left[last as usize] + natural[last as usize].advance)
                         / 2.,
                     geometry.width,
                 ))

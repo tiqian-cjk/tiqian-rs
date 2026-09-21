@@ -1,10 +1,10 @@
-use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::HangingPunctuationStyle;
-use tiqian::core::geometry::{scalar_offset, text_range, LayoutConstraints};
+use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
@@ -58,18 +58,18 @@ fn layout_at_kinsoku(
         .clreq_profile_resolver(clreq_profile_resolver)
         .build()
         .layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(max_width),
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(max_width),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .line_length_grid(LineLengthGrid::with_enabled(grid))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .line_length_grid(LineLengthGrid::with_enabled(grid))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 struct FixedKinsokuProfile {
@@ -159,29 +159,41 @@ fn kinsoku_leaves_greedy_break_alone_when_no_forbidden_punctuation_starts_line()
 fn kinsoku_falls_back_to_leave_ragged_when_previous_line_cannot_spare_cluster() {
     let result = layout("Coffee。", 96.0, true);
 
-    assert!(result.clusters.iter().any(|cluster| cluster.text == "Coffee"));
+    assert!(
+        result
+            .clusters
+            .iter()
+            .any(|cluster| cluster.text == "Coffee")
+    );
     assert_eq!(
         Some("LeaveRagged".to_owned()),
         result.debug.line_decisions[1].repair.clone()
     );
     assert_eq!(20, result.debug.line_decisions[1].repair_penalty);
-    assert!(result.debug.line_decisions[1]
-        .notes
-        .iter()
-        .any(|note| note.contains("ForbiddenAtLineStart:。") && note.contains("no-room-to-carry")));
+    assert!(
+        result.debug.line_decisions[1]
+            .notes
+            .iter()
+            .any(|note| note.contains("ForbiddenAtLineStart:。")
+                && note.contains("no-room-to-carry"))
+    );
 }
 
 #[test]
 fn long_latin_sentence_wraps_at_word_boundaries() {
     let result = layout("The quick brown fox", 160.0, true);
 
-    assert!(result.lines.len() > 1, "long Latin must wrap at word boundaries");
+    assert!(
+        result.lines.len() > 1,
+        "long Latin must wrap at word boundaries"
+    );
     for line in &result.lines {
         let line_clusters: Vec<_> = result
             .clusters
             .iter()
             .filter(|cluster| {
-                cluster.range.start() >= line.range.start() && cluster.range.end() <= line.range.end()
+                cluster.range.start() >= line.range.start()
+                    && cluster.range.end() <= line.range.end()
             })
             .collect();
         let first = line_clusters.first().expect("line must have a cluster");
@@ -234,7 +246,10 @@ fn bibliographic_numeric_locator_exposes_structural_breaks() {
         .first()
         .expect("expected bibliographic decision");
 
-    assert_eq!(text_range(locator_start, text.chars().count() as i32), decision.range);
+    assert_eq!(
+        text_range(locator_start, text.chars().count() as i32),
+        decision.range
+    );
     assert_eq!("44(10):21-38.", decision.source_text);
     assert_eq!(
         vec![
@@ -248,11 +263,22 @@ fn bibliographic_numeric_locator_exposes_structural_breaks() {
         decision.break_offsets,
     );
     assert_eq!("BibliographicNumericLocatorBreak", decision.reason);
-    let lines: Vec<_> = (0..result.lines.len()).map(|index| line_text(&result, index)).collect();
-    assert!(lines[0].ends_with("44(10):"), "locator should fill preceding line: {lines:?}");
+    let lines: Vec<_> = (0..result.lines.len())
+        .map(|index| line_text(&result, index))
+        .collect();
+    assert!(
+        lines[0].ends_with("44(10):"),
+        "locator should fill preceding line: {lines:?}"
+    );
     assert_eq!("21-38.", lines.last().expect("expected last line"));
-    assert!(lines.iter().all(|line| !line.ends_with('(')), "opening bracket cannot end a line: {lines:?}");
-    assert!(lines.iter().all(|line| !line.starts_with(')')), "closing bracket cannot start a line: {lines:?}");
+    assert!(
+        lines.iter().all(|line| !line.ends_with('(')),
+        "opening bracket cannot end a line: {lines:?}"
+    );
+    assert!(
+        lines.iter().all(|line| !line.starts_with(')')),
+        "closing bracket cannot start a line: {lines:?}"
+    );
 }
 
 #[test]
@@ -277,8 +303,17 @@ fn kinsoku_level_none_leaves_forbidden_marks_at_line_start() {
         HangingPunctuationStyle::Disabled,
         true,
     );
-    assert!(none.debug.line_decisions.iter().all(|decision| decision.repair.is_none()));
-    assert!(none.lines.iter().any(|line| line.range.start().value() == 3));
+    assert!(
+        none.debug
+            .line_decisions
+            .iter()
+            .all(|decision| decision.repair.is_none())
+    );
+    assert!(
+        none.lines
+            .iter()
+            .any(|line| line.range.start().value() == 3)
+    );
 
     let basic = layout_at_kinsoku(
         text,
@@ -287,7 +322,13 @@ fn kinsoku_level_none_leaves_forbidden_marks_at_line_start() {
         HangingPunctuationStyle::Disabled,
         true,
     );
-    assert!(basic.debug.line_decisions.iter().any(|decision| decision.repair.is_some()));
+    assert!(
+        basic
+            .debug
+            .line_decisions
+            .iter()
+            .any(|decision| decision.repair.is_some())
+    );
 }
 
 #[test]
@@ -300,7 +341,13 @@ fn kinsoku_level_strict_forbids_dash_at_line_start() {
         HangingPunctuationStyle::Disabled,
         true,
     );
-    assert!(basic.debug.line_decisions.iter().all(|decision| decision.repair.is_none()));
+    assert!(
+        basic
+            .debug
+            .line_decisions
+            .iter()
+            .all(|decision| decision.repair.is_none())
+    );
 
     let strict = layout_at_kinsoku(
         text,
@@ -309,7 +356,13 @@ fn kinsoku_level_strict_forbids_dash_at_line_start() {
         HangingPunctuationStyle::Disabled,
         true,
     );
-    assert!(strict.debug.line_decisions.iter().any(|decision| decision.repair.is_some()));
+    assert!(
+        strict
+            .debug
+            .line_decisions
+            .iter()
+            .any(|decision| decision.repair.is_some())
+    );
 }
 
 #[test]
@@ -350,12 +403,19 @@ fn hanging_punctuation_fills_line_to_measure_and_overflows_visual() {
     assert_eq!(scalar_offset(0), line.range.start());
     assert_eq!(scalar_offset(5), line.range.end());
     assert_eq!(64.0, line.adjusted_width);
-    assert!(line.visual_width > 64.0, "hung mark must overflow: {}", line.visual_width);
+    assert!(
+        line.visual_width > 64.0,
+        "hung mark must overflow: {}",
+        line.visual_width
+    );
     assert_eq!(
         line.visual_width - line.adjusted_width,
         line.hanging_punctuation_advance
     );
-    assert_eq!(Some("Hang".to_owned()), hanging.debug.line_decisions[0].repair.clone());
+    assert_eq!(
+        Some("Hang".to_owned()),
+        hanging.debug.line_decisions[0].repair.clone()
+    );
 
     let plain = layout_at_kinsoku(
         text,
@@ -365,9 +425,11 @@ fn hanging_punctuation_fills_line_to_measure_and_overflows_visual() {
         true,
     );
     assert!(plain.lines.iter().all(|line| line.visual_width <= 64.0));
-    assert!(plain
-        .debug
-        .line_decisions
-        .iter()
-        .all(|decision| decision.repair.as_deref() != Some("Hang")));
+    assert!(
+        plain
+            .debug
+            .line_decisions
+            .iter()
+            .all(|decision| decision.repair.as_deref() != Some("Hang"))
+    );
 }

@@ -1,9 +1,9 @@
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
 const FIXTURES: [&str; 5] = [
     "中文，中文。",
@@ -15,7 +15,9 @@ const FIXTURES: [&str; 5] = [
 
 #[test]
 fn punctuation_resolved_advance_never_falls_below_body_width() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     for text in FIXTURES {
         for max_width in [48.0, 64.0, 80.0, 100.0, 160.0, 320.0] {
             let result = engine.layout(

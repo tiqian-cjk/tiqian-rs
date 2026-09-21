@@ -1,14 +1,13 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 
-use tiqian::common::HashMap;
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
+use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, LayoutConstraints, Rect};
+use tiqian::core::geometry::{LayoutConstraints, Rect, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, LineBox,
-    LineEndReason,
+    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, LineBox, LineEndReason,
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -16,15 +15,15 @@ use tiqian::core::text_model::{
     InlineObjectPreferredStretchKind, InlineObjectSpan, LayoutInput, RubyKind, RubySpan,
     TiqianTextContent,
 };
-use tiqian::layout::annotation_geometry_stage::{
-    resolve_annotation_geometry, AnnotationGeometryRequest, RubyFontGeometry,
-};
-use tiqian::layout::line_geometry_stage::ClusterMetricDecision;
-use tiqian::layout::line_optimization::{LineCandidate, LineSolution};
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{
     BaselinePolicy, FontMetricsPolicy, FontRole, LayoutFontMetrics, RawFontMetrics,
 };
+use tiqian::layout::annotation_geometry_stage::{
+    AnnotationGeometryRequest, RubyFontGeometry, resolve_annotation_geometry,
+};
+use tiqian::layout::line_geometry_stage::ClusterMetricDecision;
+use tiqian::layout::line_optimization::{LineCandidate, LineSolution};
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use crate::support::DeterministicStubFontBackend;
@@ -32,48 +31,112 @@ use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
 
 fn ink_bounds_backend() -> impl tiqian::shaping::font_backend::FontBackend {
-    stub_backend_with_transform(|_: &FontBackendRequest, mut result: FontBackendShapingResult| {
-        for run in &mut result.shaping.glyph_runs {
-            for glyph in &mut run.glyphs {
-                glyph.bounds = Some(Rect { left: 1.0, top: 2.0, right: 9.0, bottom: 10.0 });
+    stub_backend_with_transform(
+        |_: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            for run in &mut result.shaping.glyph_runs {
+                for glyph in &mut run.glyphs {
+                    glyph.bounds = Some(Rect {
+                        left: 1.0,
+                        top: 2.0,
+                        right: 9.0,
+                        bottom: 10.0,
+                    });
+                }
             }
-        }
-        result
-    })
+            result
+        },
+    )
 }
 
 fn multi_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
-    stub_backend_with_transform(|input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-        for run in &mut result.shaping.glyph_runs {
-            let face = run.font_face.clone();
-            run.glyphs = vec![
-                Glyph::builder(1, input.range, 4.0).render_font_face(Some(face.clone())).x(0.0).bounds(Some(Rect { left: 5.0, top: 5.0, right: 5.0, bottom: 5.0 })).build(),
-                Glyph::builder(2, input.range, 4.0).render_font_face(Some(face.clone())).x(4.0).bounds(Some(Rect { left: 0.0, top: 0.0, right: 10.0, bottom: 10.0 })).build(),
-                Glyph::builder(3, input.range, 4.0).render_font_face(Some(face)).x(8.0).bounds(Some(Rect { left: 10.0, top: 10.0, right: 0.0, bottom: 0.0 })).build(),
-            ];
-        }
-        result
-    })
+    stub_backend_with_transform(
+        |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            for run in &mut result.shaping.glyph_runs {
+                let face = run.font_face.clone();
+                run.glyphs = vec![
+                    Glyph::builder(1, input.range, 4.0)
+                        .render_font_face(Some(face.clone()))
+                        .x(0.0)
+                        .bounds(Some(Rect {
+                            left: 5.0,
+                            top: 5.0,
+                            right: 5.0,
+                            bottom: 5.0,
+                        }))
+                        .build(),
+                    Glyph::builder(2, input.range, 4.0)
+                        .render_font_face(Some(face.clone()))
+                        .x(4.0)
+                        .bounds(Some(Rect {
+                            left: 0.0,
+                            top: 0.0,
+                            right: 10.0,
+                            bottom: 10.0,
+                        }))
+                        .build(),
+                    Glyph::builder(3, input.range, 4.0)
+                        .render_font_face(Some(face))
+                        .x(8.0)
+                        .bounds(Some(Rect {
+                            left: 10.0,
+                            top: 10.0,
+                            right: 0.0,
+                            bottom: 0.0,
+                        }))
+                        .build(),
+                ];
+            }
+            result
+        },
+    )
 }
 
 fn alternating_glyph_backend() -> impl tiqian::shaping::font_backend::FontBackend {
     let call_count = AtomicI32::new(0);
-    stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-        let call_count = call_count.fetch_add(1, Ordering::Relaxed) + 1;
-        for run in &mut result.shaping.glyph_runs {
-            let face = run.font_face.clone();
-            run.glyphs = if call_count % 2 == 0 {
-                vec![
-                    Glyph::builder(1, input.range, 5.0).render_font_face(Some(face.clone())).bounds(Some(Rect { left: 10.0, top: 10.0, right: 20.0, bottom: 20.0 })).build(),
-                    Glyph::builder(2, input.range, 5.0).render_font_face(Some(face.clone())).x(5.0).bounds(Some(Rect { left: 5.0, top: 5.0, right: 25.0, bottom: 25.0 })).build(),
-                    Glyph::builder(3, input.range, 6.0).render_font_face(Some(face)).x(10.0).bounds(Some(Rect { left: 15.0, top: 15.0, right: 15.0, bottom: 15.0 })).build(),
-                ]
-            } else {
-                Vec::new()
-            };
-        }
-        result
-    })
+    stub_backend_with_transform(
+        move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+            let call_count = call_count.fetch_add(1, Ordering::Relaxed) + 1;
+            for run in &mut result.shaping.glyph_runs {
+                let face = run.font_face.clone();
+                run.glyphs = if call_count % 2 == 0 {
+                    vec![
+                        Glyph::builder(1, input.range, 5.0)
+                            .render_font_face(Some(face.clone()))
+                            .bounds(Some(Rect {
+                                left: 10.0,
+                                top: 10.0,
+                                right: 20.0,
+                                bottom: 20.0,
+                            }))
+                            .build(),
+                        Glyph::builder(2, input.range, 5.0)
+                            .render_font_face(Some(face.clone()))
+                            .x(5.0)
+                            .bounds(Some(Rect {
+                                left: 5.0,
+                                top: 5.0,
+                                right: 25.0,
+                                bottom: 25.0,
+                            }))
+                            .build(),
+                        Glyph::builder(3, input.range, 6.0)
+                            .render_font_face(Some(face))
+                            .x(10.0)
+                            .bounds(Some(Rect {
+                                left: 15.0,
+                                top: 15.0,
+                                right: 15.0,
+                                bottom: 15.0,
+                            }))
+                            .build(),
+                    ]
+                } else {
+                    Vec::new()
+                };
+            }
+            result
+        },
+    )
 }
 
 #[test]
@@ -82,86 +145,203 @@ fn inline_object_decisions_with_preferred_stretch_and_fixed() {
     let preferred_leading = InlineObjectBoundaryAdjustment::builder()
         .participates_in_uniform_stretch(true)
         .preferred_stretch(InlineObjectPreferredStretch::new(
-            InlineObjectPreferredStretchKind::PunctuationTrailing, 10.0, 15.0,
+            InlineObjectPreferredStretchKind::PunctuationTrailing,
+            10.0,
+            15.0,
         ))
         .prevents_line_break(true)
         .build();
     let preferred_trailing = InlineObjectBoundaryAdjustment::builder()
         .participates_in_uniform_stretch(true)
         .preferred_stretch(InlineObjectPreferredStretch::new(
-            InlineObjectPreferredStretchKind::Relation, 10.0, 20.0,
+            InlineObjectPreferredStretchKind::Relation,
+            10.0,
+            20.0,
         ))
         .shrink_capacity(3.0)
         .line_end_discardable_advance(2.0)
         .build();
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(text), LayoutConstraints::with_defaults(300.0))
-            .inline_objects(vec![
-                InlineObjectSpan::new(text_range(4, 5), 30.0, 12.0, 4.0, preferred_leading, preferred_trailing),
-                InlineObjectSpan::with_fixed_boundaries(text_range(6, 7), 20.0, 10.0, 2.0),
-            ])
-            .build(),
-    );
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(text),
+                    LayoutConstraints::with_defaults(300.0),
+                )
+                .inline_objects(vec![
+                    InlineObjectSpan::new(
+                        text_range(4, 5),
+                        30.0,
+                        12.0,
+                        4.0,
+                        preferred_leading,
+                        preferred_trailing,
+                    ),
+                    InlineObjectSpan::with_fixed_boundaries(text_range(6, 7), 20.0, 10.0, 2.0),
+                ])
+                .build(),
+            );
     assert!(!result.lines.is_empty());
     assert_eq!(2, result.debug.inline_object_decisions.len());
-    assert_eq!("PunctuationTrailing", result.debug.inline_object_decisions[0].leading_preferred_stretch_kind.as_deref().unwrap());
-    assert_eq!("MeasurableOpaqueInlineObject", result.debug.inline_object_decisions[1].reason);
+    assert_eq!(
+        "PunctuationTrailing",
+        result.debug.inline_object_decisions[0]
+            .leading_preferred_stretch_kind
+            .as_deref()
+            .unwrap()
+    );
+    assert_eq!(
+        "MeasurableOpaqueInlineObject",
+        result.debug.inline_object_decisions[1].reason
+    );
 }
 
 #[test]
 fn decoration_decisions_emphasis_on_han_punctuation_and_western() {
     let text = Text::from("汉字，。English");
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(text.clone()), LayoutConstraints::with_defaults(300.0))
-            .decorations(vec![DecorationSpan { range: text_range(0, text.scalar_len().value()), kind: DecorationKind::Emphasis }])
-            .build(),
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(text.clone()),
+                    LayoutConstraints::with_defaults(300.0),
+                )
+                .decorations(vec![DecorationSpan {
+                    range: text_range(0, text.scalar_len().value()),
+                    kind: DecorationKind::Emphasis,
+                }])
+                .build(),
+            );
+    assert!(
+        result
+            .debug
+            .decoration_decisions
+            .iter()
+            .any(|decision| decision.applied)
     );
-    assert!(result.debug.decoration_decisions.iter().any(|decision| decision.applied));
-    assert!(result.debug.decoration_decisions.iter().any(|decision| decision.reason == "clreq-no-dot-on-punctuation"));
-    assert!(result.debug.decoration_decisions.iter().any(|decision| decision.reason == "no-dot-on-non-han"));
+    assert!(
+        result
+            .debug
+            .decoration_decisions
+            .iter()
+            .any(|decision| decision.reason == "clreq-no-dot-on-punctuation")
+    );
+    assert!(
+        result
+            .debug
+            .decoration_decisions
+            .iter()
+            .any(|decision| decision.reason == "no-dot-on-non-han")
+    );
 }
 
 #[test]
 fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(Text::from("张三李四王五赵六钱七孙八周吴郑王")), LayoutConstraints::with_defaults(120.0))
-            .decorations(vec![
-                DecorationSpan { range: text_range(0, 2), kind: DecorationKind::ProperNoun },
-                DecorationSpan { range: text_range(2, 4), kind: DecorationKind::ProperNoun },
-                DecorationSpan { range: text_range(4, 8), kind: DecorationKind::BookTitle },
-                DecorationSpan { range: text_range(8, 12), kind: DecorationKind::Mourning },
-                DecorationSpan { range: text_range(0, 16), kind: DecorationKind::Mourning },
-            ])
-            .build(),
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from("张三李四王五赵六钱七孙八周吴郑王")),
+                    LayoutConstraints::with_defaults(120.0),
+                )
+                .decorations(vec![
+                    DecorationSpan {
+                        range: text_range(0, 2),
+                        kind: DecorationKind::ProperNoun,
+                    },
+                    DecorationSpan {
+                        range: text_range(2, 4),
+                        kind: DecorationKind::ProperNoun,
+                    },
+                    DecorationSpan {
+                        range: text_range(4, 8),
+                        kind: DecorationKind::BookTitle,
+                    },
+                    DecorationSpan {
+                        range: text_range(8, 12),
+                        kind: DecorationKind::Mourning,
+                    },
+                    DecorationSpan {
+                        range: text_range(0, 16),
+                        kind: DecorationKind::Mourning,
+                    },
+                ])
+                .build(),
+            );
+    assert!(
+        result
+            .debug
+            .decoration_segments
+            .iter()
+            .any(|segment| segment.kind == "ProperNoun")
     );
-    assert!(result.debug.decoration_segments.iter().any(|segment| segment.kind == "ProperNoun"));
-    assert!(result.debug.decoration_segments.iter().any(|segment| segment.kind == "BookTitle"));
-    assert!(result.debug.decoration_segments.iter().any(|segment| segment.kind == "Mourning"));
-    assert!(result.debug.decoration_segments.iter().any(|segment| segment.reason.contains("AdjacentInterlinearLineShortening")));
+    assert!(
+        result
+            .debug
+            .decoration_segments
+            .iter()
+            .any(|segment| segment.kind == "BookTitle")
+    );
+    assert!(
+        result
+            .debug
+            .decoration_segments
+            .iter()
+            .any(|segment| segment.kind == "Mourning")
+    );
+    assert!(
+        result
+            .debug
+            .decoration_segments
+            .iter()
+            .any(|segment| segment.reason.contains("AdjacentInterlinearLineShortening"))
+    );
 }
 
 #[test]
 fn decoration_segments_leading_and_trailing_blanks() {
     let text = Text::from("「开头」中文 English 混排【结束】");
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(text.clone()), LayoutConstraints::with_defaults(150.0))
-            .decorations(vec![DecorationSpan { range: text_range(0, text.scalar_len().value()), kind: DecorationKind::ProperNoun }])
-            .build(),
-    );
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(text.clone()),
+                    LayoutConstraints::with_defaults(150.0),
+                )
+                .decorations(vec![DecorationSpan {
+                    range: text_range(0, text.scalar_len().value()),
+                    kind: DecorationKind::ProperNoun,
+                }])
+                .build(),
+            );
     assert!(!result.debug.decoration_segments.is_empty());
 }
 
 #[test]
 fn ruby_decisions_pinyin_single_and_split_lines() {
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(Text::from("这是一个很长很长的段落用于测试拼音行间注跨行")), LayoutConstraints::with_defaults(100.0))
-            .ruby_spans(vec![
-                RubySpan::builder(text_range(0, 2), Text::from("zhèshì")).locale(Some("zh-Latn".to_owned())).build(),
-                RubySpan::new(text_range(2, 6), Text::from("yīgehěncháng")),
-                RubySpan::new(text_range(6, 12), Text::from("chángdeduànluò")),
-            ])
-            .build(),
-    );
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from(
+                        "这是一个很长很长的段落用于测试拼音行间注跨行",
+                    )),
+                    LayoutConstraints::with_defaults(100.0),
+                )
+                .ruby_spans(vec![
+                    RubySpan::builder(text_range(0, 2), Text::from("zhèshì"))
+                        .locale(Some("zh-Latn".to_owned()))
+                        .build(),
+                    RubySpan::new(text_range(2, 6), Text::from("yīgehěncháng")),
+                    RubySpan::new(text_range(6, 12), Text::from("chángdeduànluò")),
+                ])
+                .build(),
+            );
     assert!(result.lines.len() > 1);
     assert_eq!(3, result.debug.ruby_decisions.len());
     assert_eq!("zh-Latn", result.debug.ruby_decisions[0].locale);
@@ -169,24 +349,56 @@ fn ruby_decisions_pinyin_single_and_split_lines() {
 
 #[test]
 fn bopomofo_decisions_all_tones_and_symbol_counts() {
-    let ruby_spans = ["˙ㄅ", "˙ㄅㄆ", "˙ㄅㄆㄇ", "ㄅˊ", "ㄅㄆˊ", "ㄅㄆㄇˊ", "ㄅˇ", "ㄅㄆˇ", "ㄅㄆㄇˇ", "ㄅˋ", "ㄅㄆˋ", "ㄅㄆㄇˋ", "ㄅ", "ㄅㄆ", "ㄅㄆㄇ"]
-        .into_iter()
-        .enumerate()
-        .map(|(index, reading)| {
-            RubySpan::builder(text_range(index as i32, index as i32 + 1), Text::from(reading))
-                .kind(RubyKind::Bopomofo)
-                .locale(if index == 0 { Some("zh-Bopo".to_owned()) } else { None })
-                .build()
+    let ruby_spans = [
+        "˙ㄅ",
+        "˙ㄅㄆ",
+        "˙ㄅㄆㄇ",
+        "ㄅˊ",
+        "ㄅㄆˊ",
+        "ㄅㄆㄇˊ",
+        "ㄅˇ",
+        "ㄅㄆˇ",
+        "ㄅㄆㄇˇ",
+        "ㄅˋ",
+        "ㄅㄆˋ",
+        "ㄅㄆㄇˋ",
+        "ㄅ",
+        "ㄅㄆ",
+        "ㄅㄆㄇ",
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, reading)| {
+        RubySpan::builder(
+            text_range(index as i32, index as i32 + 1),
+            Text::from(reading),
+        )
+        .kind(RubyKind::Bopomofo)
+        .locale(if index == 0 {
+            Some("zh-Bopo".to_owned())
+        } else {
+            None
         })
-        .collect();
+        .build()
+    })
+    .collect();
     let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(ink_bounds_backend())).build();
     let result = engine.layout(
-        LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八九十甲乙丙丁戊己庚辛")), LayoutConstraints::with_defaults(300.0))
-            .ruby_spans(ruby_spans)
-            .build(),
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("一二三四五六七八九十甲乙丙丁戊己庚辛")),
+            LayoutConstraints::with_defaults(300.0),
+        )
+        .ruby_spans(ruby_spans)
+        .build(),
     );
     assert_eq!(15, result.debug.bopomofo_decisions.len());
-    assert!(result.debug.bopomofo_decisions.iter().any(|decision| decision.placements.len() == 4));
+    assert!(
+        result
+            .debug
+            .bopomofo_decisions
+            .iter()
+            .any(|decision| decision.placements.len() == 4)
+    );
 }
 
 #[test]
@@ -198,56 +410,195 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         LayoutConstraints::with_defaults(300.0),
     )
     .decorations(vec![
-        DecorationSpan { range: text_range(0, 2), kind: DecorationKind::Emphasis },
-        DecorationSpan { range: text_range(2, 3), kind: DecorationKind::Emphasis },
-        DecorationSpan { range: text_range(5, 12), kind: DecorationKind::Emphasis },
-        DecorationSpan { range: text_range(0, 4), kind: DecorationKind::ProperNoun },
+        DecorationSpan {
+            range: text_range(0, 2),
+            kind: DecorationKind::Emphasis,
+        },
+        DecorationSpan {
+            range: text_range(2, 3),
+            kind: DecorationKind::Emphasis,
+        },
+        DecorationSpan {
+            range: text_range(5, 12),
+            kind: DecorationKind::Emphasis,
+        },
+        DecorationSpan {
+            range: text_range(0, 4),
+            kind: DecorationKind::ProperNoun,
+        },
     ])
     .build();
     let clusters = vec![
-        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), FontFaceId::with_resource_id("k"), 32.0),
-        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), FontFaceId::with_resource_id("k"), 16.0),
-        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), FontFaceId::with_resource_id("k"), 32.0),
-        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), FontFaceId::with_resource_id("k"), 56.0),
+        Cluster::with_display_text(
+            text_range(0, 2),
+            Text::from("汉字"),
+            Text::from("汉字"),
+            FontFaceId::with_resource_id("k"),
+            32.0,
+        ),
+        Cluster::with_display_text(
+            text_range(2, 3),
+            Text::from("，"),
+            Text::from("，"),
+            FontFaceId::with_resource_id("k"),
+            16.0,
+        ),
+        Cluster::with_display_text(
+            text_range(3, 5),
+            Text::from("测试"),
+            Text::from("测试"),
+            FontFaceId::with_resource_id("k"),
+            32.0,
+        ),
+        Cluster::with_display_text(
+            text_range(5, 12),
+            Text::from("English"),
+            Text::from("English"),
+            FontFaceId::with_resource_id("k"),
+            56.0,
+        ),
     ];
     let line_solution = LineSolution::new(vec![
         LineCandidate::new(IntRange::new(0, 2), text_range(0, 5), 80.0, 80.0),
         LineCandidate::new(IntRange::new(3, 3), text_range(5, 12), 56.0, 56.0),
     ]);
     let lines = vec![
-        LineBox::builder(text_range(0, 5), IntRange::new(0, 2), 16.0, 0.0, 20.0, 80.0, 80.0, 80.0)
-            .end_reason(LineEndReason::AutoWrap)
-            .build(),
-        LineBox::builder(text_range(5, 12), IntRange::new(3, 3), 36.0, 20.0, 40.0, 56.0, 56.0, 56.0)
-            .end_reason(LineEndReason::MandatoryBreak)
-            .build(),
+        LineBox::builder(
+            text_range(0, 5),
+            IntRange::new(0, 2),
+            16.0,
+            0.0,
+            20.0,
+            80.0,
+            80.0,
+            80.0,
+        )
+        .end_reason(LineEndReason::AutoWrap)
+        .build(),
+        LineBox::builder(
+            text_range(5, 12),
+            IntRange::new(3, 3),
+            36.0,
+            20.0,
+            40.0,
+            56.0,
+            56.0,
+            56.0,
+        )
+        .end_reason(LineEndReason::MandatoryBreak)
+        .build(),
     ];
-    let hanzi = RubySpan::builder(text_range(0, 2), Text::from("hànzì")).locale(Some("zh-Latn".to_owned())).build();
+    let hanzi = RubySpan::builder(text_range(0, 2), Text::from("hànzì"))
+        .locale(Some("zh-Latn".to_owned()))
+        .build();
     let ceshi = RubySpan::new(text_range(3, 5), Text::from("cèshì"));
     let geometry = ClusterGeometryDecisionInfo::builder(
-        text_range(0, 2), Text::from("汉字"), Text::from("汉字"), 32.0, 32.0,
-        4.0, 2.0, 4.0, 2.0, 0.0, 32.0, "test".to_owned(), "test".to_owned(),
-    ).build();
+        text_range(0, 2),
+        Text::from("汉字"),
+        Text::from("汉字"),
+        32.0,
+        32.0,
+        4.0,
+        2.0,
+        4.0,
+        2.0,
+        0.0,
+        32.0,
+        "test".to_owned(),
+        "test".to_owned(),
+    )
+    .build();
     let leading = InlineObjectBoundaryAdjustment::builder()
-        .preferred_stretch(InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::PunctuationTrailing, 10.0, 15.0))
+        .preferred_stretch(InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::PunctuationTrailing,
+            10.0,
+            15.0,
+        ))
         .build();
     let trailing = InlineObjectBoundaryAdjustment::builder()
-        .preferred_stretch(InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 10.0, 20.0))
+        .preferred_stretch(InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::Relation,
+            10.0,
+            20.0,
+        ))
         .build();
     let inline_objects = HashMap::from([
-        (0, InlineObjectSpan::with_leading_boundary(text_range(0, 2), 32.0, 12.0, 4.0, leading)),
-        (3, InlineObjectSpan::with_trailing_boundary(text_range(5, 12), 56.0, 12.0, 4.0, trailing)),
-        (99, InlineObjectSpan::with_fixed_boundaries(text_range(99, 100), 10.0, 8.0, 2.0)),
+        (
+            0,
+            InlineObjectSpan::with_leading_boundary(text_range(0, 2), 32.0, 12.0, 4.0, leading),
+        ),
+        (
+            3,
+            InlineObjectSpan::with_trailing_boundary(text_range(5, 12), 56.0, 12.0, 4.0, trailing),
+        ),
+        (
+            99,
+            InlineObjectSpan::with_fixed_boundaries(text_range(99, 100), 10.0, 8.0, 2.0),
+        ),
     ]);
     let ruby_geometry = HashMap::from([
-        (hanzi.clone(), RubyFontGeometry { width: 20.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() }),
-        (ceshi.clone(), RubyFontGeometry { width: 20.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() }),
+        (
+            hanzi.clone(),
+            RubyFontGeometry {
+                width: 20.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
+        ),
+        (
+            ceshi.clone(),
+            RubyFontGeometry {
+                width: 20.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
+        ),
     ]);
     let auto_space = vec![
-        AutoSpaceDecisionInfo { cluster_range: text_range(0, 2), side: "leading".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(2, 3), side: "leading".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(3, 5), side: "trailing".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(5, 12), side: "trailing".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(0, 2),
+            side: "leading".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(2, 3),
+            side: "leading".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(3, 5),
+            side: "trailing".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(5, 12),
+            side: "trailing".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
     ];
     let result = resolve_annotation_geometry(AnnotationGeometryRequest {
         input: &input,
@@ -260,7 +611,12 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         visible_line_ranges: &[IntRange::new(0, 2), IntRange::new(3, 3)],
         lines: &lines,
         final_clusters: &clusters,
-        cluster_roles: &[FontRole::CjkText, FontRole::CjkPunctuation, FontRole::CjkText, FontRole::LatinText],
+        cluster_roles: &[
+            FontRole::CjkText,
+            FontRole::CjkPunctuation,
+            FontRole::CjkText,
+            FontRole::LatinText,
+        ],
         justify_delta_by_cluster: &HashMap::from([(0, 2.0)]),
         ruby_and_bopomofo_spread: &HashMap::from([(0, 4.0)]),
         metric_decisions: &[],
@@ -276,13 +632,27 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         font_backend: &font_backend,
     });
     assert_eq!(3, result.inline_object_decisions.len());
-    assert_eq!(-1, result.inline_object_decisions.last().unwrap().line_index);
+    assert_eq!(
+        -1,
+        result.inline_object_decisions.last().unwrap().line_index
+    );
     let metric = ClusterMetricDecision {
         range: text_range(0, 2),
         source_text: Text::from("汉字"),
-        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 16.0, FontRole::CjkText, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(
+            FontFaceId::with_resource_id("k"),
+            16.0,
+            FontRole::CjkText,
+            "zh-Hans".to_owned(),
+        ),
         raw_metrics: RawFontMetrics::new(14.0, 4.0),
-        layout_metrics: LayoutFontMetrics::new(14.0, 4.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
+        layout_metrics: LayoutFontMetrics::new(
+            14.0,
+            4.0,
+            0.0,
+            FontMetricsPolicy::Raw,
+            BaselinePolicy::Alphabetic,
+        ),
     };
     let second = resolve_annotation_geometry(AnnotationGeometryRequest {
         input: &input,
@@ -295,7 +665,12 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         visible_line_ranges: &[IntRange::new(0, 2), IntRange::new(3, 3)],
         lines: &lines,
         final_clusters: &clusters,
-        cluster_roles: &[FontRole::CjkText, FontRole::CjkPunctuation, FontRole::CjkText, FontRole::LatinText],
+        cluster_roles: &[
+            FontRole::CjkText,
+            FontRole::CjkPunctuation,
+            FontRole::CjkText,
+            FontRole::LatinText,
+        ],
         justify_delta_by_cluster: &HashMap::new(),
         ruby_and_bopomofo_spread: &HashMap::new(),
         metric_decisions: &[metric],
@@ -303,7 +678,13 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         natural_clusters: &clusters,
         ruby_font_geometry_by_span: &HashMap::from([(
             RubySpan::new(text_range(0, 2), Text::from("hànzì")),
-            RubyFontGeometry { width: 20.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() },
+            RubyFontGeometry {
+                width: 20.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
         )]),
         ruby_stack_gap: 0.0,
         base_ascent: 16.0,
@@ -325,70 +706,228 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         LayoutConstraints::with_defaults(300.0),
     )
     .decorations(vec![
-        DecorationSpan { range: text_range(0, 2), kind: DecorationKind::Emphasis },
-        DecorationSpan { range: text_range(0, 5), kind: DecorationKind::ProperNoun },
+        DecorationSpan {
+            range: text_range(0, 2),
+            kind: DecorationKind::Emphasis,
+        },
+        DecorationSpan {
+            range: text_range(0, 5),
+            kind: DecorationKind::ProperNoun,
+        },
     ])
     .build();
     let clusters = vec![
-        Cluster::with_display_text(text_range(0, 2), Text::from("汉字"), Text::from("汉字"), FontFaceId::with_resource_id("k"), 32.0),
-        Cluster::with_display_text(text_range(2, 3), Text::from("，"), Text::from("，"), FontFaceId::with_resource_id("k"), 16.0),
-        Cluster::with_display_text(text_range(3, 5), Text::from("测试"), Text::from("测试"), FontFaceId::with_resource_id("k"), 32.0),
-        Cluster::with_display_text(text_range(5, 12), Text::from("English"), Text::from("English"), FontFaceId::with_resource_id("k"), 56.0),
+        Cluster::with_display_text(
+            text_range(0, 2),
+            Text::from("汉字"),
+            Text::from("汉字"),
+            FontFaceId::with_resource_id("k"),
+            32.0,
+        ),
+        Cluster::with_display_text(
+            text_range(2, 3),
+            Text::from("，"),
+            Text::from("，"),
+            FontFaceId::with_resource_id("k"),
+            16.0,
+        ),
+        Cluster::with_display_text(
+            text_range(3, 5),
+            Text::from("测试"),
+            Text::from("测试"),
+            FontFaceId::with_resource_id("k"),
+            32.0,
+        ),
+        Cluster::with_display_text(
+            text_range(5, 12),
+            Text::from("English"),
+            Text::from("English"),
+            FontFaceId::with_resource_id("k"),
+            56.0,
+        ),
     ];
     let line_solution = LineSolution::new(vec![
         LineCandidate::new(IntRange::EMPTY, text_range(0, 0), 0.0, 0.0),
         LineCandidate::new(IntRange::new(0, 2), text_range(0, 5), 80.0, 80.0),
     ]);
     let lines = vec![
-        LineBox::builder(text_range(0, 0), IntRange::EMPTY, 0.0, 0.0, 20.0, 0.0, 0.0, 0.0)
-            .end_reason(LineEndReason::AutoWrap)
-            .build(),
-        LineBox::builder(text_range(0, 5), IntRange::new(0, 2), 16.0, 0.0, 20.0, 80.0, 80.0, 80.0)
-            .end_reason(LineEndReason::AutoWrap)
-            .build(),
+        LineBox::builder(
+            text_range(0, 0),
+            IntRange::EMPTY,
+            0.0,
+            0.0,
+            20.0,
+            0.0,
+            0.0,
+            0.0,
+        )
+        .end_reason(LineEndReason::AutoWrap)
+        .build(),
+        LineBox::builder(
+            text_range(0, 5),
+            IntRange::new(0, 2),
+            16.0,
+            0.0,
+            20.0,
+            80.0,
+            80.0,
+            80.0,
+        )
+        .end_reason(LineEndReason::AutoWrap)
+        .build(),
     ];
     let geometry = ClusterGeometryDecisionInfo::builder(
-        text_range(0, 2), Text::from("汉字"), Text::from("汉字"), 32.0, 32.0,
-        4.0, 2.0, 4.0, 2.0, 0.0, 32.0, "test".to_owned(), "test".to_owned(),
+        text_range(0, 2),
+        Text::from("汉字"),
+        Text::from("汉字"),
+        32.0,
+        32.0,
+        4.0,
+        2.0,
+        4.0,
+        2.0,
+        0.0,
+        32.0,
+        "test".to_owned(),
+        "test".to_owned(),
     )
     .build();
     let metric_cjk = ClusterMetricDecision {
         range: text_range(0, 2),
         source_text: Text::from("汉字"),
-        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 24.0, FontRole::CjkText, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(
+            FontFaceId::with_resource_id("k"),
+            24.0,
+            FontRole::CjkText,
+            "zh-Hans".to_owned(),
+        ),
         raw_metrics: RawFontMetrics::new(18.0, 6.0),
-        layout_metrics: LayoutFontMetrics::new(18.0, 6.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
+        layout_metrics: LayoutFontMetrics::new(
+            18.0,
+            6.0,
+            0.0,
+            FontMetricsPolicy::Raw,
+            BaselinePolicy::Alphabetic,
+        ),
     };
     let metric_punctuation = ClusterMetricDecision {
         range: text_range(2, 3),
         source_text: Text::from("，"),
-        request: FontMetricsRequest::new(FontFaceId::with_resource_id("k"), 24.0, FontRole::CjkPunctuation, "zh-Hans".to_owned()),
+        request: FontMetricsRequest::new(
+            FontFaceId::with_resource_id("k"),
+            24.0,
+            FontRole::CjkPunctuation,
+            "zh-Hans".to_owned(),
+        ),
         raw_metrics: RawFontMetrics::new(18.0, 6.0),
-        layout_metrics: LayoutFontMetrics::new(18.0, 6.0, 0.0, FontMetricsPolicy::Raw, BaselinePolicy::Alphabetic),
+        layout_metrics: LayoutFontMetrics::new(
+            18.0,
+            6.0,
+            0.0,
+            FontMetricsPolicy::Raw,
+            BaselinePolicy::Alphabetic,
+        ),
     };
     let leading = InlineObjectBoundaryAdjustment::builder()
-        .preferred_stretch(InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::Relation, 5.0, 10.0))
+        .preferred_stretch(InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::Relation,
+            5.0,
+            10.0,
+        ))
         .build();
     let trailing = InlineObjectBoundaryAdjustment::builder()
-        .preferred_stretch(InlineObjectPreferredStretch::new(InlineObjectPreferredStretchKind::BinaryOperator, 5.0, 10.0))
+        .preferred_stretch(InlineObjectPreferredStretch::new(
+            InlineObjectPreferredStretchKind::BinaryOperator,
+            5.0,
+            10.0,
+        ))
         .build();
     let inline_objects = HashMap::from([
-        (0, InlineObjectSpan::with_leading_boundary(text_range(0, 2), 32.0, 16.0, 4.0, leading)),
-        (99, InlineObjectSpan::with_trailing_boundary(text_range(15, 17), 32.0, 16.0, 4.0, trailing)),
+        (
+            0,
+            InlineObjectSpan::with_leading_boundary(text_range(0, 2), 32.0, 16.0, 4.0, leading),
+        ),
+        (
+            99,
+            InlineObjectSpan::with_trailing_boundary(text_range(15, 17), 32.0, 16.0, 4.0, trailing),
+        ),
     ]);
     let hanzi = RubySpan::new(text_range(0, 2), Text::from("hànzì"));
     let chu = RubySpan::new(text_range(2, 3), Text::from("chù"));
     let ceshi = RubySpan::new(text_range(3, 5), Text::from("cèshì"));
     let ruby_geometry = HashMap::from([
-        (hanzi.clone(), RubyFontGeometry { width: 20.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() }),
-        (chu.clone(), RubyFontGeometry { width: 10.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() }),
-        (ceshi.clone(), RubyFontGeometry { width: 20.0, ascent: 8.0, descent: 2.0, required_extent: 10.0, glyphs: Vec::new() }),
+        (
+            hanzi.clone(),
+            RubyFontGeometry {
+                width: 20.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
+        ),
+        (
+            chu.clone(),
+            RubyFontGeometry {
+                width: 10.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
+        ),
+        (
+            ceshi.clone(),
+            RubyFontGeometry {
+                width: 20.0,
+                ascent: 8.0,
+                descent: 2.0,
+                required_extent: 10.0,
+                glyphs: Vec::new(),
+            },
+        ),
     ]);
     let auto_space = vec![
-        AutoSpaceDecisionInfo { cluster_range: text_range(0, 2), side: "leading".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(2, 3), side: "leading".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(2, 3), side: "trailing".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
-        AutoSpaceDecisionInfo { cluster_range: text_range(3, 5), side: "trailing".to_owned(), boundary_role: "Wide".to_owned(), mode: "Normal".to_owned(), characters_affected: 1, reduction_per_char: 0.0, total_reduction: 0.0, reason: "test".to_owned() },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(0, 2),
+            side: "leading".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(2, 3),
+            side: "leading".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(2, 3),
+            side: "trailing".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
+        AutoSpaceDecisionInfo {
+            cluster_range: text_range(3, 5),
+            side: "trailing".to_owned(),
+            boundary_role: "Wide".to_owned(),
+            mode: "Normal".to_owned(),
+            characters_affected: 1,
+            reduction_per_char: 0.0,
+            total_reduction: 0.0,
+            reason: "test".to_owned(),
+        },
     ];
     let result = resolve_annotation_geometry(AnnotationGeometryRequest {
         input: &input,
@@ -401,7 +940,12 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         visible_line_ranges: &[IntRange::EMPTY, IntRange::new(0, 2)],
         lines: &lines,
         final_clusters: &clusters,
-        cluster_roles: &[FontRole::CjkText, FontRole::CjkPunctuation, FontRole::CjkText, FontRole::LatinText],
+        cluster_roles: &[
+            FontRole::CjkText,
+            FontRole::CjkPunctuation,
+            FontRole::CjkText,
+            FontRole::LatinText,
+        ],
         justify_delta_by_cluster: &HashMap::new(),
         ruby_and_bopomofo_spread: &HashMap::new(),
         metric_decisions: &[metric_cjk, metric_punctuation],
@@ -423,34 +967,56 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
 fn bopomofo_decisions_multi_glyph_min_max_and_empty_placements() {
     let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(multi_glyph_backend())).build();
     let result = engine.layout(
-        LayoutInput::builder(TiqianTextContent::new(Text::from("一二三四五六七八")), LayoutConstraints::with_defaults(300.0))
-            .ruby_spans(vec![
-                RubySpan::builder(text_range(0, 2), Text::from("ㄅㄆˊ")).kind(RubyKind::Bopomofo).locale(Some("zh-Bopo".to_owned())).build(),
-                RubySpan::with_kind(text_range(2, 3), Text::from(" "), RubyKind::Bopomofo),
-                RubySpan::with_kind(text_range(3, 4), Text::from("ㄅ"), RubyKind::Bopomofo),
-                RubySpan::with_kind(text_range(4, 5), Text::from("˙ㄅ"), RubyKind::Bopomofo),
-                RubySpan::with_kind(text_range(5, 6), Text::from("ㄅˇ"), RubyKind::Bopomofo),
-                RubySpan::with_kind(text_range(6, 7), Text::from("ㄅˋ"), RubyKind::Bopomofo),
-            ])
-            .build(),
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("一二三四五六七八")),
+            LayoutConstraints::with_defaults(300.0),
+        )
+        .ruby_spans(vec![
+            RubySpan::builder(text_range(0, 2), Text::from("ㄅㄆˊ"))
+                .kind(RubyKind::Bopomofo)
+                .locale(Some("zh-Bopo".to_owned()))
+                .build(),
+            RubySpan::with_kind(text_range(2, 3), Text::from(" "), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(3, 4), Text::from("ㄅ"), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(4, 5), Text::from("˙ㄅ"), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(5, 6), Text::from("ㄅˇ"), RubyKind::Bopomofo),
+            RubySpan::with_kind(text_range(6, 7), Text::from("ㄅˋ"), RubyKind::Bopomofo),
+        ])
+        .build(),
     );
     assert!(!result.lines.is_empty());
 }
 
 #[test]
 fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(alternating_glyph_backend())).build();
-    let input = LayoutInput::builder(TiqianTextContent::new(Text::from("中文English")), LayoutConstraints::with_defaults(500.0))
-        .decorations(vec![
-            DecorationSpan { range: text_range(0, 7), kind: DecorationKind::ProperNoun },
-            DecorationSpan { range: text_range(2, 7), kind: DecorationKind::ProperNoun },
-        ])
-        .ruby_spans(vec![
-            RubySpan::builder(text_range(0, 1), Text::from("ㄅ")).kind(RubyKind::Bopomofo).locale(None).build(),
-            RubySpan::builder(text_range(1, 2), Text::from("ㄆ")).kind(RubyKind::Bopomofo).locale(Some("zh-TW".to_owned())).build(),
-            RubySpan::with_kind(text_range(0, 1), Text::from(""), RubyKind::Bopomofo),
-        ])
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(alternating_glyph_backend())).build();
+    let input = LayoutInput::builder(
+        TiqianTextContent::new(Text::from("中文English")),
+        LayoutConstraints::with_defaults(500.0),
+    )
+    .decorations(vec![
+        DecorationSpan {
+            range: text_range(0, 7),
+            kind: DecorationKind::ProperNoun,
+        },
+        DecorationSpan {
+            range: text_range(2, 7),
+            kind: DecorationKind::ProperNoun,
+        },
+    ])
+    .ruby_spans(vec![
+        RubySpan::builder(text_range(0, 1), Text::from("ㄅ"))
+            .kind(RubyKind::Bopomofo)
+            .locale(None)
+            .build(),
+        RubySpan::builder(text_range(1, 2), Text::from("ㄆ"))
+            .kind(RubyKind::Bopomofo)
+            .locale(Some("zh-TW".to_owned()))
+            .build(),
+        RubySpan::with_kind(text_range(0, 1), Text::from(""), RubyKind::Bopomofo),
+    ])
+    .build();
     let wide = engine.layout(input.clone());
     assert_eq!(2, wide.debug.bopomofo_decisions.len());
     let narrow = engine.layout(
@@ -464,13 +1030,25 @@ fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
 
 #[test]
 fn bopomofo_over_latin_clusters_covers_cross_metric_lookup() {
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(TiqianTextContent::new(Text::from("中文English")), LayoutConstraints::with_defaults(500.0))
-            .ruby_spans(vec![
-                RubySpan::builder(text_range(2, 3), Text::from("ㄅ")).kind(RubyKind::Bopomofo).locale(None).build(),
-                RubySpan::builder(text_range(3, 4), Text::from("ㄆ")).kind(RubyKind::Bopomofo).locale(Some("zh-TW".to_owned())).build(),
-            ])
-            .build(),
-    );
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from("中文English")),
+                    LayoutConstraints::with_defaults(500.0),
+                )
+                .ruby_spans(vec![
+                    RubySpan::builder(text_range(2, 3), Text::from("ㄅ"))
+                        .kind(RubyKind::Bopomofo)
+                        .locale(None)
+                        .build(),
+                    RubySpan::builder(text_range(3, 4), Text::from("ㄆ"))
+                        .kind(RubyKind::Bopomofo)
+                        .locale(Some("zh-TW".to_owned()))
+                        .build(),
+                ])
+                .build(),
+            );
     assert_eq!(2, result.debug.bopomofo_decisions.len());
 }

@@ -1,13 +1,11 @@
+use crate::support::DeterministicStubFontBackend;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::RawFontMetrics;
-use tiqian::shaping::font_backend::{
-    FontBackend, FontBackendRequest, FontBackendShapingResult,
-};
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use crate::support::DeterministicStubFontBackend;
 
 pub struct StubResultTransformFontBackend<F> {
     fallback: DeterministicStubFontBackend,

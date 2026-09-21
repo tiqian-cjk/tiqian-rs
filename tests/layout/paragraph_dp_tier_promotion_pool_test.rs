@@ -1,5 +1,5 @@
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
@@ -38,22 +38,31 @@ fn foreign_span_candidate_survives_the_promotion_pool_purge() {
     let clusters = latin_clusters();
     let span = text_range(0, clusters.len() as i32);
     let mut config = LineBreakerConfig::default();
-    config.shrink_opportunities = vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
+    config.shrink_opportunities =
+        vec![ShrinkOpportunity::new(2, 2, 5.0, ShrinkChannel::RawAdvance)];
     config.line_adjustment_push_in = true;
     config.progressive_break_opportunities = tiqian::common::HashMap::from([
         (
             1,
-            ProgressiveBreakOpportunity::new(
-                ProgressiveBreakTier::Emergency,
-                text_range(0, 1),
-            ),
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 1)),
         ),
-        (2, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span)),
-        (3, ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span)),
+        (
+            2,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, span),
+        ),
+        (
+            3,
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, span),
+        ),
     ]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
-    assert!(matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("ProgressiveTechnicalTierPromotion")), "{:?}", solution.lines);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
+    assert!(
+        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("ProgressiveTechnicalTierPromotion")),
+        "{:?}",
+        solution.lines
+    );
 }
 
 #[test]
@@ -72,24 +81,28 @@ fn committed_compressed_line_with_foreign_span_opportunities_keeps_plain_push_in
     config.progressive_break_opportunities = tiqian::common::HashMap::from([
         (
             2,
-            ProgressiveBreakOpportunity::new(
-                ProgressiveBreakTier::Emergency,
-                text_range(0, 2),
-            ),
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 2)),
         ),
         (
             3,
-            ProgressiveBreakOpportunity::new(
-                ProgressiveBreakTier::Whitespace,
-                text_range(2, 4),
-            ),
+            ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Whitespace, text_range(2, 4)),
         ),
     ]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 44.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 44.0, &config);
     let first = &solution.lines[0];
-    assert_eq!(IntRange::new(0, 2), first.cluster_range, "{:?}", solution.lines);
-    assert!(matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")), "{:?}", solution.lines);
+    assert_eq!(
+        IntRange::new(0, 2),
+        first.cluster_range,
+        "{:?}",
+        solution.lines
+    );
+    assert!(
+        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        "{:?}",
+        solution.lines
+    );
 }
 
 #[test]
@@ -107,14 +120,21 @@ fn committed_compressed_end_without_opportunity_keeps_plain_push_in_reason() {
     config.line_adjustment_push_in = true;
     config.progressive_break_opportunities = tiqian::common::HashMap::from([(
         2,
-        ProgressiveBreakOpportunity::new(
-            ProgressiveBreakTier::Emergency,
-            text_range(0, 2),
-        ),
+        ProgressiveBreakOpportunity::new(ProgressiveBreakTier::Emergency, text_range(0, 2)),
     )]);
 
-    let solution = ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 44.0, &config);
+    let solution =
+        ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 44.0, &config);
     let first = &solution.lines[0];
-    assert_eq!(IntRange::new(0, 2), first.cluster_range, "{:?}", solution.lines);
-    assert!(matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")), "{:?}", solution.lines);
+    assert_eq!(
+        IntRange::new(0, 2),
+        first.cluster_range,
+        "{:?}",
+        solution.lines
+    );
+    assert!(
+        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        "{:?}",
+        solution.lines
+    );
 }

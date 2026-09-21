@@ -1,12 +1,10 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
-use tiqian::core::geometry::{scalar_offset, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{
-    LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
+use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LookaheadLineBreaker};
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
@@ -30,11 +28,12 @@ fn layout(
     let line_breaker = breaker;
     let hyphenator = &NoHyphenator;
     let clreq_profile_resolver = Box::new(FixedKinsokuProfile(level));
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .line_breaker(line_breaker)
-        .hyphenator(hyphenator)
-        .clreq_profile_resolver(clreq_profile_resolver)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .line_breaker(line_breaker)
+            .hyphenator(hyphenator)
+            .clreq_profile_resolver(clreq_profile_resolver)
+            .build();
     let indexed = Text::from(text);
     engine.layout(
         LayoutInput::builder(
@@ -76,12 +75,25 @@ fn line_texts<'a>(
 #[test]
 fn bracket_boundaries_remain_protected_across_western_spaces() {
     for (label, make_breaker) in [
-        ("greedy", (|| Box::new(GreedyLineBreaker::default()) as Box<dyn LineBreaker>) as fn() -> Box<dyn LineBreaker>),
-        ("lookahead", (|| Box::new(LookaheadLineBreaker::default()) as Box<dyn LineBreaker>) as fn() -> Box<dyn LineBreaker>),
+        (
+            "greedy",
+            (|| Box::new(GreedyLineBreaker::default()) as Box<dyn LineBreaker>)
+                as fn() -> Box<dyn LineBreaker>,
+        ),
+        (
+            "lookahead",
+            (|| Box::new(LookaheadLineBreaker::default()) as Box<dyn LineBreaker>)
+                as fn() -> Box<dyn LineBreaker>,
+        ),
     ] {
         for width in (48..=80).step_by(4) {
             let opening_text = "ABCD(  EFGH";
-            let opening = layout(opening_text, width as f32, make_breaker(), KinsokuLevel::Basic);
+            let opening = layout(
+                opening_text,
+                width as f32,
+                make_breaker(),
+                KinsokuLevel::Basic,
+            );
             let opening_lines = line_texts(&opening, opening_text);
             assert!(
                 opening_lines
@@ -91,7 +103,12 @@ fn bracket_boundaries_remain_protected_across_western_spaces() {
             );
 
             let closing_text = "ABCD  )EFGH";
-            let closing = layout(closing_text, width as f32, make_breaker(), KinsokuLevel::Basic);
+            let closing = layout(
+                closing_text,
+                width as f32,
+                make_breaker(),
+                KinsokuLevel::Basic,
+            );
             let closing_lines = line_texts(&closing, closing_text);
             assert!(
                 closing_lines
@@ -106,8 +123,24 @@ fn bracket_boundaries_remain_protected_across_western_spaces() {
 #[test]
 fn unmatched_western_curly_double_quotes_retain_their_direction() {
     for (label, result) in [
-        ("greedy", layout("ABCD”E", 32.0, Box::new(GreedyLineBreaker::default()), KinsokuLevel::Basic)),
-        ("lookahead", layout("ABCD”E", 32.0, Box::new(LookaheadLineBreaker::default()), KinsokuLevel::Basic)),
+        (
+            "greedy",
+            layout(
+                "ABCD”E",
+                32.0,
+                Box::new(GreedyLineBreaker::default()),
+                KinsokuLevel::Basic,
+            ),
+        ),
+        (
+            "lookahead",
+            layout(
+                "ABCD”E",
+                32.0,
+                Box::new(LookaheadLineBreaker::default()),
+                KinsokuLevel::Basic,
+            ),
+        ),
     ] {
         assert!(
             line_texts(&result, "ABCD”E")
@@ -126,8 +159,24 @@ fn unmatched_western_curly_double_quotes_retain_their_direction() {
     }
 
     for (label, result) in [
-        ("greedy", layout("ABCD“E", 40.0, Box::new(GreedyLineBreaker::default()), KinsokuLevel::Basic)),
-        ("lookahead", layout("ABCD“E", 40.0, Box::new(LookaheadLineBreaker::default()), KinsokuLevel::Basic)),
+        (
+            "greedy",
+            layout(
+                "ABCD“E",
+                40.0,
+                Box::new(GreedyLineBreaker::default()),
+                KinsokuLevel::Basic,
+            ),
+        ),
+        (
+            "lookahead",
+            layout(
+                "ABCD“E",
+                40.0,
+                Box::new(LookaheadLineBreaker::default()),
+                KinsokuLevel::Basic,
+            ),
+        ),
     ] {
         assert!(
             line_texts(&result, "ABCD“E")
@@ -149,14 +198,15 @@ fn unmatched_western_curly_double_quotes_retain_their_direction() {
 #[test]
 fn unmatched_elision_apostrophe_binds_forward_instead_of_being_guessed_as_a_closer() {
     let text = "AB ’90s";
-    let result = layout(text, 16.0, Box::new(GreedyLineBreaker::default()), KinsokuLevel::Basic);
-    assert!(
-        result
-            .debug
-            .contextual_kinsoku_decisions
-            .iter()
-            .all(|decision| !(decision.source_text == "’" && decision.forbidden_position == "LineStart"))
+    let result = layout(
+        text,
+        16.0,
+        Box::new(GreedyLineBreaker::default()),
+        KinsokuLevel::Basic,
     );
+    assert!(result.debug.contextual_kinsoku_decisions.iter().all(
+        |decision| !(decision.source_text == "’" && decision.forbidden_position == "LineStart")
+    ));
     let decision = result
         .debug
         .contextual_kinsoku_decisions
@@ -168,7 +218,12 @@ fn unmatched_elision_apostrophe_binds_forward_instead_of_being_guessed_as_a_clos
 
 #[test]
 fn western_baseline_survives_clreq_kinsoku_none() {
-    let result = layout("ABCD)E", 32.0, Box::new(GreedyLineBreaker::default()), KinsokuLevel::None);
+    let result = layout(
+        "ABCD)E",
+        32.0,
+        Box::new(GreedyLineBreaker::default()),
+        KinsokuLevel::None,
+    );
     assert_eq!(
         "Uax14WesternPunctuationBoundary:LB13",
         result

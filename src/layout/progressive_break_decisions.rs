@@ -159,10 +159,16 @@ fn progressive_break_selection_for_line(
         return (active.tier.priority(), overflow_at);
     };
     let Some(clusters) = adjusted_clusters else {
-        return (first_priority as i32, rightmost_boundaries[first_priority].unwrap());
+        return (
+            first_priority as i32,
+            rightmost_boundaries[first_priority].unwrap(),
+        );
     };
     if !line_limit.is_finite() || !max_cjk_stretch_per_gap.is_finite() {
-        return (first_priority as i32, rightmost_boundaries[first_priority].unwrap());
+        return (
+            first_priority as i32,
+            rightmost_boundaries[first_priority].unwrap(),
+        );
     }
     let progressive_stretch_limit =
         max_cjk_stretch_per_gap * PROGRESSIVE_TECHNICAL_VISIBLE_STRETCH_FRACTION;
@@ -404,7 +410,9 @@ impl UnbreakableRanges {
     }
 
     pub fn contains_boundary(&self, candidate: i32) -> bool {
-        let index = self.starts_sorted.partition_point(|start| *start < candidate);
+        let index = self
+            .starts_sorted
+            .partition_point(|start| *start < candidate);
         index > 0 && self.prefix_max_last[index - 1] >= candidate
     }
 
@@ -437,8 +445,7 @@ pub fn adjust_break_for_unbreakables(
 ) -> i32 {
     let mut candidate = break_at;
     loop {
-        let Some(containing) = unbreakable_ranges.containing_or_null(candidate)
-        else {
+        let Some(containing) = unbreakable_ranges.containing_or_null(candidate) else {
             return candidate;
         };
         let first = containing.first();

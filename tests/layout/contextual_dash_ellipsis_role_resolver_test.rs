@@ -1,18 +1,22 @@
-use tiqian::common::HashSet;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
-use tiqian::core::geometry::{text_range, LayoutConstraints};
+use tiqian::common::HashSet;
+use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent};
+use tiqian::core::text_model::{
+    LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
+};
 use tiqian::core::units::Ic;
-use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole, FontRoleClassifier, FontRoleContext};
+use tiqian::font::font_policy::{
+    CjkFontRoleClassifier, FontRole, FontRoleClassifier, FontRoleContext,
+};
 use tiqian::layout::contextual_dash_ellipsis_role_resolver::{
-    with_contextual_dash_ellipsis_roles, ContextualDashEllipsisFontRoleClassifier,
-    ContextualDashEllipsisRoleResolver,
+    ContextualDashEllipsisFontRoleClassifier, ContextualDashEllipsisRoleResolver,
+    with_contextual_dash_ellipsis_roles,
 };
 use tiqian::layout::quote_pair_analyzer::{
-    with_contextual_quote_roles, ContextualQuoteFontRoleClassifier,
+    ContextualQuoteFontRoleClassifier, with_contextual_quote_roles,
 };
-use tiqian::api::ParagraphLayoutEngineBuilder;
 
 use crate::support::DeterministicStubFontBackend;
 
@@ -28,19 +32,21 @@ impl ClreqProfileResolver for SplitDashProfile {
 }
 
 fn layout(text: &str, locale: &str) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(1_000.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(1_000.0),
+            )
+            .text_style(TextStyle::builder().locale(locale.to_owned()).build())
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .text_style(TextStyle::builder().locale(locale.to_owned()).build())
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 #[test]
@@ -58,14 +64,20 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
         let decisions = resolver.resolve(&Text::from(text), &FontRoleContext::default());
         assert_eq!(1, decisions.len(), "{text}");
         assert_eq!(role, decisions[0].role, "{text}");
-        assert_eq!("DashEllipsisSurroundingScriptContext", decisions[0].source, "{text}");
+        assert_eq!(
+            "DashEllipsisSurroundingScriptContext", decisions[0].source,
+            "{text}"
+        );
     }
 }
 
 #[test]
 fn conflicting_or_absent_script_falls_back_to_paragraph_language() {
     let resolver = ContextualDashEllipsisRoleResolver;
-    for (locale, role) in [("zh-Hans", FontRole::CjkPunctuation), ("en-US", FontRole::LatinText)] {
+    for (locale, role) in [
+        ("zh-Hans", FontRole::CjkPunctuation),
+        ("en-US", FontRole::LatinText),
+    ] {
         for text in ["中文—English", "…"] {
             let decisions = resolver.resolve(
                 &Text::from(text),
@@ -85,20 +97,23 @@ fn mandatory_break_stops_context_search_and_preserves_supplementary_evidence() {
         &FontRoleContext::with_locale("zh-Hans".to_owned()),
     );
     assert_eq!(FontRole::CjkPunctuation, break_decision[0].role);
-    assert_eq!("ParagraphLanguageDashEllipsisContext", break_decision[0].source);
-    assert!(break_decision[0].reason.starts_with("no-strong-script-context"));
+    assert_eq!(
+        "ParagraphLanguageDashEllipsisContext",
+        break_decision[0].source
+    );
+    assert!(
+        break_decision[0]
+            .reason
+            .starts_with("no-strong-script-context")
+    );
 
     assert_eq!(
         FontRole::CjkPunctuation,
-        resolver
-            .resolve(&Text::from("𠀀—123"), &FontRoleContext::default())[0]
-            .role,
+        resolver.resolve(&Text::from("𠀀—123"), &FontRoleContext::default())[0].role,
     );
     assert_eq!(
         FontRole::LatinText,
-        resolver
-            .resolve(&Text::from("123—𐐀"), &FontRoleContext::default())[0]
-            .role,
+        resolver.resolve(&Text::from("123—𐐀"), &FontRoleContext::default())[0].role,
     );
 }
 
@@ -118,7 +133,10 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
                 .starts_with("parenthetical-pair-conflicting-outer-script")
     }));
 
-    let latin = resolver.resolve(&Text::from("word——and stuff——word"), &FontRoleContext::default());
+    let latin = resolver.resolve(
+        &Text::from("word——and stuff——word"),
+        &FontRoleContext::default(),
+    );
     assert!(latin.iter().all(|decision| {
         decision.role == FontRole::LatinText
             && decision.source == "ParentheticalDashPairContext"
@@ -129,9 +147,11 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
         &Text::from("地点——北京，时间——明天"),
         &FontRoleContext::default(),
     );
-    assert!(independent
-        .iter()
-        .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext"));
+    assert!(
+        independent
+            .iter()
+            .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext")
+    );
 }
 
 #[test]
@@ -227,12 +247,14 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
         .debug
         .font_decisions
         .iter()
-        .filter(|decision| decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…'))
+        .filter(|decision| {
+            decision.source_text.as_str().contains('—')
+                || decision.source_text.as_str().contains('…')
+        })
         .collect();
     assert_eq!(3, western_marks.len());
     assert!(western_marks.iter().all(|decision| {
-        decision.role == "LatinText"
-            && decision.source_text == decision.display_text
+        decision.role == "LatinText" && decision.source_text == decision.display_text
     }));
     assert_eq!(
         vec!["—", "——", "……"],
@@ -241,26 +263,33 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
             .map(|decision| decision.source_text.as_str())
             .collect::<Vec<_>>(),
     );
-    assert!(western_marks
-        .iter()
-        .filter(|decision| matches!(decision.source_text.as_str(), "——" | "……"))
-        .all(|decision| {
-            decision.substitution_reason
-                == "CjkRoleGatedDisplaySubstitution:preserve-role-LatinText"
-        }));
-    assert!(western
-        .debug
-        .punctuation_decisions
-        .iter()
-        .all(|decision| !matches!(decision.ch, '—' | '…')));
-    assert!(western
-        .debug
-        .role_overrides
-        .iter()
-        .filter(|override_info| {
-            override_info.source_text.as_str().contains('—') || override_info.source_text.as_str().contains('…')
-        })
-        .all(|override_info| override_info.source == "DashEllipsisSurroundingScriptContext"));
+    assert!(
+        western_marks
+            .iter()
+            .filter(|decision| matches!(decision.source_text.as_str(), "——" | "……"))
+            .all(|decision| {
+                decision.substitution_reason
+                    == "CjkRoleGatedDisplaySubstitution:preserve-role-LatinText"
+            })
+    );
+    assert!(
+        western
+            .debug
+            .punctuation_decisions
+            .iter()
+            .all(|decision| !matches!(decision.ch, '—' | '…'))
+    );
+    assert!(
+        western
+            .debug
+            .role_overrides
+            .iter()
+            .filter(|override_info| {
+                override_info.source_text.as_str().contains('—')
+                    || override_info.source_text.as_str().contains('…')
+            })
+            .all(|override_info| override_info.source == "DashEllipsisSurroundingScriptContext")
+    );
 
     let cjk = layout("中—文，等…真；中文——下句，省略号……。", "zh-Hans");
     let display_at = |source: &str| {
@@ -293,24 +322,27 @@ fn latin_dash_run_at_paragraph_end_stays_one_cluster() {
 
 #[test]
 fn style_span_inside_latin_dash_run_splits_the_cluster() {
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from("A——B"))
-                .spans(vec![TextSpan {
-                    range: text_range(2, 3),
-                    style: TextStyle::builder().font_weight(700).build(),
-                }])
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::builder(Text::from("A——B"))
+                        .spans(vec![TextSpan {
+                            range: text_range(2, 3),
+                            style: TextStyle::builder().font_weight(700).build(),
+                        }])
+                        .build(),
+                    LayoutConstraints::with_defaults(1_000.0),
+                )
+                .text_style(TextStyle::builder().locale("zh-Hans".to_owned()).build())
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
                 .build(),
-            LayoutConstraints::with_defaults(1_000.0),
-        )
-        .text_style(TextStyle::builder().locale("zh-Hans".to_owned()).build())
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    );
+            );
     let dash_decisions: Vec<_> = result
         .debug
         .font_decisions
@@ -318,17 +350,20 @@ fn style_span_inside_latin_dash_run_splits_the_cluster() {
         .filter(|decision| decision.source_text == "—")
         .collect();
     assert_eq!(2, dash_decisions.len());
-    assert!(dash_decisions
-        .iter()
-        .all(|decision| decision.role == "LatinText"));
+    assert!(
+        dash_decisions
+            .iter()
+            .all(|decision| decision.role == "LatinText")
+    );
 }
 
 #[test]
 fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
     let clreq_profile_resolver = Box::new(SplitDashProfile);
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(clreq_profile_resolver)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(clreq_profile_resolver)
+            .build();
     let split = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("A——B")),
@@ -350,23 +385,26 @@ fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
             .collect::<Vec<_>>(),
     );
 
-    let style_split = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from("A——B"))
-                .spans(vec![TextSpan {
-                    range: text_range(2, 3),
-                    style: TextStyle::builder().font_weight(700).build(),
-                }])
+    let style_split =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::builder(Text::from("A——B"))
+                        .spans(vec![TextSpan {
+                            range: text_range(2, 3),
+                            style: TextStyle::builder().font_weight(700).build(),
+                        }])
+                        .build(),
+                    LayoutConstraints::with_defaults(1_000.0),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
                 .build(),
-            LayoutConstraints::with_defaults(1_000.0),
-        )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    );
+            );
     assert_eq!(
         2,
         style_split

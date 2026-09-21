@@ -1,13 +1,11 @@
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::{LayoutConstraints, Rect};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::shaping::font_backend::{
-    FontBackend, FontBackendRequest, FontBackendShapingResult,
-};
-use crate::support::DeterministicStubFontBackend;
+use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
 
 use super::font_backend_test_support::stub_backend_with_transform;
 
@@ -21,7 +19,9 @@ fn layout(
     let mut engine = ParagraphLayoutEngineBuilder::new(font_backend).build();
     engine.layout(
         LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text)).spans(spans).build(),
+            TiqianTextContent::builder(Text::from(text))
+                .spans(spans)
+                .build(),
             constraints,
         )
         .ruby_spans(ruby_spans)
@@ -102,7 +102,10 @@ fn ruby_base_range_crossing_cluster_boundaries_is_skipped() {
         LayoutConstraints::with_defaults(320.0),
         Vec::new(),
         vec![
-            RubySpan::new(tiqian::core::geometry::text_range(0, 2), Text::from("zhōng")),
+            RubySpan::new(
+                tiqian::core::geometry::text_range(0, 2),
+                Text::from("zhōng"),
+            ),
             RubySpan::new(tiqian::core::geometry::text_range(1, 3), Text::from("wén")),
         ],
         Box::new(DeterministicStubFontBackend::default()),
@@ -152,11 +155,13 @@ fn attached_reference_at_source_end_lays_out_without_virtual_boundary() {
         Box::new(DeterministicStubFontBackend::default()),
     );
 
-    assert!(result
-        .debug
-        .spacing_decisions
-        .iter()
-        .all(|decision| !decision.reason.starts_with("AttachedInlineVirtual")));
+    assert!(
+        result
+            .debug
+            .spacing_decisions
+            .iter()
+            .all(|decision| !decision.reason.starts_with("AttachedInlineVirtual"))
+    );
     let collapse = result
         .debug
         .spacing_decisions

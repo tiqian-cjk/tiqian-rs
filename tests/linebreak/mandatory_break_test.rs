@@ -141,8 +141,17 @@ fn every_mandatory_control_creates_a_required_break_with_its_own_reason() {
     let analyzer = SimpleCharacterLineBreakAnalyzer;
     for control in ['\u{000B}', '\u{000C}', '\u{0085}', '\u{2028}', '\u{2029}'] {
         let opportunities = analyzer.analyze(&Text::from(format!("a{control}b")));
-        assert_eq!(BreakKind::Required, opportunities[1].kind, "U+{:04X}", control as u32);
-        assert_eq!("MandatoryBreak", opportunities[1].reason, "U+{:04X}", control as u32);
+        assert_eq!(
+            BreakKind::Required,
+            opportunities[1].kind,
+            "U+{:04X}",
+            control as u32
+        );
+        assert_eq!(
+            "MandatoryBreak", opportunities[1].reason,
+            "U+{:04X}",
+            control as u32
+        );
     }
 }
 

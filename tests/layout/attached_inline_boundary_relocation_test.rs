@@ -1,10 +1,10 @@
-use tiqian::core::geometry::{text_range, LayoutConstraints, TextRange};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::core::geometry::{LayoutConstraints, TextRange, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, ParagraphStyle, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
 use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
@@ -23,20 +23,22 @@ fn attached_span(range: TextRange) -> TextSpan {
 fn layout_reference(text: &str) -> tiqian::core::layout_model::LayoutResult {
     let byte_start = text.find("[1]").unwrap();
     let start = text[..byte_start].chars().count() as i32;
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::builder(Text::from(text))
-                .spans(vec![attached_span(text_range(start, start + 3))])
-                .build(),
-            LayoutConstraints::with_defaults(320.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::builder(Text::from(text))
+                    .spans(vec![attached_span(text_range(start, start + 3))])
+                    .build(),
+                LayoutConstraints::with_defaults(320.0),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 #[test]
@@ -128,7 +130,10 @@ fn closing_quote_before_paragraph_end_footnote_has_no_trailing_glue() {
                 .starts_with("AttachedInlineVirtualPunctuationBoundary")
         })
         .unwrap();
-    assert_eq!("AttachedInlineVirtualPunctuationBoundary:line-end", decision.reason);
+    assert_eq!(
+        "AttachedInlineVirtualPunctuationBoundary:line-end",
+        decision.reason
+    );
     assert_eq!(0.0, decision.adjusted_inner_glue);
 }
 
@@ -154,9 +159,10 @@ fn attached_reference_never_starts_wrapped_line_for_supported_breakers() {
         ),
     ] {
         let line_breaker = breaker;
-        let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-            .line_breaker(line_breaker)
-            .build();
+        let mut engine =
+            ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+                .line_breaker(line_breaker)
+                .build();
         let result = engine.layout(
             LayoutInput::builder(
                 TiqianTextContent::builder(Text::from(text))

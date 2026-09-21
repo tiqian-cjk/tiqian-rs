@@ -73,7 +73,12 @@ impl Text {
     pub fn code_point_at_or_none(&self, offset: ScalarOffset) -> Option<i32> {
         let byte = self.absolute_byte_index_at(offset)?;
         (byte < self.byte_end as usize)
-            .then(|| self.inner.utf8[byte..].chars().next().map(|character| character as i32))
+            .then(|| {
+                self.inner.utf8[byte..]
+                    .chars()
+                    .next()
+                    .map(|character| character as i32)
+            })
             .flatten()
     }
 
@@ -88,7 +93,12 @@ impl Text {
     pub fn code_point_before(&self, offset: ScalarOffset) -> Option<i32> {
         let byte = self.absolute_byte_index_at(offset)?;
         (byte > self.byte_start as usize)
-            .then(|| self.inner.utf8[..byte].chars().next_back().map(|character| character as i32))
+            .then(|| {
+                self.inner.utf8[..byte]
+                    .chars()
+                    .next_back()
+                    .map(|character| character as i32)
+            })
             .flatten()
     }
 
@@ -140,7 +150,9 @@ impl Text {
             byte_start: byte_start as u32,
             byte_end: byte_end as u32,
             scalar_start: ScalarOffset::new(self.scalar_start.value() + range.start().value()),
-            scalar_end: Some(ScalarOffset::new(self.scalar_start.value() + range.end().value())),
+            scalar_end: Some(ScalarOffset::new(
+                self.scalar_start.value() + range.end().value(),
+            )),
         }
     }
 
@@ -345,7 +357,10 @@ mod tests {
         assert_eq!(slice.scalar_len(), scalar_offset(3));
         assert_eq!(slice.utf8_byte_index_at(scalar_offset(2)), Some(7));
         assert_eq!(slice.scalar_offset_at(7), Some(scalar_offset(2)));
-        assert_eq!(slice.slice_offsets(scalar_offset(1), scalar_offset(2)), "😀");
+        assert_eq!(
+            slice.slice_offsets(scalar_offset(1), scalar_offset(2)),
+            "😀"
+        );
     }
 
     #[test]

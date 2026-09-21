@@ -44,11 +44,7 @@ impl ParagraphBuilder {
         self
     }
 
-    pub fn rich_text(
-        &mut self,
-        layers: &[RichTextLayer],
-        text: &str,
-    ) -> &mut Self {
+    pub fn rich_text(&mut self, layers: &[RichTextLayer], text: &str) -> &mut Self {
         self.with_rich_text(layers, |builder| builder.push(text));
         self
     }

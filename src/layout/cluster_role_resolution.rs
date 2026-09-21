@@ -61,7 +61,10 @@ impl ClusterRoleRangeOptionsBuilder {
         self
     }
 
-    pub fn inline_objects_by_start(mut self, value: HashMap<ScalarOffset, InlineObjectSpan>) -> Self {
+    pub fn inline_objects_by_start(
+        mut self,
+        value: HashMap<ScalarOffset, InlineObjectSpan>,
+    ) -> Self {
         self.options.inline_objects_by_start = value;
         self
     }
@@ -94,10 +97,8 @@ pub fn cluster_role_ranges_with_options(
     options: &ClusterRoleRangeOptions,
 ) -> Vec<ResolvedClusterRange> {
     let text_length = text.scalar_len();
-    let source_grapheme_boundaries = interaction_boundaries(
-        text,
-        TextRange::new(ScalarOffset::ZERO, text_length),
-    );
+    let source_grapheme_boundaries =
+        interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
     let coalesce_set = &profile.coalesce_repeatable_punctuation;
     let mut ranges = Vec::new();
     let mut index = ScalarOffset::ZERO;
@@ -360,11 +361,7 @@ impl ResolvedClusterRange {
     }
 }
 
-fn is_mandatory_break_code_point_at(
-    code_point: i32,
-    text: &Text,
-    index: ScalarOffset,
-) -> bool {
+fn is_mandatory_break_code_point_at(code_point: i32, text: &Text, index: ScalarOffset) -> bool {
     is_mandatory_break_code_point(code_point)
         && !(code_point == 0x000A && text.code_point_before(index) == Some(0x000D))
 }
@@ -387,8 +384,7 @@ fn emoji_role_promotion_reason(
         if next < end && text.code_point_at_or_none(next) == Some(EMOJI_VARIATION_SELECTOR) {
             next += 1;
         }
-        if next < end && text.code_point_at_or_none(next) == Some(COMBINING_ENCLOSING_KEYCAP)
-        {
+        if next < end && text.code_point_at_or_none(next) == Some(COMBINING_ENCLOSING_KEYCAP) {
             return Some("KeycapSequence");
         }
     }
@@ -414,11 +410,10 @@ fn emoji_role_promotion_reason(
             next += 1;
         }
         if next < end
-            && CodePointSetData::new::<EmojiModifier>()
-                .contains32(
-                    text.code_point_at_or_none(next)
-                        .expect("scalar offset 必须位于文本范围内") as u32,
-                )
+            && CodePointSetData::new::<EmojiModifier>().contains32(
+                text.code_point_at_or_none(next)
+                    .expect("scalar offset 必须位于文本范围内") as u32,
+            )
         {
             return Some("EmojiModifierSequence");
         }

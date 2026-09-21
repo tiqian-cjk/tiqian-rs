@@ -6,11 +6,11 @@ static GLOBAL: MiMalloc = MiMalloc;
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
+use tiqian::api::{ParagraphLayoutEngine, ParagraphLayoutEngineBuilder};
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid};
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
-use tiqian::api::{ParagraphLayoutEngine, ParagraphLayoutEngineBuilder};
 
 #[allow(dead_code)]
 #[path = "paragraph_demo/font_backend.rs"]
@@ -45,21 +45,35 @@ impl Options {
                 continue;
             }
             if flag == "--help" || flag == "-h" {
-                println!("paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1] [--strategy greedy|lookahead]");
+                println!(
+                    "paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1] [--strategy greedy|lookahead]"
+                );
                 println!("One iteration visits every width in order. Widths are physical pixels.");
                 return Ok(None);
             }
-            if !matches!(flag.as_str(), "--iterations" | "--warmup" | "--widths" | "--scale" | "--strategy") {
+            if !matches!(
+                flag.as_str(),
+                "--iterations" | "--warmup" | "--widths" | "--scale" | "--strategy"
+            ) {
                 return Err(format!("unknown option: {flag}"));
             }
-            let value = args.next().ok_or_else(|| format!("missing value for {flag}"))?;
+            let value = args
+                .next()
+                .ok_or_else(|| format!("missing value for {flag}"))?;
             match flag.as_str() {
-                "--iterations" => options.iterations = value.parse().map_err(|_| "invalid iterations")?,
+                "--iterations" => {
+                    options.iterations = value.parse().map_err(|_| "invalid iterations")?
+                }
                 "--warmup" => options.warmup = value.parse().map_err(|_| "invalid warmup")?,
                 "--widths" => {
-                    options.widths = value.split(',').map(|width| {
-                        width.parse::<f32>().map_err(|_| format!("invalid width: {width}"))
-                    }).collect::<Result<_, _>>()?;
+                    options.widths = value
+                        .split(',')
+                        .map(|width| {
+                            width
+                                .parse::<f32>()
+                                .map_err(|_| format!("invalid width: {width}"))
+                        })
+                        .collect::<Result<_, _>>()?;
                 }
                 "--scale" => options.scale = value.parse().map_err(|_| "invalid scale")?,
                 "--strategy" => options.strategy = value,
@@ -69,8 +83,12 @@ impl Options {
         if options.iterations == 0 {
             return Err("iterations must be positive".to_owned());
         }
-        if !options.scale.is_finite() || options.scale <= 0.0
-            || options.widths.iter().any(|width| !width.is_finite() || *width <= 0.0)
+        if !options.scale.is_finite()
+            || options.scale <= 0.0
+            || options
+                .widths
+                .iter()
+                .any(|width| !width.is_finite() || *width <= 0.0)
         {
             return Err("widths and scale must be finite and positive".to_owned());
         }
@@ -123,21 +141,29 @@ fn measure_page(
             sample::DemoDocumentDemoBlock::Paragraph(document) => {
                 results.push(timed_layout(engine, document.input, &mut measurement));
             }
-            sample::DemoDocumentDemoBlock::NarrowParagraph { mut document, max_width } => {
+            sample::DemoDocumentDemoBlock::NarrowParagraph {
+                mut document,
+                max_width,
+            } => {
                 document.input.constraints = LayoutConstraints::with_defaults(max_width);
                 results.push(timed_layout(engine, document.input, &mut measurement));
             }
-            sample::DemoDocumentDemoBlock::ListItem { mut marker, mut body } => {
+            sample::DemoDocumentDemoBlock::ListItem {
+                mut marker,
+                mut body,
+            } => {
                 let font_size = body.input.text_style.font_size;
                 let mut marker_input = marker.input.clone();
                 marker_input.paragraph_style.line_length_grid = LineLengthGrid::with_enabled(false);
                 marker_input.constraints = LayoutConstraints::with_defaults(100_000.0);
                 let marker_measurement = timed_layout(engine, marker_input, &mut measurement);
-                let gutter = (marker_measurement.size.width / font_size).ceil().max(1.0) * font_size;
+                let gutter =
+                    (marker_measurement.size.width / font_size).ceil().max(1.0) * font_size;
                 measurement_only.insert(results.len());
                 results.push(marker_measurement);
                 marker.input.constraints = LayoutConstraints::with_defaults(gutter);
-                body.input.constraints = LayoutConstraints::with_defaults((width - gutter).max(1.0));
+                body.input.constraints =
+                    LayoutConstraints::with_defaults((width - gutter).max(1.0));
                 results.push(timed_layout(engine, marker.input, &mut measurement));
                 results.push(timed_layout(engine, body.input, &mut measurement));
             }
@@ -147,13 +173,21 @@ fn measure_page(
     for result in black_box(&results) {
         measurement.lines += result.lines.len();
         measurement.clusters += result.clusters.len();
-        measurement.glyphs += result.glyph_runs.iter().map(|run| run.glyphs.len()).sum::<usize>();
+        measurement.glyphs += result
+            .glyph_runs
+            .iter()
+            .map(|run| run.glyphs.len())
+            .sum::<usize>();
     }
     if replay {
         let replay_start = Instant::now();
-        let indices: Vec<_> = results.iter().enumerate()
+        let indices: Vec<_> = results
+            .iter()
+            .enumerate()
             .filter(|(index, _)| !measurement_only.contains(index))
-            .map(|(_, result)| tiqian::core::layout_result_replay_index::to_replay_index(black_box(result)))
+            .map(|(_, result)| {
+                tiqian::core::layout_result_replay_index::to_replay_index(black_box(result))
+            })
             .collect();
         measurement.replay = replay_start.elapsed();
         let drop_start = Instant::now();
@@ -177,12 +211,18 @@ fn print_stats(label: &str, values: impl Iterator<Item = Duration>) {
         values[n / 2]
     };
     let p95 = values[(n * 95).div_ceil(100) - 1];
-    println!("{label:<16} n={n:<5} min={:.3} median={median:.3} p95={p95:.3} mean={:.3} max={:.3} ms",
-        values[0], values.iter().sum::<f64>() / n as f64, values[n - 1]);
+    println!(
+        "{label:<16} n={n:<5} min={:.3} median={median:.3} p95={p95:.3} mean={:.3} max={:.3} ms",
+        values[0],
+        values.iter().sum::<f64>() / n as f64,
+        values[n - 1]
+    );
 }
 
 fn main() -> Result<(), String> {
-    let Some(options) = Options::parse()? else { return Ok(()); };
+    let Some(options) = Options::parse()? else {
+        return Ok(());
+    };
     if cfg!(debug_assertions) {
         eprintln!("Warning: debug build; use --release for performance comparisons.");
     }
@@ -196,36 +236,73 @@ fn main() -> Result<(), String> {
     } else {
         ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build()
     };
-    println!("font/engine setup: {:.3} ms", start.elapsed().as_secs_f64() * 1000.0);
-    println!("widths={:?} scale={} strategy={} warmup={} iterations={} profile={} arch={}",
-        options.widths, options.scale, options.strategy, options.warmup, options.iterations,
-        if cfg!(debug_assertions) { "debug" } else { "release" }, std::env::consts::ARCH);
-    println!("Times are per sample page, not per paragraph. Layout includes full debug output and font backend calls.");
-    println!("Total includes input preparation, layout, output counting and result drop; no GUI or rendering.");
+    println!(
+        "font/engine setup: {:.3} ms",
+        start.elapsed().as_secs_f64() * 1000.0
+    );
+    println!(
+        "widths={:?} scale={} strategy={} warmup={} iterations={} profile={} arch={}",
+        options.widths,
+        options.scale,
+        options.strategy,
+        options.warmup,
+        options.iterations,
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        },
+        std::env::consts::ARCH
+    );
+    println!(
+        "Times are per sample page, not per paragraph. Layout includes full debug output and font backend calls."
+    );
+    println!(
+        "Total includes input preparation, layout, output counting and result drop; no GUI or rendering."
+    );
     if options.replay {
-        println!("Replay enabled: total also includes replay construction and drop, excluding temporary marker measurements.");
+        println!(
+            "Replay enabled: total also includes replay construction and drop, excluding temporary marker measurements."
+        );
     }
     println!("First sequence (shared engine; later widths may reuse caches):");
     let mut expected = Vec::new();
     for &width in &options.widths {
         let page = measure_page(&mut engine, width, options.scale, options.replay);
-        println!("width={width} layout={:.3} drop={:.3} total={:.3} ms calls={} lines={} clusters={} body_glyphs={}",
-            page.layout.as_secs_f64() * 1000.0, page.drop_results.as_secs_f64() * 1000.0,
-            page.total.as_secs_f64() * 1000.0, page.calls, page.lines, page.clusters, page.glyphs);
+        println!(
+            "width={width} layout={:.3} drop={:.3} total={:.3} ms calls={} lines={} clusters={} body_glyphs={}",
+            page.layout.as_secs_f64() * 1000.0,
+            page.drop_results.as_secs_f64() * 1000.0,
+            page.total.as_secs_f64() * 1000.0,
+            page.calls,
+            page.lines,
+            page.clusters,
+            page.glyphs
+        );
         expected.push((page.calls, page.lines, page.clusters, page.glyphs));
     }
     for _ in 0..options.warmup {
         for &width in &options.widths {
-            black_box(measure_page(&mut engine, width, options.scale, options.replay));
+            black_box(measure_page(
+                &mut engine,
+                width,
+                options.scale,
+                options.replay,
+            ));
         }
     }
-    let mut samples: Vec<Vec<PageMeasurement>> = options.widths.iter()
-        .map(|_| Vec::with_capacity(options.iterations)).collect();
+    let mut samples: Vec<Vec<PageMeasurement>> = options
+        .widths
+        .iter()
+        .map(|_| Vec::with_capacity(options.iterations))
+        .collect();
     for _ in 0..options.iterations {
         for (index, &width) in options.widths.iter().enumerate() {
             let page = measure_page(&mut engine, width, options.scale, options.replay);
             if (page.calls, page.lines, page.clusters, page.glyphs) != expected[index] {
-                return Err(format!("layout workload changed after warmup at width {width}"));
+                return Err(format!(
+                    "layout workload changed after warmup at width {width}"
+                ));
             }
             samples[index].push(page);
         }
@@ -235,15 +312,31 @@ fn main() -> Result<(), String> {
         print_stats("layout", samples[index].iter().map(|page| page.layout));
         if options.replay {
             print_stats("replay", samples[index].iter().map(|page| page.replay));
-            print_stats("replay_drop", samples[index].iter().map(|page| page.drop_replay));
+            print_stats(
+                "replay_drop",
+                samples[index].iter().map(|page| page.drop_replay),
+            );
         }
-        print_stats("result_drop", samples[index].iter().map(|page| page.drop_results));
+        print_stats(
+            "result_drop",
+            samples[index].iter().map(|page| page.drop_results),
+        );
         print_stats("total", samples[index].iter().map(|page| page.total));
     }
     println!("All measured pages:");
     print_stats("layout", samples.iter().flatten().map(|page| page.layout));
-    print_stats("result_drop", samples.iter().flatten().map(|page| page.drop_results));
+    print_stats(
+        "result_drop",
+        samples.iter().flatten().map(|page| page.drop_results),
+    );
     print_stats("total", samples.iter().flatten().map(|page| page.total));
-    println!("Measured layout calls: {}", samples.iter().flatten().map(|page| page.calls).sum::<usize>());
+    println!(
+        "Measured layout calls: {}",
+        samples
+            .iter()
+            .flatten()
+            .map(|page| page.calls)
+            .sum::<usize>()
+    );
     Ok(())
 }

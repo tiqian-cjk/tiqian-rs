@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-use tiqian::common::{HashMap, HashSet};
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqPunctuationGlyphSubstitutor};
+use tiqian::common::{HashMap, HashSet};
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, LayoutConstraints, Rect, TextRange};
+use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange, text_range};
 use tiqian::core::layout_model::{
     Cluster, Glyph, GlyphRun, ShapingDecisionInfo, SyntheticClusterKind,
 };
@@ -13,13 +13,13 @@ use tiqian::core::text_model::{
     LayoutInput, LineBreakPolicy, LineBreakSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::font::font_policy::{CjkFontRoleClassifier, FontRole};
+use tiqian::layout::cluster_role_resolution::ResolvedClusterRange;
 use tiqian::layout::paragraph_shaping_stage::{
     is_inline_object_cluster, is_mandatory_break_cluster, is_zero_width_soft_break_cluster,
     map_to_cluster_range, shape_paragraph,
 };
-use tiqian::layout::cluster_role_resolution::ResolvedClusterRange;
-use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
+use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
 use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
     build_paragraph_layout_prep, prepare_width_independent_annotation,
@@ -28,12 +28,10 @@ use tiqian::linebreak::hyphenation::Hyphenator;
 use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
-use tiqian::shaping::text_shaper::{
-    ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
-};
+use tiqian::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 #[test]
 fn map_to_cluster_range_with_zero_and_positive_advance() {
@@ -113,7 +111,9 @@ fn cluster_predicates_and_curly_quote_features() {
     assert!(!is_zero_width_soft_break_cluster(&normal));
     assert!(!is_inline_object_cluster(&normal));
 
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("“双引号”与‘单引号’")),
@@ -150,97 +150,106 @@ fn hyphen_advance_fallback_when_shaper_returns_empty_clusters() {
 #[test]
 fn dash_substitution_rollback_and_coverage_branches() {
     let ink_coverage_backend = |ink_right: f32| {
-        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-            let face = result.face.clone();
-            result.shaping.clusters = vec![Cluster::with_display_text(
-                input.range,
-                input.text.slice_text(input.range),
-                input.display_text.clone(),
-                face.clone(),
-                32.0,
-            )];
-            result.shaping.glyph_runs = vec![GlyphRun::new(
-                input.range,
-                face.clone(),
-                vec![Glyph::builder(1, input.range, 32.0)
-                    .render_font_face(Some(face))
-                    .bounds(Some(Rect {
-                        left: 0.0,
-                        top: 0.0,
-                        right: ink_right,
-                        bottom: 10.0,
-                    }))
-                    .build()],
-                32.0,
-            )];
-            result
-        })
+        stub_backend_with_transform(
+            move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+                let face = result.face.clone();
+                result.shaping.clusters = vec![Cluster::with_display_text(
+                    input.range,
+                    input.text.slice_text(input.range),
+                    input.display_text.clone(),
+                    face.clone(),
+                    32.0,
+                )];
+                result.shaping.glyph_runs = vec![GlyphRun::new(
+                    input.range,
+                    face.clone(),
+                    vec![
+                        Glyph::builder(1, input.range, 32.0)
+                            .render_font_face(Some(face))
+                            .bounds(Some(Rect {
+                                left: 0.0,
+                                top: 0.0,
+                                right: ink_right,
+                                bottom: 10.0,
+                            }))
+                            .build(),
+                    ],
+                    32.0,
+                )];
+                result
+            },
+        )
     };
 
     let rollback_backend = {
         let calls = AtomicI32::new(0);
-        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-            let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
-            let source = input.text.slice_text(input.range);
-            let face = result.face.clone();
-            let cluster = Cluster::with_display_text(
-                input.range,
-                source.clone(),
-                input.display_text.clone(),
-                face.clone(),
-                16.0,
-            );
-            let decision = ShapingDecisionInfo::builder(
-                input.range,
-                source,
-                input.display_text.clone(),
-                Some(face.clone()),
-                1,
-                16.0,
-                "Test".to_owned(),
-                "test".to_owned(),
-            )
-            .capability_issue((call == 1)
-                .then(|| UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.to_owned()))
-            .missing_glyphs(if call == 2 { 1 } else { 0 })
-            .build();
-            if call == 2 {
-                result.attempts[0].missing_glyphs = 1;
-            }
-            result.shaping = ShapingResult::with_decisions(
-                vec![cluster],
-                vec![GlyphRun::new(input.range, face, Vec::new(), 16.0)],
-                vec![decision],
-            );
-            result
-        })
+        stub_backend_with_transform(
+            move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+                let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
+                let source = input.text.slice_text(input.range);
+                let face = result.face.clone();
+                let cluster = Cluster::with_display_text(
+                    input.range,
+                    source.clone(),
+                    input.display_text.clone(),
+                    face.clone(),
+                    16.0,
+                );
+                let decision = ShapingDecisionInfo::builder(
+                    input.range,
+                    source,
+                    input.display_text.clone(),
+                    Some(face.clone()),
+                    1,
+                    16.0,
+                    "Test".to_owned(),
+                    "test".to_owned(),
+                )
+                .capability_issue(
+                    (call == 1).then(|| UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.to_owned()),
+                )
+                .missing_glyphs(if call == 2 { 1 } else { 0 })
+                .build();
+                if call == 2 {
+                    result.attempts[0].missing_glyphs = 1;
+                }
+                result.shaping = ShapingResult::with_decisions(
+                    vec![cluster],
+                    vec![GlyphRun::new(input.range, face, Vec::new(), 16.0)],
+                    vec![decision],
+                );
+                result
+            },
+        )
     };
 
     let multi_and_null_glyph_backend = {
         let calls = AtomicI32::new(0);
-        stub_backend_with_transform(move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
-            let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
-            let face = result.face.clone();
-            let glyphs = match call % 3 {
-                0 => Vec::new(),
-                1 => vec![
-                    Glyph::builder(1, input.range, 16.0)
-                        .render_font_face(Some(face.clone()))
-                        .build(),
-                    Glyph::builder(2, input.range, 16.0)
-                        .render_font_face(Some(face.clone()))
-                        .x(16.0)
-                        .build(),
-                ],
-                _ => vec![
-                    Glyph::builder(1, input.range, 32.0)
-                        .render_font_face(Some(face.clone()))
-                        .build(),
-                ],
-            };
-            result.shaping.glyph_runs = vec![GlyphRun::new(input.range, face, glyphs, 32.0)];
-            result
-        })
+        stub_backend_with_transform(
+            move |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
+                let call = calls.fetch_add(1, Ordering::Relaxed) + 1;
+                let face = result.face.clone();
+                let glyphs = match call % 3 {
+                    0 => Vec::new(),
+                    1 => vec![
+                        Glyph::builder(1, input.range, 16.0)
+                            .render_font_face(Some(face.clone()))
+                            .build(),
+                        Glyph::builder(2, input.range, 16.0)
+                            .render_font_face(Some(face.clone()))
+                            .x(16.0)
+                            .build(),
+                    ],
+                    _ => vec![
+                        Glyph::builder(1, input.range, 32.0)
+                            .render_font_face(Some(face.clone()))
+                            .build(),
+                    ],
+                };
+                result.shaping.glyph_runs = vec![GlyphRun::new(input.range, face, glyphs, 32.0)];
+                result
+            },
+        )
     };
 
     let layout = |text: &str, font_backend: Box<dyn FontBackend>| {
@@ -254,20 +263,20 @@ fn dash_substitution_rollback_and_coverage_branches() {
         )
     };
 
-    assert!(!layout("——", Box::new(ink_coverage_backend(20.0)))
-        .lines
-        .is_empty());
-    assert!(!layout("——", Box::new(ink_coverage_backend(30.0)))
-        .lines
-        .is_empty());
-    assert!(!layout(
-        "……",
-        Box::new(rollback_backend),
-    )
-    .lines
-    .is_empty());
+    assert!(
+        !layout("——", Box::new(ink_coverage_backend(20.0)))
+            .lines
+            .is_empty()
+    );
+    assert!(
+        !layout("——", Box::new(ink_coverage_backend(30.0)))
+            .lines
+            .is_empty()
+    );
+    assert!(!layout("……", Box::new(rollback_backend),).lines.is_empty());
 
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(multi_and_null_glyph_backend)).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(multi_and_null_glyph_backend)).build();
     for _ in 0..4 {
         let result = engine.layout(
             LayoutInput::builder(
@@ -296,9 +305,10 @@ static HYPHEN_WORD_HYPHENATOR: HyphenWordHyphenator = HyphenWordHyphenator;
 
 #[test]
 fn latin_segmentation_and_cuts_branches() {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(&HYPHEN_WORD_HYPHENATOR)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(&HYPHEN_WORD_HYPHENATOR)
+            .build();
 
     let inputs = [
         (
@@ -306,7 +316,10 @@ fn latin_segmentation_and_cuts_branches() {
             80.0,
         ),
         ("antidisestablishmentarianism abc def xyz", 30.0),
-        ("semi-conductor co-19 a-b 3-4 COVID-19 cross-module-link", 80.0),
+        (
+            "semi-conductor co-19 a-b 3-4 COVID-19 cross-module-link",
+            80.0,
+        ),
         (
             "aaaaaaaaaaaaaaaa 0123456789abcdef a1b2c3d4e5f6g7h8 aaaaaa111111 aaaaaaaaaaaa1 a1",
             100.0,
@@ -485,7 +498,9 @@ fn multi_cluster_shaper_for_word_cuts_and_opaque_hard_cuts() {
 #[test]
 fn latin_separator_cuts_and_solidus_branches() {
     let text = "http://example.com/path a/b /start end/ a//b foo_bar";
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .build();
     for max_width in [500.0, 1.0] {
         let result = engine.layout(
             LayoutInput::builder(
@@ -722,11 +737,7 @@ fn progressive_technical_tier_priority_and_false_branches() {
     )
     .build();
     let backend = DeterministicStubFontBackend::default();
-    let ranges = [
-        text_range(0, 7),
-        text_range(2, 7),
-        text_range(0, 0),
-    ];
+    let ranges = [text_range(0, 7), text_range(2, 7), text_range(0, 0)];
     let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
     let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
     let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
@@ -777,9 +788,10 @@ static HYPHENATED_WORD_HYPHENATOR: HyphenatedWordHyphenator = HyphenatedWordHyph
 #[test]
 fn latin_separator_cuts_exhaustive_branches() {
     let text = "12(3):45-67 12(3):45–67 12(3):45—67 12(3):45 12(3):. 12():45 12(3): :(3):45 12(3):- 12(3):45- 12(3):4a-65 12(3):45-6a 12(3):abc http://example.com/a/b/c https://test.org:8080/foo?bar=1&baz=2#frag%20~val+1*2|3;4,5.6-7_8 http:/test /a a/ a//b a/b ABC CamelCase aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa hyphenated-word clean/solidus hyphenated";
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(&HYPHENATED_WORD_HYPHENATOR)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(&HYPHENATED_WORD_HYPHENATOR)
+            .build();
     for max_width in [500.0, 10.0] {
         let result = engine.layout(
             LayoutInput::builder(

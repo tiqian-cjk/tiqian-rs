@@ -12,7 +12,6 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::{
     resolve_unicode_punctuation_boundaries,
 };
 
-
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
     text.chars()
@@ -70,7 +69,11 @@ fn resolve_unicode_punctuation_boundaries_with_paired_quotes() {
         &text,
         &clusters(text.as_str(), "cjk", 16.0),
         &cluster_roles,
-        &[QuotePair::new(scalar_offset(2), scalar_offset(5), QuoteType::Double)],
+        &[QuotePair::new(
+            scalar_offset(2),
+            scalar_offset(5),
+            QuoteType::Double,
+        )],
     );
     assert!(result.decisions.iter().any(|decision| {
         decision.reason == "Uax14WesternPunctuationBoundary:PairedOpeningQuote"
@@ -99,12 +102,18 @@ fn resolve_unicode_punctuation_boundaries_with_cjk_closing_at_line_start() {
         &text,
         &clusters(text.as_str(), "cjk", 16.0),
         &[FontRole::CjkText; 2],
-        &[QuotePair::new(scalar_offset(0), scalar_offset(1), QuoteType::Single)],
+        &[QuotePair::new(
+            scalar_offset(0),
+            scalar_offset(1),
+            QuoteType::Single,
+        )],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -113,17 +122,34 @@ fn resolve_unicode_punctuation_boundaries_with_exclamation_mark() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("!"), FontFaceId::with_resource_id("latin"), 16.0),
-            Cluster::new(text_range(2, 3), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("!"),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -135,10 +161,12 @@ fn resolve_unicode_punctuation_boundaries_with_initial_quote_forbid_line_end() {
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -150,10 +178,12 @@ fn resolve_unicode_punctuation_boundaries_with_unresolved_quote() {
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -165,10 +195,12 @@ fn resolve_unicode_punctuation_boundaries_with_multiple_clusters() {
         &[FontRole::CjkText; 5],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -195,9 +227,24 @@ fn resolve_unicode_punctuation_boundaries_with_western_closing_forbid_line_start
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from(")"), FontFaceId::with_resource_id("latin"), 16.0),
-            Cluster::new(text_range(2, 3), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(")"),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::CjkText, FontRole::CjkText, FontRole::CjkText],
         &[],
@@ -214,10 +261,12 @@ fn resolve_unicode_punctuation_boundaries_with_open_punctuation_forbid_line_end(
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -226,9 +275,24 @@ fn resolve_unicode_punctuation_boundaries_with_rule_for_line_start_infix() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("1"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(","), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("2"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("1"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("2"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
         &[FontRole::LatinText; 3],
         &[],
@@ -247,9 +311,24 @@ fn resolve_attached_inline_inter_char_boundaries_sino_western_only() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("汉"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("x"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("汉"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("x"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("a"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
         &[FontRole::CjkText, FontRole::LatinText, FontRole::LatinText],
         &[
@@ -277,7 +356,10 @@ fn resolve_attached_inline_inter_char_boundaries_sino_western_only() {
         ],
     );
     assert_eq!(Some(&0), result.virtual_boundary_after_clusters.get(&1));
-    assert_eq!(HashSet::from([1]), result.virtual_sino_western_boundary_after_clusters);
+    assert_eq!(
+        HashSet::from([1]),
+        result.virtual_sino_western_boundary_after_clusters
+    );
 }
 
 #[test]
@@ -286,9 +368,24 @@ fn resolve_attached_inline_inter_char_boundaries_uses_neutral_values_for_missing
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("汉"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("x"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("汉"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("x"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("a"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
         &[FontRole::CjkText],
         &[EastAsianSpacingEdges {
@@ -304,7 +401,11 @@ fn resolve_attached_inline_inter_char_boundaries_uses_neutral_values_for_missing
         ],
     );
     assert!(result.virtual_boundary_after_clusters.is_empty());
-    assert!(result.virtual_sino_western_boundary_after_clusters.is_empty());
+    assert!(
+        result
+            .virtual_sino_western_boundary_after_clusters
+            .is_empty()
+    );
 }
 
 #[test]
@@ -338,8 +439,18 @@ fn resolve_attached_inline_inter_char_boundaries_with_western_bracket() {
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("("), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("("),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::LatinText, FontRole::CjkText],
         &[EastAsianSpacingEdges {
@@ -359,8 +470,18 @@ fn resolve_attached_inline_inter_char_boundaries_with_cjk_body_western_bracket()
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from(")"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(")"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
         &[FontRole::CjkText, FontRole::LatinText],
         &[EastAsianSpacingEdges {
@@ -379,7 +500,12 @@ fn resolve_attached_inline_inter_char_boundaries_ignores_extra_roles() {
     let text = Text::from("ab");
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
-        &[Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0)],
+        &[Cluster::new(
+            text_range(0, 1),
+            Text::from("a"),
+            FontFaceId::with_resource_id("latin"),
+            8.0,
+        )],
         &[FontRole::LatinText, FontRole::LatinText],
         &[EastAsianSpacingEdges {
             leading: EastAsianSpacingValue::Wide,
@@ -416,17 +542,34 @@ fn resolve_unicode_punctuation_boundaries_with_punctuation_and_space() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from(" "), FontFaceId::with_resource_id("latin"), 16.0),
-            Cluster::new(text_range(2, 3), Text::from("。"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(" "),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("。"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -435,10 +578,30 @@ fn resolve_unicode_punctuation_boundaries_with_follows_authored_boundary() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("\n"), FontFaceId::with_resource_id("latin"), 16.0),
-            Cluster::new(text_range(1, 2), Text::from("（"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(2, 3), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(3, 4), Text::from("文"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("\n"),
+                FontFaceId::with_resource_id("latin"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("（"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(3, 4),
+                Text::from("文"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::CjkText; 4],
         &[],
@@ -457,10 +620,12 @@ fn resolve_unicode_punctuation_boundaries_with_close_punctuation_class() {
         &[FontRole::CjkText; 2],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -469,11 +634,30 @@ fn resolve_unicode_punctuation_boundaries_with_infix_numeric_separator() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("1"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from("，"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(2, 3), Text::from("2"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("1"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("，"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("2"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
-        &[FontRole::LatinText, FontRole::CjkPunctuation, FontRole::LatinText],
+        &[
+            FontRole::LatinText,
+            FontRole::CjkPunctuation,
+            FontRole::LatinText,
+        ],
         &[],
     );
     assert!(result.forbidden_line_start_clusters.is_empty());
@@ -485,10 +669,30 @@ fn resolve_unicode_punctuation_boundaries_with_decimal_mark_after_space() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("1"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(" "), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("，"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(3, 4), Text::from("2"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("1"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(" "),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("，"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(3, 4),
+                Text::from("2"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
         &[
             FontRole::LatinText,
@@ -519,8 +723,18 @@ fn resolve_unicode_punctuation_boundaries_with_infix_numeric_separator_not_decim
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("1"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from("，"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("1"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from("，"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
         &[FontRole::LatinText, FontRole::LatinText],
         &[],
@@ -534,12 +748,37 @@ fn resolve_unicode_punctuation_boundaries_with_decimal_mark_after_non_space() {
     let result = resolve_unicode_punctuation_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("1"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(","), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("，"), FontFaceId::with_resource_id("cjk"), 16.0),
-            Cluster::new(text_range(3, 4), Text::from("2"), FontFaceId::with_resource_id("latin"), 8.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("1"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("，"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
+            Cluster::new(
+                text_range(3, 4),
+                Text::from("2"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
         ],
-        &[FontRole::LatinText, FontRole::LatinText, FontRole::CjkPunctuation, FontRole::LatinText],
+        &[
+            FontRole::LatinText,
+            FontRole::LatinText,
+            FontRole::CjkPunctuation,
+            FontRole::LatinText,
+        ],
         &[],
     );
     assert!(!result.forbidden_line_start_clusters.is_empty());
@@ -554,10 +793,12 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_final() {
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -569,10 +810,12 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_initial() {
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -584,10 +827,12 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_unresolved() {
         &[FontRole::CjkText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -623,10 +868,12 @@ fn resolve_unicode_punctuation_boundaries_with_first_significant_code_point() {
         &[FontRole::LatinText; 3],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineEnd"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineEnd")
+    );
 }
 
 #[test]
@@ -638,10 +885,12 @@ fn resolve_unicode_punctuation_boundaries_with_last_significant_code_point() {
         &[FontRole::LatinText; 4],
         &[],
     );
-    assert!(result
-        .decisions
-        .iter()
-        .any(|decision| decision.forbidden_position == "LineStart"));
+    assert!(
+        result
+            .decisions
+            .iter()
+            .any(|decision| decision.forbidden_position == "LineStart")
+    );
 }
 
 #[test]
@@ -649,7 +898,12 @@ fn resolve_attached_inline_inter_char_boundaries_ignores_extra_edges() {
     let text = Text::from("a");
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
-        &[Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0)],
+        &[Cluster::new(
+            text_range(0, 1),
+            Text::from("a"),
+            FontFaceId::with_resource_id("latin"),
+            8.0,
+        )],
         &[FontRole::LatinText],
         &[EastAsianSpacingEdges {
             leading: EastAsianSpacingValue::Wide,
@@ -668,11 +922,30 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_narrow_trai
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(","), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("。"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("a"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("。"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
-        &[FontRole::LatinText, FontRole::CjkPunctuation, FontRole::CjkPunctuation],
+        &[
+            FontRole::LatinText,
+            FontRole::CjkPunctuation,
+            FontRole::CjkPunctuation,
+        ],
         &[
             EastAsianSpacingEdges {
                 leading: EastAsianSpacingValue::Wide,
@@ -691,7 +964,11 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_narrow_trai
             },
         ],
         &HashSet::new(),
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
     );
     assert!(!result.virtual_boundary_after_clusters.is_empty());
 }
@@ -702,33 +979,76 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_trailing_no
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(","), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("a"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
-        &[FontRole::CjkPunctuation, FontRole::CjkPunctuation, FontRole::CjkText],
+        &[
+            FontRole::CjkPunctuation,
+            FontRole::CjkPunctuation,
+            FontRole::CjkText,
+        ],
         &[EastAsianSpacingEdges {
             leading: EastAsianSpacingValue::Wide,
             trailing: EastAsianSpacingValue::Wide,
             contains_wide: false,
         }; 3],
         &HashSet::new(),
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
     );
     assert!(!result.virtual_boundary_after_clusters.is_empty());
 }
 
 #[test]
-fn resolve_attached_inline_inter_char_boundaries_punctuation_western_trailing_narrow_not_cjk_punct() {
+fn resolve_attached_inline_inter_char_boundaries_punctuation_western_trailing_narrow_not_cjk_punct()
+{
     let text = Text::from("a,中");
     let result = resolve_attached_inline_inter_char_boundaries(
         &text,
         &[
-            Cluster::new(text_range(0, 1), Text::from("a"), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(1, 2), Text::from(","), FontFaceId::with_resource_id("latin"), 8.0),
-            Cluster::new(text_range(2, 3), Text::from("中"), FontFaceId::with_resource_id("cjk"), 16.0),
+            Cluster::new(
+                text_range(0, 1),
+                Text::from("a"),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(1, 2),
+                Text::from(","),
+                FontFaceId::with_resource_id("latin"),
+                8.0,
+            ),
+            Cluster::new(
+                text_range(2, 3),
+                Text::from("中"),
+                FontFaceId::with_resource_id("cjk"),
+                16.0,
+            ),
         ],
-        &[FontRole::LatinText, FontRole::CjkPunctuation, FontRole::CjkText],
+        &[
+            FontRole::LatinText,
+            FontRole::CjkPunctuation,
+            FontRole::CjkText,
+        ],
         &[
             EastAsianSpacingEdges {
                 leading: EastAsianSpacingValue::Wide,
@@ -747,7 +1067,11 @@ fn resolve_attached_inline_inter_char_boundaries_punctuation_western_trailing_na
             },
         ],
         &HashSet::new(),
-        &[InlineAttachment::None, InlineAttachment::Previous, InlineAttachment::None],
+        &[
+            InlineAttachment::None,
+            InlineAttachment::Previous,
+            InlineAttachment::None,
+        ],
     );
     assert!(!result.virtual_boundary_after_clusters.is_empty());
 }

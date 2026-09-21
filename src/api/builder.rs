@@ -2,10 +2,10 @@ use crate::common::{HashMap, HashSet};
 use crate::core::geometry::{LayoutConstraints, ScalarOffset, TextRange};
 use crate::core::text::Text;
 use crate::core::text_model::{
-    built_in_layout_profiles, DecorationSpan, InlineBoxOuterSpacing, InlineBoxSpan,
-    InlineObjectSpan, LayoutInput, LayoutProfileId, LineBreakSpan, ParagraphStyle,
-    RichTextLayer, RichTextLayerKind, RichTextPaint, RichTextSpan, RubySpan, TextSpan,
-    TextStyle, TiqianTextContent,
+    DecorationSpan, InlineBoxOuterSpacing, InlineBoxSpan, InlineObjectSpan, LayoutInput,
+    LayoutProfileId, LineBreakSpan, ParagraphStyle, RichTextLayer, RichTextLayerKind,
+    RichTextPaint, RichTextSpan, RubySpan, TextSpan, TextStyle, TiqianTextContent,
+    built_in_layout_profiles,
 };
 
 use super::types::ParagraphBuildError;
@@ -61,7 +61,9 @@ impl ParagraphBuilder {
         if self.paragraph_configuration_is_mutable() {
             self.text_style = style;
         } else {
-            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+            log::warn!(
+                "paragraph defaults cannot change after source text has been appended; ignoring update"
+            );
         }
         self
     }
@@ -71,7 +73,9 @@ impl ParagraphBuilder {
         if self.paragraph_configuration_is_mutable() {
             self.paints = paints.to_vec();
         } else {
-            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+            log::warn!(
+                "paragraph defaults cannot change after source text has been appended; ignoring update"
+            );
         }
         self
     }
@@ -80,7 +84,9 @@ impl ParagraphBuilder {
         if self.paragraph_configuration_is_mutable() {
             self.paragraph_style = style;
         } else {
-            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+            log::warn!(
+                "paragraph defaults cannot change after source text has been appended; ignoring update"
+            );
         }
         self
     }
@@ -89,7 +95,9 @@ impl ParagraphBuilder {
         if self.paragraph_configuration_is_mutable() {
             self.profile_id = profile_id;
         } else {
-            log::warn!("paragraph defaults cannot change after source text has been appended; ignoring update");
+            log::warn!(
+                "paragraph defaults cannot change after source text has been appended; ignoring update"
+            );
         }
         self
     }
@@ -204,15 +212,15 @@ impl ParagraphBuilder {
     }
 
     pub(super) fn current_text_style(&self) -> TextStyle {
-        self.open_scopes.iter().fold(self.text_style.clone(), |style, scope| {
-            match &scope.kind {
+        self.open_scopes
+            .iter()
+            .fold(self.text_style.clone(), |style, scope| match &scope.kind {
                 super::scopes::OpenScopeKind::TextStyle(override_style)
                 | super::scopes::OpenScopeKind::InlineCode(override_style, _) => {
                     override_style.apply_to(&style)
                 }
                 _ => style,
-            }
-        })
+            })
     }
 
     /// 返回最近一个 paint scope 的 paint；没有局部 scope 时使用段落默认 paint。
@@ -359,9 +367,18 @@ impl ParagraphBuilder {
         matches!(
             (left, right),
             (RichTextLayerKind::Text, RichTextLayerKind::Text)
-                | (RichTextLayerKind::Background { .. }, RichTextLayerKind::Background { .. })
-                | (RichTextLayerKind::Underline { .. }, RichTextLayerKind::Underline { .. })
-                | (RichTextLayerKind::LineThrough { .. }, RichTextLayerKind::LineThrough { .. })
+                | (
+                    RichTextLayerKind::Background { .. },
+                    RichTextLayerKind::Background { .. }
+                )
+                | (
+                    RichTextLayerKind::Underline { .. },
+                    RichTextLayerKind::Underline { .. }
+                )
+                | (
+                    RichTextLayerKind::LineThrough { .. },
+                    RichTextLayerKind::LineThrough { .. }
+                )
         ) || matches!(
             (left, right),
             (
@@ -398,5 +415,4 @@ impl ParagraphBuilder {
     pub(super) fn paragraph_configuration_is_mutable(&self) -> bool {
         self.scalar_offset == ScalarOffset::ZERO
     }
-
 }

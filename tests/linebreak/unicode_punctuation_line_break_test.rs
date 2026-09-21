@@ -61,10 +61,16 @@ fn test_unicode_punctuation_line_break() {
         ('々', UnicodePunctuationLineBreakClass::Nonstarter),
         ('(', UnicodePunctuationLineBreakClass::OpenPunctuation),
         ('"', UnicodePunctuationLineBreakClass::Quotation),
-        ('/', UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter),
+        (
+            '/',
+            UnicodePunctuationLineBreakClass::SymbolsAllowingBreakAfter,
+        ),
         ('A', UnicodePunctuationLineBreakClass::Other),
     ] {
-        assert_eq!(expected, unicode_punctuation_line_break::class_of(character));
+        assert_eq!(
+            expected,
+            unicode_punctuation_line_break::class_of(character)
+        );
     }
 }
 
@@ -76,6 +82,9 @@ fn lookup_classes_cover_the_uax_tailorable_punctuation_classes() {
         ('\u{058A}', UnicodePunctuationLineBreakClass::HyphenHH),
         ('‼', UnicodePunctuationLineBreakClass::Nonstarter),
     ] {
-        assert_eq!(expected, unicode_punctuation_line_break::class_of(character));
+        assert_eq!(
+            expected,
+            unicode_punctuation_line_break::class_of(character)
+        );
     }
 }

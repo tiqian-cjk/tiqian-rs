@@ -1,5 +1,5 @@
 use tiqian::common::HashSet;
-use tiqian::core::geometry::{text_range};
+use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::layout::line_optimization::LineCandidate;
 

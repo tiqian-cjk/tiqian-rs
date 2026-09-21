@@ -1,14 +1,12 @@
 use tiqian::core::font_face::FontFaceId;
-use tiqian::core::geometry::{text_range, LayoutConstraints, Size, TextRange};
+use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun,
-    LayoutDebugInfo, LayoutResult, LineBox, MetricDecisionInfo, RubyDecisionInfo,
+    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo,
+    LayoutResult, LineBox, MetricDecisionInfo, RubyDecisionInfo,
 };
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{
-    LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent,
-};
+use tiqian::core::text_model::{LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent};
 
 pub fn input_with_rich_text(
     text: &str,
@@ -46,7 +44,12 @@ pub fn line(
 }
 
 pub fn cluster(range: TextRange, text: &str, advance: f32) -> Cluster {
-    Cluster::new(range, Text::from(text), FontFaceId::with_resource_id("test"), advance)
+    Cluster::new(
+        range,
+        Text::from(text),
+        FontFaceId::with_resource_id("test"),
+        advance,
+    )
 }
 
 pub fn result(
@@ -57,15 +60,7 @@ pub fn result(
     spans: Vec<TextSpan>,
     debug: LayoutDebugInfo,
 ) -> LayoutResult {
-    result_with_rich_text(
-        text,
-        clusters,
-        lines,
-        glyph_runs,
-        spans,
-        Vec::new(),
-        debug,
-    )
+    result_with_rich_text(text, clusters, lines, glyph_runs, spans, Vec::new(), debug)
 }
 
 pub fn result_with_rich_text(
@@ -77,7 +72,9 @@ pub fn result_with_rich_text(
     rich_text: Vec<RichTextSpan>,
     debug: LayoutDebugInfo,
 ) -> LayoutResult {
-    let content = TiqianTextContent::builder(Text::from(text)).spans(spans).build();
+    let content = TiqianTextContent::builder(Text::from(text))
+        .spans(spans)
+        .build();
     LayoutResult::with_debug(
         LayoutInput::builder(content, LayoutConstraints::with_defaults(100.0))
             .text_style(TextStyle::builder().font_size(10.0).build())
@@ -145,7 +142,10 @@ pub fn sample_result() -> LayoutResult {
 pub fn sample_result_with_rich_text(rich_text: Vec<RichTextSpan>) -> LayoutResult {
     LayoutResult::new(
         input_with_rich_text("甲——乙", 40.0, rich_text),
-        Size { width: 34.0, height: 40.0 },
+        Size {
+            width: 34.0,
+            height: 40.0,
+        },
         vec![
             cluster(text_range(0, 1), "甲", 10.0),
             Cluster::with_display_text(
@@ -171,7 +171,14 @@ pub fn sample_result_with_rich_text(rich_text: Vec<RichTextSpan>) -> LayoutResul
             )
             .indent(4.0)
             .build(),
-            line(text_range(3, 4), IntRange::new(2, 2), 35.0, 20.0, 40.0, 10.0),
+            line(
+                text_range(3, 4),
+                IntRange::new(2, 2),
+                35.0,
+                20.0,
+                40.0,
+                10.0,
+            ),
         ],
     )
 }
@@ -192,7 +199,14 @@ pub fn punctuation_glue_result_with_rich_text(
             cluster(text_range(2, 3), "中", 10.0),
             cluster(text_range(3, 4), "）", 10.0),
         ],
-        vec![line(text_range(0, 4), IntRange::new(0, 3), 15.0, 0.0, 20.0, 40.0)],
+        vec![line(
+            text_range(0, 4),
+            IntRange::new(0, 3),
+            15.0,
+            0.0,
+            20.0,
+            40.0,
+        )],
         Vec::new(),
         Vec::new(),
         rich_text,
@@ -218,10 +232,27 @@ pub fn background_geometry_result_with_rich_text(
             cluster(text_range(1, 2), " ", 5.0),
             cluster(text_range(2, 3), "B", 14.0),
         ],
-        vec![line(text_range(0, 3), IntRange::new(0, 2), 20.0, 0.0, 30.0, 31.0)],
+        vec![line(
+            text_range(0, 3),
+            IntRange::new(0, 2),
+            20.0,
+            0.0,
+            30.0,
+            31.0,
+        )],
         vec![
-            GlyphRun::new(text_range(0, 1), FontFaceId::with_resource_id("latin"), vec![Glyph::builder(1, text_range(0, 1), 10.0).build()], 10.0),
-            GlyphRun::new(text_range(2, 3), FontFaceId::with_resource_id("latin"), vec![Glyph::builder(2, text_range(2, 3), 10.0).build()], 10.0),
+            GlyphRun::new(
+                text_range(0, 1),
+                FontFaceId::with_resource_id("latin"),
+                vec![Glyph::builder(1, text_range(0, 1), 10.0).build()],
+                10.0,
+            ),
+            GlyphRun::new(
+                text_range(2, 3),
+                FontFaceId::with_resource_id("latin"),
+                vec![Glyph::builder(2, text_range(2, 3), 10.0).build()],
+                10.0,
+            ),
         ],
         Vec::new(),
         rich_text,
@@ -249,7 +280,14 @@ pub fn interaction_boundary_result() -> LayoutResult {
             cluster(text_range(1, 3), "é", 20.0),
             cluster(text_range(3, 6), "👩‍👩", 50.0),
         ],
-        vec![line(text_range(0, 6), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
+        vec![line(
+            text_range(0, 6),
+            IntRange::new(0, 2),
+            15.0,
+            0.0,
+            20.0,
+            90.0,
+        )],
         Vec::new(),
         Vec::new(),
         LayoutDebugInfo::default(),
@@ -266,7 +304,14 @@ pub fn word_boundary_result() -> LayoutResult {
             cluster(text_range(10, 11), " ", 10.0),
             cluster(text_range(11, 12), "后", 10.0),
         ],
-        vec![line(text_range(0, 12), IntRange::new(0, 4), 15.0, 0.0, 20.0, 120.0)],
+        vec![line(
+            text_range(0, 12),
+            IntRange::new(0, 4),
+            15.0,
+            0.0,
+            20.0,
+            120.0,
+        )],
         Vec::new(),
         Vec::new(),
         LayoutDebugInfo::default(),
@@ -281,23 +326,112 @@ pub fn ruby_selection_result() -> LayoutResult {
             cluster(text_range(1, 2), "王", 35.0),
             cluster(text_range(2, 3), "李", 20.0),
         ],
-        vec![line(text_range(0, 3), IntRange::new(0, 2), 15.0, 0.0, 20.0, 90.0)],
-        vec![GlyphRun::new(text_range(0, 3), FontFaceId::with_resource_id("cjk"), vec![
-            Glyph::builder(1, text_range(0, 1), 20.0).build(),
-            Glyph::builder(2, text_range(1, 2), 20.0).build(),
-            Glyph::builder(3, text_range(2, 3), 20.0).build(),
-        ], 60.0)],
+        vec![line(
+            text_range(0, 3),
+            IntRange::new(0, 2),
+            15.0,
+            0.0,
+            20.0,
+            90.0,
+        )],
+        vec![GlyphRun::new(
+            text_range(0, 3),
+            FontFaceId::with_resource_id("cjk"),
+            vec![
+                Glyph::builder(1, text_range(0, 1), 20.0).build(),
+                Glyph::builder(2, text_range(1, 2), 20.0).build(),
+                Glyph::builder(3, text_range(2, 3), 20.0).build(),
+            ],
+            60.0,
+        )],
         Vec::new(),
         LayoutDebugInfo::builder()
             .geometry_decisions(vec![
-                ClusterGeometryDecisionInfo::builder(text_range(0, 1), Text::from("张"), Text::from("张"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
-                ClusterGeometryDecisionInfo::builder(text_range(1, 2), Text::from("王"), Text::from("王"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).ruby_spread(15.0).build(),
-                ClusterGeometryDecisionInfo::builder(text_range(2, 3), Text::from("李"), Text::from("李"), 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, "test".to_owned(), "RubyAvoidanceSpread".to_owned()).build(),
+                ClusterGeometryDecisionInfo::builder(
+                    text_range(0, 1),
+                    Text::from("张"),
+                    Text::from("张"),
+                    20.0,
+                    20.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    35.0,
+                    "test".to_owned(),
+                    "RubyAvoidanceSpread".to_owned(),
+                )
+                .ruby_spread(15.0)
+                .build(),
+                ClusterGeometryDecisionInfo::builder(
+                    text_range(1, 2),
+                    Text::from("王"),
+                    Text::from("王"),
+                    20.0,
+                    20.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    35.0,
+                    "test".to_owned(),
+                    "RubyAvoidanceSpread".to_owned(),
+                )
+                .ruby_spread(15.0)
+                .build(),
+                ClusterGeometryDecisionInfo::builder(
+                    text_range(2, 3),
+                    Text::from("李"),
+                    Text::from("李"),
+                    20.0,
+                    20.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    20.0,
+                    "test".to_owned(),
+                    "RubyAvoidanceSpread".to_owned(),
+                )
+                .build(),
             ])
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(text_range(0, 1), Text::from("zhuāng"), 0, 10.0, 0.0, 10.0, 6.0).width(32.0).build(),
-                RubyDecisionInfo::builder(text_range(1, 2), Text::from("chuáng"), 0, 45.0, 0.0, 10.0, 6.0).width(32.0).build(),
-                RubyDecisionInfo::builder(text_range(2, 3), Text::from("shuāng"), 0, 80.0, 0.0, 10.0, 6.0).width(32.0).build(),
+                RubyDecisionInfo::builder(
+                    text_range(0, 1),
+                    Text::from("zhuāng"),
+                    0,
+                    10.0,
+                    0.0,
+                    10.0,
+                    6.0,
+                )
+                .width(32.0)
+                .build(),
+                RubyDecisionInfo::builder(
+                    text_range(1, 2),
+                    Text::from("chuáng"),
+                    0,
+                    45.0,
+                    0.0,
+                    10.0,
+                    6.0,
+                )
+                .width(32.0)
+                .build(),
+                RubyDecisionInfo::builder(
+                    text_range(2, 3),
+                    Text::from("shuāng"),
+                    0,
+                    80.0,
+                    0.0,
+                    10.0,
+                    6.0,
+                )
+                .width(32.0)
+                .build(),
             ])
             .build(),
     )

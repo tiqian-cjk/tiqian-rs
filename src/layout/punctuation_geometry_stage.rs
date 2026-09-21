@@ -122,10 +122,15 @@ pub fn inline_object_attached_kinsoku(
         let width: f32 = (prev..=index)
             .filter_map(|i| {
                 let cluster = clusters.get(i as usize)?;
-                Some(line_break.get(i as usize).unwrap_or_else(|| {
-                    log::warn!("missing line-break cluster; using natural cluster");
-                    cluster
-                }).advance)
+                Some(
+                    line_break
+                        .get(i as usize)
+                        .unwrap_or_else(|| {
+                            log::warn!("missing line-break cluster; using natural cluster");
+                            cluster
+                        })
+                        .advance,
+                )
             })
             .sum();
         let available = if prev == 0 { first } else { body };
@@ -226,10 +231,13 @@ pub fn attached_ascii_point_mark_kinsoku(
         ranges.push((start as i32 - 1, end as i32));
         let width: f32 = (start - 1..=end)
             .map(|i| {
-                line_break.get(i).unwrap_or_else(|| {
-                    log::warn!("missing line-break cluster; using natural cluster");
-                    &clusters[i]
-                }).advance
+                line_break
+                    .get(i)
+                    .unwrap_or_else(|| {
+                        log::warn!("missing line-break cluster; using natural cluster");
+                        &clusters[i]
+                    })
+                    .advance
             })
             .sum();
         if width > if start - 1 == 0 { first } else { body } {
@@ -398,7 +406,9 @@ pub fn apply_auto_space_policy(
         .iter()
         .enumerate()
         .map(|(i, c)| {
-            let prev = i.checked_sub(1).map(|x| spacing_edges_at(edges, x).trailing);
+            let prev = i
+                .checked_sub(1)
+                .map(|x| spacing_edges_at(edges, x).trailing);
             let next = (i + 1 < clusters.len()).then(|| spacing_edges_at(edges, i + 1).leading);
             if is_space_run(c) {
                 let narrow = if prev == Some(EastAsianSpacingValue::Wide)

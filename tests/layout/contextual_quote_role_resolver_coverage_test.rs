@@ -9,7 +9,9 @@ fn analyze_and_classify(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::
     analyzer.classify_quote_roles(&text, &pairs, &FontRoleContext::default())
 }
 
-fn classify_without_pairs(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDecision> {
+fn classify_without_pairs(
+    text: &str,
+) -> Vec<tiqian::layout::quote_pair_analyzer::QuoteRoleDecision> {
     let analyzer = QuotePairAnalyzer;
     let text = Text::from(text);
     analyzer.classify_quote_roles(&text, &[], &FontRoleContext::default())
@@ -18,10 +20,16 @@ fn classify_without_pairs(text: &str) -> Vec<tiqian::layout::quote_pair_analyzer
 #[test]
 fn nested_pair_inherits_enclosing_quote_role() {
     let decisions = analyze_and_classify("他说：“她说‘你好’。”");
-    if let Some(inner_open) = decisions.iter().find(|decision| decision.index.value() == 6) {
+    if let Some(inner_open) = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 6)
+    {
         assert_eq!(FontRole::CjkPunctuation, inner_open.role);
     }
-    if let Some(inner_close) = decisions.iter().find(|decision| decision.index.value() == 9) {
+    if let Some(inner_close) = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 9)
+    {
         assert_eq!(FontRole::CjkPunctuation, inner_close.role);
     }
 }
@@ -29,7 +37,10 @@ fn nested_pair_inherits_enclosing_quote_role() {
 #[test]
 fn nested_pair_latin_inner_inherits_cjk_enclosing() {
     let decisions = analyze_and_classify("他说：“hello”");
-    if let Some(inner_open) = decisions.iter().find(|decision| decision.index.value() == 3) {
+    if let Some(inner_open) = decisions
+        .iter()
+        .find(|decision| decision.index.value() == 3)
+    {
         assert_eq!(FontRole::CjkPunctuation, inner_open.role);
     }
 }
@@ -37,7 +48,11 @@ fn nested_pair_latin_inner_inherits_cjk_enclosing() {
 #[test]
 fn unmatched_right_single_quote_uses_surrounding_script() {
     let decisions = analyze_and_classify("abc’def");
-    assert!(decisions.iter().any(|decision| decision.role == FontRole::LatinText));
+    assert!(
+        decisions
+            .iter()
+            .any(|decision| decision.role == FontRole::LatinText)
+    );
 }
 
 #[test]
@@ -82,9 +97,11 @@ fn non_cjk_in_word_apostrophe_with_surrogate_before() {
 
 #[test]
 fn whitespace_delimited_western_quote_unmatched() {
-    assert!(classify_without_pairs("中文 ’90s")
-        .iter()
-        .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote"));
+    assert!(
+        classify_without_pairs("中文 ’90s")
+            .iter()
+            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+    );
 }
 
 #[test]
@@ -179,9 +196,11 @@ fn unmatched_right_single_quote_with_right_role() {
 
 #[test]
 fn unmatched_quote_with_whitespace_before_and_latin_right() {
-    assert!(classify_without_pairs(" ’abc")
-        .iter()
-        .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote"));
+    assert!(
+        classify_without_pairs(" ’abc")
+            .iter()
+            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+    );
 }
 
 #[test]

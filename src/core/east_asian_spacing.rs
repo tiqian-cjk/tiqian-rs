@@ -115,13 +115,12 @@ pub mod unicode_east_asian_spacing {
                 contains_wide: value == EastAsianSpacingValue::Wide,
             };
         }
-        let boundaries = interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
-        let mut values = boundaries
-            .windows(2)
-            .map(|boundary| {
-                let cluster = text.slice_text(TextRange::new(boundary[0], boundary[1]));
-                resolved_for_grapheme_cluster(&cluster, locale)
-            });
+        let boundaries =
+            interaction_boundaries(text, TextRange::new(ScalarOffset::ZERO, text_length));
+        let mut values = boundaries.windows(2).map(|boundary| {
+            let cluster = text.slice_text(TextRange::new(boundary[0], boundary[1]));
+            resolved_for_grapheme_cluster(&cluster, locale)
+        });
         let leading = values.next().expect("非空文本必须包含交互单元");
         let mut edges = EastAsianSpacingEdges {
             leading,

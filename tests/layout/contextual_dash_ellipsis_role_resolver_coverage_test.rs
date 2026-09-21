@@ -1,13 +1,16 @@
+use crate::support::DeterministicStubFontBackend;
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TextStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
 use tiqian::font::font_policy::{FontRole, FontRoleContext};
 use tiqian::layout::contextual_dash_ellipsis_role_resolver::ContextualDashEllipsisRoleResolver;
-use tiqian::api::ParagraphLayoutEngineBuilder;
-use crate::support::DeterministicStubFontBackend;
 
-fn resolve(text: &str, locale: &str) -> Vec<tiqian::layout::contextual_dash_ellipsis_role_resolver::DashEllipsisRoleDecision> {
+fn resolve(
+    text: &str,
+    locale: &str,
+) -> Vec<tiqian::layout::contextual_dash_ellipsis_role_resolver::DashEllipsisRoleDecision> {
     ContextualDashEllipsisRoleResolver.resolve(
         &Text::from(text),
         &FontRoleContext::with_locale(locale.to_owned()),
@@ -15,19 +18,21 @@ fn resolve(text: &str, locale: &str) -> Vec<tiqian::layout::contextual_dash_elli
 }
 
 fn layout(text: &str, locale: &str) -> tiqian::core::layout_model::LayoutResult {
-    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default())).build().layout(
-        LayoutInput::builder(
-            TiqianTextContent::new(Text::from(text)),
-            LayoutConstraints::with_defaults(1_000.0),
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(1_000.0),
+            )
+            .text_style(TextStyle::builder().locale(locale.to_owned()).build())
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
         )
-        .text_style(TextStyle::builder().locale(locale.to_owned()).build())
-        .paragraph_style(
-            ParagraphStyle::builder()
-                .first_line_indent(Some(Ic::ZERO))
-                .build(),
-        )
-        .build(),
-    )
 }
 
 #[test]
@@ -49,7 +54,9 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
         let decision = resolve(text, "zh-Hans").pop().unwrap();
         assert_eq!(role, decision.role, "{text}");
         assert_eq!(
-            text.chars().position(|character| character == mark).unwrap() as i32,
+            text.chars()
+                .position(|character| character == mark)
+                .unwrap() as i32,
             decision.range.start().value(),
             "{text}",
         );
@@ -63,26 +70,44 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
             decision.range.end().value(),
             "{text}",
         );
-        assert_eq!("DashEllipsisSurroundingScriptContext", decision.source, "{text}");
+        assert_eq!(
+            "DashEllipsisSurroundingScriptContext", decision.source,
+            "{text}"
+        );
     }
 }
 
 #[test]
 fn conflicting_or_absent_script_falls_back_to_paragraph_language() {
-    for (locale, role) in [("zh-Hans", FontRole::CjkPunctuation), ("en-US", FontRole::LatinText)] {
+    for (locale, role) in [
+        ("zh-Hans", FontRole::CjkPunctuation),
+        ("en-US", FontRole::LatinText),
+    ] {
         for text in ["中文—English", "…"] {
             let decision = resolve(text, locale).pop().unwrap();
             assert_eq!(role, decision.role, "{locale}: {text}");
-            assert_eq!("ParagraphLanguageDashEllipsisContext", decision.source, "{locale}: {text}");
+            assert_eq!(
+                "ParagraphLanguageDashEllipsisContext", decision.source,
+                "{locale}: {text}"
+            );
         }
     }
 }
 
 #[test]
 fn decision_reason_names_the_evidence_shape() {
-    assert_eq!("matching-surrounding-script", resolve("A—B", "zh-Hans")[0].reason);
-    assert_eq!("only-left-strong-script", resolve("中文……", "zh-Hans")[0].reason);
-    assert_eq!("only-right-strong-script", resolve("— English", "zh-Hans")[0].reason);
+    assert_eq!(
+        "matching-surrounding-script",
+        resolve("A—B", "zh-Hans")[0].reason
+    );
+    assert_eq!(
+        "only-left-strong-script",
+        resolve("中文……", "zh-Hans")[0].reason
+    );
+    assert_eq!(
+        "only-right-strong-script",
+        resolve("— English", "zh-Hans")[0].reason
+    );
 }
 
 #[test]
@@ -95,7 +120,10 @@ fn mandatory_break_stops_context_search() {
 
 #[test]
 fn linear_context_index_preserves_supplementary_script_evidence() {
-    assert_eq!(FontRole::CjkPunctuation, resolve("𠀀—123", "zh-Hans")[0].role);
+    assert_eq!(
+        FontRole::CjkPunctuation,
+        resolve("𠀀—123", "zh-Hans")[0].role
+    );
     assert_eq!(FontRole::LatinText, resolve("123—𐐀", "zh-Hans")[0].role);
 }
 
@@ -104,7 +132,11 @@ fn resolves_many_neutral_separated_runs_from_one_paragraph_index() {
     let text = format!("A{}B", " — ".repeat(2_048));
     let decisions = resolve(&text, "zh-Hans");
     assert_eq!(2_048, decisions.len());
-    assert!(decisions.iter().all(|decision| decision.role == FontRole::LatinText));
+    assert!(
+        decisions
+            .iter()
+            .all(|decision| decision.role == FontRole::LatinText)
+    );
 }
 
 #[test]
@@ -114,7 +146,9 @@ fn pairs_parenthetical_dashes_across_inserted_content() {
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
             && decision.source == "ParagraphLanguageDashEllipsisContext"
-            && decision.reason.starts_with("parenthetical-pair-conflicting-outer-script")
+            && decision
+                .reason
+                .starts_with("parenthetical-pair-conflicting-outer-script")
     }));
 }
 
@@ -141,9 +175,11 @@ fn punctuation_between_runs_keeps_them_independent() {
 fn symbol_between_runs_keeps_them_independent() {
     let decisions = resolve("时价——$100——很贵", "zh-Hans");
     assert_eq!(2, decisions.len());
-    assert!(decisions.iter().all(|decision| {
-        decision.source == "DashEllipsisSurroundingScriptContext"
-    }));
+    assert!(
+        decisions
+            .iter()
+            .all(|decision| { decision.source == "DashEllipsisSurroundingScriptContext" })
+    );
 }
 
 #[test]
@@ -180,32 +216,87 @@ fn western_context_keeps_dash_and_ellipsis_on_latin_face_and_preserves_source_di
         assert_eq!("LatinText", decision.role);
         assert_eq!(decision.source_text, decision.display_text);
     }
-    assert_eq!("——", result.debug.font_decisions.iter().find(|d| d.source_text == "——").unwrap().source_text);
-    assert_eq!("……", result.debug.font_decisions.iter().find(|d| d.source_text == "……").unwrap().source_text);
-    assert!(result.debug.punctuation_decisions.iter().all(|decision| !matches!(decision.ch, '—' | '…')));
-    assert!(result.debug.role_overrides.iter().filter(|decision| {
-        decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
-    }).all(|decision| decision.source == "DashEllipsisSurroundingScriptContext"));
+    assert_eq!(
+        "——",
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .find(|d| d.source_text == "——")
+            .unwrap()
+            .source_text
+    );
+    assert_eq!(
+        "……",
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .find(|d| d.source_text == "……")
+            .unwrap()
+            .source_text
+    );
+    assert!(
+        result
+            .debug
+            .punctuation_decisions
+            .iter()
+            .all(|decision| !matches!(decision.ch, '—' | '…'))
+    );
+    assert!(
+        result
+            .debug
+            .role_overrides
+            .iter()
+            .filter(|decision| {
+                decision.source_text.as_str().contains('—')
+                    || decision.source_text.as_str().contains('…')
+            })
+            .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext")
+    );
 }
 
 #[test]
 fn cjk_context_keeps_clreq_display_substitution_independent_of_mark_count() {
     let result = layout("中—文，等…真；中文——下句，省略号……。", "zh-Hans");
-    for (source, display) in [("—", "—"), ("…", "⋯"), ("——", "⸺"), ("……", "⋯⋯")] {
-        let decision = result.debug.font_decisions.iter().find(|decision| decision.source_text == source).unwrap();
+    for (source, display) in [("—", "—"), ("…", "⋯"), ("——", "⸺"), ("……", "⋯⋯")]
+    {
+        let decision = result
+            .debug
+            .font_decisions
+            .iter()
+            .find(|decision| decision.source_text == source)
+            .unwrap();
         assert_eq!(display, decision.display_text);
     }
-    assert!(result.debug.font_decisions.iter().filter(|decision| {
-        decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
-    }).all(|decision| decision.role == "CjkPunctuation"));
+    assert!(
+        result
+            .debug
+            .font_decisions
+            .iter()
+            .filter(|decision| {
+                decision.source_text.as_str().contains('—')
+                    || decision.source_text.as_str().contains('…')
+            })
+            .all(|decision| decision.role == "CjkPunctuation")
+    );
 }
 
 #[test]
 fn parenthetical_pair_shares_one_face_and_substitution() {
     let result = layout("他彻夜想Jessica——Jessica是他的前女友——睡不着觉", "zh-Hans");
-    let decisions: Vec<_> = result.debug.font_decisions.iter().filter(|decision| decision.source_text == "——").collect();
+    let decisions: Vec<_> = result
+        .debug
+        .font_decisions
+        .iter()
+        .filter(|decision| decision.source_text == "——")
+        .collect();
     assert_eq!(2, decisions.len());
-    assert!(decisions.iter().all(|decision| decision.role == "CjkPunctuation" && decision.display_text == "⸺"));
+    assert!(
+        decisions
+            .iter()
+            .all(|decision| decision.role == "CjkPunctuation" && decision.display_text == "⸺")
+    );
 }
 
 #[test]
@@ -215,6 +306,9 @@ fn standalone_western_ellipsis_cannot_be_rewritten_by_the_substitutor() {
     assert_eq!("LatinText", decision.role);
     assert_eq!("…", decision.source_text);
     assert_eq!("…", decision.display_text);
-    assert_eq!("CjkRoleGatedDisplaySubstitution:preserve-role-LatinText", decision.substitution_reason);
+    assert_eq!(
+        "CjkRoleGatedDisplaySubstitution:preserve-role-LatinText",
+        decision.substitution_reason
+    );
     assert_eq!("…", result.clusters.first().unwrap().display_text);
 }

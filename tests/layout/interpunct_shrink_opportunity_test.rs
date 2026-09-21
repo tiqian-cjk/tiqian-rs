@@ -1,12 +1,10 @@
-use tiqian::clreq::clreq_profile::{
-    CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver,
-};
+use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::geometry::{LayoutConstraints, Rect};
 use tiqian::core::layout_model::{Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use super::font_backend_test_support::stub_backend_with_transform;
@@ -83,14 +81,17 @@ fn halt_ink_backend() -> impl tiqian::shaping::font_backend::FontBackend {
 }
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(halt_ink_backend()))
-        .build();
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(halt_ink_backend())).build();
     engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from(text)),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     )
 }
@@ -134,7 +135,11 @@ fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink()
             TiqianTextContent::new(Text::from("正文・间隔・后文")),
             LayoutConstraints::with_defaults(320.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     );
 
@@ -144,7 +149,13 @@ fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink()
         .iter()
         .filter(|decision| decision.punctuation_class == "Interpunct")
         .collect();
-    assert_eq!(vec!['・', '・'], interpuncts.iter().map(|decision| decision.ch).collect::<Vec<_>>());
+    assert_eq!(
+        vec!['・', '・'],
+        interpuncts
+            .iter()
+            .map(|decision| decision.ch)
+            .collect::<Vec<_>>()
+    );
     for dot in interpuncts {
         assert!(dot.leading_glue_natural > 0.0);
         assert!(dot.trailing_glue_natural > 0.0);

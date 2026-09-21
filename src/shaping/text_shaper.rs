@@ -151,12 +151,7 @@ impl TextShaper for ExplainableStubTextShaper {
                     .build()
             })
             .collect();
-        let run = GlyphRun::new(
-            input.range,
-            font_face.clone(),
-            glyphs,
-            advance,
-        );
+        let run = GlyphRun::new(input.range, font_face.clone(), glyphs, advance);
         let decision = ShapingDecisionInfo::builder(
             input.range,
             source_text,
@@ -180,9 +175,7 @@ pub(crate) fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32
     // 简体中文网格中的 U+0020 是二分空（半 em），而不是全宽空白。deterministic stub 将每个
     // 空格建模为 0.5em，使 word space 与 sino-western gap 处于现实的不足/等于 em 宽度，
     // 而不是人为的 1em。
-    } else if !source_text.is_empty()
-        && source_text.chars().all(|character| character == ' ')
-    {
+    } else if !source_text.is_empty() && source_text.chars().all(|character| character == ' ') {
         0.5 * source_text.scalar_len().value() as f32
     } else {
         source_text
@@ -191,4 +184,3 @@ pub(crate) fn nominal_advance_em(source_text: &Text, display_text: &Text) -> f32
             .max(display_text.chars().count()) as f32
     }
 }
-

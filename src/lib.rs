@@ -14,8 +14,8 @@ pub mod core {
     pub mod font_face;
     pub mod geometry;
     pub mod int_range;
-    pub mod layout_paint_bounds;
     pub mod layout_model;
+    pub mod layout_paint_bounds;
     pub mod layout_queries;
     pub mod layout_result_replay_index;
     pub mod source_interaction_boundaries;

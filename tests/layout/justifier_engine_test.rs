@@ -1,19 +1,19 @@
+use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{
     AdjustmentStylePolicy, ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
 };
-use tiqian::core::geometry::{scalar_offset, LayoutConstraints};
+use tiqian::core::geometry::{LayoutConstraints, scalar_offset};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     LastLineAlignment, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
-use crate::support::DeterministicStubFontBackend;
 use super::font_backend_test_support::stub_backend_with_transform;
+use crate::support::DeterministicStubFontBackend;
 
 struct PushOutOnlyProfile;
 
@@ -101,12 +101,16 @@ fn inseparable_number_and_unit_boundary_remains_closed_during_justification() {
     let number = result
         .clusters
         .iter()
-        .find(|cluster| cluster.range.start() <= scalar_offset(2) && cluster.range.end() >= scalar_offset(4))
+        .find(|cluster| {
+            cluster.range.start() <= scalar_offset(2) && cluster.range.end() >= scalar_offset(4)
+        })
         .unwrap();
     let unit = result
         .clusters
         .iter()
-        .find(|cluster| cluster.range.start() <= scalar_offset(4) && cluster.range.end() >= scalar_offset(5))
+        .find(|cluster| {
+            cluster.range.start() <= scalar_offset(4) && cluster.range.end() >= scalar_offset(5)
+        })
         .unwrap();
     assert_ne!(number.range, unit.range);
     let decision = result
@@ -186,25 +190,32 @@ fn last_line_alignment_positions_the_last_line_via_indent() {
 #[test]
 fn sino_western_gap_knob_disables_stretch_and_shrink() {
     let clreq_profile_resolver = Box::new(FixedSinoWesternGapProfile);
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(clreq_profile_resolver)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(clreq_profile_resolver)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文Hello文中文中文中文中")),
             LayoutConstraints::with_defaults(160.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     );
 
     assert!(!result.debug.justification_decisions.is_empty());
-    assert!(result
-        .debug
-        .justification_decisions
-        .iter()
-        .flat_map(|decision| &decision.allocations)
-        .all(|allocation| allocation.kind != "CjkLatinSpace"));
+    assert!(
+        result
+            .debug
+            .justification_decisions
+            .iter()
+            .flat_map(|decision| &decision.allocations)
+            .all(|allocation| allocation.kind != "CjkLatinSpace")
+    );
 }
 
 #[test]
@@ -212,13 +223,20 @@ fn half_em_word_spaces_do_not_stretch_under_justification() {
     let result = layout(
         "AB CD EF中文中文中",
         160.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
     assert!(result.lines.len() >= 2);
     let decision = &result.debug.justification_decisions[0];
     assert_eq!(0.0, decision.deficit_after);
-    assert!(decision.allocations.iter().all(|allocation| allocation.kind != "WordSpace"));
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind != "WordSpace")
+    );
     assert!(!decision.allocations.is_empty());
     assert_eq!(160.0, result.lines[0].visual_width);
 }
@@ -226,15 +244,20 @@ fn half_em_word_spaces_do_not_stretch_under_justification() {
 #[test]
 fn justify_fills_saturated_line_with_uncapped_even_share() {
     let hyphenator = &NoHyphenator;
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .hyphenator(hyphenator)
-        .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .hyphenator(hyphenator)
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文中文Network中文")),
             LayoutConstraints::with_defaults(160.0),
         )
-        .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build())
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
         .build(),
     );
 
@@ -261,7 +284,9 @@ fn justifies_non_last_line_using_cjk_inter_char_gaps_as_last_resort() {
     let result = layout(
         "中文中文中文",
         80.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
     assert_eq!(2, result.lines.len());
@@ -277,7 +302,9 @@ fn uses_punctuation_glue_first_when_deficit_matches_compression() {
     let result = layout(
         "中，。文",
         64.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
     assert_eq!(1, result.lines.len());
@@ -289,7 +316,9 @@ fn justify_distributes_deficit_across_priority_chain() {
     let result = layout(
         "中」。文中文中文中",
         80.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
     assert!(result.lines.len() >= 2);
@@ -297,15 +326,33 @@ fn justify_distributes_deficit_across_priority_chain() {
     assert_eq!(8.0, decision.deficit_before);
     assert_eq!(0.0, decision.deficit_after);
     assert_eq!(4, decision.allocations.len());
-    assert!(decision.allocations.iter().all(|allocation| allocation.kind == "CjkInterChar"));
-    assert!(decision.allocations.iter().all(|allocation| allocation.delta == 2.0));
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind == "CjkInterChar")
+    );
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.delta == 2.0)
+    );
     let mut targets: Vec<_> = decision
         .allocations
         .iter()
         .map(|allocation| allocation.cluster_range.start())
         .collect();
     targets.sort();
-    assert_eq!(vec![scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3)], targets);
+    assert_eq!(
+        vec![
+            scalar_offset(0),
+            scalar_offset(1),
+            scalar_offset(2),
+            scalar_offset(3)
+        ],
+        targets
+    );
     assert_eq!(80.0, result.lines[0].visual_width);
     let geometry = result
         .debug
@@ -320,11 +367,7 @@ fn justify_distributes_deficit_across_priority_chain() {
 
 #[test]
 fn cjk_inter_char_acts_as_last_resort_when_punct_glue_exhausted() {
-    let result = layout(
-        "中文中文中文中文中文中文",
-        100.0,
-        exact_measure_style(),
-    );
+    let result = layout("中文中文中文中文中文中文", 100.0, exact_measure_style());
 
     assert_eq!(2, result.lines.len());
     let decision = result
@@ -334,22 +377,25 @@ fn cjk_inter_char_acts_as_last_resort_when_punct_glue_exhausted() {
         .expect("expected first-line justification decision");
     assert_eq!(4.0, decision.deficit_before);
     assert_eq!(0.0, decision.deficit_after);
-    assert!(decision.allocations.iter().all(|allocation| allocation.kind == "CjkInterChar"));
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind == "CjkInterChar")
+    );
     assert_eq!(5, decision.allocations.len());
-    assert!(decision
-        .allocations
-        .iter()
-        .all(|allocation| (allocation.delta - 0.8).abs() < 0.001));
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| (allocation.delta - 0.8).abs() < 0.001)
+    );
     assert_eq!(100.0, result.lines[0].visual_width);
 }
 
 #[test]
 fn uniform_tracking_includes_bracket_inner_sides() {
-    let result = layout(
-        "中（中文）文中文中文中",
-        100.0,
-        exact_measure_style(),
-    );
+    let result = layout("中（中文）文中文中文中", 100.0, exact_measure_style());
 
     assert_eq!(2, result.lines.len());
     let decision = result
@@ -364,21 +410,33 @@ fn uniform_tracking_includes_bracket_inner_sides() {
         .map(|allocation| allocation.cluster_range.start())
         .collect();
     targets.sort();
-    assert_eq!(vec![scalar_offset(0), scalar_offset(1), scalar_offset(2), scalar_offset(3), scalar_offset(4)], targets);
-    assert!(decision.allocations.iter().all(|allocation| allocation.kind == "CjkInterChar"));
-    assert!(decision
-        .allocations
-        .iter()
-        .all(|allocation| (allocation.delta - 0.8).abs() < 0.01));
+    assert_eq!(
+        vec![
+            scalar_offset(0),
+            scalar_offset(1),
+            scalar_offset(2),
+            scalar_offset(3),
+            scalar_offset(4)
+        ],
+        targets
+    );
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind == "CjkInterChar")
+    );
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| (allocation.delta - 0.8).abs() < 0.01)
+    );
 }
 
 #[test]
 fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
-    let result = layout(
-        "中文（Hello）中文中文",
-        170.0,
-        exact_measure_style(),
-    );
+    let result = layout("中文（Hello）中文中文", 170.0, exact_measure_style());
 
     assert_eq!(2, result.lines.len());
     let decision = result
@@ -386,10 +444,12 @@ fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
         .justification_decisions
         .first()
         .expect("expected first-line justification decision");
-    assert!(decision
-        .allocations
-        .iter()
-        .all(|allocation| allocation.kind != "CjkLatinSpace"));
+    assert!(
+        decision
+            .allocations
+            .iter()
+            .all(|allocation| allocation.kind != "CjkLatinSpace")
+    );
     assert!(decision.allocations.iter().any(|allocation| {
         allocation.kind == "CjkInterChar" && allocation.cluster_range.start().value() == 2
     }));
@@ -405,7 +465,11 @@ fn latin_glyph_positions_survive_autospace_and_justification() {
     let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(stub_backend_with_transform(
         |input: &FontBackendRequest, mut result: FontBackendShapingResult| {
             let text = input.text.slice_text(input.range);
-            let advance = if text == "AV" { 10.0 } else { text.scalar_len().value() as f32 * 16.0 };
+            let advance = if text == "AV" {
+                10.0
+            } else {
+                text.scalar_len().value() as f32 * 16.0
+            };
             let face = result.face.clone();
             let glyphs = if text == "AV" {
                 vec![
@@ -433,18 +497,13 @@ fn latin_glyph_positions_survive_autospace_and_justification() {
                 face.clone(),
                 advance,
             )];
-            result.shaping.glyph_runs = vec![GlyphRun::new(
-                input.range,
-                face,
-                glyphs,
-                advance,
-            )];
+            result.shaping.glyph_runs = vec![GlyphRun::new(input.range, face, glyphs, advance)];
             result
         },
     )))
-        .hyphenator(hyphenator)
-        .clreq_profile_resolver(clreq_profile_resolver)
-        .build();
+    .hyphenator(hyphenator)
+    .clreq_profile_resolver(clreq_profile_resolver)
+    .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中AV中文")),
@@ -459,30 +518,38 @@ fn latin_glyph_positions_survive_autospace_and_justification() {
         .iter()
         .find(|cluster| cluster.text == "AV")
         .expect("expected AV cluster");
-    assert!(latin.advance > 10.0, "autospace/justification should widen the cluster as trailing layout space: {latin:?}");
-    assert!(result
-        .debug
-        .justification_decisions
-        .iter()
-        .flat_map(|decision| &decision.allocations)
-        .any(|allocation| allocation.cluster_range == latin.range && allocation.kind == "CjkLatinSpace"));
+    assert!(
+        latin.advance > 10.0,
+        "autospace/justification should widen the cluster as trailing layout space: {latin:?}"
+    );
+    assert!(
+        result
+            .debug
+            .justification_decisions
+            .iter()
+            .flat_map(|decision| &decision.allocations)
+            .any(|allocation| allocation.cluster_range == latin.range
+                && allocation.kind == "CjkLatinSpace")
+    );
     let glyphs: Vec<_> = result
         .glyph_runs
         .iter()
         .flat_map(|run| &run.glyphs)
         .filter(|glyph| glyph.cluster_range == latin.range)
         .collect();
-    assert_eq!(vec![0.0, 5.0], glyphs.iter().map(|glyph| glyph.x).collect::<Vec<_>>());
-    assert_eq!(vec![5.0, 5.0], glyphs.iter().map(|glyph| glyph.advance).collect::<Vec<_>>());
+    assert_eq!(
+        vec![0.0, 5.0],
+        glyphs.iter().map(|glyph| glyph.x).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        vec![5.0, 5.0],
+        glyphs.iter().map(|glyph| glyph.advance).collect::<Vec<_>>()
+    );
 }
 
 #[test]
 fn dash_boundaries_do_not_receive_uniform_tracking() {
-    let result = layout(
-        "在所谓中文语境下——不如说中文",
-        180.0,
-        exact_measure_style(),
-    );
+    let result = layout("在所谓中文语境下——不如说中文", 180.0, exact_measure_style());
 
     assert!(result.lines.len() >= 2);
     let dash_index = result
@@ -506,7 +573,9 @@ fn typed_sino_western_spaces_stretch_in_tier_two() {
     let result = layout(
         "中文 Hello 中文中文中文",
         180.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
     assert!(result.lines.len() >= 2);
@@ -524,16 +593,15 @@ fn typed_sino_western_spaces_stretch_in_tier_two() {
             .find(|cluster| cluster.range.start() == allocation.cluster_range.start())
             .is_some_and(|cluster| cluster.text == " ")
     }));
-    assert!(sino.iter().all(|allocation| allocation.delta == sino[0].delta));
+    assert!(
+        sino.iter()
+            .all(|allocation| allocation.delta == sino[0].delta)
+    );
 }
 
 #[test]
 fn punctuation_to_western_boundary_stretches_in_tier_three() {
-    let result = layout(
-        "你好「World」你好你好你",
-        140.0,
-        exact_measure_style(),
-    );
+    let result = layout("你好「World」你好你好你", 140.0, exact_measure_style());
 
     let allocations = &result.debug.justification_decisions[0].allocations;
     assert!(allocations.iter().any(|allocation| {
@@ -551,10 +619,16 @@ fn line_edge_sino_western_space_stays_collapsed() {
     let result = layout(
         "中文中文 word 中文中",
         80.0,
-        ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build(),
+        ParagraphStyle::builder()
+            .first_line_indent(Some(Ic::ZERO))
+            .build(),
     );
 
-    for line in result.lines.iter().take(result.lines.len().saturating_sub(1)) {
+    for line in result
+        .lines
+        .iter()
+        .take(result.lines.len().saturating_sub(1))
+    {
         let edge = result
             .clusters
             .iter()
@@ -562,7 +636,10 @@ fn line_edge_sino_western_space_stays_collapsed() {
             .find(|cluster| cluster.range.start() < line.range.end())
             .expect("non-last line has edge cluster");
         if edge.text == " " {
-            assert_eq!(0.0, edge.advance, "line-edge sino-western space must stay collapsed");
+            assert_eq!(
+                0.0, edge.advance,
+                "line-edge sino-western space must stay collapsed"
+            );
         }
     }
 }
