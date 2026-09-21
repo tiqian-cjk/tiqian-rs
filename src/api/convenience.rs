@@ -76,8 +76,8 @@ impl ParagraphBuilder {
         self
     }
 
-    pub fn link(&mut self, target: String, text: &str) -> &mut Self {
-        self.with_link(target, |builder| builder.push(text));
+    pub fn link(&mut self, id: Option<String>, target: String, text: &str) -> &mut Self {
+        self.with_link(id, target, |builder| builder.push(text));
         self
     }
 

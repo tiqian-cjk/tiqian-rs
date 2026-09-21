@@ -151,7 +151,7 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
             },
         );
     });
-    builder.with_link("https://tiqian.org".to_owned(), |builder| {
+    builder.with_link(None, "https://tiqian.org".to_owned(), |builder| {
         builder.push("tiqian.org");
     });
 
@@ -192,7 +192,8 @@ fn scopes_lower_to_existing_layout_and_presentation_fields_in_opening_order() {
     );
     assert_eq!(
         vec![RichTextSemantic::Link {
-                target: "https://tiqian.org".to_owned(),
+            id: None,
+            target: "https://tiqian.org".to_owned(),
             }],
         output.rich_text[1].semantics,
     );
@@ -338,7 +339,7 @@ fn position_insertions_preserve_source_and_reject_invalid_ruby_content() {
     builder.push("甲");
     builder.hard_break().unwrap();
     builder
-        .inline_object("object", InlineObjectMetrics::new(24.0, 16.0, 8.0))
+        .inline_object(None, "object", InlineObjectMetrics::new(24.0, 16.0, 8.0))
         .unwrap();
 
     let output = builder.build().unwrap();
@@ -407,7 +408,7 @@ fn empty_ruby_inline_box_and_inline_object_are_build_errors() {
     let mut object_builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     assert_eq!(
         Err(ParagraphBuildError::EmptyInlineObjectReplacementText),
-        object_builder.inline_object("", InlineObjectMetrics::new(24.0, 16.0, 8.0))
+        object_builder.inline_object(None, "", InlineObjectMetrics::new(24.0, 16.0, 8.0))
     );
     assert_eq!(
         Err(ParagraphBuildError::EmptyInlineObjectReplacementText),
@@ -436,7 +437,7 @@ fn convenience_scopes_preserve_their_own_ranges_and_restore_outer_state() {
     );
     builder.underline(RichTextLinePaint::default(), "线");
     builder.line_through(RichTextLinePaint::default(), "删");
-    builder.link("https://tiqian.org".to_owned(), "提椠");
+    builder.link(None, "https://tiqian.org".to_owned(), "提椠");
     builder.technical("code");
     builder.auto_space_suppressed("紧");
 
@@ -451,7 +452,7 @@ fn convenience_scopes_preserve_their_own_ranges_and_restore_outer_state() {
     assert!(output.rich_text.iter().any(|span| span.layers.iter().any(|layer| matches!(layer.kind, RichTextLayerKind::Background { .. }))));
     assert!(output.rich_text.iter().any(|span| span.layers.iter().any(|layer| matches!(layer.kind, RichTextLayerKind::Underline { .. }))));
     assert!(output.rich_text.iter().any(|span| span.layers.iter().any(|layer| matches!(layer.kind, RichTextLayerKind::LineThrough { .. }))));
-    assert!(output.rich_text.iter().any(|span| span.semantics == vec![RichTextSemantic::Link { target: "https://tiqian.org".to_owned() }]));
+    assert!(output.rich_text.iter().any(|span| span.semantics == vec![RichTextSemantic::Link { id: None, target: "https://tiqian.org".to_owned() }]));
     assert_eq!(
         vec![
             LineBreakSpan {
@@ -475,8 +476,8 @@ fn convenience_scopes_preserve_their_own_ranges_and_restore_outer_state() {
 #[test]
 fn links_only_use_technical_breaking_when_text_displays_the_target() {
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
-    builder.link("https://tiqian.org".to_owned(), "https://tiqian.org");
-    builder.link("https://tiqian.org".to_owned(), "提椠");
+    builder.link(None, "https://tiqian.org".to_owned(), "https://tiqian.org");
+    builder.link(None, "https://tiqian.org".to_owned(), "提椠");
 
     let output = builder.build().unwrap();
     assert_eq!(1, output.content.line_break_spans.len());
@@ -519,7 +520,7 @@ fn styles_and_errors_cover_explicit_overrides_and_position_insertion_rules() {
     let mut ruby_builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     ruby_builder.push_ruby(RubyAnnotation::pinyin("jiǎ")).unwrap();
     let error = ruby_builder
-        .inline_object("图", InlineObjectMetrics::new(16.0, 12.0, 4.0))
+        .inline_object(None, "图", InlineObjectMetrics::new(16.0, 12.0, 4.0))
         .unwrap_err();
     assert_eq!(
         ParagraphBuildError::ForbiddenPositionInsertion {
@@ -564,7 +565,7 @@ fn manual_and_fallible_scopes_lower_each_supported_presentation_contract() {
     builder.push_line_through(line.clone()).unwrap();
     builder.push("删");
     builder.pop().unwrap();
-    builder.push_link("https://tiqian.org".to_owned()).unwrap();
+    builder.push_link(None, "https://tiqian.org".to_owned()).unwrap();
     builder.push("提椠");
     builder.pop().unwrap();
     builder.push_technical().unwrap();
@@ -586,7 +587,7 @@ fn manual_and_fallible_scopes_lower_each_supported_presentation_contract() {
     builder.try_with_background(RichTextBackgroundPaint::default(), &[paint.clone()], |builder| { builder.push("景"); Ok(()) }).unwrap();
     builder.try_with_underline(line.clone(), |builder| { builder.push("线"); Ok(()) }).unwrap();
     builder.try_with_line_through(line, |builder| { builder.push("杠"); Ok(()) }).unwrap();
-    builder.try_with_link("https://tiqian.org".to_owned(), |builder| { builder.push("链接"); Ok(()) }).unwrap();
+    builder.try_with_link(None, "https://tiqian.org".to_owned(), |builder| { builder.push("链接"); Ok(()) }).unwrap();
     builder.try_with_technical(|builder| { builder.push("T"); Ok(()) }).unwrap();
     builder.try_with_inline_code(TextStyleOverride::default(), RichTextBackgroundPaint::default(), |builder| { builder.push("C"); Ok(()) }).unwrap();
     builder.try_with_auto_space_suppressed(|builder| { builder.push("抑"); Ok(()) }).unwrap();
@@ -630,6 +631,7 @@ fn style_builders_and_build_errors_preserve_explicit_public_contracts() {
         "盒",
     ).unwrap();
     builder.inline_object(
+        None,
         "物",
         InlineObjectMetrics::builder(24.0, 16.0, 8.0)
             .leading_boundary(leading.clone())

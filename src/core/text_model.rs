@@ -391,6 +391,8 @@ impl InlineObjectBoundaryAdjustmentBuilder {
 /// 平台 renderer 拥有实际对象。
 #[derive(Clone, Debug, PartialEq)]
 pub struct InlineObjectSpan {
+    /// 调用方为该对象声明的可选标识；不参与布局计算。
+    pub id: Option<String>,
     pub range: TextRange,
     pub advance: f32,
     pub ascent: f32,
@@ -407,6 +409,7 @@ impl InlineObjectSpan {
         descent: f32,
     ) -> Self {
         Self {
+            id: None,
             range,
             advance,
             ascent,
@@ -425,6 +428,7 @@ impl InlineObjectSpan {
         trailing_boundary: InlineObjectBoundaryAdjustment,
     ) -> Self {
         Self {
+            id: None,
             range,
             advance,
             ascent,
@@ -442,6 +446,7 @@ impl InlineObjectSpan {
         leading_boundary: InlineObjectBoundaryAdjustment,
     ) -> Self {
         Self {
+            id: None,
             range,
             advance,
             ascent,
@@ -459,6 +464,7 @@ impl InlineObjectSpan {
         trailing_boundary: InlineObjectBoundaryAdjustment,
     ) -> Self {
         Self {
+            id: None,
             range,
             advance,
             ascent,
@@ -466,6 +472,12 @@ impl InlineObjectSpan {
             leading_boundary: InlineObjectBoundaryAdjustment::FIXED,
             trailing_boundary,
         }
+    }
+
+    /// 设置调用方标识；标识不参与布局计算。
+    pub fn with_id(mut self, id: Option<String>) -> Self {
+        self.id = id;
+        self
     }
 }
 
@@ -659,8 +671,9 @@ impl Default for RichTextPaint {
 /// 不直接参与绘制的 rich-text 语义。
 #[derive(Clone, Debug, PartialEq)]
 pub enum RichTextSemantic {
-    /// 可交互链接的目标地址。
+    /// 可交互链接的调用方标识和目标地址。
     Link {
+        id: Option<String>,
         target: String,
     },
     /// 采用技术文本断行和空格策略的范围。

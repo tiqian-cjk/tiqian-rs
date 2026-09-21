@@ -23,7 +23,7 @@ pub(super) enum OpenScopeKind {
     Decoration(DecorationKind),
     Paints(Vec<RichTextPaint>),
     RichText(Vec<RichTextLayer>),
-    Link(String),
+    Link(Option<String>, String),
     Technical,
     InlineCode(TextStyleOverride, RichTextBackgroundPaint),
     AutoSpaceSuppressed,
@@ -39,7 +39,7 @@ impl OpenScopeKind {
             Self::Decoration(_) => ParagraphScopeKind::Decoration,
             Self::Paints(_) => ParagraphScopeKind::Color,
             Self::RichText(_) => ParagraphScopeKind::RichText,
-            Self::Link(_) => ParagraphScopeKind::Link,
+            Self::Link(_, _) => ParagraphScopeKind::Link,
             Self::Technical => ParagraphScopeKind::Technical,
             Self::InlineCode(_, _) => ParagraphScopeKind::InlineCode,
             Self::AutoSpaceSuppressed => ParagraphScopeKind::AutoSpaceSuppressed,
@@ -119,8 +119,12 @@ impl ParagraphBuilder {
         Ok(())
     }
 
-    pub fn push_link(&mut self, target: String) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::Link(target));
+    pub fn push_link(
+        &mut self,
+        id: Option<String>,
+        target: String,
+    ) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::Link(id, target));
         Ok(())
     }
 
@@ -156,6 +160,7 @@ impl ParagraphBuilder {
 
     pub fn inline_object(
         &mut self,
+        id: Option<String>,
         replacement_text: &str,
         metrics: InlineObjectMetrics,
     ) -> Result<(), ParagraphBuildError> {
@@ -172,14 +177,16 @@ impl ParagraphBuilder {
         }
         let start = self.scalar_offset;
         self.push(replacement_text);
-        self.inline_objects.push(InlineObjectSpan::new(
+        let object = InlineObjectSpan::new(
             TextRange::new(start, self.scalar_offset),
             metrics.advance,
             metrics.ascent,
             metrics.descent,
             metrics.leading_boundary,
             metrics.trailing_boundary,
-        ));
+        )
+        .with_id(id);
+        self.inline_objects.push(object);
         Ok(())
     }
 
@@ -382,16 +389,22 @@ impl ParagraphBuilder {
         )
     }
 
-    pub fn with_link(&mut self, target: String, content: impl FnOnce(&mut Self)) {
-        self.with_scope(OpenScopeKind::Link(target), content);
+    pub fn with_link(
+        &mut self,
+        id: Option<String>,
+        target: String,
+        content: impl FnOnce(&mut Self),
+    ) {
+        self.with_scope(OpenScopeKind::Link(id, target), content);
     }
 
     pub fn try_with_link(
         &mut self,
+        id: Option<String>,
         target: String,
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::Link(target), content)
+        self.try_with_scope(OpenScopeKind::Link(id, target), content)
     }
 
     pub fn with_technical(&mut self, content: impl FnOnce(&mut Self)) {
@@ -510,13 +523,14 @@ impl ParagraphBuilder {
                 Ok(())
             }
             OpenScopeKind::Paints(_) | OpenScopeKind::RichText(_) => Ok(()),
-            OpenScopeKind::Link(target) => {
+            OpenScopeKind::Link(id, target) => {
                 if !range.is_empty() {
                     // Link 语义保留在 rich-text 中；只有可见文本本身显示链接地址时，才额外采用技术文本断行策略。
                     self.record_rich_text(
                         range,
                         Vec::new(),
                         vec![RichTextSemantic::Link {
+                            id,
                             target: target.clone(),
                         }],
                     );

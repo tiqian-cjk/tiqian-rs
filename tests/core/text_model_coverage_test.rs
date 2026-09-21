@@ -126,7 +126,7 @@ fn test_rich_text_spans_and_patterns() {
             RichTextLayer { kind: RichTextLayerKind::Decoration { kind: DecorationKind::Emphasis }, paints: paints.clone() },
             RichTextLayer { kind: RichTextLayerKind::Annotation { kind: RubyKind::Pinyin }, paints: paints.clone() },
         ],
-        semantics: vec![RichTextSemantic::Link { target: "https://tiqian.org".to_owned() }, RichTextSemantic::TechnicalInline],
+        semantics: vec![RichTextSemantic::Link { id: None, target: "https://tiqian.org".to_owned() }, RichTextSemantic::TechnicalInline],
     };
     let [
         RichTextPaint::Fill { argb: fill_argb },
