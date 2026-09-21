@@ -6,6 +6,41 @@ use super::geometry::{ScalarOffset, TextRange};
 use super::text::Text;
 use super::units::Ic;
 
+/// 调用方允许 backend 在缺少真实字体能力时采用的软件字体合成。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FontSynthesis(u8);
+
+impl FontSynthesis {
+    pub const NONE: Self = Self(0);
+    pub const WEIGHT: Self = Self(1 << 0);
+    pub const STYLE: Self = Self(1 << 1);
+    pub const ALL: Self = Self(Self::WEIGHT.0 | Self::STYLE.0);
+
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+}
+
+impl Default for FontSynthesis {
+    fn default() -> Self {
+        Self::ALL
+    }
+}
+
+impl std::ops::BitOr for FontSynthesis {
+    type Output = Self;
+
+    fn bitor(self, right: Self) -> Self::Output {
+        Self(self.0 | right.0)
+    }
+}
+
+impl std::ops::BitOrAssign for FontSynthesis {
+    fn bitor_assign(&mut self, right: Self) {
+        self.0 |= right.0;
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TiqianTextContent {
     pub text: Text,
@@ -443,6 +478,8 @@ pub struct TextStyle {
     pub font_weight: i32,
     /// Slant axis: italic/oblique typeface when the family offers one (ADR 0030 B 档).
     pub italic: bool,
+    /// 调用方允许缺少真实字重或斜体能力时采用的软件字体合成。
+    pub font_synthesis: FontSynthesis,
     /// 显式作者/样式 baseline offset，单位 px（+down）。它独立于引擎的 script/size metric alignment
     /// shift 并叠加其上，例如由 Compose `SpanStyle.baselineShift` 降低的 reference superscript。
     pub baseline_shift: f32,
@@ -458,6 +495,7 @@ impl Default for TextStyle {
             locale: "zh-Hans".to_owned(),
             font_weight: 400,
             italic: false,
+            font_synthesis: FontSynthesis::ALL,
             baseline_shift: 0.0,
             inline_attachment: InlineAttachment::None,
         }
@@ -497,6 +535,10 @@ impl TextStyleBuilder {
         self.style.italic = value;
         self
     }
+    pub fn font_synthesis(mut self, value: FontSynthesis) -> Self {
+        self.style.font_synthesis = value;
+        self
+    }
     pub fn baseline_shift(mut self, value: f32) -> Self {
         self.style.baseline_shift = value;
         self
@@ -507,6 +549,20 @@ impl TextStyleBuilder {
     }
     pub fn build(self) -> TextStyle {
         self.style
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FontSynthesis, TextStyle};
+
+    #[test]
+    fn default_font_synthesis_allows_weight_and_style() {
+        let synthesis = TextStyle::default().font_synthesis;
+
+        assert!(synthesis.contains(FontSynthesis::WEIGHT));
+        assert!(synthesis.contains(FontSynthesis::STYLE));
+        assert!(!FontSynthesis::NONE.contains(FontSynthesis::WEIGHT));
     }
 }
 

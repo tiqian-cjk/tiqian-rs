@@ -1,6 +1,7 @@
 use crate::core::text::Text;
 use crate::core::text_model::{
-    InlineAttachment, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment, RubyKind, TextStyle,
+    FontSynthesis, InlineAttachment, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
+    RubyKind, TextStyle,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -10,6 +11,7 @@ pub struct TextStyleOverride {
     pub locale: Option<String>,
     pub font_weight: Option<i32>,
     pub italic: Option<bool>,
+    pub font_synthesis: Option<FontSynthesis>,
     pub baseline_shift: Option<f32>,
     pub inline_attachment: Option<InlineAttachment>,
 }
@@ -31,6 +33,7 @@ impl TextStyleOverride {
             locale: self.locale.clone().unwrap_or_else(|| base.locale.clone()),
             font_weight: self.font_weight.unwrap_or(base.font_weight),
             italic: self.italic.unwrap_or(base.italic),
+            font_synthesis: self.font_synthesis.unwrap_or(base.font_synthesis),
             baseline_shift: self.baseline_shift.unwrap_or(base.baseline_shift),
             inline_attachment: self.inline_attachment.unwrap_or(base.inline_attachment),
         }
@@ -64,6 +67,10 @@ impl TextStyleOverrideBuilder {
 
     pub fn italic(mut self, value: bool) -> Self {
         self.override_style.italic = Some(value);
+        self
+    }
+    pub fn font_synthesis(mut self, value: FontSynthesis) -> Self {
+        self.override_style.font_synthesis = Some(value);
         self
     }
 
@@ -264,7 +271,7 @@ impl InlineObjectMetricsBuilder {
 #[cfg(test)]
 mod tests {
     use crate::api::{RubyAnnotation, TextStyleOverride};
-    use crate::core::text_model::TextStyle;
+    use crate::core::text_model::{FontSynthesis, TextStyle};
 
     #[test]
     fn text_style_override_preserves_unspecified_fields() {
@@ -273,6 +280,7 @@ mod tests {
             .font_size(15.0)
             .font_weight(400)
             .italic(false)
+            .font_synthesis(FontSynthesis::STYLE)
             .build();
         let override_style = TextStyleOverride::builder()
             .font_weight(700)
@@ -285,8 +293,24 @@ mod tests {
                 .font_size(15.0)
                 .font_weight(700)
                 .italic(true)
+                .font_synthesis(FontSynthesis::STYLE)
                 .build(),
             override_style.apply_to(&base)
+        );
+    }
+
+    #[test]
+    fn text_style_override_replaces_font_synthesis_when_specified() {
+        let base = TextStyle::builder()
+            .font_synthesis(FontSynthesis::ALL)
+            .build();
+        let override_style = TextStyleOverride::builder()
+            .font_synthesis(FontSynthesis::STYLE)
+            .build();
+
+        assert_eq!(
+            override_style.apply_to(&base).font_synthesis,
+            FontSynthesis::STYLE
         );
     }
 

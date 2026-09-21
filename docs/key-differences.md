@@ -47,6 +47,21 @@ backend 只位于 `tests/support/`，不会成为生产 crate 的默认依赖。
 验证要求见 [`R0004-explicit-font-backend-engine.md`](adr/R0004-explicit-font-backend-engine.md) 与
 [`2026-09-16-feat-explicit-font-backend-engine.md`](iteration/2026-09-16-feat-explicit-font-backend-engine.md)。
 
+### 字体合成策略与最终字体实例身份
+
+Kotlin 上游的 `TextStyle` 仅表达 `fontWeight` 与 `italic` 请求，`FontFaceId` 是平台字体目录定义的不透明
+字符串。它没有调用方可继承的仿粗、仿斜许可，也没有表达 backend 实际采用的软件合成参数。
+
+Rust 已接受 R0006：`TextStyle.font_synthesis` 用 `FontSynthesis` 表示允许的 weight、style 合成能力；
+`TextStyleOverride` 未指定时继承、指定时整体替换。backend 在物理静态 face 和标准 OpenType variation axis
+仍不能满足请求时，才按该策略生成软件合成。最终采用的参数保存在 `FontSynthesisInstance`，并与物理资源、
+collection member、实际 variation 一起组成最终 `FontFaceId`。
+
+因此，同一物理字体的 normal、实际 variation 与不同合成实例可分别参与 glyph replay、metrics、图集和
+debug 输出；软件合成不伪装为 OpenType variation。平台 backend 决定仿粗和仿斜的几何实现。完整决策与
+验证要求见 [`R0006-font-synthesis-final-face-identity.md`](adr/R0006-font-synthesis-final-face-identity.md) 与
+[`2026-09-21-feat-font-synthesis-contract.md`](iteration/2026-09-21-feat-font-synthesis-contract.md)。
+
 ### 统一富文本旁路模型
 
 Rust 已实施 R0002：`ColorSpan` 与单 role 的 `RichTextSpan` 已合并为统一的富文本旁路输出。

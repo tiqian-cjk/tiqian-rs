@@ -38,7 +38,7 @@ fn font_face_id_keeps_resource_collection_and_canonical_variations() {
     assert_eq!(2, id.collection_index());
     assert_eq!("wdth", id.variation_instance().settings()[0].tag());
     assert_eq!("wght", id.variation_instance().settings()[1].tag());
-    assert_eq!("noto-cjk#2@wdth=75,wght=700", id.to_string());
+    assert_eq!("noto-cjk#2@wdth=75,wght=700+none", id.to_string());
 
     assert_eq!(" ", face_id(" ").resource_id());
     let variations = FontVariationInstance::new(vec![
