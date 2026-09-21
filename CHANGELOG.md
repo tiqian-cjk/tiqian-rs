@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.0 (2026-09-22)
+
+### Chore
+
+ - <csr-id-083573754b0e3f1c9d297e977cf865143c8eda1d/> format
+
+### New Features
+
+ - <csr-id-87063ff1ac4bef2792966517527c9e4ceb25f0e6/> add IDs to rich-text links and inline objects
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Format ([`0835737`](https://github.com/tiqian-cjk/tiqian-rs/commit/083573754b0e3f1c9d297e977cf865143c8eda1d))
+    - Add IDs to rich-text links and inline objects ([`87063ff`](https://github.com/tiqian-cjk/tiqian-rs/commit/87063ff1ac4bef2792966517527c9e4ceb25f0e6))
+</details>
+
 ## v0.4.0 (2026-09-21)
 
 ### New Features
@@ -15,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 2 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release tiqian v0.4.0 ([`31bed1c`](https://github.com/tiqian-cjk/tiqian-rs/commit/31bed1c16887859820ffc6b6c7e0e984dbb2a06b))
     - Add font synthesis strategy and final face identity ([`390f9e4`](https://github.com/tiqian-cjk/tiqian-rs/commit/390f9e4c8fd391209727dc6ca9c00708c10daf03))
 </details>
 
