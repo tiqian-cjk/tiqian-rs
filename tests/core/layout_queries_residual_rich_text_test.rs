@@ -15,6 +15,7 @@ fn background(background: RichTextBackgroundPaint) -> RichTextLayer {
     RichTextLayer {
         kind: RichTextLayerKind::Background { background },
         paints: Vec::new(),
+        id: None,
     }
 }
 
@@ -22,6 +23,7 @@ fn underline(line: RichTextLinePaint) -> RichTextLayer {
     RichTextLayer {
         kind: RichTextLayerKind::Underline { line },
         paints: Vec::new(),
+        id: None,
     }
 }
 

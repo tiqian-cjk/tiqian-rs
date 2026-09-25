@@ -86,6 +86,24 @@ endpoint 写入 source boundary，并把 Background layer 的 horizontal padding
 “外部富文本 AST 直接生成 Rust `RichTextSpan`，并需要由核心统一 lower”为实际使用场景时，再设计一个以 Rust
 layer/semantic 模型为输入的单一 projection 入口，不能同时保留第二套 lowering 规则。
 
+### 富文本范围身份与逐 cluster 几何
+
+Kotlin 的 `RichTextSpan`、`RichTextLayer` 与 `DecorationSpan` 都没有调用方可声明的范围身份字段，
+逐 cluster 的最终富文本几何也只存在于逐行查询结果中。下游需要按排版单元增量绘制连续背景、线条与
+装饰（逐字显示），并且必须能判断哪些几何属于同一个 authored range。
+
+Rust 由此新增两项能力：
+
+- `RichTextLayer.id` 与 `DecorationSpan.id` 接受调用方声明的可选 `u32` 身份，并在记录、逐行与逐
+  cluster 几何输出中原样保留；装饰与行内代码 scope 提供对应的 `*_with_id` 入口，`ParagraphBuilder`
+  另提供 `source_boundary` / `source_boundaries` 声明输入分片边界；
+- `LayoutResult::rich_text_layer_cluster_segments()` 与 `decoration_cluster_segments()` 在既有逐行最终
+  几何上按 positioned cluster 切分，输出平铺该行段的片段，并附带产生它的范围身份。
+
+两项能力均为 Rust 先行，Kotlin 上游没有对应 API；`ParagraphBuilder` 的 boundary 入口把
+`TiqianTextContent.source_boundaries` 暴露给调用方，不改变 cluster 切分规则。实施与验证记录见
+[`2026-09-25-feat-rich-text-range-identity-and-cluster-geometry.md`](iteration/2026-09-25-feat-rich-text-range-identity-and-cluster-geometry.md)。
+
 ## 关键差异列表（实现差异）
 
 ### 单点交互查询统一到 interaction boundary

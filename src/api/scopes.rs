@@ -20,12 +20,12 @@ pub(super) enum OpenScopeKind {
     TextStyle(TextStyleOverride),
     Ruby(RubyAnnotation),
     InlineBox(InlineBoxStyle),
-    Decoration(DecorationKind),
+    Decoration(Option<u32>, DecorationKind),
     Paints(Vec<RichTextPaint>),
     RichText(Vec<RichTextLayer>),
     Link(Option<String>, String),
     Technical,
-    InlineCode(TextStyleOverride, RichTextBackgroundPaint),
+    InlineCode(Option<u32>, TextStyleOverride, RichTextBackgroundPaint),
     AutoSpaceSuppressed,
 }
 
@@ -36,12 +36,12 @@ impl OpenScopeKind {
             Self::TextStyle(_) => ParagraphScopeKind::TextStyle,
             Self::Ruby(_) => ParagraphScopeKind::Ruby,
             Self::InlineBox(_) => ParagraphScopeKind::InlineBox,
-            Self::Decoration(_) => ParagraphScopeKind::Decoration,
+            Self::Decoration(_, _) => ParagraphScopeKind::Decoration,
             Self::Paints(_) => ParagraphScopeKind::Color,
             Self::RichText(_) => ParagraphScopeKind::RichText,
             Self::Link(_, _) => ParagraphScopeKind::Link,
             Self::Technical => ParagraphScopeKind::Technical,
-            Self::InlineCode(_, _) => ParagraphScopeKind::InlineCode,
+            Self::InlineCode(_, _, _) => ParagraphScopeKind::InlineCode,
             Self::AutoSpaceSuppressed => ParagraphScopeKind::AutoSpaceSuppressed,
         }
     }
@@ -64,7 +64,17 @@ impl ParagraphBuilder {
     }
 
     pub fn push_decoration(&mut self, kind: DecorationKind) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::Decoration(kind));
+        self.push_scope(OpenScopeKind::Decoration(None, kind));
+        Ok(())
+    }
+
+    /// 开始一个声明 authored range 身份的装饰 scope。
+    pub fn push_decoration_with_id(
+        &mut self,
+        id: u32,
+        kind: DecorationKind,
+    ) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::Decoration(Some(id), kind));
         Ok(())
     }
 
@@ -92,6 +102,7 @@ impl ParagraphBuilder {
         self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
             kind: RichTextLayerKind::Background { background },
             paints: paints.to_vec(),
+            id: None,
         }]));
         Ok(())
     }
@@ -102,6 +113,7 @@ impl ParagraphBuilder {
         self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
             kind: RichTextLayerKind::Underline { line },
             paints,
+            id: None,
         }]));
         Ok(())
     }
@@ -115,6 +127,7 @@ impl ParagraphBuilder {
         self.push_scope(OpenScopeKind::RichText(vec![RichTextLayer {
             kind: RichTextLayerKind::LineThrough { line },
             paints,
+            id: None,
         }]));
         Ok(())
     }
@@ -138,7 +151,18 @@ impl ParagraphBuilder {
         style: TextStyleOverride,
         background: RichTextBackgroundPaint,
     ) -> Result<(), ParagraphBuildError> {
-        self.push_scope(OpenScopeKind::InlineCode(style, background));
+        self.push_scope(OpenScopeKind::InlineCode(None, style, background));
+        Ok(())
+    }
+
+    /// 开始一个声明 authored range 身份的行内代码 scope。
+    pub fn push_inline_code_with_id(
+        &mut self,
+        id: u32,
+        style: TextStyleOverride,
+        background: RichTextBackgroundPaint,
+    ) -> Result<(), ParagraphBuildError> {
+        self.push_scope(OpenScopeKind::InlineCode(Some(id), style, background));
         Ok(())
     }
 
@@ -228,7 +252,17 @@ impl ParagraphBuilder {
     }
 
     pub fn with_decoration(&mut self, kind: DecorationKind, content: impl FnOnce(&mut Self)) {
-        self.with_scope(OpenScopeKind::Decoration(kind), content);
+        self.with_scope(OpenScopeKind::Decoration(None, kind), content);
+    }
+
+    /// 在内容范围上声明带 authored range 身份的装饰 scope。
+    pub fn with_decoration_with_id(
+        &mut self,
+        id: u32,
+        kind: DecorationKind,
+        content: impl FnOnce(&mut Self),
+    ) {
+        self.with_scope(OpenScopeKind::Decoration(Some(id), kind), content);
     }
 
     pub fn try_with_decoration(
@@ -236,7 +270,17 @@ impl ParagraphBuilder {
         kind: DecorationKind,
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::Decoration(kind), content)
+        self.try_with_scope(OpenScopeKind::Decoration(None, kind), content)
+    }
+
+    /// 在内容范围上声明带 authored range 身份的装饰 scope。
+    pub fn try_with_decoration_with_id(
+        &mut self,
+        id: u32,
+        kind: DecorationKind,
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        self.try_with_scope(OpenScopeKind::Decoration(Some(id), kind), content)
     }
 
     pub fn with_inline_box(&mut self, style: InlineBoxStyle, content: impl FnOnce(&mut Self)) {
@@ -304,6 +348,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::Background { background },
                 paints: paints.to_vec(),
+                id: None,
             }]),
             content,
         );
@@ -320,6 +365,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::Background { background },
                 paints: paints.to_vec(),
+                id: None,
             }]),
             content,
         )
@@ -332,6 +378,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::Underline { line },
                 paints,
+                id: None,
             }]),
             content,
         );
@@ -348,6 +395,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::Underline { line },
                 paints,
+                id: None,
             }]),
             content,
         )
@@ -360,6 +408,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::LineThrough { line },
                 paints,
+                id: None,
             }]),
             content,
         );
@@ -376,6 +425,7 @@ impl ParagraphBuilder {
             OpenScopeKind::RichText(vec![RichTextLayer {
                 kind: RichTextLayerKind::LineThrough { line },
                 paints,
+                id: None,
             }]),
             content,
         )
@@ -416,7 +466,21 @@ impl ParagraphBuilder {
         background: RichTextBackgroundPaint,
         content: impl FnOnce(&mut Self),
     ) {
-        self.with_scope(OpenScopeKind::InlineCode(style, background), content);
+        self.with_scope(OpenScopeKind::InlineCode(None, style, background), content);
+    }
+
+    /// 在内容范围上声明带 authored range 身份的行内代码 scope。
+    pub fn with_inline_code_with_id(
+        &mut self,
+        id: u32,
+        style: TextStyleOverride,
+        background: RichTextBackgroundPaint,
+        content: impl FnOnce(&mut Self),
+    ) {
+        self.with_scope(
+            OpenScopeKind::InlineCode(Some(id), style, background),
+            content,
+        );
     }
 
     pub fn try_with_inline_code(
@@ -425,7 +489,21 @@ impl ParagraphBuilder {
         background: RichTextBackgroundPaint,
         content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
     ) -> Result<(), ParagraphBuildError> {
-        self.try_with_scope(OpenScopeKind::InlineCode(style, background), content)
+        self.try_with_scope(OpenScopeKind::InlineCode(None, style, background), content)
+    }
+
+    /// 在内容范围上声明带 authored range 身份的行内代码 scope。
+    pub fn try_with_inline_code_with_id(
+        &mut self,
+        id: u32,
+        style: TextStyleOverride,
+        background: RichTextBackgroundPaint,
+        content: impl FnOnce(&mut Self) -> Result<(), ParagraphBuildError>,
+    ) -> Result<(), ParagraphBuildError> {
+        self.try_with_scope(
+            OpenScopeKind::InlineCode(Some(id), style, background),
+            content,
+        )
     }
 
     pub fn with_auto_space_suppressed(&mut self, content: impl FnOnce(&mut Self)) {
@@ -507,10 +585,10 @@ impl ParagraphBuilder {
                 ));
                 Ok(())
             }
-            OpenScopeKind::Decoration(kind) => {
+            OpenScopeKind::Decoration(id, kind) => {
                 if !range.is_empty() {
                     self.decorations
-                        .push((scope.sequence, DecorationSpan { range, kind }));
+                        .push((scope.sequence, DecorationSpan { range, kind, id }));
                 }
                 Ok(())
             }
@@ -562,7 +640,7 @@ impl ParagraphBuilder {
                 }
                 Ok(())
             }
-            OpenScopeKind::InlineCode(_, background) => {
+            OpenScopeKind::InlineCode(id, _, background) => {
                 if !range.is_empty() {
                     // Inline code 同时提供视觉背景和技术文本语义；背景 padding 由 build() 转为 inline box。
                     let mut layers = self.current_layers(&RichTextLayerKind::Background {
@@ -572,6 +650,7 @@ impl ParagraphBuilder {
                         layers.push(RichTextLayer {
                             kind: RichTextLayerKind::Background { background },
                             paints: self.current_paints(),
+                            id,
                         });
                     }
                     self.record_rich_text(range, layers, vec![RichTextSemantic::TechnicalInline]);

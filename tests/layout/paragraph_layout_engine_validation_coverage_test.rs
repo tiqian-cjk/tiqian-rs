@@ -87,6 +87,7 @@ fn invalid_emphasis_dot_gap_em_uses_local_default() {
         .decorations(vec![DecorationSpan {
             range: text_range(0, 2),
             kind: DecorationKind::Emphasis,
+            id: None,
         }])
         .build(),
     );

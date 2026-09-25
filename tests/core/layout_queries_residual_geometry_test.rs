@@ -20,6 +20,7 @@ fn span(range: TextRange, kind: RichTextLayerKind) -> RichTextSpan {
         layers: vec![RichTextLayer {
             kind,
             paints: Vec::new(),
+            id: None,
         }],
         semantics: Vec::new(),
     }

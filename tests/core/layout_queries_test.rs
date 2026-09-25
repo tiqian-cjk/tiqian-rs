@@ -54,6 +54,7 @@ fn underline_span(range: TextRange) -> RichTextSpan {
                 line: RichTextLinePaint::default(),
             },
             paints: Vec::new(),
+            id: None,
         }],
         semantics: Vec::new(),
     }

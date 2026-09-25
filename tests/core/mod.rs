@@ -14,6 +14,7 @@ mod layout_queries_test;
 mod layout_queries_test_support;
 mod layout_result_replay_index_test;
 mod link_address_display_test;
+mod rich_text_cluster_segments_test;
 mod source_interaction_boundaries_coverage_test;
 mod text_model_coverage_test;
 mod text_range_test;

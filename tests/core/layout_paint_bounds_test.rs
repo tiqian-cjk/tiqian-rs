@@ -46,7 +46,8 @@ fn visible_paint_overhang_includes_visible_glyph_dot_and_ruby_paint() {
                 DecorationDecisionInfo::builder(
                     text_range(0, 1),
                     Text::from("甲"),
-                    "Emphasis".to_owned(),
+                    tiqian::core::text_model::DecorationKind::Emphasis,
+                    None,
                     true,
                     "test".to_owned(),
                 )

@@ -4,7 +4,7 @@ use super::font_face::FontFaceId;
 use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;
 use super::text::Text;
-use super::text_model::LayoutInput;
+use super::text_model::{DecorationKind, LayoutInput};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cluster {
@@ -1357,7 +1357,9 @@ pub enum BopomofoGlyphRole {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecorationSegmentInfo {
     pub source_range: TextRange,
-    pub kind: String,
+    pub kind: DecorationKind,
+    /// 生成该几何的 `DecorationSpan` 声明的范围身份；`None` 表示未声明。
+    pub id: Option<u32>,
     pub line_index: i32,
     pub left: f32,
     pub top: f32,
@@ -1375,7 +1377,9 @@ pub struct DecorationSegmentInfo {
 pub struct DecorationDecisionInfo {
     pub cluster_range: TextRange,
     pub source_text: Text,
-    pub kind: String,
+    pub kind: DecorationKind,
+    /// 生成该 decision 的 `DecorationSpan` 声明的范围身份；`None` 表示未声明。
+    pub id: Option<u32>,
     pub applied: bool,
     pub reason: String,
     pub anchor_x: f32,
@@ -1388,7 +1392,8 @@ impl DecorationDecisionInfo {
     pub fn new(
         cluster_range: TextRange,
         source_text: Text,
-        kind: String,
+        kind: DecorationKind,
+        id: Option<u32>,
         applied: bool,
         reason: String,
     ) -> Self {
@@ -1396,6 +1401,7 @@ impl DecorationDecisionInfo {
             cluster_range,
             source_text,
             kind,
+            id,
             applied,
             reason,
             anchor_x: 0.0,
@@ -1406,12 +1412,13 @@ impl DecorationDecisionInfo {
     pub fn builder(
         cluster_range: TextRange,
         source_text: Text,
-        kind: String,
+        kind: DecorationKind,
+        id: Option<u32>,
         applied: bool,
         reason: String,
     ) -> DecorationDecisionInfoBuilder {
         DecorationDecisionInfoBuilder {
-            decision: Self::new(cluster_range, source_text, kind, applied, reason),
+            decision: Self::new(cluster_range, source_text, kind, id, applied, reason),
         }
     }
 }

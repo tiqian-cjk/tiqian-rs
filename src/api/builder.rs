@@ -26,6 +26,7 @@ pub struct ParagraphBuilder {
     pub(super) inline_objects: Vec<InlineObjectSpan>,
     pub(super) paints: Vec<RichTextPaint>,
     pub(super) rich_text: Vec<(u64, RichTextSpan)>,
+    pub(super) source_boundaries: HashSet<ScalarOffset>,
     pub(super) open_scopes: Vec<super::scopes::OpenScope>,
     pub(super) next_scope_sequence: u64,
     pub(super) next_rich_text_sequence: u64,
@@ -50,6 +51,7 @@ impl ParagraphBuilder {
             inline_objects: Vec::new(),
             paints: vec![RichTextPaint::default()],
             rich_text: Vec::new(),
+            source_boundaries: HashSet::new(),
             open_scopes: Vec::new(),
             next_scope_sequence: 0,
             next_rich_text_sequence: 0,
@@ -102,6 +104,21 @@ impl ParagraphBuilder {
         self
     }
 
+    /// 声明一个 source offset 为 cluster 边界，使最终 cluster 不跨越它。越界与重复 offset 自然无效。
+    pub fn source_boundary(&mut self, offset: ScalarOffset) -> &mut Self {
+        self.source_boundaries.insert(offset);
+        self
+    }
+
+    /// 批量声明 cluster 边界。
+    pub fn source_boundaries(
+        &mut self,
+        offsets: impl IntoIterator<Item = ScalarOffset>,
+    ) -> &mut Self {
+        self.source_boundaries.extend(offsets);
+        self
+    }
+
     /// 追加 source text，并为这一段文本记录当前生效的样式、layer 和语义。
     pub fn push(&mut self, text: &str) {
         if text.is_empty() {
@@ -146,7 +163,7 @@ impl ParagraphBuilder {
         let auto_space_suppressed_ranges =
             Self::ordered_auto_space_suppressed_ranges(self.auto_space_suppressed_ranges);
         let rich_text = Self::normalized_rich_text(self.rich_text);
-        let mut source_boundaries = HashSet::new();
+        let mut source_boundaries = self.source_boundaries;
         let mut inline_boxes = self.inline_boxes;
         // rich-text 声明本身只随 LayoutInput 透传，不参与布局决策；但它的范围端点必须进入
         // source_boundaries，LayoutResult 才能为渲染和交互保留与声明一致的精确边界。背景的
@@ -216,7 +233,7 @@ impl ParagraphBuilder {
             .iter()
             .fold(self.text_style.clone(), |style, scope| match &scope.kind {
                 super::scopes::OpenScopeKind::TextStyle(override_style)
-                | super::scopes::OpenScopeKind::InlineCode(override_style, _) => {
+                | super::scopes::OpenScopeKind::InlineCode(_, override_style, _) => {
                     override_style.apply_to(&style)
                 }
                 _ => style,
@@ -283,6 +300,7 @@ impl ParagraphBuilder {
             layers.push(RichTextLayer {
                 kind: RichTextLayerKind::Text,
                 paints: self.current_paints(),
+                id: None,
             });
         }
         for kind in [
@@ -303,16 +321,16 @@ impl ParagraphBuilder {
 
     /// 把当前打开的 decoration scope 记录为覆盖当前文本范围的 layer。
     fn record_active_decoration_layers(&mut self, range: TextRange) {
-        let kinds = self
+        let scopes = self
             .open_scopes
             .iter()
             .filter_map(|scope| match scope.kind {
-                super::scopes::OpenScopeKind::Decoration(kind) => Some(kind),
+                super::scopes::OpenScopeKind::Decoration(id, kind) => Some((kind, id)),
                 _ => None,
             })
             .collect::<Vec<_>>();
-        for kind in kinds {
-            self.record_object_layer(range, RichTextLayerKind::Decoration { kind });
+        for (kind, id) in scopes {
+            self.record_object_layer(range, RichTextLayerKind::Decoration { kind }, id);
         }
     }
 
@@ -327,7 +345,7 @@ impl ParagraphBuilder {
             })
             .collect::<Vec<_>>();
         for kind in kinds {
-            self.record_object_layer(range, RichTextLayerKind::Annotation { kind });
+            self.record_object_layer(range, RichTextLayerKind::Annotation { kind }, None);
         }
     }
 
@@ -395,12 +413,13 @@ impl ParagraphBuilder {
     }
 
     /// 记录 decoration 或 annotation 等非正文 layer，并沿用当前 paint。
-    fn record_object_layer(&mut self, range: TextRange, kind: RichTextLayerKind) {
+    fn record_object_layer(&mut self, range: TextRange, kind: RichTextLayerKind, id: Option<u32>) {
         let mut layers = self.current_layers(&kind);
         if layers.is_empty() {
             layers.push(RichTextLayer {
                 kind,
                 paints: self.current_paints(),
+                id,
             });
         }
         self.record_rich_text(range, layers, Vec::new());

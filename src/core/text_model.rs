@@ -586,6 +586,8 @@ mod tests {
 pub struct DecorationSpan {
     pub range: TextRange,
     pub kind: DecorationKind,
+    /// 调用方声明的 authored range 身份；`None` 表示未声明。tiqian 不解释、不校验唯一性。
+    pub id: Option<u32>,
 }
 
 /// SOURCE range 上的视觉 layer 与非视觉语义。
@@ -610,6 +612,9 @@ pub struct RichTextLayer {
     pub kind: RichTextLayerKind,
     /// 按顺序应用于该 layer 的 paint。
     pub paints: Vec<RichTextPaint>,
+    /// 调用方声明的 authored range 身份；`None` 表示未声明。同一个 id 表示这些几何属于调用方的同一个
+    /// 范围，tiqian 不解释它的含义，也不校验唯一性。id 不参与 shaping、断行、行调整与缓存键。
+    pub id: Option<u32>,
 }
 
 /// Rich-text layer 的用途。只有会改变文本几何的参数才会被降低到 layout 输入。
@@ -886,6 +891,12 @@ pub enum DecorationKind {
     ProperNoun,
     /// 书名号（甲式）——work title 下方的波浪线（横排）。与 `ProperNoun` 使用相同的行间线 segment 规则。
     BookTitle,
+}
+
+impl std::fmt::Display for DecorationKind {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, formatter)
+    }
 }
 
 /// 拼音 ruby 的行间空间不足时如何扩张 baseline grid。

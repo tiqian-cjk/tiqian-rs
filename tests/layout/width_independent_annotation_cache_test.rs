@@ -169,6 +169,7 @@ fn cache_key_distinguishes_text_style_decoration_ruby_and_inline_box() {
     emphasis_changed.decorations = vec![DecorationSpan {
         range: text_range(0, 4),
         kind: DecorationKind::Emphasis,
+        id: None,
     }];
     engine.layout(emphasis_changed);
     let mut ruby_changed = base.clone();

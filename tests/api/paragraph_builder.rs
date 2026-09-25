@@ -4,7 +4,7 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment, LayoutProfileId,
     LineBreakPolicy, LineBreakSpan, ParagraphStyle, RichTextBackgroundPaint, RichTextLayer,
-    RichTextLayerKind, RichTextLinePaint, RichTextPaint, RichTextSemantic, TextStyle,
+    RichTextLayerKind, RichTextLinePaint, RichTextPaint, RichTextSemantic, RichTextSpan, TextStyle,
     built_in_layout_profiles,
 };
 
@@ -14,6 +14,7 @@ fn underline_layer() -> RichTextLayer {
             line: RichTextLinePaint::default(),
         },
         paints: Vec::new(),
+        id: None,
     }
 }
 
@@ -21,6 +22,7 @@ fn background_layer(background: RichTextBackgroundPaint) -> RichTextLayer {
     RichTextLayer {
         kind: RichTextLayerKind::Background { background },
         paints: Vec::new(),
+        id: None,
     }
 }
 
@@ -130,6 +132,7 @@ fn paragraph_configuration_updates_after_source_text_are_ignored() {
         == vec![RichTextLayer {
             kind: RichTextLayerKind::Text,
             paints: vec![paint.clone()],
+            id: None,
         }]));
 }
 
@@ -297,6 +300,7 @@ fn zero_padding_and_non_background_rich_text_do_not_generate_inline_boxes() {
         paints: vec![RichTextPaint::Fill {
             argb: 0xFF000000_u32 as i32,
         }],
+        id: None,
     };
     let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
     builder.with_rich_text(
@@ -338,6 +342,118 @@ fn decoration_ruby_and_inline_box_lower_to_their_core_spans() {
     assert_eq!(Text::from("tíqiàn"), output.ruby_spans[0].text);
     assert_eq!(DecorationKind::Emphasis, output.decorations[0].kind);
     assert_eq!(range, output.decorations[0].range);
+}
+
+/// 用一个 rich-text scope 包裹一段文本，让相邻范围具有完全相同的 layer；只有 `id` 不同。
+fn push_underline(builder: &mut ParagraphBuilder, id: Option<u32>, text: &str) {
+    builder
+        .push_rich_text(&[RichTextLayer {
+            kind: RichTextLayerKind::Underline {
+                line: RichTextLinePaint::default(),
+            },
+            paints: Vec::new(),
+            id,
+        }])
+        .unwrap();
+    builder.push(text);
+    builder.pop().unwrap();
+}
+
+/// 读取 span 携带的下划线 layer 的身份；正文 layer 不携带 authored range 身份。
+fn underline_id(span: &RichTextSpan) -> Option<u32> {
+    span.layers
+        .iter()
+        .find(|layer| matches!(layer.kind, RichTextLayerKind::Underline { .. }))
+        .expect("rich-text span must carry an underline layer")
+        .id
+}
+
+#[test]
+fn scope_ids_reach_decoration_and_inline_code_spans() {
+    let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    builder.with_decoration_with_id(3, DecorationKind::BookTitle, |builder| {
+        builder.push("甲");
+    });
+    builder.with_inline_code_with_id(
+        4,
+        TextStyleOverride::default(),
+        RichTextBackgroundPaint::builder()
+            .corner_radius(2.0)
+            .build(),
+        |builder| builder.push("乙"),
+    );
+
+    let output = builder.build().unwrap();
+    assert_eq!(Some(3), output.decorations[0].id);
+    assert_eq!(DecorationKind::BookTitle, output.decorations[0].kind);
+    let background = output
+        .rich_text
+        .iter()
+        .flat_map(|span| span.layers.iter())
+        .find(|layer| matches!(layer.kind, RichTextLayerKind::Background { .. }))
+        .expect("inline code must record a background layer");
+    assert_eq!(Some(4), background.id);
+}
+
+#[test]
+fn equal_ids_merge_adjacent_ranges_and_distinct_ids_stay_separate() {
+    let mut merged = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    push_underline(&mut merged, Some(7), "甲");
+    push_underline(&mut merged, Some(7), "乙");
+    let output = merged.build().unwrap();
+    assert_eq!(1, output.rich_text.len());
+    assert_eq!(
+        TextRange::new(scalar_offset(0), scalar_offset(2)),
+        output.rich_text[0].range
+    );
+    assert_eq!(Some(7), underline_id(&output.rich_text[0]));
+
+    let mut split = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+    push_underline(&mut split, Some(7), "甲");
+    push_underline(&mut split, Some(8), "乙");
+    let output = split.build().unwrap();
+    assert_eq!(2, output.rich_text.len());
+    assert_eq!(Some(7), underline_id(&output.rich_text[0]));
+    assert_eq!(Some(8), underline_id(&output.rich_text[1]));
+    assert_eq!(
+        TextRange::new(scalar_offset(0), scalar_offset(1)),
+        output.rich_text[0].range
+    );
+    assert_eq!(
+        TextRange::new(scalar_offset(1), scalar_offset(2)),
+        output.rich_text[1].range
+    );
+}
+
+#[test]
+fn scope_ids_do_not_change_other_layout_input_fields() {
+    fn build(id: Option<u32>) -> tiqian::core::text_model::LayoutInput {
+        let mut builder = ParagraphBuilder::new(LayoutConstraints::with_defaults(320.0));
+        match id {
+            Some(id) => builder.with_decoration_with_id(id, DecorationKind::BookTitle, |builder| {
+                builder.push("甲");
+            }),
+            None => builder.with_decoration(DecorationKind::BookTitle, |builder| {
+                builder.push("甲");
+            }),
+        }
+        push_underline(&mut builder, id, "乙");
+        builder.build().unwrap()
+    }
+
+    let mut declared = build(Some(1));
+    let plain = build(None);
+    for decoration in &mut declared.decorations {
+        decoration.id = None;
+    }
+    for span in &mut declared.rich_text {
+        for layer in &mut span.layers {
+            layer.id = None;
+        }
+    }
+    assert_eq!(plain.decorations, declared.decorations);
+    assert_eq!(plain.rich_text, declared.rich_text);
+    assert_eq!(plain.content, declared.content);
 }
 
 #[test]

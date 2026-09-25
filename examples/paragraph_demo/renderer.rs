@@ -203,31 +203,23 @@ impl<'a> DemoRenderer<'a> {
             .iter()
             .filter(|decision| decision.applied)
         {
-            if let Some(kind) = decoration_kind(&decision.kind) {
-                for color in decoration_fill_colors(result, decision.cluster_range, kind) {
-                    scene.fill(
-                        Fill::NonZero,
-                        self.transform(),
-                        color,
-                        None,
-                        &Circle::new(
-                            (decision.anchor_x as f64, decision.anchor_y as f64),
-                            (decision.dot_diameter / 2.0) as f64,
-                        )
-                        .to_path(0.1),
-                    );
-                }
+            for color in decoration_fill_colors(result, decision.cluster_range, decision.kind) {
+                scene.fill(
+                    Fill::NonZero,
+                    self.transform(),
+                    color,
+                    None,
+                    &Circle::new(
+                        (decision.anchor_x as f64, decision.anchor_y as f64),
+                        (decision.dot_diameter / 2.0) as f64,
+                    )
+                    .to_path(0.1),
+                );
             }
         }
         for segment in &result.debug.decoration_segments {
-            let Some(kind) = decoration_kind(&segment.kind) else {
-                return Err(format!(
-                    "unsupported decoration segment kind: {}",
-                    segment.kind
-                ));
-            };
-            for color in decoration_fill_colors(result, segment.source_range, kind) {
-                match kind {
+            for color in decoration_fill_colors(result, segment.source_range, segment.kind) {
+                match segment.kind {
                     DecorationKind::Mourning => {
                         self.stroke_mourning_segment(scene, segment, color, stroke_width)?
                     }
@@ -860,17 +852,6 @@ fn segment_line_paint(
     }
 }
 
-/// 将布局调试输出中的装饰名称转换为公开的 decoration kind。
-fn decoration_kind(name: &str) -> Option<DecorationKind> {
-    match name {
-        "Emphasis" => Some(DecorationKind::Emphasis),
-        "Mourning" => Some(DecorationKind::Mourning),
-        "ProperNoun" => Some(DecorationKind::ProperNoun),
-        "BookTitle" => Some(DecorationKind::BookTitle),
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -889,6 +870,7 @@ mod tests {
         RichTextLayer {
             kind,
             paints: vec![RichTextPaint::Fill { argb }],
+            id: None,
         }
     }
 
@@ -1214,28 +1196,28 @@ mod tests {
                 .debug
                 .decoration_decisions
                 .iter()
-                .any(|decision| decision.kind == "Emphasis" && decision.applied)
+                .any(|decision| decision.kind == DecorationKind::Emphasis && decision.applied)
         );
         assert!(
             result
                 .debug
                 .decoration_segments
                 .iter()
-                .any(|segment| segment.kind == "Mourning")
+                .any(|segment| segment.kind == DecorationKind::Mourning)
         );
         assert!(
             result
                 .debug
                 .decoration_segments
                 .iter()
-                .any(|segment| segment.kind == "ProperNoun")
+                .any(|segment| segment.kind == DecorationKind::ProperNoun)
         );
         assert!(
             result
                 .debug
                 .decoration_segments
                 .iter()
-                .any(|segment| segment.kind == "BookTitle")
+                .any(|segment| segment.kind == DecorationKind::BookTitle)
         );
         let mut scene = Scene::new();
         let renderer = DemoRenderer::new(&catalog, 1.0);
@@ -1258,7 +1240,7 @@ mod tests {
             .debug
             .decoration_segments
             .iter()
-            .find(|segment| segment.kind == "Mourning")
+            .find(|segment| segment.kind == DecorationKind::Mourning)
             .unwrap();
         let mut decoration_scene = Scene::new();
         renderer

@@ -227,6 +227,7 @@ fn emphasis_marks() -> Fixture {
     fixture.input.decorations = vec![DecorationSpan {
         range: text_range(4, 16),
         kind: DecorationKind::Emphasis,
+        id: None,
     }];
     fixture
 }
@@ -322,18 +323,22 @@ fn interlinear_lines() -> Fixture {
         DecorationSpan {
             range: text_range(0, 2),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
         DecorationSpan {
             range: text_range(4, 6),
             kind: DecorationKind::BookTitle,
+            id: None,
         },
         DecorationSpan {
             range: text_range(7, 10),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
         DecorationSpan {
             range: text_range(10, 13),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ];
     fixture
@@ -345,10 +350,12 @@ fn mourning_frame() -> Fixture {
         DecorationSpan {
             range: text_range(3, 6),
             kind: DecorationKind::Mourning,
+            id: None,
         },
         DecorationSpan {
             range: text_range(9, 12),
             kind: DecorationKind::Mourning,
+            id: None,
         },
     ];
     fixture

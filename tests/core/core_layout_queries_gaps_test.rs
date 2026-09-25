@@ -22,6 +22,7 @@ fn background_span(range: TextRange, background: RichTextBackgroundPaint) -> Ric
         layers: vec![RichTextLayer {
             kind: RichTextLayerKind::Background { background },
             paints: Vec::new(),
+            id: None,
         }],
         semantics: Vec::new(),
     }
@@ -288,6 +289,7 @@ fn decoration_and_annotation_layers_match_partially_overlapping_layout_ranges_by
                 paints: vec![RichTextPaint::Fill {
                     argb: 0xFF2563EB_u32 as i32,
                 }],
+                id: None,
             }],
             semantics: Vec::new(),
         },
@@ -300,6 +302,7 @@ fn decoration_and_annotation_layers_match_partially_overlapping_layout_ranges_by
                 paints: vec![RichTextPaint::Fill {
                     argb: 0xFFDC2626_u32 as i32,
                 }],
+                id: None,
             }],
             semantics: Vec::new(),
         },

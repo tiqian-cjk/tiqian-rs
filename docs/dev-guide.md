@@ -51,11 +51,18 @@ cargo run --release --example paragraph-layout-bench
 cargo run --release --example paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
 ```
 
-比较实现时保持构建配置和参数一致，主要观察各宽度的 `layout` median。`--replay` 可以额外测量整页重放索引：
+比较实现时保持构建配置和参数一致，主要观察各宽度的 `layout` 指标。`--replay` 可以额外测量整页重放索引；`--cluster-queries` 会在每页布局后调用两个逐 cluster 查询并单独计时：
 
 ```shell
 cargo run --release --example paragraph-layout-bench -- --replay
+cargo run --release --example paragraph-layout-bench -- --cluster-queries
 ```
+
+该机器上同一二进制的 `layout` median 在不同时段可相差 10% 以上（实测 2.46 ms 到 2.75 ms），因此：
+
+- 跨运行比较以 `min` 为主，`min` 在同一环境内稳定在约 2% 以内；
+- 对比两个实现时，把两份构建产物放在同一时间窗口交替运行（A/B/A/B），不要用两次单独运行的结果比较；
+- 不要跨机器或跨时段比较绝对值，只比较同一轮交替运行中的相对差异。
 
 需要采样时使用 `cargo flamegraph --example paragraph-layout-bench -- --iterations 1000`。火焰图包含进程启动、预热、输入准备和析构；分析核心时筛选 `engine.layout` 调用树，不要把采样运行时间直接与普通 release 运行比较。
 

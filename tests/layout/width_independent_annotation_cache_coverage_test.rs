@@ -212,10 +212,12 @@ fn dynamic_shaping_triggers_and_emphasis_italic() {
                 DecorationSpan {
                     range: text_range(0, 5),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 },
                 DecorationSpan {
                     range: text_range(6, 11),
                     kind: DecorationKind::ProperNoun,
+                    id: None,
                 },
             ])
             .build(),
@@ -766,10 +768,12 @@ fn prepare_width_independent_annotation_branches() {
         DecorationSpan {
             range: text_range(0, 4),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(4, 8),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ])
     .ruby_spans(vec![
@@ -935,10 +939,12 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         DecorationSpan {
             range: text_range(0, 7),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(11, 13),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ])
     .build();
@@ -1039,10 +1045,12 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
         DecorationSpan {
             range: text_range(0, 5),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
         DecorationSpan {
             range: text_range(6, 11),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
     ])
     .build();

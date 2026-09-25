@@ -280,7 +280,8 @@ fn compute_decoration_decisions(
                         DecorationDecisionInfo::builder(
                             cluster.range,
                             cluster.text.clone(),
-                            format!("{:?}", span.kind),
+                            span.kind,
+                            span.id,
                             applied,
                             if applied {
                                 "EmphasisDotOnHanText".to_owned()
@@ -385,7 +386,8 @@ fn compute_decoration_segments(
                     };
             span_segments.push(DecorationSegmentInfo {
                 source_range: TextRange::new(segment_start, segment_end),
-                kind: format!("{:?}", span.kind),
+                kind: span.kind,
+                id: span.id,
                 line_index: line_index as i32,
                 left,
                 top: if interlinear {
@@ -425,7 +427,10 @@ fn shorten_adjacent_interlinear_lines(
 ) -> Vec<DecorationSegmentInfo> {
     let mut indices_by_line: HashMap<i32, Vec<usize>> = HashMap::new();
     for (index, segment) in segments.iter().enumerate() {
-        if matches!(segment.kind.as_str(), "ProperNoun" | "BookTitle") {
+        if matches!(
+            segment.kind,
+            DecorationKind::ProperNoun | DecorationKind::BookTitle
+        ) {
             indices_by_line
                 .entry(segment.line_index)
                 .or_default()

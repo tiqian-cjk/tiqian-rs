@@ -21,6 +21,7 @@ mod sample;
 
 struct Options {
     replay: bool,
+    cluster_queries: bool,
     iterations: usize,
     warmup: usize,
     widths: Vec<f32>,
@@ -32,6 +33,7 @@ impl Options {
     fn parse() -> Result<Option<Self>, String> {
         let mut options = Self {
             replay: false,
+            cluster_queries: false,
             iterations: 200,
             warmup: 20,
             widths: vec![672.0, 360.0, 960.0],
@@ -44,11 +46,18 @@ impl Options {
                 options.replay = true;
                 continue;
             }
+            if flag == "--cluster-queries" {
+                options.cluster_queries = true;
+                continue;
+            }
             if flag == "--help" || flag == "-h" {
                 println!(
-                    "paragraph-layout-bench [--replay] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1] [--strategy greedy|lookahead]"
+                    "paragraph-layout-bench [--replay] [--cluster-queries] [--iterations 200] [--warmup 20] [--widths 672,360,960] [--scale 1] [--strategy greedy|lookahead]"
                 );
                 println!("One iteration visits every width in order. Widths are physical pixels.");
+                println!(
+                    "Cluster queries time rich_text_layer_cluster_segments and decoration_cluster_segments per page."
+                );
                 return Ok(None);
             }
             if !matches!(
@@ -103,6 +112,8 @@ impl Options {
 struct PageMeasurement {
     replay: Duration,
     drop_replay: Duration,
+    cluster_queries: Duration,
+    cluster_segments: usize,
     layout: Duration,
     drop_results: Duration,
     total: Duration,
@@ -130,6 +141,7 @@ fn measure_page(
     width: f32,
     scale: f32,
     replay: bool,
+    cluster_queries: bool,
 ) -> PageMeasurement {
     let start = Instant::now();
     let document = sample::build_document_demo(width, scale);
@@ -193,6 +205,19 @@ fn measure_page(
         let drop_start = Instant::now();
         drop(black_box(indices));
         measurement.drop_replay = drop_start.elapsed();
+    }
+    if cluster_queries {
+        let query_start = Instant::now();
+        let mut segment_count = 0;
+        for (index, result) in results.iter().enumerate() {
+            if measurement_only.contains(&index) {
+                continue;
+            }
+            segment_count += black_box(result.rich_text_layer_cluster_segments()).len();
+            segment_count += black_box(result.decoration_cluster_segments()).len();
+        }
+        measurement.cluster_queries = query_start.elapsed();
+        measurement.cluster_segments = segment_count;
     }
     let drop_start = Instant::now();
     drop(black_box(results));
@@ -265,21 +290,39 @@ fn main() -> Result<(), String> {
             "Replay enabled: total also includes replay construction and drop, excluding temporary marker measurements."
         );
     }
+    if options.cluster_queries {
+        println!(
+            "Cluster queries enabled: rich_text_layer_cluster_segments and decoration_cluster_segments run after each page layout."
+        );
+    }
     println!("First sequence (shared engine; later widths may reuse caches):");
     let mut expected = Vec::new();
     for &width in &options.widths {
-        let page = measure_page(&mut engine, width, options.scale, options.replay);
+        let page = measure_page(
+            &mut engine,
+            width,
+            options.scale,
+            options.replay,
+            options.cluster_queries,
+        );
         println!(
-            "width={width} layout={:.3} drop={:.3} total={:.3} ms calls={} lines={} clusters={} body_glyphs={}",
+            "width={width} layout={:.3} drop={:.3} total={:.3} ms calls={} lines={} clusters={} body_glyphs={} cluster_segments={}",
             page.layout.as_secs_f64() * 1000.0,
             page.drop_results.as_secs_f64() * 1000.0,
             page.total.as_secs_f64() * 1000.0,
             page.calls,
             page.lines,
             page.clusters,
-            page.glyphs
+            page.glyphs,
+            page.cluster_segments
         );
-        expected.push((page.calls, page.lines, page.clusters, page.glyphs));
+        expected.push((
+            page.calls,
+            page.lines,
+            page.clusters,
+            page.glyphs,
+            page.cluster_segments,
+        ));
     }
     for _ in 0..options.warmup {
         for &width in &options.widths {
@@ -288,6 +331,7 @@ fn main() -> Result<(), String> {
                 width,
                 options.scale,
                 options.replay,
+                options.cluster_queries,
             ));
         }
     }
@@ -298,8 +342,21 @@ fn main() -> Result<(), String> {
         .collect();
     for _ in 0..options.iterations {
         for (index, &width) in options.widths.iter().enumerate() {
-            let page = measure_page(&mut engine, width, options.scale, options.replay);
-            if (page.calls, page.lines, page.clusters, page.glyphs) != expected[index] {
+            let page = measure_page(
+                &mut engine,
+                width,
+                options.scale,
+                options.replay,
+                options.cluster_queries,
+            );
+            if (
+                page.calls,
+                page.lines,
+                page.clusters,
+                page.glyphs,
+                page.cluster_segments,
+            ) != expected[index]
+            {
                 return Err(format!(
                     "layout workload changed after warmup at width {width}"
                 ));
@@ -317,6 +374,12 @@ fn main() -> Result<(), String> {
                 samples[index].iter().map(|page| page.drop_replay),
             );
         }
+        if options.cluster_queries {
+            print_stats(
+                "cluster_query",
+                samples[index].iter().map(|page| page.cluster_queries),
+            );
+        }
         print_stats(
             "result_drop",
             samples[index].iter().map(|page| page.drop_results),
@@ -325,6 +388,12 @@ fn main() -> Result<(), String> {
     }
     println!("All measured pages:");
     print_stats("layout", samples.iter().flatten().map(|page| page.layout));
+    if options.cluster_queries {
+        print_stats(
+            "cluster_query",
+            samples.iter().flatten().map(|page| page.cluster_queries),
+        );
+    }
     print_stats(
         "result_drop",
         samples.iter().flatten().map(|page| page.drop_results),

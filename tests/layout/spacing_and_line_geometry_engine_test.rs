@@ -109,6 +109,7 @@ fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(4, 16),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 }])
                 .build(),
             );
@@ -415,10 +416,12 @@ fn mourning_span_is_kept_unbroken_and_framed_per_line() {
                     DecorationSpan {
                         range: text_range(3, 6),
                         kind: DecorationKind::Mourning,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(9, 12),
                         kind: DecorationKind::Mourning,
+                        id: None,
                     },
                 ])
                 .build(),
@@ -459,6 +462,7 @@ fn mourning_span_wider_than_measure_splits_with_open_edges() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(0, 5),
                     kind: DecorationKind::Mourning,
+                    id: None,
                 }])
                 .build(),
             );
@@ -526,18 +530,22 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
                     DecorationSpan {
                         range: text_range(0, 2),
                         kind: DecorationKind::ProperNoun,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(4, 6),
                         kind: DecorationKind::BookTitle,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(7, 10),
                         kind: DecorationKind::ProperNoun,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(10, 13),
                         kind: DecorationKind::ProperNoun,
+                        id: None,
                     },
                 ])
                 .build(),
@@ -550,7 +558,7 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
         .iter()
         .find(|segment| segment.source_range.start().value() == 0)
         .unwrap();
-    assert_eq!("ProperNoun", quyuan.kind);
+    assert_eq!(DecorationKind::ProperNoun, quyuan.kind);
     assert_eq!(0.0, quyuan.left);
     assert_eq!(32.0, quyuan.right);
     assert!((quyuan.top - (baseline + 16.0 * 0.18)).abs() < 0.01);
@@ -560,7 +568,7 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
         .iter()
         .find(|segment| segment.source_range.start().value() == 4)
         .unwrap();
-    assert_eq!("BookTitle", lisao.kind);
+    assert_eq!(DecorationKind::BookTitle, lisao.kind);
     assert_eq!(64.0, lisao.left);
     assert_eq!(96.0, lisao.right);
     assert!((lisao.top - (baseline + 16.0 * 0.24)).abs() < 0.01);
@@ -603,6 +611,7 @@ fn interlinear_marks_raise_auto_line_height_to_spacing_floor() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(0, 4),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 }])
                 .build(),
             )
@@ -680,6 +689,7 @@ fn emphasis_dot_gap_is_explicit_and_independent_of_line_height() {
             vec![DecorationSpan {
                 range: text_range(0, 2),
                 kind: DecorationKind::Emphasis,
+                id: None,
             }],
         );
         let dot = result
@@ -702,6 +712,7 @@ fn interlinear_marks_clamp_tight_line_height_to_spacing_floor() {
     let marks = vec![DecorationSpan {
         range: text_range(0, 4),
         kind: DecorationKind::Emphasis,
+        id: None,
     }];
     let clamped = layout(
         ParagraphStyle::builder()

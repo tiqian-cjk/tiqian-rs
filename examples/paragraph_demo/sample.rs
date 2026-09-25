@@ -324,6 +324,7 @@ pub fn build_document_demo(physical_content_width: f32, physical_scale: f32) -> 
                         &[RichTextLayer {
                             kind: RichTextLayerKind::Text,
                             paints: vec![RichTextPaint::default()],
+                                id: None,
                         }],
                         |builder| {
                             builder.inline_code(

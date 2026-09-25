@@ -178,6 +178,67 @@ impl RichTextLineSegment {
     }
 }
 
+/// 一个 positioned cluster 上某个 rich-text layer 贡献的最终几何片段。
+///
+/// 片段按 cluster 切分逐行最终几何（与 [`RichTextLineSegment`] 同一套外缘修剪、内边距与相邻
+/// 同样式间隙），因此逐 cluster 与逐行消费方得到相同的几何：同一行段的片段平铺
+/// [`Self::line_left`]`..`[`Self::line_right`]，cluster 之间的间距并入左侧片段。调用方按
+/// [`Self::span`] 的 layer 读取 `id`，用它把同一个 authored range 的片段归为一组。
+#[derive(Clone, Debug, PartialEq)]
+pub struct RichTextLayerClusterSegment {
+    /// 产生该片段的 layer；按 layer 拆分的约定与 `positioned_rich_text_segments` 一致。
+    pub span: Arc<RichTextSpan>,
+    /// 该片段对应的 cluster 在 [`LayoutResult::clusters`] 中的下标，与 `PositionedCluster::cluster_index` 同义。
+    pub cluster_index: i32,
+    pub line_index: i32,
+    /// 本 cluster 与该 layer 范围的交集。
+    pub range: TextRange,
+    /// 本片段覆盖的横向区间。
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+    pub baseline: f32,
+    /// 该 layer 在其视觉行上的最终外框。
+    pub line_left: f32,
+    pub line_right: f32,
+    /// 该 layer 在本行是否向相邻行延续。
+    pub continues_from_previous_line: bool,
+    pub continues_on_next_line: bool,
+    /// 背景 layer 已解析的四角半径（inset = 0）；其他 layer 为 `None`。
+    pub corner_radii: Option<RichTextCornerRadii>,
+    /// 下划线与删除线的中心线纵坐标；其他 layer 为 `None`。
+    pub line_y: Option<f32>,
+}
+
+/// 一个 positioned cluster 上某条装饰范围贡献的最终几何片段。
+///
+/// 几何来自逐行的 `debug.decoration_segments`（示亡号、专名号、书名号），按覆盖的 cluster 切分，
+/// 平铺规则与 [`RichTextLayerClusterSegment`] 相同。着重号不进本查询：它已由
+/// `debug.decoration_decisions` 逐 cluster 给出锚点与直径。
+#[derive(Clone, Debug, PartialEq)]
+pub struct DecorationClusterSegment {
+    /// 调用方声明的范围身份；`None` 表示未声明。
+    pub id: Option<u32>,
+    pub kind: DecorationKind,
+    /// 该片段对应的 cluster 在 [`LayoutResult::clusters`] 中的下标，与 `PositionedCluster::cluster_index` 同义。
+    pub cluster_index: i32,
+    pub line_index: i32,
+    /// 本 cluster 与该装饰行段范围的交集。
+    pub range: TextRange,
+    pub left: f32,
+    pub right: f32,
+    /// 示亡号片段的边框纵向边界；专名号与书名号片段的中心线，此时 `top == bottom`。
+    pub top: f32,
+    pub bottom: f32,
+    /// 该装饰范围在其视觉行上的最终外框。
+    pub line_left: f32,
+    pub line_right: f32,
+    /// 该范围在本行是否向相邻行延续；示亡号据此判断哪些边框属于范围自身。
+    pub open_start: bool,
+    pub open_end: bool,
+}
+
 /// Four physical corner radii resolved from one final rich-text background segment.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RichTextCornerRadii {
@@ -673,88 +734,251 @@ impl LayoutResult {
         let trimmed = trim_outer_punctuation_glue(self, &backgrounds);
         let segments = trimmed
             .into_iter()
-            .map(|segment| {
-                let covered: Vec<_> = positioned
-                    .iter()
-                    .filter(|cluster| {
-                        cluster.line_index == segment.line_index
-                            && cluster.range.end() > segment.range.start()
-                            && cluster.range.start() < segment.range.end()
-                    })
-                    .collect();
-                if covered.is_empty() {
-                    return segment;
-                }
-
-                let first = covered[0];
-                let last = covered[covered.len() - 1];
-                let Some(RichTextLayer {
-                    kind: RichTextLayerKind::Background { background },
-                    ..
-                }) = segment_layer(&segment)
-                else {
-                    return segment;
-                };
-                let horizontal_padding = background.horizontal_padding;
-                let leading_padding = if segment.range.start() == segment.span.range.start() {
-                    horizontal_padding
-                } else {
-                    0.0
-                };
-                let trailing_padding = if segment.range.end() == segment.span.range.end() {
-                    horizontal_padding
-                } else {
-                    0.0
-                };
-                let left = segment
-                    .left
-                    .max(first.draw_x - leading_padding)
-                    .min(segment.right);
-                let natural_last_right = self
-                    .glyph_runs
-                    .iter()
-                    .flat_map(|run| run.glyphs.iter())
-                    .filter(|glyph| glyph.cluster_range == last.range)
-                    .map(|glyph| last.draw_x + glyph.x + glyph.advance)
-                    .max_by(|a, b| a.total_cmp(b))
-                    .unwrap_or(last.right);
-                let right = segment
-                    .right
-                    .min(natural_last_right + trailing_padding)
-                    .max(left);
-
-                let (face_top, face_bottom) = match background.metric_policy {
-                    RichTextBackgroundMetricPolicy::MarkedFaces => {
-                        marked_face_vertical_bounds(self, &covered, &self.debug.metric_decisions)
-                    }
-                    RichTextBackgroundMetricPolicy::UniformTextStyle => {
-                        uniform_text_style_vertical_bounds(
-                            self,
-                            &segment,
-                            &self.debug.metric_decisions,
-                            &resolved_text_style_at(self, segment.range.start()),
-                        )
-                    }
-                    RichTextBackgroundMetricPolicy::UniformParagraphStyle => {
-                        uniform_text_style_vertical_bounds(
-                            self,
-                            &segment,
-                            &self.debug.metric_decisions,
-                            &self.input.text_style,
-                        )
-                    }
-                };
-                let vertical_padding = background.vertical_padding;
-                RichTextLineSegment {
-                    top: (face_top - vertical_padding).max(segment.top),
-                    bottom: (face_bottom + vertical_padding).min(segment.bottom),
-                    left,
-                    right,
-                    ..segment
-                }
-            })
+            .map(|segment| self.background_segment_padding_and_metrics(segment, positioned))
             .collect();
         with_adjacent_same_style_clearance(segments)
+    }
+
+    /// 应用背景 layer 的水平与垂直内边距，以及其 `metric_policy` 决定的纵向范围。
+    /// 调用方保证 `segment` 已完成外缘修剪。
+    fn background_segment_padding_and_metrics(
+        &self,
+        segment: RichTextLineSegment,
+        positioned: &[PositionedCluster],
+    ) -> RichTextLineSegment {
+        let covered = covered_clusters(positioned, segment.line_index, segment.range);
+        if covered.is_empty() {
+            return segment;
+        }
+        let first = &covered[0];
+        let last = &covered[covered.len() - 1];
+        let Some(RichTextLayer {
+            kind: RichTextLayerKind::Background { background },
+            ..
+        }) = segment_layer(&segment)
+        else {
+            return segment;
+        };
+        let horizontal_padding = background.horizontal_padding;
+        let leading_padding = if segment.range.start() == segment.span.range.start() {
+            horizontal_padding
+        } else {
+            0.0
+        };
+        let trailing_padding = if segment.range.end() == segment.span.range.end() {
+            horizontal_padding
+        } else {
+            0.0
+        };
+        let left = segment
+            .left
+            .max(first.draw_x - leading_padding)
+            .min(segment.right);
+        let natural_last_right = self
+            .glyph_runs
+            .iter()
+            .flat_map(|run| run.glyphs.iter())
+            .filter(|glyph| glyph.cluster_range == last.range)
+            .map(|glyph| last.draw_x + glyph.x + glyph.advance)
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap_or(last.right);
+        let right = segment
+            .right
+            .min(natural_last_right + trailing_padding)
+            .max(left);
+
+        let (face_top, face_bottom) = match background.metric_policy {
+            RichTextBackgroundMetricPolicy::MarkedFaces => {
+                marked_face_vertical_bounds(self, covered, &self.debug.metric_decisions)
+            }
+            RichTextBackgroundMetricPolicy::UniformTextStyle => uniform_text_style_vertical_bounds(
+                self,
+                &segment,
+                &self.debug.metric_decisions,
+                &resolved_text_style_at(self, segment.range.start()),
+            ),
+            RichTextBackgroundMetricPolicy::UniformParagraphStyle => {
+                uniform_text_style_vertical_bounds(
+                    self,
+                    &segment,
+                    &self.debug.metric_decisions,
+                    &self.input.text_style,
+                )
+            }
+        };
+        let vertical_padding = background.vertical_padding;
+        RichTextLineSegment {
+            top: (face_top - vertical_padding).max(segment.top),
+            bottom: (face_bottom + vertical_padding).min(segment.bottom),
+            left,
+            right,
+            ..segment
+        }
+    }
+
+    /// 返回逐 positioned cluster 的最终富文本 layer 几何（背景、下划线与删除线）。
+    ///
+    /// 输出保持 `input.rich_text` 的 span-major 顺序；每项携带产生它的 layer、片段几何、所属行段的
+    /// 最终外框与开口信息，以及按行段解析的圆角与中心线位置。调用方用 layer 的 `id` 把同一个
+    /// authored range 的片段归为一组。
+    pub fn rich_text_layer_cluster_segments(&self) -> Vec<RichTextLayerClusterSegment> {
+        if self.input.rich_text.is_empty() || self.lines.is_empty() {
+            return Vec::new();
+        }
+        let positioned = positioned_clusters(self);
+        self.rich_text_layer_cluster_segments_from_clusters(&positioned)
+    }
+
+    pub(crate) fn rich_text_layer_cluster_segments_from_clusters(
+        &self,
+        positioned: &[PositionedCluster],
+    ) -> Vec<RichTextLayerClusterSegment> {
+        let occupied = self.positioned_rich_text_segments_from_clusters(positioned);
+        let line_segments = self.rich_text_layer_line_segments_from_occupied(&occupied, positioned);
+        let mut out = Vec::new();
+        let mut fragments = Vec::new();
+        for segment in &line_segments {
+            let Some(layer) = segment_layer(segment) else {
+                continue;
+            };
+            let corner_radii = matches!(layer.kind, RichTextLayerKind::Background { .. })
+                .then(|| self.rich_text_background_corner_radii(segment, 0.0));
+            let line_y = match &layer.kind {
+                RichTextLayerKind::Underline { line } | RichTextLayerKind::LineThrough { line } => {
+                    Some(self.rich_text_decoration_line_y(segment, line.thickness))
+                }
+                _ => None,
+            };
+            fragments.clear();
+            collect_cluster_fragments(
+                covered_clusters(positioned, segment.line_index, segment.range),
+                segment.range,
+                segment.left,
+                segment.right,
+                &mut fragments,
+            );
+            out.extend(
+                fragments
+                    .iter()
+                    .map(|fragment| RichTextLayerClusterSegment {
+                        span: Arc::clone(&segment.span),
+                        cluster_index: fragment.cluster_index,
+                        line_index: segment.line_index,
+                        range: fragment.range,
+                        left: fragment.left,
+                        right: fragment.right,
+                        top: segment.top,
+                        bottom: segment.bottom,
+                        baseline: segment.baseline,
+                        line_left: segment.left,
+                        line_right: segment.right,
+                        continues_from_previous_line: segment.continues_from_previous_line(),
+                        continues_on_next_line: segment.continues_on_next_line(),
+                        corner_radii,
+                        line_y,
+                    }),
+            );
+        }
+        out
+    }
+
+    /// 背景与线条的逐行最终几何，保持 `input.rich_text` 的 span-major 顺序。
+    ///
+    /// 两个 layer 家族各自应用与逐行查询完全相同的终结步骤，因此按 (span, line) 聚合的片段与
+    /// `rich_text_background_segments`、`rich_text_decoration_segments` 逐字段一致。正文与注音 layer
+    /// 不参与本查询，也不对它们执行外缘修剪。
+    fn rich_text_layer_line_segments_from_occupied(
+        &self,
+        occupied: &[RichTextLineSegment],
+        positioned: &[PositionedCluster],
+    ) -> Vec<RichTextLineSegment> {
+        let mut finalized = vec![None; occupied.len()];
+        let mut background_indices = Vec::new();
+        let mut decoration_indices = Vec::new();
+        for (index, segment) in occupied.iter().enumerate() {
+            match segment_layer(segment).map(|layer| &layer.kind) {
+                Some(RichTextLayerKind::Background { .. }) => background_indices.push(index),
+                Some(
+                    RichTextLayerKind::Underline { .. } | RichTextLayerKind::LineThrough { .. },
+                ) => decoration_indices.push(index),
+                _ => {}
+            }
+        }
+        let family = |indices: &[usize]| -> Vec<RichTextLineSegment> {
+            indices
+                .iter()
+                .map(|index| occupied[*index].clone())
+                .collect()
+        };
+        if !background_indices.is_empty() {
+            let trimmed = trim_outer_punctuation_glue(self, &family(&background_indices));
+            let backgrounds = trimmed
+                .into_iter()
+                .map(|segment| self.background_segment_padding_and_metrics(segment, positioned))
+                .collect();
+            for (index, segment) in background_indices
+                .into_iter()
+                .zip(with_adjacent_same_style_clearance(backgrounds))
+            {
+                finalized[index] = Some(segment);
+            }
+        }
+        if !decoration_indices.is_empty() {
+            let trimmed = trim_outer_punctuation_glue(self, &family(&decoration_indices));
+            for (index, segment) in decoration_indices
+                .into_iter()
+                .zip(with_adjacent_same_style_clearance(trimmed))
+            {
+                finalized[index] = Some(segment);
+            }
+        }
+        finalized.into_iter().flatten().collect()
+    }
+
+    /// 返回逐 positioned cluster 的最终装饰几何（示亡号、专名号、书名号）。
+    ///
+    /// 输出按 `input.decorations` 顺序排列，元素携带产生它的范围身份与开口信息。着重号不进入本查询，
+    /// 它已由 `decoration_decisions` 逐 cluster 给出锚点与直径。
+    pub fn decoration_cluster_segments(&self) -> Vec<DecorationClusterSegment> {
+        if self.debug.decoration_segments.is_empty() || self.lines.is_empty() {
+            return Vec::new();
+        }
+        let positioned = positioned_clusters(self);
+        self.decoration_cluster_segments_from_clusters(&positioned)
+    }
+
+    pub(crate) fn decoration_cluster_segments_from_clusters(
+        &self,
+        positioned: &[PositionedCluster],
+    ) -> Vec<DecorationClusterSegment> {
+        let mut out = Vec::new();
+        let mut fragments = Vec::new();
+        for segment in &self.debug.decoration_segments {
+            fragments.clear();
+            collect_cluster_fragments(
+                covered_clusters(positioned, segment.line_index, segment.source_range),
+                segment.source_range,
+                segment.left,
+                segment.right,
+                &mut fragments,
+            );
+            out.extend(fragments.iter().map(|fragment| DecorationClusterSegment {
+                id: segment.id,
+                kind: segment.kind,
+                cluster_index: fragment.cluster_index,
+                line_index: segment.line_index,
+                range: fragment.range,
+                left: fragment.left,
+                right: fragment.right,
+                top: segment.top,
+                bottom: segment.bottom,
+                line_left: segment.left,
+                line_right: segment.right,
+                open_start: segment.open_start,
+                open_end: segment.open_end,
+            }));
+        }
+        out
     }
 }
 
@@ -807,6 +1031,7 @@ fn same_visible_style(left: &RichTextLineSegment, right: &RichTextLineSegment) -
                         background: left_background,
                     },
                 paints: left_paints,
+                ..
             }),
             Some(RichTextLayer {
                 kind:
@@ -814,6 +1039,7 @@ fn same_visible_style(left: &RichTextLineSegment, right: &RichTextLineSegment) -
                         background: right_background,
                     },
                 paints: right_paints,
+                ..
             }),
         ) => {
             left_paints == right_paints
@@ -828,20 +1054,24 @@ fn same_visible_style(left: &RichTextLineSegment, right: &RichTextLineSegment) -
             Some(RichTextLayer {
                 kind: RichTextLayerKind::Underline { line: left_line },
                 paints: left_paints,
+                ..
             }),
             Some(RichTextLayer {
                 kind: RichTextLayerKind::Underline { line: right_line },
                 paints: right_paints,
+                ..
             }),
         )
         | (
             Some(RichTextLayer {
                 kind: RichTextLayerKind::LineThrough { line: left_line },
                 paints: left_paints,
+                ..
             }),
             Some(RichTextLayer {
                 kind: RichTextLayerKind::LineThrough { line: right_line },
                 paints: right_paints,
+                ..
             }),
         ) => {
             left_paints == right_paints
@@ -855,6 +1085,62 @@ fn same_visible_style(left: &RichTextLineSegment, right: &RichTextLineSegment) -
 /// 取出 line segment 对应的单一 layer；positioned_rich_text_segments 按 layer 分别生成 segment。
 fn segment_layer(segment: &RichTextLineSegment) -> Option<&RichTextLayer> {
     segment.span.layers.first()
+}
+
+/// 覆盖 `range` 在 `line_index` 上的 positioned cluster 切片。
+///
+/// cluster 按 (line_index, range) 有序：先在行上二分、再在行内按范围二分，避免每个行段从头扫描
+/// 全部 cluster。
+fn covered_clusters<'a>(
+    positioned: &'a [PositionedCluster],
+    line_index: i32,
+    range: TextRange,
+) -> &'a [PositionedCluster] {
+    let line_start = positioned.partition_point(|cluster| cluster.line_index < line_index);
+    let line = &positioned[line_start..];
+    let line_end = line.partition_point(|cluster| cluster.line_index == line_index);
+    let line = &line[..line_end];
+    let start = line.partition_point(|cluster| cluster.range.end() <= range.start());
+    let count = line[start..].partition_point(|cluster| cluster.range.start() < range.end());
+    &line[start..start + count]
+}
+
+/// 一个行段在某个 positioned cluster 上贡献的片段几何。
+struct ClusterFragment {
+    cluster_index: i32,
+    range: TextRange,
+    left: f32,
+    right: f32,
+}
+
+/// 把一个行段按覆盖的 cluster 切成片段。
+///
+/// 片段平铺 `segment_left..segment_right`：cluster 之间的间距并入左侧片段，首尾片段拥有行段外缘。
+/// 边界单调递增，因此退化情形产生零宽片段，不会出现反转矩形。
+fn collect_cluster_fragments(
+    covered: &[PositionedCluster],
+    range: TextRange,
+    segment_left: f32,
+    segment_right: f32,
+    out: &mut Vec<ClusterFragment>,
+) {
+    let mut left = segment_left;
+    for (index, cluster) in covered.iter().enumerate() {
+        let right = covered
+            .get(index + 1)
+            .map_or(segment_right, |next| next.left.max(left))
+            .min(segment_right);
+        out.push(ClusterFragment {
+            cluster_index: cluster.cluster_index,
+            range: TextRange::new(
+                cluster.range.start().max(range.start()),
+                cluster.range.end().min(range.end()),
+            ),
+            left,
+            right,
+        });
+        left = right;
+    }
 }
 
 /// 返回当前 layer 在相邻同样式 segment 之间需要分摊的间距。
@@ -872,7 +1158,7 @@ fn layer_clearance(segment: &RichTextLineSegment) -> f32 {
 
 fn marked_face_vertical_bounds(
     result: &LayoutResult,
-    covered: &[&PositionedCluster],
+    covered: &[PositionedCluster],
     metrics: &[MetricDecisionInfo],
 ) -> (f32, f32) {
     let mut top = f32::INFINITY;

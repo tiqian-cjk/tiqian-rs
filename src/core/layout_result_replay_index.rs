@@ -3,9 +3,9 @@ use crate::common::HashMap;
 use super::geometry::{Rect, ScalarOffset, TextRange};
 use super::layout_model::{Glyph, LayoutResult};
 use super::layout_queries::{
-    PositionedCluster, RichTextLineSegment, coerce_selection_offset, get_line_for_offset,
-    get_selection_word_boundary, nearest_line_for_position, offset_for_x, positioned_clusters,
-    x_for_offset,
+    DecorationClusterSegment, PositionedCluster, RichTextLayerClusterSegment, RichTextLineSegment,
+    coerce_selection_offset, get_line_for_offset, get_selection_word_boundary,
+    nearest_line_for_position, offset_for_x, positioned_clusters, x_for_offset,
 };
 use super::source_interaction_boundaries::SourceBoundaryBias;
 
@@ -17,6 +17,8 @@ pub struct LayoutResultReplayIndex {
     pub rich_text_segments: Vec<RichTextLineSegment>,
     pub rich_text_background_segments: Vec<RichTextLineSegment>,
     pub rich_text_decoration_segments: Vec<RichTextLineSegment>,
+    pub rich_text_layer_cluster_segments: Vec<RichTextLayerClusterSegment>,
+    pub decoration_cluster_segments: Vec<DecorationClusterSegment>,
     pub glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>>,
     pub open_type_features_by_cluster_range: HashMap<TextRange, Vec<String>>,
     pub font_role_by_cluster_range: HashMap<TextRange, Option<String>>,
@@ -37,6 +39,10 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
         .rich_text_background_segments_from_occupied(&rich_text_segments, &positioned_clusters);
     let rich_text_decoration_segments =
         result.rich_text_decoration_segments_from_occupied(&rich_text_segments);
+    let rich_text_layer_cluster_segments =
+        result.rich_text_layer_cluster_segments_from_clusters(&positioned_clusters);
+    let decoration_cluster_segments =
+        result.decoration_cluster_segments_from_clusters(&positioned_clusters);
     let mut glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>> = HashMap::new();
     for glyph in result.glyph_runs.iter().flat_map(|run| &run.glyphs) {
         glyphs_by_cluster_range
@@ -92,6 +98,8 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
         rich_text_segments,
         rich_text_background_segments,
         rich_text_decoration_segments,
+        rich_text_layer_cluster_segments,
+        decoration_cluster_segments,
         glyphs_by_cluster_range,
         open_type_features_by_cluster_range,
         font_role_by_cluster_range,

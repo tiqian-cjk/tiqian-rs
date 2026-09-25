@@ -211,6 +211,7 @@ fn decoration_decisions_emphasis_on_han_punctuation_and_western() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(0, text.scalar_len().value()),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 }])
                 .build(),
             );
@@ -251,22 +252,27 @@ fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
                     DecorationSpan {
                         range: text_range(0, 2),
                         kind: DecorationKind::ProperNoun,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(2, 4),
                         kind: DecorationKind::ProperNoun,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(4, 8),
                         kind: DecorationKind::BookTitle,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(8, 12),
                         kind: DecorationKind::Mourning,
+                        id: None,
                     },
                     DecorationSpan {
                         range: text_range(0, 16),
                         kind: DecorationKind::Mourning,
+                        id: None,
                     },
                 ])
                 .build(),
@@ -276,21 +282,21 @@ fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
             .debug
             .decoration_segments
             .iter()
-            .any(|segment| segment.kind == "ProperNoun")
+            .any(|segment| segment.kind == DecorationKind::ProperNoun)
     );
     assert!(
         result
             .debug
             .decoration_segments
             .iter()
-            .any(|segment| segment.kind == "BookTitle")
+            .any(|segment| segment.kind == DecorationKind::BookTitle)
     );
     assert!(
         result
             .debug
             .decoration_segments
             .iter()
-            .any(|segment| segment.kind == "Mourning")
+            .any(|segment| segment.kind == DecorationKind::Mourning)
     );
     assert!(
         result
@@ -315,6 +321,7 @@ fn decoration_segments_leading_and_trailing_blanks() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(0, text.scalar_len().value()),
                     kind: DecorationKind::ProperNoun,
+                    id: None,
                 }])
                 .build(),
             );
@@ -413,18 +420,22 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         DecorationSpan {
             range: text_range(0, 2),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(2, 3),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(5, 12),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(0, 4),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ])
     .build();
@@ -709,10 +720,12 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         DecorationSpan {
             range: text_range(0, 2),
             kind: DecorationKind::Emphasis,
+            id: None,
         },
         DecorationSpan {
             range: text_range(0, 5),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ])
     .build();
@@ -999,10 +1012,12 @@ fn bopomofo_and_decoration_leading_blank_exhaustive_branches() {
         DecorationSpan {
             range: text_range(0, 7),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
         DecorationSpan {
             range: text_range(2, 7),
             kind: DecorationKind::ProperNoun,
+            id: None,
         },
     ])
     .ruby_spans(vec![

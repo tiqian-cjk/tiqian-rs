@@ -17,6 +17,7 @@ fn emphasis_dots_han_but_not_western_text() {
                 .decorations(vec![DecorationSpan {
                     range: text_range(2, 5),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 }])
                 .build(),
             );

@@ -24,12 +24,14 @@ fn replay_index_keeps_selection_and_rich_text_on_engine_geometry() {
                     line: Default::default(),
                 },
                 paints: Vec::new(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::Background {
                     background: Default::default(),
                 },
                 paints: Vec::new(),
+                id: None,
             },
         ],
         semantics: Vec::new(),

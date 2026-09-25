@@ -147,6 +147,7 @@ fn test_text_style_and_decorations() {
     let decoration = DecorationSpan {
         range: text_range(2, 4),
         kind: DecorationKind::Emphasis,
+        id: None,
     };
     assert_eq!(text_range(2, 4), decoration.range);
     assert_eq!(DecorationKind::Emphasis, decoration.kind);
@@ -191,32 +192,38 @@ fn test_rich_text_spans_and_patterns() {
             RichTextLayer {
                 kind: RichTextLayerKind::Text,
                 paints: paints.clone(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::Background {
                     background: background.clone(),
                 },
                 paints: paints.clone(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::Underline { line: line.clone() },
                 paints: paints.clone(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::LineThrough { line: line.clone() },
                 paints: paints.clone(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::Decoration {
                     kind: DecorationKind::Emphasis,
                 },
                 paints: paints.clone(),
+                id: None,
             },
             RichTextLayer {
                 kind: RichTextLayerKind::Annotation {
                     kind: RubyKind::Pinyin,
                 },
                 paints: paints.clone(),
+                id: None,
             },
         ],
         semantics: vec![
@@ -332,6 +339,7 @@ fn test_ruby_and_paragraph_models() {
     .decorations(vec![DecorationSpan {
         range: text_range(0, 2),
         kind: DecorationKind::Emphasis,
+        id: None,
     }])
     .ruby_spans(vec![pinyin])
     .inline_boxes(vec![InlineBoxSpan::new(text_range(0, 1))])

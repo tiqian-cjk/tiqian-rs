@@ -23,6 +23,7 @@ fn span(range: tiqian::core::geometry::TextRange, kind: RichTextLayerKind) -> Ri
         layers: vec![RichTextLayer {
             kind,
             paints: Vec::new(),
+            id: None,
         }],
         semantics: Vec::new(),
     }
