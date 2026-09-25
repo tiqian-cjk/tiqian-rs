@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.0 (2026-09-25)
+
+### New Features
+
+ - <csr-id-13c6c53f2fd5233c62b17a2ac4d8edf43b5fff60/> add authored range IDs and cluster geometry queries
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 3 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add authored range IDs and cluster geometry queries ([`13c6c53`](https://github.com/tiqian-cjk/tiqian-rs/commit/13c6c53f2fd5233c62b17a2ac4d8edf43b5fff60))
+</details>
+
 ## v0.5.0 (2026-09-22)
+
+<csr-id-083573754b0e3f1c9d297e977cf865143c8eda1d/>
 
 ### Chore
 
@@ -19,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -30,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release tiqian v0.5.0 ([`a045613`](https://github.com/tiqian-cjk/tiqian-rs/commit/a04561383bb607a5eb47bc9a92ce18f05d1fcc21))
     - Format ([`0835737`](https://github.com/tiqian-cjk/tiqian-rs/commit/083573754b0e3f1c9d297e977cf865143c8eda1d))
     - Add IDs to rich-text links and inline objects ([`87063ff`](https://github.com/tiqian-cjk/tiqian-rs/commit/87063ff1ac4bef2792966517527c9e4ceb25f0e6))
 </details>
