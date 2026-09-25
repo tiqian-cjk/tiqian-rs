@@ -1090,18 +1090,22 @@ mod tests {
                 DecorationSpan {
                     range: text_range(0, 1),
                     kind: DecorationKind::Emphasis,
+                    id: None,
                 },
                 DecorationSpan {
                     range: text_range(0, 2),
                     kind: DecorationKind::Mourning,
+                    id: None,
                 },
                 DecorationSpan {
                     range: text_range(2, 3),
                     kind: DecorationKind::ProperNoun,
+                    id: None,
                 },
                 DecorationSpan {
                     range: text_range(3, 4),
                     kind: DecorationKind::BookTitle,
+                    id: None,
                 },
             ])
             .rich_text(vec![

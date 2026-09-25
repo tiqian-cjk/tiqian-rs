@@ -611,7 +611,7 @@ fn consume_by_range(
 mod tests {
     use super::*;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
-    use crate::core::font_face::{FontFaceId, FontVariationInstance};
+    use crate::core::font_face::FontFaceId;
     use crate::core::geometry::text_range;
     use crate::core::text::Text;
     use crate::layout::punctuation_geometry_stage::punctuation_atoms;
