@@ -205,6 +205,59 @@ pub enum GlueKind {
     InlineObjectBoundary,
 }
 
+/// 标点间距压缩的规则来源。`SpacingDecisionInfo` 与 `PunctuationSpacingAdjustment` 共用。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpacingReason {
+    /// `CollapseAdjacentPunctuationInnerGlue`：相邻半宽标点的内部间距减半 em。
+    CollapseAdjacentPunctuationInnerGlue,
+    /// `CollapseCjkClosingBeforeAsciiPointMark`：CJK closing 后的 ASCII 点号。
+    CollapseCjkClosingBeforeAsciiPointMark,
+    /// attached inline 虚拟边界的内部间距重算。
+    AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase),
+}
+
+impl SpacingReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> String {
+        match self {
+            Self::CollapseAdjacentPunctuationInnerGlue => {
+                "collapse-adjacent-punctuation-inner-glue".to_owned()
+            }
+            Self::CollapseCjkClosingBeforeAsciiPointMark => {
+                "collapse-cjk-closing-before-ascii-point-mark".to_owned()
+            }
+            Self::AttachedInlineVirtualPunctuationBoundary(case) => {
+                format!("AttachedInlineVirtualPunctuationBoundary:{}", case.name())
+            }
+        }
+    }
+}
+
+/// `AttachedInlineVirtualPunctuationBoundary` 的四个子情形。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AttachedInlineBoundaryCase {
+    /// 边界右侧没有内容，压缩发生在行尾。
+    LineEnd,
+    /// 两侧都已归为标点 atom。
+    AdjacentPunctuation,
+    /// 左侧是 CJK closing，右侧是 ASCII 点号。
+    AsciiPointMark,
+    /// 其余情形保持自然间距。
+    Natural,
+}
+
+impl AttachedInlineBoundaryCase {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::LineEnd => "line-end",
+            Self::AdjacentPunctuation => "adjacent-punctuation",
+            Self::AsciiPointMark => "ascii-point-mark",
+            Self::Natural => "natural",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AdjustmentOpportunity {
     pub range: TextRange,
@@ -220,7 +273,7 @@ pub struct PunctuationSpacingAdjustment {
     pub natural_inner_glue: f32,
     pub adjusted_inner_glue: f32,
     pub reduction: f32,
-    pub reason: String,
+    pub reason: SpacingReason,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -290,7 +343,7 @@ impl PunctuationSpacingCompressor {
                     natural_inner_glue,
                     adjusted_inner_glue,
                     reduction,
-                    reason: "collapse-adjacent-punctuation-inner-glue".to_owned(),
+                    reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
                 })
             })
             .collect();
@@ -336,7 +389,7 @@ impl PunctuationSpacingCompressor {
                     natural_inner_glue,
                     adjusted_inner_glue,
                     reduction,
-                    reason: "collapse-cjk-closing-before-ascii-point-mark".to_owned(),
+                    reason: SpacingReason::CollapseCjkClosingBeforeAsciiPointMark,
                 })
             })
             .collect();

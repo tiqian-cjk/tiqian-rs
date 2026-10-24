@@ -8,7 +8,8 @@ use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpa
 use super::super::core::geometry::{Rect, TextRange};
 use super::super::core::layout_model::{
     AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
-    ContextualKinsokuDecisionInfo, Glyph, InlineBoxDecisionInfo,
+    ContextualKinsokuDecisionInfo, ContextualKinsokuRule, Glyph, InlineBoxDecisionInfo,
+    KinsokuForbiddenPosition,
 };
 use super::super::core::text_model::{InlineAttachment, InlineBoxSpan};
 use super::super::font::font_policy::FontRole;
@@ -155,13 +156,12 @@ pub fn inline_object_attached_kinsoku(
             mark.range,
             mark.text.clone(),
             index,
-            "LineStart".to_owned(),
+            KinsokuForbiddenPosition::LineStart,
             if a.separator_cluster_indices.is_empty() {
-                "InlineObjectAttachedKinsoku"
+                ContextualKinsokuRule::InlineObjectAttachedKinsoku
             } else {
-                "InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace"
-            }
-            .to_owned(),
+                ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace
+            },
         ));
     }
     ContextualKinsoku {
@@ -227,8 +227,8 @@ pub fn attached_ascii_point_mark_kinsoku(
                 cluster.range,
                 cluster.text.clone(),
                 i as i32,
-                "LineStart".to_owned(),
-                "AttachedAsciiPointMarkKinsoku".to_owned(),
+                KinsokuForbiddenPosition::LineStart,
+                ContextualKinsokuRule::AttachedAsciiPointMarkKinsoku,
             ));
         }
         ranges.push((start as i32 - 1, end as i32));

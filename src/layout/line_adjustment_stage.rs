@@ -5,8 +5,8 @@ use crate::common::{HashMap, HashSet};
 use super::super::clreq::clreq_profile::{LineEndPunctuationStyle, PunctuationClass};
 use super::super::core::geometry::{Size, TextRange};
 use super::super::core::layout_model::{
-    Cluster, ContextualKinsokuDecisionInfo, Glyph, GlyphRun, LayoutResult,
-    LineEdgeTrimDecisionInfo, LineEndReason,
+    Cluster, ContextualKinsokuDecisionInfo, Glyph, GlyphRun, ImpossibleMeasureFallback,
+    LayoutResult, LineEdgeTrimDecisionInfo, LineEdgeTrimReason, LineEdgeTrimSide, LineEndReason,
 };
 use super::super::font::font_metrics::BaselineClass;
 use super::super::shaping::font_backend::FontBackend;
@@ -81,14 +81,11 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                     .contains(&decision.cluster_index)
                     && applied_hanging_clusters.contains(&decision.cluster_index)
                 {
-                    Some(
-                        if decision.reason == "AttachedAsciiPointMarkKinsoku" {
-                            "AttachedAsciiPointMarkImpossibleMeasureHang"
-                        } else {
-                            "InlineObjectAttachedMarkImpossibleMeasureHang"
-                        }
-                        .to_owned(),
-                    )
+                    Some(if decision.reason.is_attached_ascii_point_mark() {
+                        ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang
+                    } else {
+                        ImpossibleMeasureFallback::InlineObjectAttachedMarkImpossibleMeasureHang
+                    })
                 } else {
                     None
                 };
@@ -691,16 +688,16 @@ fn resolve_auto_space_edge_trims(
             if matches!(adjustment.action, LineWhiteSpaceAction::RemoveAutoSpaceStart
                 | LineWhiteSpaceAction::RemoveAutoSpaceEnd) {
                 let cluster_index = adjustment.cluster_index;
-                let side = if adjustment.action == LineWhiteSpaceAction::RemoveAutoSpaceStart { "leading" } else { "trailing" };
+                let side = if adjustment.action == LineWhiteSpaceAction::RemoveAutoSpaceStart { LineEdgeTrimSide::Leading } else { LineEdgeTrimSide::Trailing };
                 add_amount(&mut trims, cluster_index, adjustment.occupied_advance);
                 decisions.push(LineEdgeTrimDecisionInfo {
                     line_range: line.source_range,
                     cluster_range: prep.natural_clusters[cluster_index as usize].range,
-                    side: side.to_owned(),
+                    side,
                     trim_amount: adjustment.occupied_advance,
                     consumed_before: 0.0,
                     natural_glue: auto_space_gap,
-                    reason: "TextAutoSpaceLineEdgeTrim".to_owned(),
+                    reason: LineEdgeTrimReason::TextAutoSpaceLineEdgeTrim,
                 });
             }
         }
@@ -714,11 +711,11 @@ fn resolve_auto_space_edge_trims(
             decisions.push(LineEdgeTrimDecisionInfo {
                 line_range: line.source_range,
                 cluster_range: prep.natural_clusters[trailing_index as usize].range,
-                side: "trailing".to_owned(),
+                side: LineEdgeTrimSide::Trailing,
                 trim_amount: *amount,
                 consumed_before: 0.0,
                 natural_glue: *amount,
-                reason: "AttachedInlineVirtualBoundaryLineEndTrim".to_owned(),
+                reason: LineEdgeTrimReason::AttachedInlineVirtualBoundaryLineEndTrim,
             });
         }
         if line.end_reason == LineEndReason::AutoWrap {
@@ -740,11 +737,11 @@ fn resolve_auto_space_edge_trims(
                 decisions.push(LineEdgeTrimDecisionInfo {
                     line_range: line.source_range,
                     cluster_range: prep.natural_clusters[trailing_index as usize].range,
-                    side: "trailing".to_owned(),
+                    side: LineEdgeTrimSide::Trailing,
                     trim_amount: remaining,
                     consumed_before,
                     natural_glue: discardable,
-                    reason: "InlineObjectLineEndDiscardableGlue".to_owned(),
+                    reason: LineEdgeTrimReason::InlineObjectLineEndDiscardableGlue,
                 });
             }
         }

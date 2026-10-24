@@ -3,8 +3,10 @@
 use super::super::clreq::clreq_profile::PunctuationClass;
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
-    Cluster, ClusterGeometryDecisionInfo, LineEdgeTrimDecisionInfo, SpacingDecisionInfo,
+    Cluster, ClusterGeometryDecisionInfo, LineEdgeTrimDecisionInfo, LineEdgeTrimReason,
+    LineEdgeTrimSide, SpacingDecisionInfo,
 };
+use super::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
 use super::super::core::text_model::InlineAttachment;
 use super::punctuation_model::{
     PunctuationAnchor, PunctuationAtom, PunctuationGeometrySource, PunctuationSpacingAdjustment,
@@ -208,7 +210,34 @@ impl PunctuationGeometryLedger {
             if left > 0. || right != adjusted {
                 let p = &self.natural_clusters[prev as usize];
                 let nc = next.map(|n| &self.natural_clusters[n as usize]);
-                decisions.push(SpacingDecisionInfo{range:TextRange::new(p.range.start(),nc.map_or(self.natural_clusters[end as usize].range.end(),|c|c.range.end())),left_char:p.text.chars().next_back().unwrap_or('\0'),right_char:nc.and_then(|c|c.text.chars().next()).unwrap_or('\0'),natural_inner_glue:natural,adjusted_inner_glue:adjusted,reduction:natural-adjusted,reduction_target_range:p.range,reason:(if next.is_none(){"AttachedInlineVirtualPunctuationBoundary:line-end"}else if left_atom.is_some()&&right_atom.is_some(){"AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation"}else if left_atom.is_some_and(|a|a.punctuation_class==PunctuationClass::Closing)&&next_char.is_some_and(super::super::clreq::clreq_profile::clreq_punctuation_policies::is_ascii_point_mark){"AttachedInlineVirtualPunctuationBoundary:ascii-point-mark"}else{"AttachedInlineVirtualPunctuationBoundary:natural"}).to_owned()});
+                let case = if next.is_none() {
+                    AttachedInlineBoundaryCase::LineEnd
+                } else if left_atom.is_some() && right_atom.is_some() {
+                    AttachedInlineBoundaryCase::AdjacentPunctuation
+                } else if left_atom.is_some_and(|a| a.punctuation_class == PunctuationClass::Closing)
+                    && next_char.is_some_and(
+                        super::super::clreq::clreq_profile::clreq_punctuation_policies::is_ascii_point_mark,
+                    )
+                {
+                    AttachedInlineBoundaryCase::AsciiPointMark
+                } else {
+                    AttachedInlineBoundaryCase::Natural
+                };
+                decisions.push(SpacingDecisionInfo {
+                    range: TextRange::new(
+                        p.range.start(),
+                        nc.map_or(self.natural_clusters[end as usize].range.end(), |c| {
+                            c.range.end()
+                        }),
+                    ),
+                    left_char: p.text.chars().next_back().unwrap_or('\0'),
+                    right_char: nc.and_then(|c| c.text.chars().next()).unwrap_or('\0'),
+                    natural_inner_glue: natural,
+                    adjusted_inner_glue: adjusted,
+                    reduction: natural - adjusted,
+                    reduction_target_range: p.range,
+                    reason: SpacingReason::AttachedInlineVirtualPunctuationBoundary(case),
+                });
             }
         }
         let mut geometry = self.clone();
@@ -319,9 +348,9 @@ impl PunctuationGeometryLedger {
             line_range: line.source_range,
             cluster_range: self.natural_clusters[index as usize].range,
             side: if paired {
-                "both".to_owned()
+                LineEdgeTrimSide::Both
             } else {
-                edge.side().to_owned()
+                edge.trim_side()
             },
             trim_amount: total,
             consumed_before: if paired {
@@ -339,12 +368,15 @@ impl PunctuationGeometryLedger {
                 b.trailing_natural
             },
             reason: if paired {
-                format!(
-                    "Line{}CenteredPunctuationPairedCompression",
-                    edge.reason_part()
-                )
+                if edge == PunctuationLineEdge::Start {
+                    LineEdgeTrimReason::LineStartCenteredPunctuationPairedCompression
+                } else {
+                    LineEdgeTrimReason::LineEndCenteredPunctuationPairedCompression
+                }
+            } else if edge == PunctuationLineEdge::Start {
+                LineEdgeTrimReason::LineStartHalfWidthPunctuation
             } else {
-                format!("Line{}HalfWidthPunctuation", edge.reason_part())
+                LineEdgeTrimReason::LineEndHalfWidthPunctuation
             },
         })
     }
@@ -500,15 +532,12 @@ enum PunctuationLineEdge {
     End,
 }
 impl PunctuationLineEdge {
-    fn side(self) -> &'static str {
+    fn trim_side(self) -> LineEdgeTrimSide {
         if self == Self::Start {
-            "leading"
+            LineEdgeTrimSide::Leading
         } else {
-            "trailing"
+            LineEdgeTrimSide::Trailing
         }
-    }
-    fn reason_part(self) -> &'static str {
-        if self == Self::Start { "Start" } else { "End" }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]

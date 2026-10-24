@@ -9,8 +9,9 @@ use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoDecisionInfo, BopomofoGlyphPlacement,
     BopomofoGlyphRole,
-    Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentInfo, Glyph,
-    InlineObjectDecisionInfo, LineBox, RubyDecisionInfo,
+    Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentInfo,
+    DecorationSegmentReason, EmphasisDotReason, Glyph, InlineObjectDecisionInfo, LineBox,
+    RubyDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -279,11 +280,11 @@ fn compute_decoration_decisions(
                             span.id,
                             applied,
                             if applied {
-                                "EmphasisDotOnHanText".to_owned()
+                                EmphasisDotReason::EmphasisDotOnHanText
                             } else if role == FontRole::CjkPunctuation {
-                                "clreq-no-dot-on-punctuation".to_owned()
+                                EmphasisDotReason::ClreqNoDotOnPunctuation
                             } else {
-                                "no-dot-on-non-han".to_owned()
+                                EmphasisDotReason::NoDotOnNonHan
                             },
                         )
                         .anchor_x(x + glyph_advance / 2.0)
@@ -398,18 +399,19 @@ fn compute_decoration_segments(
                 },
                 open_start: segment_start > span.range.start(),
                 open_end: segment_end < span.range.end(),
-                reason: String::new(),
+                reason: DecorationSegmentReason::InterlinearLinePerAnnotatedItem,
+                adjacent_shortened: false,
             });
         }
         let reason = if span.kind == DecorationKind::Mourning && span_segments.len() <= 1 {
-            "MourningSpanKeptUnbroken"
+            DecorationSegmentReason::MourningSpanKeptUnbroken
         } else if span.kind == DecorationKind::Mourning {
-            "mourning-span-split-across-lines"
+            DecorationSegmentReason::MourningSpanSplitAcrossLines
         } else {
-            "InterlinearLinePerAnnotatedItem"
+            DecorationSegmentReason::InterlinearLinePerAnnotatedItem
         };
         segments.extend(span_segments.into_iter().map(|mut segment| {
-            segment.reason = reason.to_owned();
+            segment.reason = reason;
             segment
         }));
     }
@@ -443,15 +445,9 @@ fn shorten_adjacent_interlinear_lines(
             }
             let pullback = font_size * ADJACENT_LINE_SHORTEN_EM;
             segments[left].right -= pullback;
-            segments[left].reason = format!(
-                "{};AdjacentInterlinearLineShortening",
-                segments[left].reason
-            );
+            segments[left].adjacent_shortened = true;
             segments[right].left += pullback;
-            segments[right].reason = format!(
-                "{};AdjacentInterlinearLineShortening",
-                segments[right].reason
-            );
+            segments[right].adjacent_shortened = true;
         }
     }
     segments

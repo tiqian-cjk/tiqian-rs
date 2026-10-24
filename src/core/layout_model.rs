@@ -12,10 +12,11 @@ use crate::clreq::clreq_profile::{HangingPunctuationStyle, KinsokuLevel, Punctua
 use crate::clreq::clreq_profile::AutoSpaceMode;
 use crate::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
 use crate::font::font_policy::FontRole;
+use crate::layout::justifier::JustificationAllocationReason;
 use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
 use crate::layout::punctuation_model::PunctuationGeometrySource;
 use crate::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
-use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor};
+use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor, SpacingReason};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cluster {
@@ -986,11 +987,29 @@ impl MaxLinesDecisionInfo {
     }
 }
 
-/// 段首缩进的解析：`source` = "MeasureAdaptiveFirstLineIndent"（按 `measure_em` 字数自适应，
-/// < `threshold_em` 字缩窄）或 "Explicit"（`first_line_indent` 显式覆盖）；`resolved_em` 是最终缩进字数。
+/// 段首缩进的解析方式。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FirstLineIndentSource {
+    /// `first_line_indent` 显式覆盖。
+    Explicit,
+    /// 按 `measure_em` 字数自适应的缩进。
+    MeasureAdaptiveFirstLineIndent,
+}
+
+impl FirstLineIndentSource {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Explicit => "Explicit",
+            Self::MeasureAdaptiveFirstLineIndent => "MeasureAdaptiveFirstLineIndent",
+        }
+    }
+}
+
+/// 段首缩进的解析：`source` 记录缩进从何而来；`resolved_em` 是最终缩进字数。
 #[derive(Clone, Debug, PartialEq)]
 pub struct FirstLineIndentDecisionInfo {
-    pub source: String,
+    pub source: FirstLineIndentSource,
     pub measure_em: f32,
     pub threshold_em: f32,
     pub resolved_em: f32,
@@ -1013,6 +1032,15 @@ pub struct LineLengthGridDecisionInfo {
     pub reason: &'static str,
 }
 
+/// 禁则档与悬挂风格的解析方式。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KinsokuPolicySource {
+    /// 由 profile 固定，无自适应。
+    Fixed,
+    /// 按 measure 的字数自适应选择。
+    MeasureAdaptiveKinsoku,
+}
+
 /// 段落解析出的 kinsoku level + hanging style 及其原因（`MeasureAdaptiveKinsoku` 按 measure 的字数决策；
 /// `Fixed` 将其固定）。
 #[derive(Clone, Debug, PartialEq)]
@@ -1020,8 +1048,117 @@ pub struct KinsokuDecisionInfo {
     pub measure_em: f32,
     pub level: KinsokuLevel,
     pub hanging: HangingPunctuationStyle,
-    /// 内置常量标签或自适应解析说明。
-    pub reason: String,
+    /// 该档位与悬挂风格由谁选定。
+    pub source: KinsokuPolicySource,
+    /// `MeasureAdaptiveKinsoku` 时参与决策的 measure 字数；`Fixed` 时为 `None`。
+    pub adaptive_measure_cells: Option<i32>,
+}
+
+/// 被禁止落在行首还是行尾。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KinsokuForbiddenPosition {
+    LineStart,
+    LineEnd,
+}
+
+impl KinsokuForbiddenPosition {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::LineStart => "LineStart",
+            Self::LineEnd => "LineEnd",
+        }
+    }
+}
+
+/// `Uax14WesternPunctuationBoundary` 为开始侧补充的规则。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Uax14BoundaryRule {
+    /// 成对引号的闭合侧。
+    PairedClosingQuote,
+    /// 成对引号的开启侧。
+    PairedOpeningQuote,
+    /// UAX #14 的 LB19（引号）。
+    Lb19,
+    /// UAX #14 的 LB14（开括号后不断行）。
+    Lb14,
+    /// UAX #14 的 LB13（闭括号、感叹号前不断行，含普通标点）。
+    Lb13,
+    /// UAX #14 的 LB15d（数字内分隔符）。
+    Lb15d,
+}
+
+impl Uax14BoundaryRule {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::PairedClosingQuote => "PairedClosingQuote",
+            Self::PairedOpeningQuote => "PairedOpeningQuote",
+            Self::Lb19 => "LB19",
+            Self::Lb14 => "LB14",
+            Self::Lb13 => "LB13",
+            Self::Lb15d => "LB15d",
+        }
+    }
+}
+
+/// 把 cluster 加入已解析 kinsoku set 的 source-context 规则。
+///
+/// 三种来源互不相同：直接接触的 ASCII point mark、跨 separator space 附着到 inline object 的 mark、
+/// 以及 UAX #14 西文标点边界。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ContextualKinsokuRule {
+    /// 直接接触的 ASCII `, . : ; ! ?`。
+    AttachedAsciiPointMarkKinsoku,
+    /// inline object 后直接接触的附着 mark。
+    InlineObjectAttachedKinsoku,
+    /// 跨已折叠的 separator space 附着到 inline object 的 mark。
+    InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace,
+    /// UAX #14 西文标点边界补充的规则。
+    Uax14WesternPunctuationBoundary(Uax14BoundaryRule),
+}
+
+impl ContextualKinsokuRule {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> String {
+        match self {
+            Self::AttachedAsciiPointMarkKinsoku => "AttachedAsciiPointMarkKinsoku".to_owned(),
+            Self::InlineObjectAttachedKinsoku => "InlineObjectAttachedKinsoku".to_owned(),
+            Self::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace => {
+                "InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace".to_owned()
+            }
+            Self::Uax14WesternPunctuationBoundary(rule) => {
+                format!("Uax14WesternPunctuationBoundary:{}", rule.name())
+            }
+        }
+    }
+    /// 该规则是否来自直接接触的 ASCII point mark。
+    pub fn is_attached_ascii_point_mark(self) -> bool {
+        matches!(self, Self::AttachedAsciiPointMarkKinsoku)
+    }
+}
+
+/// 该 cluster 自身超出 measure 时采用的具名 last-resort geometry。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ImpossibleMeasureFallback {
+    /// ASCII point mark 走 hang。
+    AttachedAsciiPointMarkImpossibleMeasureHang,
+    /// 附着到 inline object 的 mark 走 hang。
+    InlineObjectAttachedMarkImpossibleMeasureHang,
+}
+
+impl ImpossibleMeasureFallback {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::AttachedAsciiPointMarkImpossibleMeasureHang => {
+                "AttachedAsciiPointMarkImpossibleMeasureHang"
+            }
+            Self::InlineObjectAttachedMarkImpossibleMeasureHang => {
+                "InlineObjectAttachedMarkImpossibleMeasureHang"
+            }
+        }
+    }
 }
 
 /// 不改变 font role 或 punctuation geometry 的 source-context rule：它将 cluster 加入已解析的 kinsoku set。
@@ -1033,18 +1170,18 @@ pub struct ContextualKinsokuDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub cluster_index: i32,
-    pub forbidden_position: String,
-    pub reason: String,
+    pub forbidden_position: KinsokuForbiddenPosition,
+    pub reason: ContextualKinsokuRule,
     /// 只有实际为此 cluster 选择该 fallback 时才存在的具名 last-resort geometry。
-    pub impossible_measure_fallback: Option<String>,
+    pub impossible_measure_fallback: Option<ImpossibleMeasureFallback>,
 }
 impl ContextualKinsokuDecisionInfo {
     pub fn new(
         range: TextRange,
         source_text: Text,
         cluster_index: i32,
-        forbidden_position: String,
-        reason: String,
+        forbidden_position: KinsokuForbiddenPosition,
+        reason: ContextualKinsokuRule,
     ) -> Self {
         Self {
             range,
@@ -1059,9 +1196,9 @@ impl ContextualKinsokuDecisionInfo {
         range: TextRange,
         source_text: Text,
         cluster_index: i32,
-        forbidden_position: String,
-        reason: String,
-        impossible_measure_fallback: Option<String>,
+        forbidden_position: KinsokuForbiddenPosition,
+        reason: ContextualKinsokuRule,
+        impossible_measure_fallback: Option<ImpossibleMeasureFallback>,
     ) -> Self {
         Self {
             range,
@@ -1110,6 +1247,28 @@ impl InlineObjectPunctuationAttachmentDecisionInfo {
     }
 }
 
+/// 行高的确定方式。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineSpacingReason {
+    /// 作者显式声明的 line height。
+    ExplicitLineHeight,
+    /// 行间标记（着重号、示亡号等）的 floor 生效。
+    InterlinearMarkLineSpacingFloor,
+    /// 未声明的 CJK 正文默认值。
+    CjkBodyLineHeightDefault,
+}
+
+impl LineSpacingReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ExplicitLineHeight => "ExplicitLineHeight",
+            Self::InterlinearMarkLineSpacingFloor => "InterlinearMarkLineSpacingFloor",
+            Self::CjkBodyLineHeightDefault => "CjkBodyLineHeightDefault",
+        }
+    }
+}
+
 /// `InterlinearMarkLineSpacingFloor`（CLREQ 5.6.1.1）：存在行间标记（着重号、示亡号等）时，行距不得低于
 /// font size 的 1/2，以免紧缩 line height 使 mark 与下一行碰撞。paragraph 带此类 mark 时均记录；
 /// `floor_applied` 说明 floor 是否实际增大（auto）或钳制（explicit）line height。
@@ -1121,7 +1280,26 @@ pub struct LineSpacingDecisionInfo {
     pub resolved_height: f32,
     pub spacing_floor: f32,
     pub floor_applied: bool,
-    pub reason: String,
+    pub reason: LineSpacingReason,
+}
+
+/// ruby 是否改变了 line box。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RubyLineHeightReason {
+    /// 行间空间不足以容纳 ruby，按 `mode` 扩张。
+    ConditionalRubyLineHeight,
+    /// 既有行间空间已容纳 ruby。
+    ExistingInterlineSpaceFitsRuby,
+}
+
+impl RubyLineHeightReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ConditionalRubyLineHeight => "ConditionalRubyLineHeight",
+            Self::ExistingInterlineSpaceFitsRuby => "ExistingInterlineSpaceFitsRuby",
+        }
+    }
 }
 
 /// `ConditionalRubyLineHeight`：pinyin ruby 先消耗 `available_interline_space`。只有超出的 `line_extras`
@@ -1136,7 +1314,28 @@ pub struct RubyLineHeightDecisionInfo {
     pub max_extra: f32,
     pub line_extras: Vec<f32>,
     pub expanded_line_indices: Vec<i32>,
-    pub reason: String,
+    pub reason: RubyLineHeightReason,
+}
+
+/// inline object 是否改变了 line box。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InlineObjectLineHeightReason {
+    /// 既有行间空间已容纳 inline object。
+    ExistingInterlineSpaceFitsInlineObjects,
+    /// inline object 的 ink 与行间空间碰撞，需要扩张。
+    InlineObjectInterlineCollision,
+}
+
+impl InlineObjectLineHeightReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ExistingInterlineSpaceFitsInlineObjects => {
+                "ExistingInterlineSpaceFitsInlineObjects"
+            }
+            Self::InlineObjectInterlineCollision => "InlineObjectInterlineCollision",
+        }
+    }
 }
 
 /// `InlineObjectInterlineCollision`：baseline-aligned inline object 可先使用 paragraph 既有 inter-line space，
@@ -1156,7 +1355,7 @@ pub struct InlineObjectLineHeightDecisionInfo {
     pub boundary_shifts_after: Vec<f32>,
     pub trailing_extra: f32,
     pub expanded_line_indices: Vec<i32>,
-    pub reason: String,
+    pub reason: InlineObjectLineHeightReason,
 }
 
 /// 行间注 geometry（ruby，ADR 0032）：annotation `text` 位于 line `line_index` 上 `base_range` 的上方。
@@ -1405,6 +1604,28 @@ pub enum BopomofoGlyphRole {
     Neutral,
 }
 
+/// 行间线与示亡号 segment 的切分原因。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecorationSegmentReason {
+    /// 示亡号 span 在一行内完整放下，不分割。
+    MourningSpanKeptUnbroken,
+    /// 示亡号 span 被断行切成多行 segment。
+    MourningSpanSplitAcrossLines,
+    /// 行间线按每个 annotated item 每行一条 segment。
+    InterlinearLinePerAnnotatedItem,
+}
+
+impl DecorationSegmentReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::MourningSpanKeptUnbroken => "MourningSpanKeptUnbroken",
+            Self::MourningSpanSplitAcrossLines => "mourning-span-split-across-lines",
+            Self::InterlinearLinePerAnnotatedItem => "InterlinearLinePerAnnotatedItem",
+        }
+    }
+}
+
 /// box-style decoration（示亡号，ADR 0018）的逐行矩形 segment。vertical bound 沿真实 baseline 紧贴 CJK
 /// character face（字面）——即 line metric 使用的相同 font-declared box（ADR 0002 amendment）。
 /// `open_start`/`open_end` 标记从/向另一行延续的 segment，renderer 不绘制该 frame edge。
@@ -1421,7 +1642,33 @@ pub struct DecorationSegmentInfo {
     pub bottom: f32,
     pub open_start: bool,
     pub open_end: bool,
-    pub reason: String,
+    pub reason: DecorationSegmentReason,
+    /// 相邻行间线相向缩短、使两条 mark 可分辨。
+    pub adjacent_shortened: bool,
+}
+
+/// 着重号是否施加及不施加的原因。
+///
+/// CLREQ 规定标点从不带着重号；非 Han 文本改用斜体，两者都是有意跳过而非退化。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmphasisDotReason {
+    /// 已施加：Han text 上的着重号。
+    EmphasisDotOnHanText,
+    /// CLREQ：标点不带着重号。
+    ClreqNoDotOnPunctuation,
+    /// 非 Han 文本改用斜体，不加点。
+    NoDotOnNonHan,
+}
+
+impl EmphasisDotReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::EmphasisDotOnHanText => "EmphasisDotOnHanText",
+            Self::ClreqNoDotOnPunctuation => "clreq-no-dot-on-punctuation",
+            Self::NoDotOnNonHan => "no-dot-on-non-han",
+        }
+    }
 }
 
 /// 逐 cluster decoration resolution（ADR 0018）。对 `Emphasis`，`applied` cluster 获得一个 dot，其 INK
@@ -1435,7 +1682,7 @@ pub struct DecorationDecisionInfo {
     /// 生成该 decision 的 `DecorationSpan` 声明的范围身份；`None` 表示未声明。
     pub id: Option<u32>,
     pub applied: bool,
-    pub reason: String,
+    pub reason: EmphasisDotReason,
     pub anchor_x: f32,
     pub anchor_y: f32,
     /// 着重号 dot diameter（px）。renderer 以 engine gap geometry 所用的精确尺寸绘制 filled circle，
@@ -1449,7 +1696,7 @@ impl DecorationDecisionInfo {
         kind: DecorationKind,
         id: Option<u32>,
         applied: bool,
-        reason: String,
+        reason: EmphasisDotReason,
     ) -> Self {
         Self {
             cluster_range,
@@ -1469,7 +1716,7 @@ impl DecorationDecisionInfo {
         kind: DecorationKind,
         id: Option<u32>,
         applied: bool,
-        reason: String,
+        reason: EmphasisDotReason,
     ) -> DecorationDecisionInfoBuilder {
         DecorationDecisionInfoBuilder {
             decision: Self::new(cluster_range, source_text, kind, id, applied, reason),
@@ -1497,15 +1744,75 @@ impl DecorationDecisionInfoBuilder {
     }
 }
 
+/// 行边缘 trim 作用于哪一侧。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineEdgeTrimSide {
+    Leading,
+    Trailing,
+    /// 居中锚定标点两侧同时收缩。
+    Both,
+}
+
+impl LineEdgeTrimSide {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Leading => "leading",
+            Self::Trailing => "trailing",
+            Self::Both => "both",
+        }
+    }
+}
+
+/// 行边缘 trim 的规则来源。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineEdgeTrimReason {
+    /// 行首/行尾 autospace gap 被移除。
+    TextAutoSpaceLineEdgeTrim,
+    /// attached inline 虚拟边界的 trailing glue 在行尾被消耗。
+    AttachedInlineVirtualBoundaryLineEndTrim,
+    /// inline object 行尾可丢弃的 glue。
+    InlineObjectLineEndDiscardableGlue,
+    /// 行首方向标点被削成半宽。
+    LineStartHalfWidthPunctuation,
+    /// 行尾方向标点被削成半宽。
+    LineEndHalfWidthPunctuation,
+    /// 居中锤定标点成对压缩。
+    LineStartCenteredPunctuationPairedCompression,
+    /// 居中锤定标点成对压缩。
+    LineEndCenteredPunctuationPairedCompression,
+}
+
+impl LineEdgeTrimReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::TextAutoSpaceLineEdgeTrim => "TextAutoSpaceLineEdgeTrim",
+            Self::AttachedInlineVirtualBoundaryLineEndTrim => {
+                "AttachedInlineVirtualBoundaryLineEndTrim"
+            }
+            Self::InlineObjectLineEndDiscardableGlue => "InlineObjectLineEndDiscardableGlue",
+            Self::LineStartHalfWidthPunctuation => "LineStartHalfWidthPunctuation",
+            Self::LineEndHalfWidthPunctuation => "LineEndHalfWidthPunctuation",
+            Self::LineStartCenteredPunctuationPairedCompression => {
+                "LineStartCenteredPunctuationPairedCompression"
+            }
+            Self::LineEndCenteredPunctuationPairedCompression => {
+                "LineEndCenteredPunctuationPairedCompression"
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineEdgeTrimDecisionInfo {
     pub line_range: TextRange,
     pub cluster_range: TextRange,
-    pub side: String,
+    pub side: LineEdgeTrimSide,
     pub trim_amount: f32,
     pub consumed_before: f32,
     pub natural_glue: f32,
-    pub reason: String,
+    pub reason: LineEdgeTrimReason,
 }
 
 /// 逐行最终空白几何，源记录与行调整保持独立。
@@ -1934,7 +2241,7 @@ pub struct SpacingDecisionInfo {
     pub adjusted_inner_glue: f32,
     pub reduction: f32,
     pub reduction_target_range: TextRange,
-    pub reason: String,
+    pub reason: SpacingReason,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2191,5 +2498,6 @@ pub struct JustificationAllocationInfo {
     pub kind: GlueKind,
     pub priority: i32,
     pub delta: f32,
-    pub reason: String,
+    /// allocation 的原因：调用点显式给出的修饰，或整阶段默认。
+    pub reason: JustificationAllocationReason,
 }

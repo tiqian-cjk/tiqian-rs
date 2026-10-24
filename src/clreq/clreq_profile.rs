@@ -2,6 +2,7 @@
 
 use crate::common::HashSet;
 
+use super::super::core::layout_model::KinsokuPolicySource;
 use super::super::core::text::Text;
 use super::super::core::text_model::{LayoutProfileId, built_in_layout_profiles};
 use super::super::font::font_policy::FontRole;
@@ -467,7 +468,10 @@ pub enum InteriorPunctuationStyle {
 pub struct ResolvedKinsoku {
     pub level: KinsokuLevel,
     pub hanging: HangingPunctuationStyle,
-    pub reason: String,
+    /// 该档位与悬挂风格由谁选定。
+    pub source: KinsokuPolicySource,
+    /// `MeasureAdaptiveKinsoku` 时参与决策的 measure 字数；`Fixed` 时为 `None`。
+    pub adaptive_measure_cells: Option<i32>,
 }
 
 /**
@@ -534,14 +538,8 @@ impl KinsokuMode {
             Self::Fixed { level, hanging } => ResolvedKinsoku {
                 level,
                 hanging,
-                reason: format!(
-                    "Fixed:{level:?}{}",
-                    if hanging != HangingPunctuationStyle::Disabled {
-                        "+Hang"
-                    } else {
-                        ""
-                    }
-                ),
+                source: KinsokuPolicySource::Fixed,
+                adaptive_measure_cells: None,
             },
             Self::MeasureAdaptive {
                 hang_below_em,
@@ -563,15 +561,8 @@ impl KinsokuMode {
                 ResolvedKinsoku {
                     level,
                     hanging,
-                    reason: format!(
-                        "MeasureAdaptiveKinsoku:{}字→{level:?}{}",
-                        measure_em as i32,
-                        if hanging != HangingPunctuationStyle::Disabled {
-                            "+Hang"
-                        } else {
-                            ""
-                        }
-                    ),
+                    source: KinsokuPolicySource::MeasureAdaptiveKinsoku,
+                    adaptive_measure_cells: Some(measure_em as i32),
                 }
             }
         }

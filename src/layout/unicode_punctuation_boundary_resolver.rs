@@ -2,7 +2,10 @@
 
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::geometry::ScalarOffset;
-use super::super::core::layout_model::{Cluster, ContextualKinsokuDecisionInfo};
+use super::super::core::layout_model::{
+    Cluster, ContextualKinsokuDecisionInfo, ContextualKinsokuRule, KinsokuForbiddenPosition,
+    Uax14BoundaryRule,
+};
 use super::super::core::text::Text;
 use super::super::font::font_policy::FontRole;
 use super::super::linebreak::line_break::{
@@ -265,20 +268,17 @@ pub fn resolve_unicode_punctuation_boundaries(
                 range: cluster.range,
                 source_text: source.clone(),
                 cluster_index: index as i32,
-                forbidden_position: "LineStart".to_owned(),
-                reason: if paired_close {
-                    "Uax14WesternPunctuationBoundary:PairedClosingQuote".to_owned()
+                forbidden_position: KinsokuForbiddenPosition::LineStart,
+                reason: ContextualKinsokuRule::Uax14WesternPunctuationBoundary(if paired_close {
+                    Uax14BoundaryRule::PairedClosingQuote
                 } else if matches!(
                     first_dir,
                     QuoteDirection::Final | QuoteDirection::Unresolved
                 ) {
-                    "Uax14WesternPunctuationBoundary:LB19".to_owned()
+                    Uax14BoundaryRule::Lb19
                 } else {
-                    format!(
-                        "Uax14WesternPunctuationBoundary:{}",
-                        rule_for_start(first_class)
-                    )
-                },
+                    rule_for_start(first_class)
+                }),
                 impossible_measure_fallback: None,
             });
         }
@@ -298,17 +298,17 @@ pub fn resolve_unicode_punctuation_boundaries(
                 range: cluster.range,
                 source_text: source,
                 cluster_index: index as i32,
-                forbidden_position: "LineEnd".to_owned(),
-                reason: if paired_open {
-                    "Uax14WesternPunctuationBoundary:PairedOpeningQuote".to_owned()
+                forbidden_position: KinsokuForbiddenPosition::LineEnd,
+                reason: ContextualKinsokuRule::Uax14WesternPunctuationBoundary(if paired_open {
+                    Uax14BoundaryRule::PairedOpeningQuote
                 } else if matches!(
                     last_dir,
                     QuoteDirection::Initial | QuoteDirection::Unresolved
                 ) {
-                    "Uax14WesternPunctuationBoundary:LB19".to_owned()
+                    Uax14BoundaryRule::Lb19
                 } else {
-                    "Uax14WesternPunctuationBoundary:LB14".to_owned()
-                },
+                    Uax14BoundaryRule::Lb14
+                }),
                 impossible_measure_fallback: None,
             });
         }
@@ -368,10 +368,10 @@ fn latin_word(cp: i32) -> bool {
         || (0x30..=0x39).contains(&cp)
         || (0xc0..=0x24f).contains(&cp)
 }
-fn rule_for_start(c: UnicodePunctuationLineBreakClass) -> &'static str {
+fn rule_for_start(c: UnicodePunctuationLineBreakClass) -> Uax14BoundaryRule {
     match c {
-        UnicodePunctuationLineBreakClass::InfixNumericSeparator => "LB15d",
-        _ => "LB13",
+        UnicodePunctuationLineBreakClass::InfixNumericSeparator => Uax14BoundaryRule::Lb15d,
+        _ => Uax14BoundaryRule::Lb13,
     }
 }
 fn cluster_text(text: &Text, c: &Cluster) -> Option<Text> {

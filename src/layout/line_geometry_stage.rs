@@ -4,8 +4,8 @@ use crate::common::HashMap;
 
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    Cluster, Glyph, InlineObjectLineHeightDecisionInfo, LineBox, LineEndReason,
-    MaxLinesDecisionInfo, RubyLineHeightDecisionInfo,
+    Cluster, Glyph, InlineObjectLineHeightDecisionInfo, InlineObjectLineHeightReason, LineBox,
+    LineEndReason, MaxLinesDecisionInfo, RubyLineHeightDecisionInfo, RubyLineHeightReason,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -240,9 +240,9 @@ pub fn resolve_line_vertical_geometry(
                 .filter_map(|(index, value)| (*value > 0.0).then_some(index as i32))
                 .collect(),
             reason: if line_ruby_top_extra.iter().any(|value| *value > 0.0) {
-                "ConditionalRubyLineHeight".to_owned()
+                RubyLineHeightReason::ConditionalRubyLineHeight
             } else {
-                "ExistingInterlineSpaceFitsRuby".to_owned()
+                RubyLineHeightReason::ExistingInterlineSpaceFitsRuby
             },
         });
     let line_object_ascent: Vec<f32> = line_solution
@@ -364,9 +364,9 @@ pub fn resolve_line_vertical_geometry(
                 trailing_extra,
                 expanded_line_indices: expanded.clone(),
                 reason: if expanded.is_empty() && trailing_extra == 0.0 {
-                    "ExistingInterlineSpaceFitsInlineObjects".to_owned()
+                    InlineObjectLineHeightReason::ExistingInterlineSpaceFitsInlineObjects
                 } else {
-                    "InlineObjectInterlineCollision".to_owned()
+                    InlineObjectLineHeightReason::InlineObjectInterlineCollision
                 },
             }
         });

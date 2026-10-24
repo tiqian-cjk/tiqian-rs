@@ -199,7 +199,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
             adjusted_inner_glue: adjustment.adjusted_inner_glue,
             reduction: adjustment.reduction,
             reduction_target_range: adjustment.reduction_target_range,
-            reason: adjustment.reason.clone(),
+            reason: adjustment.reason,
         })
         .chain(
             stage
@@ -269,7 +269,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                             kind: allocation.kind,
                             priority: allocation.priority,
                             delta: allocation.delta,
-                            reason: allocation.reason.name(),
+                            reason: allocation.reason,
                         })
                         .collect(),
                 })

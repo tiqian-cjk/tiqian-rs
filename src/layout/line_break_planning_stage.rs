@@ -13,8 +13,9 @@ use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
-    EmergencyTrackingEligibilityDecisionInfo, EmergencyTrackingReason, Glyph,
-    MandatoryBreakDecisionInfo, RoleOverrideInfo, ShapingDecisionInfo, ZeroWidthBreakDecisionInfo,
+    EmergencyTrackingEligibilityDecisionInfo, EmergencyTrackingReason, FirstLineIndentSource, Glyph,
+    LineSpacingReason, MandatoryBreakDecisionInfo, RoleOverrideInfo, ShapingDecisionInfo,
+    ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -286,11 +287,11 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             spacing_floor: interlinear_spacing_floor,
             floor_applied: mark_floor_binds,
             reason: if requested.is_some() && !mark_floor_binds {
-                "ExplicitLineHeight".to_owned()
+                LineSpacingReason::ExplicitLineHeight
             } else if mark_floor_binds {
-                "InterlinearMarkLineSpacingFloor".to_owned()
+                LineSpacingReason::InterlinearMarkLineSpacingFloor
             } else {
-                "CjkBodyLineHeightDefault".to_owned()
+                LineSpacingReason::CjkBodyLineHeightDefault
             },
         }
     });
@@ -312,9 +313,9 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
     let first_line_indent_decision =
         super::super::core::layout_model::FirstLineIndentDecisionInfo {
             source: if explicit_indent_em.is_some() {
-                "Explicit".to_owned()
+                FirstLineIndentSource::Explicit
             } else {
-                "MeasureAdaptiveFirstLineIndent".to_owned()
+                FirstLineIndentSource::MeasureAdaptiveFirstLineIndent
             },
             measure_em: prep.measure_em,
             threshold_em: indent_policy.short_below_em,
@@ -324,7 +325,8 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         measure_em: prep.measure_em,
         level: prep.resolved_kinsoku.level,
         hanging: prep.resolved_kinsoku.hanging,
-        reason: prep.resolved_kinsoku.reason.clone(),
+        source: prep.resolved_kinsoku.source.clone(),
+        adaptive_measure_cells: prep.resolved_kinsoku.adaptive_measure_cells,
     };
     let hangable_clusters: HashSet<_> = match prep.resolved_kinsoku.hanging {
         super::super::clreq::clreq_profile::HangingPunctuationStyle::Disabled => HashSet::new(),
