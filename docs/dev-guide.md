@@ -58,6 +58,19 @@ cargo run --release --example paragraph-layout-bench -- --replay
 cargo run --release --example paragraph-layout-bench -- --cluster-queries
 ```
 
+分配统计需要单独运行，`--count-allocations` 开启后每次分配都有原子开销，该运行的时间不可用于比较：
+
+```shell
+cargo run --release --example paragraph-layout-bench -- --count-allocations
+cargo run --release --example paragraph-layout-bench -- --annotation-cold --widths 672
+cargo run --release --example paragraph-layout-bench -- --fresh-engine --widths 672
+```
+
+计数覆盖 `engine.layout()` 调用，转发自 mimalloc 的全局分配器计数；
+不包含字体库等原生代码的直接分配，`process_live_bytes` 也不能当作进程总内存。
+`--annotation-cold` 只清空 annotation cache，`--fresh-engine` 每样本换新的 cache 状态并重建引擎，
+两者互斥；它们都不同于动态 shaping，后者由窄宽度和 technical span 触发。
+
 该机器上同一二进制的 `layout` median 在不同时段可相差 10% 以上（实测 2.46 ms 到 2.75 ms），因此：
 
 - 跨运行比较以 `min` 为主，`min` 在同一环境内稳定在约 2% 以内；
