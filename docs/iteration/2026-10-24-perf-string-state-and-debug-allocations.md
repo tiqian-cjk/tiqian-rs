@@ -804,7 +804,22 @@ role 类型已在 P2 的第 5 项改为 `Option<FontRole>`。
 ### 待办：测试与 dump 适配
 
 `src/` 主线已全部完成，`cargo check --lib` 零错误零警告。剩余工作是让测试与
-fixture dump 适配新的公开类型，属于接口变更的连带修复：
+fixture dump 适配新的公开类型，属于接口变更的连带修复。
+
+**状态：已完成。** 见下方「测试与 dump 适配」小节。
+
+- 测试中的 `"CjkText"`、`"CjkInterChar"`、`"CjkPunctuation"` 等字符串字面量
+  不再能与 enum 比较，需改为枚举值；
+- `tests/fixture_layout/dump.rs` 需自行实现名称映射
+  （`src/` 中的 `font_role_name`、`font_metric_source_name` 已随类型化删除），
+  以逐字节复现原有输出文本；
+- 依赖 `notes` 前缀的断言（`technical-break:...`、`justify-fallback:...`）
+  改为读取新字段；
+- `LineDecisionInfo.kind` 变为 `&'static str`，`MaxLinesDecisionInfo::with_reason`
+  等已删除的构造函数调用点需要改用 `new()`。
+
+验收以 `cargo test` 全通过且 golden 文本逐字节一致为准。
+这是类型替换未改变可解释输出的唯一直接证据。
 
 - 测试中的 `"CjkText"`、`"CjkInterChar"`、`"CjkPunctuation"` 等字符串字面量
   不再能与 enum 比较，需改为枚举值；
@@ -1093,3 +1108,131 @@ realloc_calls 全程保持 2,065；debug 记录数全程保持 7,395，未因类
 - `ShapingDecisionInfo.source` / `reason`：含 `format!("WhiteSpace:{:?}:{:?}")` 与
   `format!("WhiteSpaceToSpace:{}")` 的前缀拼接，来源是 backend 返回的决策；
 - `RoleOverrideInfo.source` / `reason`：与第 6 项同理，来自可替换 resolver。
+
+## 测试与 dump 适配
+
+适配范围：`tests/` 全部测试加 `src/` 内单元测试，共 60 个文件、约 470 处编译错误。
+
+### dump 侧的映射策略
+
+`tests/fixture_layout/dump.rs` 需要把枚举还原成类型化之前的文本。
+判定依据是「该枚举的 `Debug` 输出是否等于原文本」：
+
+- **变体名与原文本一致的**（`FontRole`、`PunctuationClass`、`PunctuationAnchor`、
+  `BaselineClass`、`MetricBox`、`LastLineAlignment`、`DecorationKind`、
+  `RepairKind`、`RepairReasonCode`、`ProgressiveBreakTier` 等）直接用 `{:?}`。
+  这类占绝大多数。
+- **原文本是组合形式的**（`KinsokuDecisionInfo` 的
+  `Fixed:{level}{+Hang}` / `MeasureAdaptiveKinsoku:{n}字→{level}{+Hang}`、
+  `ContextualKinsokuRule` 的 `Uax14WesternPunctuationBoundary:{rule}`、
+  `SpacingReason` 的 `AttachedInlineVirtualPunctuationBoundary:{case}`、
+  `DecorationSegmentReason` 的 `;AdjacentInterlinearLineShortening` 后缀）
+  需要 dump 自行拼装。
+- **原文本是小写的**（`AutoSpaceSide` 的 `leading`/`trailing`/`gap`）需要显式映射。
+- **字段被拆成独立成员的**（`DecorationSegmentInfo.adjacent_shortened`、
+  `PunctuationDecisionInfo.geometry_forced_half_width`、
+  `KinsokuDecisionInfo.source` + `adaptive_measure_cells`）
+  需要 dump 重新组合。
+
+映射函数全部放在 `dump.rs` 内，`src/` 不提供同义函数：
+`kinsoku_reason_text`、`preferred_stretch_kind_name`、`segment_reason_text`、
+`glue_kind_name`、`auto_space_side_name`。
+
+### 适配中发现并修复的两处行为回归
+
+适配过程中 golden 出现差异，定位到 P3 引入的两处行为变化，均已修复：
+
+**1. role 限制下的替换原因判定错误**
+提交 `adebc9f` 把 `substitute_for_role` 拆成 `display_text_for_role` 与
+`reason_for_role` 时，新的 `reason_for_role` 把两种情况混在一起：
+非 `CjkPunctuation` 角色一律返回 `RolePreserved`。
+
+原语义是两步判定：先算 policy 层结果，只有「policy 确实要替换码点、而角色又不是
+`CjkPunctuation`」时才回退成 `RolePreserved`。因此：
+
+- `中文`（policy 不替换任何码点）+ `CjkText` 角色 → `PolicyPreserved`
+- `…`（policy 会替换成 `⋯`）+ `LatinText` 角色 → `RolePreserved`
+
+新实现把第一种也判成 `RolePreserved`，导致 golden 里大量 `sub=` 文本从
+`CjkPunctuationGlyphPolicy:...:preserve` 变成
+`CjkRoleGatedDisplaySubstitution:preserve-role-...`。
+
+修复方式：`reason_for_role` 增加 `role` 参数并恢复两步判定；
+新增 `display_text_for_role_with_candidate` 表达「候选显示文本 + role 限制」，
+`policy_display_text` 提升为 `pub`。
+
+**2. dump 的 `display_text` 粒度错误**
+
+同一提交让 dump 从 shaping 记录的 `substitutions` map 取 `display_text`，
+但该 map 以 shaping segment 为 key，而 `FontDecisionInfo` 以 font resolution
+的整段范围为 key。跨字体的段落因此被截断：`44(10):21-38.` 被取成 `(10):`。
+
+修复方式：dump 侧按整段范围重新走一次 role 限制的显示文本解析，
+并为此在 `LayoutDebugStageInput` 加回 `punctuation_glyph_substitutor` 字段
+（该字段在 `origin/` 中存在，P3 移植时丢失）。
+
+**这两处说明 golden 零 diff 不足以证明类型替换无行为变化；它同时也是发现行为回归的手段。**
+
+### 断言删除与语义调整
+
+| 文件 | 调整 | 原因 |
+| --- | --- | --- |
+| `line_adjustment_stage_coverage_test.rs` | `reason != "LineEdgeWordSpaceCollapse"` 改为 `reason != TextAutoSpaceLineEdgeTrim` | 前者的产生点已在提交 `5e90140` 删除，变体不再建立 |
+| `justifier_coverage_test.rs` | 原用任意字符串 `"token"` 作 emergency reason，改为具体变体 `LongMixedAlphaNumericIdentifier` | 类型化后不再能传任意值；断言同步改为完整枚举匹配 |
+| `line_break_repair_engine_test.rs` | `reason.starts_with("TerminalTechnicalEmergencyTracking")` 保留 `starts_with` 形式（走 `name()`） | 该值可能是 `Stage(...)` 或 `Opportunity(...)` 两种，枚举匹配无法覆盖 |
+
+### 批量处理与人工核对的边界
+
+约 470 处错误中，约 380 处是「字符串字面量与枚举比较」的机械模式，
+用脚本批量替换；剩余约 90 处需要判断语义。
+
+批量阶段产生过一次错误：按字段名（`reason`、`kind`、`side`）加 `.name()`
+误伤了 55 处仍是 `String` 的字段（`RoleOverrideInfo.reason`、
+`ShapingDecisionInfo.reason` 等），已全部回退。
+字段名不能作为类型判定依据：`reason` 在不同结构体上分别是
+`String`、`SpacingReason`、`JustificationAllocationReason`、`ContextualKinsokuRule`。
+
+人工核对阶段发现 5 处子代理误判（均为 `.name()` 之外的自创断言）：
+
+- `punctuation_model_coverage_test.rs`：把原 `geometry_source.ends_with("FixedHalfWidth")`
+  改成断言 `PolicyDerived`，并自行加了该断言。原测试只断言「强制半宽」，
+  正确改法是断言 `geometry_forced_half_width: bool`。
+- `line_repair_coverage_test.rs`：额外加了原测试没有的 `RepairDetail::PushedIn` 断言。
+- `line_adjustment_stage_coverage_test.rs`：把排除一个原因改成了排除两个。
+- `justifier_coverage_test.rs`：把任意字符串改成具体变体但未同步断言文本。
+- `line_break_repair_engine_test.rs`：把 `starts_with` 改为精确枚举匹配，
+  而实际值有两种可能。
+
+这 5 处已全部按原断言语义修正。
+
+### 适配后的验证结果
+
+| 项目 | 结果 |
+| --- | --- |
+| `cargo check --all-targets` | 0 错误 |
+| `cargo test` | 1,435 个测试全部通过 |
+| `layout_fixture_golden_test` | 通过，golden 逐字节一致 |
+| alloc_calls（宽度 672） | 55,233 |
+| debug 记录数 | 7,395（全程未变） |
+
+分配次数比 P5 的 55,205 多 28 次，来自 `reason_for_role` 的两步判定与
+`policy_display_text` 在 dump 侧的调用。这 28 次换来的是行为正确性，
+且只发生在 debug 汇编路径。
+
+剩余警告均为适配前既有的测试辅助代码问题
+（`deterministic_stub_font_backend.rs` 中未被使用的构造函数与辅助函数），
+与本次改动无关。
+
+## 后续：运行时事实与 debug 结构的分离
+
+本轮收尾时发现，`LayoutResult.debug` 同时承担诊断记录与运行时数据读取两件事。
+逐字段核查后确认，`core/layout_queries.rs`、`core/layout_paint_bounds.rs` 与
+`core/layout_result_replay_index.rs` 共读取 10 个 debug 集合里的几何数值。
+
+这件事已拆为独立迭代：
+[`2026-10-24-refactor-runtime-facts-out-of-debug.md`](2026-10-24-refactor-runtime-facts-out-of-debug.md)，
+内容包括消费点清单、上游决策记录的计算依赖、新字段设计与分阶段验证。
+其中也记录了 `MetricDecisionInfo.reason` 的单项测量数据。
+
+本轮的第 5–9 项（来自可替换 trait 的 reason 文本）在那份文档里标为待重审：
+若默认构建不再构造 `debug`，这些字段的成本只发生在诊断构建中。
