@@ -5,6 +5,7 @@ maxWidth: 1024.0
 size 748.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
 line[0] 0-47 natural=756.0 adjusted=748.0 visual=748.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=748.0 occupied=0.0,0.0,748.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '彻' adv=16.0
 cluster 2-3 '夜' adv=16.0
@@ -93,6 +94,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 748.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
 line[0] 0-47 natural=756.0 adjusted=748.0 visual=748.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=748.0 occupied=0.0,0.0,748.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '彻' adv=16.0
 cluster 2-3 '夜' adv=16.0
@@ -181,6 +183,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 748.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
 line[0] 0-47 natural=756.0 adjusted=748.0 visual=748.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=748.0 occupied=0.0,0.0,748.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '彻' adv=16.0
 cluster 2-3 '夜' adv=16.0

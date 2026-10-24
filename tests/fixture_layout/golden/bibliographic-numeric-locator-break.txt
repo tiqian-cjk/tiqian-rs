@@ -7,6 +7,8 @@ kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:
 break-opportunity 6-19 source='44(10):21-38.' offsets=8,13 reason=BibliographicNumericLocatorBreak
 line[0] 0-13 natural=210.0 adjusted=210.0 visual=224.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@5+3.3,CjkInterChar@0+1.8,CjkInterChar@1+1.8,CjkInterChar@2+1.8,CjkInterChar@3+1.8,CjkInterChar@4+1.8,CjkInterChar@5+1.8
 line[1] 13-19 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=17.8
 cluster 1-2 '文' adv=17.8
 cluster 2-3 '中' adv=17.8
@@ -34,6 +36,8 @@ kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:
 break-opportunity 6-19 source='44(10):21-38.' offsets=8,13 reason=BibliographicNumericLocatorBreak
 line[0] 0-13 natural=210.0 adjusted=210.0 visual=224.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@5+3.3,CjkInterChar@0+1.8,CjkInterChar@1+1.8,CjkInterChar@2+1.8,CjkInterChar@3+1.8,CjkInterChar@4+1.8,CjkInterChar@5+1.8
 line[1] 13-19 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=17.8
 cluster 1-2 '文' adv=17.8
 cluster 2-3 '中' adv=17.8
@@ -61,6 +65,8 @@ kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:
 break-opportunity 6-19 source='44(10):21-38.' offsets=8,13 reason=BibliographicNumericLocatorBreak
 line[0] 0-13 natural=210.0 adjusted=210.0 visual=224.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@5+3.3,CjkInterChar@0+1.8,CjkInterChar@1+1.8,CjkInterChar@2+1.8,CjkInterChar@3+1.8,CjkInterChar@4+1.8,CjkInterChar@5+1.8
 line[1] 13-19 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=17.8
 cluster 1-2 '文' adv=17.8
 cluster 2-3 '中' adv=17.8

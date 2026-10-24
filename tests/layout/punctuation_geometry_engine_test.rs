@@ -676,11 +676,14 @@ fn inline_stop_compression_knob_limits_push_in_capacity() {
 
 #[test]
 fn sino_western_gap_shrink_floors_at_eighth_em() {
+    let mut policy = AutoSpacePolicy::clreq();
+    policy.cjk_latin = tiqian::clreq::clreq_profile::AutoSpaceMode::Replace;
+    policy.cjk_digit = tiqian::clreq::clreq_profile::AutoSpaceMode::Replace;
     let result = fixed_basic_layout(
         "中文 AB 中。",
         88.0,
         AdjustmentStylePolicy::default(),
-        AutoSpacePolicy::clreq(),
+        policy,
         false,
     );
 

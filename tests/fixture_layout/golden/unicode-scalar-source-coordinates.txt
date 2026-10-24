@@ -8,6 +8,10 @@ line[0] 0-10 natural=160.0 adjusted=152.0 visual=160.0 repair=- candidates=- jus
 line[1] 10-20 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=deficit=8.0->8.0
 line[2] 20-27 natural=112.0 adjusted=104.0 visual=104.0 repair=- candidates=- justify=deficit=56.0->56.0
 line[3] 27-35 natural=128.0 adjusted=120.0 visual=120.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
+line-geometry[2] alignment=104.0 occupied=0.0,48.0,104.0,72.0
+line-geometry[3] alignment=120.0 occupied=0.0,72.0,120.0,96.0
 cluster 0-1 '样' adv=17.3
 cluster 1-2 '例' adv=17.3
 cluster 2-3 '：' adv=17.3
@@ -84,6 +88,10 @@ line[0] 0-10 natural=160.0 adjusted=152.0 visual=160.0 repair=- candidates=- jus
 line[1] 10-20 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=deficit=8.0->8.0
 line[2] 20-27 natural=112.0 adjusted=104.0 visual=104.0 repair=- candidates=- justify=deficit=56.0->56.0
 line[3] 27-35 natural=128.0 adjusted=120.0 visual=120.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
+line-geometry[2] alignment=104.0 occupied=0.0,48.0,104.0,72.0
+line-geometry[3] alignment=120.0 occupied=0.0,72.0,120.0,96.0
 cluster 0-1 '样' adv=17.3
 cluster 1-2 '例' adv=17.3
 cluster 2-3 '：' adv=17.3
@@ -160,6 +168,10 @@ line[0] 0-10 natural=160.0 adjusted=152.0 visual=160.0 repair=- candidates=- jus
 line[1] 10-20 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=deficit=8.0->8.0
 line[2] 20-27 natural=112.0 adjusted=104.0 visual=104.0 repair=- candidates=- justify=deficit=56.0->56.0
 line[3] 27-35 natural=128.0 adjusted=120.0 visual=120.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
+line-geometry[2] alignment=104.0 occupied=0.0,48.0,104.0,72.0
+line-geometry[3] alignment=120.0 occupied=0.0,72.0,120.0,96.0
 cluster 0-1 '样' adv=17.3
 cluster 1-2 '例' adv=17.3
 cluster 2-3 '：' adv=17.3

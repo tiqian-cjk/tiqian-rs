@@ -62,7 +62,7 @@ fn cjk_line_box_uses_font_declared_ideographic_typo_metrics() {
 }
 
 #[test]
-fn auto_space_gap_at_line_end_is_trimmed_like_any_line_edge_blank() {
+fn authored_space_at_line_end_is_removed_without_changing_the_internal_space() {
     let result =
         ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
             .build()
@@ -79,16 +79,20 @@ fn auto_space_gap_at_line_end_is_trimmed_like_any_line_edge_blank() {
                 .build(),
             );
 
-    assert_eq!(66.0, result.lines[0].adjusted_width);
+    assert_eq!(72.0, result.lines[0].adjusted_width);
     let collapse = result
         .debug
-        .line_edge_trim_decisions
+        .line_white_space_adjustments
         .iter()
-        .find(|decision| decision.reason == "LineEdgeWordSpaceCollapse")
+        .find(|decision| result.clusters[decision.adjustment.cluster_index as usize].range == text_range(5, 6))
         .unwrap();
-    assert_eq!("trailing", collapse.side);
-    assert_eq!(2.0, collapse.trim_amount);
-    assert_eq!(text_range(5, 6), collapse.cluster_range);
+    assert_eq!(tiqian::layout::white_space::LineWhiteSpaceAction::RemoveEnd, collapse.adjustment.action);
+    assert_eq!(0.0, collapse.adjustment.occupied_advance);
+    let internal = result.clusters.iter().find(|cluster| cluster.range == text_range(2, 3)).unwrap();
+    assert_eq!(12.0, internal.advance);
+    let natural: f32 = result.glyph_runs.iter().flat_map(|run| &run.glyphs)
+        .filter(|glyph| glyph.cluster_range == internal.range).map(|glyph| glyph.advance).sum();
+    assert_eq!(8.0, natural);
 }
 
 #[test]

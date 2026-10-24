@@ -54,7 +54,7 @@ fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
 
 #[test]
 fn one_typed_space_becomes_one_autospace_gap() {
-    let result = layout("中文 CJK 段落");
+    let result = layout_with_mode("中文 CJK 段落", AutoSpaceMode::Replace);
     assert!(
         result
             .clusters
@@ -75,7 +75,7 @@ fn one_typed_space_becomes_one_autospace_gap() {
 
 #[test]
 fn auto_space_replaces_typed_space_at_cjk_latin_boundary() {
-    let result = layout("中文 CJK 段落");
+    let result = layout_with_mode("中文 CJK 段落", AutoSpaceMode::Replace);
     let spaces: Vec<_> = result
         .clusters
         .iter()
@@ -108,7 +108,7 @@ fn auto_space_does_not_shrink_spaces_between_latin_words() {
 }
 
 #[test]
-fn numbered_labels_have_different_typed_space_widths_before_cjk_and_latin() {
+fn numbered_labels_keep_the_same_natural_space_before_cjk_and_latin() {
     let mut widths = Vec::new();
     for auto_space_enabled in [true, false] {
         let mut builder =
@@ -118,7 +118,7 @@ fn numbered_labels_have_different_typed_space_widths_before_cjk_and_latin() {
         }
         let mut engine = builder.build();
         for (text, expected_width) in [
-            ("01 基础组件", if auto_space_enabled { 2.0 } else { 8.0 }),
+            ("01 基础组件", 8.0),
             ("02 Input 输入框", 8.0),
         ] {
             let result = engine.layout(
@@ -145,19 +145,12 @@ fn numbered_labels_have_different_typed_space_widths_before_cjk_and_latin() {
             assert_eq!(expected_width, occupied.width(), "{text}");
             let decision = result.debug.auto_space_decisions.iter()
                 .find(|decision| decision.cluster_range == space_range);
-            if auto_space_enabled && text == "01 基础组件" {
-                let decision = decision.unwrap();
-                assert_eq!("Replace", decision.mode);
-                assert_eq!("gap", decision.side);
-                assert_eq!(6.0, decision.total_reduction);
-            } else {
-                assert!(decision.is_none(), "{text}");
-            }
+            assert!(decision.is_none(), "{text}");
             println!("{text}: auto_space={auto_space_enabled}, space_width={}", space.advance);
             widths.push(space.advance);
         }
     }
-    assert_ne!(widths[0], widths[1]);
+    assert_eq!(widths[0], widths[1]);
     assert_eq!(widths[2], widths[3]);
 }
 
@@ -192,37 +185,37 @@ fn auto_space_disabled_keeps_typed_spaces_at_half_em() {
 }
 
 #[test]
-fn two_typed_spaces_at_boundary_still_collapse_to_one_gap() {
+fn two_typed_spaces_default_collapse_keeps_one_natural_space() {
     let result = layout("中文  CJK 段落");
     assert_eq!(
-        2.0,
+        8.0,
         result
             .clusters
             .iter()
-            .find(|cluster| cluster.text == "  ")
+            .find(|cluster| cluster.range == text_range(2, 3))
             .unwrap()
             .advance
     );
     assert_eq!(
-        2.0,
+        0.0,
         result
             .clusters
             .iter()
-            .find(|cluster| cluster.text == " ")
+            .find(|cluster| cluster.range == text_range(3, 4))
             .unwrap()
             .advance
     );
 }
 
 #[test]
-fn three_typed_spaces_still_one_gap() {
+fn three_typed_spaces_default_collapse_keeps_source_ranges() {
     let result = layout("中文   CJK段落");
     assert_eq!(
-        2.0,
+        8.0,
         result
             .clusters
             .iter()
-            .find(|cluster| cluster.text == "   ")
+            .find(|cluster| cluster.range == text_range(2, 3))
             .unwrap()
             .advance
     );
@@ -362,7 +355,7 @@ fn autospace_does_not_fire_before_slash_led_latin_technical_run() {
 
 #[test]
 fn autospace_still_fires_between_latin_and_cjk_text_even_with_punctuation_nearby() {
-    let decisions = &layout("中文 shaping 之后").debug.auto_space_decisions;
+    let decisions = &layout_with_mode("中文 shaping 之后", AutoSpaceMode::Replace).debug.auto_space_decisions;
     assert_eq!(2, decisions.len());
     assert!(
         decisions
@@ -456,6 +449,13 @@ fn letter_and_digit_boundaries_follow_separate_profile_modes() {
 }
 
 struct PhaseTwoAutoSpace(AutoSpaceMode);
+
+fn layout_with_mode(text: &str, mode: AutoSpaceMode) -> tiqian::core::layout_model::LayoutResult {
+    ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(mode))).build().layout(
+            LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(320.0))
+                .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build()).build())
+}
 
 impl ClreqProfileResolver for PhaseTwoAutoSpace {
     fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {

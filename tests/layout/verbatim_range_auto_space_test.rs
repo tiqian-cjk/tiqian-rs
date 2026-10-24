@@ -1,12 +1,32 @@
 use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::geometry::{LayoutConstraints, TextRange, text_range};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
+use tiqian::core::text_model::{LayoutInput, LayoutProfileId, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
 
-fn layout(text: &str, suppressed: Vec<TextRange>) -> tiqian::core::layout_model::LayoutResult {
+struct AutoSpaceProfile(AutoSpaceMode);
+
+impl ClreqProfileResolver for AutoSpaceProfile {
+    fn resolve(&self, _: &LayoutProfileId) -> ClreqProfile {
+        let mut profile = ClreqProfile::mainland_horizontal();
+        profile.auto_space = AutoSpacePolicy {
+            cjk_latin: self.0,
+            cjk_digit: self.0,
+            ..AutoSpacePolicy::default()
+        };
+        profile
+    }
+}
+
+fn layout(
+    text: &str,
+    suppressed: Vec<TextRange>,
+    mode: AutoSpaceMode,
+) -> tiqian::core::layout_model::LayoutResult {
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+        .clreq_profile_resolver(Box::new(AutoSpaceProfile(mode)))
         .build()
         .layout(
             LayoutInput::builder(
@@ -27,7 +47,7 @@ fn layout(text: &str, suppressed: Vec<TextRange>) -> tiqian::core::layout_model:
 #[test]
 fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace() {
     let text = "跑print你好print跑";
-    let control = layout(text, Vec::new());
+    let control = layout(text, Vec::new(), AutoSpaceMode::Insert);
     assert_eq!(
         4,
         control
@@ -38,7 +58,7 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
             .count()
     );
 
-    let result = layout(text, vec![text_range(1, 13)]);
+    let result = layout(text, vec![text_range(1, 13)], AutoSpaceMode::Insert);
     assert_eq!(
         2,
         result
@@ -63,7 +83,7 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
 #[test]
 fn authored_space_inside_verbatim_range_is_not_normalized() {
     let text = "跑a 你b跑";
-    let control = layout(text, Vec::new());
+    let control = layout(text, Vec::new(), AutoSpaceMode::Replace);
     assert_eq!(
         1,
         control
@@ -76,7 +96,7 @@ fn authored_space_inside_verbatim_range_is_not_normalized() {
             .count()
     );
 
-    let result = layout(text, vec![text_range(1, 5)]);
+    let result = layout(text, vec![text_range(1, 5)], AutoSpaceMode::Replace);
     assert_eq!(
         0,
         result

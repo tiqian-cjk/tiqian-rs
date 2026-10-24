@@ -5,6 +5,7 @@ maxWidth: 192.0
 size 192.0x24.0
 kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:12字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=192.0 visual=192.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=192.0 occupied=0.0,0.0,192.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '‘' adv=16.0
 cluster 2-8 'that’s' adv=96.0
@@ -43,6 +44,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 192.0x24.0
 kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:12字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=192.0 visual=192.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=192.0 occupied=0.0,0.0,192.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '‘' adv=16.0
 cluster 2-8 'that’s' adv=96.0
@@ -81,6 +83,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 192.0x24.0
 kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:12字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=192.0 visual=192.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=192.0 occupied=0.0,0.0,192.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '‘' adv=16.0
 cluster 2-8 'that’s' adv=96.0

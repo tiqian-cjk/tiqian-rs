@@ -12,39 +12,52 @@ break-opportunity 104-121 source='swift_dynamicCast' offsets=105,106,107,108,109
 break-opportunity 104-121 source='swift_dynamicCast' offsets=104 tier=WholeToken reason=ProgressiveTechnicalWholeTokenWrap
 tracking-eligibility 67-86 source='NSJSONSerialization' reason=CurrentLineTechnicalTierRejection:Structural
 tracking-eligibility 104-121 source='swift_dynamicCast' reason=CurrentLineTechnicalTierRejection:Structural
-line[0] 0-35 natural=532.0 adjusted=524.0 visual=579.0 repair=- candidates=- justify=deficit=55.0->0.0 CjkLatinSpace@5+3.3,CjkLatinSpace@27+3.3,CjkInterChar@6+2.7,CjkInterChar@7+2.7,CjkInterChar@8+2.7,CjkInterChar@9+2.7,CjkInterChar@10+2.7,CjkInterChar@11+2.7,CjkInterChar@12+2.7,CjkInterChar@13+2.7,CjkInterChar@14+2.7,CjkInterChar@15+2.7,CjkInterChar@28+2.7,CjkInterChar@29+2.7,CjkInterChar@30+2.7,CjkInterChar@31+2.7,CjkInterChar@32+2.7,CjkInterChar@33+2.7,CjkInterChar@5+2.7,CjkInterChar@27+2.7
-line[1] 35-74 natural=574.0 adjusted=574.0 visual=579.0 repair=- candidates=- justify=deficit=5.0->0.0 CjkLatinSpace@49+1.7,CjkLatinSpace@55+1.7,CjkLatinSpace@66+1.7
-line[2] 74-112 natural=580.0 adjusted=579.0 visual=579.0 repair=PushIn(LineAdjustmentPushIn shrink=1.0) candidates=PushIn+ justify=-
-line[3] 112-129 natural=258.0 adjusted=250.0 visual=250.0 repair=- candidates=- justify=-
+line[0] 0-35 natural=544.0 adjusted=536.0 visual=579.0 repair=- candidates=- justify=deficit=43.0->0.0 CjkInterChar@6+2.4,CjkInterChar@7+2.4,CjkInterChar@8+2.4,CjkInterChar@9+2.4,CjkInterChar@10+2.4,CjkInterChar@11+2.4,CjkInterChar@12+2.4,CjkInterChar@13+2.4,CjkInterChar@14+2.4,CjkInterChar@15+2.4,CjkInterChar@28+2.4,CjkInterChar@29+2.4,CjkInterChar@30+2.4,CjkInterChar@31+2.4,CjkInterChar@32+2.4,CjkInterChar@33+2.4,CjkInterChar@5+2.4,CjkInterChar@27+2.4
+line[1] 35-73 natural=576.0 adjusted=576.0 visual=579.0 repair=- candidates=- justify=deficit=3.0->0.0 EmergencyGraphemeTracking@67+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@68+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@69+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@70+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@71+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural)
+line[2] 73-110 natural=576.0 adjusted=576.0 visual=579.0 repair=- candidates=- justify=deficit=3.0->0.0 EmergencyGraphemeTracking@104+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@105+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@106+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@107+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@108+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural)
+line[3] 110-129 natural=296.0 adjusted=288.0 visual=288.0 repair=- candidates=- justify=-
+whitespace 5-6 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 46-47 kind=Space action=Preserve
+whitespace 49-50 kind=Space action=Preserve
+whitespace 55-56 kind=Space action=Preserve
+whitespace 66-67 kind=Space action=Preserve
+whitespace 86-87 kind=Space action=Preserve
+whitespace 91-92 kind=Space action=Preserve
+whitespace 121-122 kind=Space action=Preserve
+line-geometry[0] alignment=579.0 occupied=0.0,0.0,579.0,24.0
+line-geometry[1] alignment=579.0 occupied=0.0,24.0,579.0,48.0
+line-geometry[2] alignment=579.0 occupied=0.0,48.0,579.0,72.0
+line-geometry[3] alignment=288.0 occupied=0.0,72.0,288.0,96.0
 cluster 0-5 'Swift' adv=80.0
-cluster 5-6 ' ' adv=8.0
-cluster 6-7 '这' adv=18.7
-cluster 7-8 '边' adv=18.7
-cluster 8-9 '是' adv=18.7
-cluster 9-10 '我' adv=18.7
-cluster 10-11 '最' adv=18.7
-cluster 11-12 '有' adv=18.7
-cluster 12-13 '体' adv=18.7
-cluster 13-14 '感' adv=18.7
-cluster 14-15 '的' adv=18.7
-cluster 15-16 '。' adv=18.7
+cluster 5-6 ' ' adv=10.4
+cluster 6-7 '这' adv=18.4
+cluster 7-8 '边' adv=18.4
+cluster 8-9 '是' adv=18.4
+cluster 9-10 '我' adv=18.4
+cluster 10-11 '最' adv=18.4
+cluster 11-12 '有' adv=18.4
+cluster 12-13 '体' adv=18.4
+cluster 13-14 '感' adv=18.4
+cluster 14-15 '的' adv=18.4
+cluster 15-16 '。' adv=18.4
 cluster 16-20 'JSON' adv=64.0
 cluster 20-27 'Decoder' adv=112.0
-cluster 27-28 ' ' adv=8.0
-cluster 28-29 '慢' adv=18.7
-cluster 29-30 '是' adv=18.7
-cluster 30-31 '个' adv=18.7
-cluster 31-32 '老' adv=18.7
-cluster 32-33 '问' adv=18.7
-cluster 33-34 '题' adv=18.7
+cluster 27-28 ' ' adv=10.4
+cluster 28-29 '慢' adv=18.4
+cluster 29-30 '是' adv=18.4
+cluster 30-31 '个' adv=18.4
+cluster 31-32 '老' adv=18.4
+cluster 32-33 '问' adv=18.4
+cluster 33-34 '题' adv=18.4
 cluster 34-35 '，' adv=8.0
 cluster 35-46 'SR-6252[36]' adv=176.0
 cluster 46-47 ' ' adv=8.0
 cluster 47-48 '那' adv=16.0
 cluster 48-49 '个' adv=16.0
-cluster 49-50 ' ' adv=3.7
+cluster 49-50 ' ' adv=8.0
 cluster 50-55 'issue' adv=80.0
-cluster 55-56 ' ' adv=3.7
+cluster 55-56 ' ' adv=8.0
 cluster 56-57 '里' adv=16.0
 cluster 57-58 '挖' adv=16.0
 cluster 58-59 '出' adv=16.0
@@ -55,12 +68,12 @@ cluster 62-63 '是' adv=16.0
 cluster 63-64 '底' adv=16.0
 cluster 64-65 '层' adv=16.0
 cluster 65-66 '走' adv=16.0
-cluster 66-67 ' ' adv=3.7
-cluster 67-68 'N' adv=16.0
-cluster 68-69 'S' adv=16.0
-cluster 69-70 'J' adv=16.0
-cluster 70-71 'S' adv=16.0
-cluster 71-72 'O' adv=16.0
+cluster 66-67 ' ' adv=8.0
+cluster 67-68 'N' adv=16.6
+cluster 68-69 'S' adv=16.6
+cluster 69-70 'J' adv=16.6
+cluster 70-71 'S' adv=16.6
+cluster 71-72 'O' adv=16.6
 cluster 72-73 'N' adv=16.0
 cluster 73-74 'S' adv=16.0
 cluster 74-75 'e' adv=16.0
@@ -75,19 +88,19 @@ cluster 82-83 't' adv=16.0
 cluster 83-84 'i' adv=16.0
 cluster 84-85 'o' adv=16.0
 cluster 85-86 'n' adv=16.0
-cluster 86-87 ' ' adv=2.0
+cluster 86-87 ' ' adv=8.0
 cluster 87-88 '再' adv=16.0
 cluster 88-89 '桥' adv=16.0
 cluster 89-90 '接' adv=16.0
 cluster 90-91 '回' adv=16.0
-cluster 91-92 ' ' adv=2.0
+cluster 91-92 ' ' adv=8.0
 cluster 92-103 'Objective-C' adv=176.0
-cluster 103-104 '，' adv=15.0
-cluster 104-105 's' adv=16.0
-cluster 105-106 'w' adv=16.0
-cluster 106-107 'i' adv=16.0
-cluster 107-108 'f' adv=16.0
-cluster 108-109 't' adv=16.0
+cluster 103-104 '，' adv=16.0
+cluster 104-105 's' adv=16.6
+cluster 105-106 'w' adv=16.6
+cluster 106-107 'i' adv=16.6
+cluster 107-108 'f' adv=16.6
+cluster 108-109 't' adv=16.6
 cluster 109-110 '_' adv=16.0
 cluster 110-111 'd' adv=16.0
 cluster 111-112 'y' adv=16.0
@@ -100,7 +113,7 @@ cluster 117-118 'C' adv=16.0
 cluster 118-119 'a' adv=16.0
 cluster 119-120 's' adv=16.0
 cluster 120-121 't' adv=16.0
-cluster 121-122 ' ' adv=2.0
+cluster 121-122 ' ' adv=8.0
 cluster 122-123 '吃' adv=16.0
 cluster 123-124 '掉' adv=16.0
 cluster 124-125 '大' adv=16.0
@@ -212,18 +225,10 @@ punct 15-16 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=
 punct 34-35 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 103-104 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 128-129 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
-geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=2.7 resolved=18.7
+geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=2.4 resolved=18.4
 geom 34-35 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-geom 103-104 body=8.0 lead=0.0/0.0 trail=1.0/8.0 justify=0.0 resolved=15.0
+geom 103-104 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 128-129 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-autospace 5-6 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 27-28 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 49-50 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 55-56 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 66-67 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 86-87 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 91-92 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 121-122 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 edgetrim 34-35 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 edgetrim 128-129 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
@@ -238,39 +243,52 @@ break-opportunity 104-121 source='swift_dynamicCast' offsets=105,106,107,108,109
 break-opportunity 104-121 source='swift_dynamicCast' offsets=104 tier=WholeToken reason=ProgressiveTechnicalWholeTokenWrap
 tracking-eligibility 67-86 source='NSJSONSerialization' reason=CurrentLineTechnicalTierRejection:Structural
 tracking-eligibility 104-121 source='swift_dynamicCast' reason=CurrentLineTechnicalTierRejection:Structural
-line[0] 0-35 natural=532.0 adjusted=524.0 visual=579.0 repair=- candidates=- justify=deficit=55.0->0.0 CjkLatinSpace@5+3.3,CjkLatinSpace@27+3.3,CjkInterChar@6+2.7,CjkInterChar@7+2.7,CjkInterChar@8+2.7,CjkInterChar@9+2.7,CjkInterChar@10+2.7,CjkInterChar@11+2.7,CjkInterChar@12+2.7,CjkInterChar@13+2.7,CjkInterChar@14+2.7,CjkInterChar@15+2.7,CjkInterChar@28+2.7,CjkInterChar@29+2.7,CjkInterChar@30+2.7,CjkInterChar@31+2.7,CjkInterChar@32+2.7,CjkInterChar@33+2.7,CjkInterChar@5+2.7,CjkInterChar@27+2.7
-line[1] 35-74 natural=574.0 adjusted=574.0 visual=579.0 repair=- candidates=- justify=deficit=5.0->0.0 CjkLatinSpace@49+1.7,CjkLatinSpace@55+1.7,CjkLatinSpace@66+1.7
-line[2] 74-112 natural=580.0 adjusted=579.0 visual=579.0 repair=PushIn(LineAdjustmentPushIn shrink=1.0) candidates=PushIn+ justify=-
-line[3] 112-129 natural=258.0 adjusted=250.0 visual=250.0 repair=- candidates=- justify=-
+line[0] 0-35 natural=544.0 adjusted=536.0 visual=579.0 repair=- candidates=- justify=deficit=43.0->0.0 CjkInterChar@6+2.4,CjkInterChar@7+2.4,CjkInterChar@8+2.4,CjkInterChar@9+2.4,CjkInterChar@10+2.4,CjkInterChar@11+2.4,CjkInterChar@12+2.4,CjkInterChar@13+2.4,CjkInterChar@14+2.4,CjkInterChar@15+2.4,CjkInterChar@28+2.4,CjkInterChar@29+2.4,CjkInterChar@30+2.4,CjkInterChar@31+2.4,CjkInterChar@32+2.4,CjkInterChar@33+2.4,CjkInterChar@5+2.4,CjkInterChar@27+2.4
+line[1] 35-73 natural=576.0 adjusted=576.0 visual=579.0 repair=- candidates=- justify=deficit=3.0->0.0 EmergencyGraphemeTracking@67+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@68+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@69+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@70+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@71+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural)
+line[2] 73-110 natural=576.0 adjusted=576.0 visual=579.0 repair=- candidates=- justify=deficit=3.0->0.0 EmergencyGraphemeTracking@104+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@105+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@106+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@107+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@108+0.6(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural)
+line[3] 110-129 natural=296.0 adjusted=288.0 visual=288.0 repair=- candidates=- justify=-
+whitespace 5-6 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 46-47 kind=Space action=Preserve
+whitespace 49-50 kind=Space action=Preserve
+whitespace 55-56 kind=Space action=Preserve
+whitespace 66-67 kind=Space action=Preserve
+whitespace 86-87 kind=Space action=Preserve
+whitespace 91-92 kind=Space action=Preserve
+whitespace 121-122 kind=Space action=Preserve
+line-geometry[0] alignment=579.0 occupied=0.0,0.0,579.0,24.0
+line-geometry[1] alignment=579.0 occupied=0.0,24.0,579.0,48.0
+line-geometry[2] alignment=579.0 occupied=0.0,48.0,579.0,72.0
+line-geometry[3] alignment=288.0 occupied=0.0,72.0,288.0,96.0
 cluster 0-5 'Swift' adv=80.0
-cluster 5-6 ' ' adv=8.0
-cluster 6-7 '这' adv=18.7
-cluster 7-8 '边' adv=18.7
-cluster 8-9 '是' adv=18.7
-cluster 9-10 '我' adv=18.7
-cluster 10-11 '最' adv=18.7
-cluster 11-12 '有' adv=18.7
-cluster 12-13 '体' adv=18.7
-cluster 13-14 '感' adv=18.7
-cluster 14-15 '的' adv=18.7
-cluster 15-16 '。' adv=18.7
+cluster 5-6 ' ' adv=10.4
+cluster 6-7 '这' adv=18.4
+cluster 7-8 '边' adv=18.4
+cluster 8-9 '是' adv=18.4
+cluster 9-10 '我' adv=18.4
+cluster 10-11 '最' adv=18.4
+cluster 11-12 '有' adv=18.4
+cluster 12-13 '体' adv=18.4
+cluster 13-14 '感' adv=18.4
+cluster 14-15 '的' adv=18.4
+cluster 15-16 '。' adv=18.4
 cluster 16-20 'JSON' adv=64.0
 cluster 20-27 'Decoder' adv=112.0
-cluster 27-28 ' ' adv=8.0
-cluster 28-29 '慢' adv=18.7
-cluster 29-30 '是' adv=18.7
-cluster 30-31 '个' adv=18.7
-cluster 31-32 '老' adv=18.7
-cluster 32-33 '问' adv=18.7
-cluster 33-34 '题' adv=18.7
+cluster 27-28 ' ' adv=10.4
+cluster 28-29 '慢' adv=18.4
+cluster 29-30 '是' adv=18.4
+cluster 30-31 '个' adv=18.4
+cluster 31-32 '老' adv=18.4
+cluster 32-33 '问' adv=18.4
+cluster 33-34 '题' adv=18.4
 cluster 34-35 '，' adv=8.0
 cluster 35-46 'SR-6252[36]' adv=176.0
 cluster 46-47 ' ' adv=8.0
 cluster 47-48 '那' adv=16.0
 cluster 48-49 '个' adv=16.0
-cluster 49-50 ' ' adv=3.7
+cluster 49-50 ' ' adv=8.0
 cluster 50-55 'issue' adv=80.0
-cluster 55-56 ' ' adv=3.7
+cluster 55-56 ' ' adv=8.0
 cluster 56-57 '里' adv=16.0
 cluster 57-58 '挖' adv=16.0
 cluster 58-59 '出' adv=16.0
@@ -281,12 +299,12 @@ cluster 62-63 '是' adv=16.0
 cluster 63-64 '底' adv=16.0
 cluster 64-65 '层' adv=16.0
 cluster 65-66 '走' adv=16.0
-cluster 66-67 ' ' adv=3.7
-cluster 67-68 'N' adv=16.0
-cluster 68-69 'S' adv=16.0
-cluster 69-70 'J' adv=16.0
-cluster 70-71 'S' adv=16.0
-cluster 71-72 'O' adv=16.0
+cluster 66-67 ' ' adv=8.0
+cluster 67-68 'N' adv=16.6
+cluster 68-69 'S' adv=16.6
+cluster 69-70 'J' adv=16.6
+cluster 70-71 'S' adv=16.6
+cluster 71-72 'O' adv=16.6
 cluster 72-73 'N' adv=16.0
 cluster 73-74 'S' adv=16.0
 cluster 74-75 'e' adv=16.0
@@ -301,19 +319,19 @@ cluster 82-83 't' adv=16.0
 cluster 83-84 'i' adv=16.0
 cluster 84-85 'o' adv=16.0
 cluster 85-86 'n' adv=16.0
-cluster 86-87 ' ' adv=2.0
+cluster 86-87 ' ' adv=8.0
 cluster 87-88 '再' adv=16.0
 cluster 88-89 '桥' adv=16.0
 cluster 89-90 '接' adv=16.0
 cluster 90-91 '回' adv=16.0
-cluster 91-92 ' ' adv=2.0
+cluster 91-92 ' ' adv=8.0
 cluster 92-103 'Objective-C' adv=176.0
-cluster 103-104 '，' adv=15.0
-cluster 104-105 's' adv=16.0
-cluster 105-106 'w' adv=16.0
-cluster 106-107 'i' adv=16.0
-cluster 107-108 'f' adv=16.0
-cluster 108-109 't' adv=16.0
+cluster 103-104 '，' adv=16.0
+cluster 104-105 's' adv=16.6
+cluster 105-106 'w' adv=16.6
+cluster 106-107 'i' adv=16.6
+cluster 107-108 'f' adv=16.6
+cluster 108-109 't' adv=16.6
 cluster 109-110 '_' adv=16.0
 cluster 110-111 'd' adv=16.0
 cluster 111-112 'y' adv=16.0
@@ -326,7 +344,7 @@ cluster 117-118 'C' adv=16.0
 cluster 118-119 'a' adv=16.0
 cluster 119-120 's' adv=16.0
 cluster 120-121 't' adv=16.0
-cluster 121-122 ' ' adv=2.0
+cluster 121-122 ' ' adv=8.0
 cluster 122-123 '吃' adv=16.0
 cluster 123-124 '掉' adv=16.0
 cluster 124-125 '大' adv=16.0
@@ -438,18 +456,10 @@ punct 15-16 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=
 punct 34-35 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 103-104 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 128-129 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
-geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=2.7 resolved=18.7
+geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=2.4 resolved=18.4
 geom 34-35 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-geom 103-104 body=8.0 lead=0.0/0.0 trail=1.0/8.0 justify=0.0 resolved=15.0
+geom 103-104 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 128-129 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-autospace 5-6 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 27-28 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 49-50 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 55-56 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 66-67 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 86-87 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 91-92 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 121-122 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 edgetrim 34-35 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 edgetrim 128-129 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
@@ -458,44 +468,58 @@ size 579.0x96.0
 kinsoku measure=36.2字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:36字→Strict
 break-opportunity 16-27 source='JSONDecoder' offsets=20 tier=Structural reason=ProgressiveTechnicalBreak
 break-opportunity 16-27 source='JSONDecoder' offsets=16 tier=WholeToken reason=ProgressiveTechnicalWholeTokenWrap
-break-opportunity 67-86 source='NSJSONSerialization' offsets=73 tier=Structural reason=ProgressiveTechnicalBreak
+break-opportunity 67-86 source='NSJSONSerialization' offsets=68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85 tier=Emergency reason=CurrentLineTechnicalEmergencyBreak
 break-opportunity 67-86 source='NSJSONSerialization' offsets=67 tier=WholeToken reason=ProgressiveTechnicalWholeTokenWrap
 break-opportunity 104-121 source='swift_dynamicCast' offsets=105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120 tier=Emergency reason=CurrentLineTechnicalEmergencyBreak
 break-opportunity 104-121 source='swift_dynamicCast' offsets=104 tier=WholeToken reason=ProgressiveTechnicalWholeTokenWrap
+tracking-eligibility 67-86 source='NSJSONSerialization' reason=CurrentLineTechnicalTierRejection:Structural
 tracking-eligibility 104-121 source='swift_dynamicCast' reason=CurrentLineTechnicalTierRejection:Structural
-line[0] 0-33 natural=500.0 adjusted=500.0 visual=579.0 repair=- candidates=- justify=deficit=79.0->0.0 CjkLatinSpace@5+3.3,CjkLatinSpace@27+3.3,CjkInterChar@6+4.5,CjkInterChar@7+4.5,CjkInterChar@8+4.5,CjkInterChar@9+4.5,CjkInterChar@10+4.5,CjkInterChar@11+4.5,CjkInterChar@12+4.5,CjkInterChar@13+4.5,CjkInterChar@14+4.5,CjkInterChar@15+4.5,CjkInterChar@28+4.5,CjkInterChar@29+4.5,CjkInterChar@30+4.5,CjkInterChar@31+4.5,CjkInterChar@5+4.5,CjkInterChar@27+4.5
-line[1] 33-73 natural=590.0 adjusted=579.0 visual=579.0 repair=PushIn(ProgressiveTechnicalTierPromotion shrink=11.0) candidates=PushIn+ justify=-
-line[2] 73-111 natural=580.0 adjusted=579.0 visual=579.0 repair=PushIn(LineAdjustmentPushIn shrink=1.0) candidates=PushIn+ justify=-
-line[3] 111-129 natural=274.0 adjusted=266.0 visual=266.0 repair=- candidates=- justify=-
+line[0] 0-35 natural=544.0 adjusted=536.0 visual=579.0 repair=- candidates=- justify=deficit=43.0->0.0 CjkInterChar@6+2.4,CjkInterChar@7+2.4,CjkInterChar@8+2.4,CjkInterChar@9+2.4,CjkInterChar@10+2.4,CjkInterChar@11+2.4,CjkInterChar@12+2.4,CjkInterChar@13+2.4,CjkInterChar@14+2.4,CjkInterChar@15+2.4,CjkInterChar@28+2.4,CjkInterChar@29+2.4,CjkInterChar@30+2.4,CjkInterChar@31+2.4,CjkInterChar@32+2.4,CjkInterChar@33+2.4,CjkInterChar@5+2.4,CjkInterChar@27+2.4
+line[1] 35-74 natural=592.0 adjusted=579.0 visual=579.0 repair=PushIn(LineAdjustmentPushIn shrink=13.0) candidates=- justify=-
+line[2] 74-111 natural=576.0 adjusted=576.0 visual=579.0 repair=- candidates=- justify=deficit=3.0->0.0 EmergencyGraphemeTracking@104+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@105+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@106+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@107+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@108+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural),EmergencyGraphemeTracking@109+0.5(TerminalTechnicalEmergencyTracking:CurrentLineTechnicalTierRejection:Structural)
+line[3] 111-129 natural=280.0 adjusted=272.0 visual=272.0 repair=- candidates=- justify=-
+whitespace 5-6 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 46-47 kind=Space action=Preserve
+whitespace 49-50 kind=Space action=Preserve
+whitespace 55-56 kind=Space action=Preserve
+whitespace 66-67 kind=Space action=Preserve
+whitespace 86-87 kind=Space action=Preserve
+whitespace 91-92 kind=Space action=Preserve
+whitespace 121-122 kind=Space action=Preserve
+line-geometry[0] alignment=579.0 occupied=0.0,0.0,579.0,24.0
+line-geometry[1] alignment=579.0 occupied=0.0,24.0,579.0,48.0
+line-geometry[2] alignment=579.0 occupied=0.0,48.0,579.0,72.0
+line-geometry[3] alignment=272.0 occupied=0.0,72.0,272.0,96.0
 cluster 0-5 'Swift' adv=80.0
-cluster 5-6 ' ' adv=9.9
-cluster 6-7 '这' adv=20.5
-cluster 7-8 '边' adv=20.5
-cluster 8-9 '是' adv=20.5
-cluster 9-10 '我' adv=20.5
-cluster 10-11 '最' adv=20.5
-cluster 11-12 '有' adv=20.5
-cluster 12-13 '体' adv=20.5
-cluster 13-14 '感' adv=20.5
-cluster 14-15 '的' adv=20.5
-cluster 15-16 '。' adv=20.5
+cluster 5-6 ' ' adv=10.4
+cluster 6-7 '这' adv=18.4
+cluster 7-8 '边' adv=18.4
+cluster 8-9 '是' adv=18.4
+cluster 9-10 '我' adv=18.4
+cluster 10-11 '最' adv=18.4
+cluster 11-12 '有' adv=18.4
+cluster 12-13 '体' adv=18.4
+cluster 13-14 '感' adv=18.4
+cluster 14-15 '的' adv=18.4
+cluster 15-16 '。' adv=18.4
 cluster 16-20 'JSON' adv=64.0
 cluster 20-27 'Decoder' adv=112.0
-cluster 27-28 ' ' adv=9.9
-cluster 28-29 '慢' adv=20.5
-cluster 29-30 '是' adv=20.5
-cluster 30-31 '个' adv=20.5
-cluster 31-32 '老' adv=20.5
-cluster 32-33 '问' adv=16.0
-cluster 33-34 '题' adv=16.0
-cluster 34-35 '，' adv=9.0
+cluster 27-28 ' ' adv=10.4
+cluster 28-29 '慢' adv=18.4
+cluster 29-30 '是' adv=18.4
+cluster 30-31 '个' adv=18.4
+cluster 31-32 '老' adv=18.4
+cluster 32-33 '问' adv=18.4
+cluster 33-34 '题' adv=18.4
+cluster 34-35 '，' adv=8.0
 cluster 35-46 'SR-6252[36]' adv=176.0
-cluster 46-47 ' ' adv=4.0
+cluster 46-47 ' ' adv=4.8
 cluster 47-48 '那' adv=16.0
 cluster 48-49 '个' adv=16.0
-cluster 49-50 ' ' adv=2.0
+cluster 49-50 ' ' adv=4.8
 cluster 50-55 'issue' adv=80.0
-cluster 55-56 ' ' adv=2.0
+cluster 55-56 ' ' adv=4.8
 cluster 56-57 '里' adv=16.0
 cluster 57-58 '挖' adv=16.0
 cluster 58-59 '出' adv=16.0
@@ -506,23 +530,40 @@ cluster 62-63 '是' adv=16.0
 cluster 63-64 '底' adv=16.0
 cluster 64-65 '层' adv=16.0
 cluster 65-66 '走' adv=16.0
-cluster 66-67 ' ' adv=2.0
-cluster 67-73 'NSJSON' adv=96.0
-cluster 73-86 'Serialization' adv=208.0
-cluster 86-87 ' ' adv=2.0
+cluster 66-67 ' ' adv=4.8
+cluster 67-68 'N' adv=16.0
+cluster 68-69 'S' adv=16.0
+cluster 69-70 'J' adv=16.0
+cluster 70-71 'S' adv=16.0
+cluster 71-72 'O' adv=16.0
+cluster 72-73 'N' adv=16.0
+cluster 73-74 'S' adv=16.0
+cluster 74-75 'e' adv=16.0
+cluster 75-76 'r' adv=16.0
+cluster 76-77 'i' adv=16.0
+cluster 77-78 'a' adv=16.0
+cluster 78-79 'l' adv=16.0
+cluster 79-80 'i' adv=16.0
+cluster 80-81 'z' adv=16.0
+cluster 81-82 'a' adv=16.0
+cluster 82-83 't' adv=16.0
+cluster 83-84 'i' adv=16.0
+cluster 84-85 'o' adv=16.0
+cluster 85-86 'n' adv=16.0
+cluster 86-87 ' ' adv=8.0
 cluster 87-88 '再' adv=16.0
 cluster 88-89 '桥' adv=16.0
 cluster 89-90 '接' adv=16.0
 cluster 90-91 '回' adv=16.0
-cluster 91-92 ' ' adv=2.0
+cluster 91-92 ' ' adv=8.0
 cluster 92-103 'Objective-C' adv=176.0
-cluster 103-104 '，' adv=15.0
-cluster 104-105 's' adv=16.0
-cluster 105-106 'w' adv=16.0
-cluster 106-107 'i' adv=16.0
-cluster 107-108 'f' adv=16.0
-cluster 108-109 't' adv=16.0
-cluster 109-110 '_' adv=16.0
+cluster 103-104 '，' adv=16.0
+cluster 104-105 's' adv=16.5
+cluster 105-106 'w' adv=16.5
+cluster 106-107 'i' adv=16.5
+cluster 107-108 'f' adv=16.5
+cluster 108-109 't' adv=16.5
+cluster 109-110 '_' adv=16.5
 cluster 110-111 'd' adv=16.0
 cluster 111-112 'y' adv=16.0
 cluster 112-113 'n' adv=16.0
@@ -534,7 +575,7 @@ cluster 117-118 'C' adv=16.0
 cluster 118-119 'a' adv=16.0
 cluster 119-120 's' adv=16.0
 cluster 120-121 't' adv=16.0
-cluster 121-122 ' ' adv=2.0
+cluster 121-122 ' ' adv=8.0
 cluster 122-123 '吃' adv=16.0
 cluster 123-124 '掉' adv=16.0
 cluster 124-125 '大' adv=16.0
@@ -583,9 +624,28 @@ font 63-64 role=CjkText key=cjk-primary display='底' sub=CjkPunctuationGlyphPol
 font 64-65 role=CjkText key=cjk-primary display='层' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 65-66 role=CjkText key=cjk-primary display='走' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 66-67 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 67-68 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 67-73 role=LatinText key=latin-primary display='NSJSON' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 67-86 role=LatinText key=latin-primary display='NSJSONSerialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 68-69 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 69-70 role=LatinText key=latin-primary display='J' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 70-71 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 71-72 role=LatinText key=latin-primary display='O' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 72-73 role=LatinText key=latin-primary display='N' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 73-74 role=LatinText key=latin-primary display='S' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 73-86 role=LatinText key=latin-primary display='Serialization' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 74-75 role=LatinText key=latin-primary display='e' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 75-76 role=LatinText key=latin-primary display='r' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 76-77 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 77-78 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 78-79 role=LatinText key=latin-primary display='l' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 79-80 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 80-81 role=LatinText key=latin-primary display='z' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 81-82 role=LatinText key=latin-primary display='a' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 82-83 role=LatinText key=latin-primary display='t' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 83-84 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 84-85 role=LatinText key=latin-primary display='o' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 85-86 role=LatinText key=latin-primary display='n' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 86-87 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 87-88 role=CjkText key=cjk-primary display='再' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 88-89 role=CjkText key=cjk-primary display='桥' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
@@ -627,17 +687,10 @@ punct 15-16 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=
 punct 34-35 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 103-104 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 punct 128-129 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
-geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=4.5 resolved=20.5
-geom 34-35 body=8.0 lead=0.0/0.0 trail=7.0/8.0 justify=0.0 resolved=9.0
-geom 103-104 body=8.0 lead=0.0/0.0 trail=1.0/8.0 justify=0.0 resolved=15.0
+geom 15-16 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=2.4 resolved=18.4
+geom 34-35 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
+geom 103-104 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 128-129 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-autospace 5-6 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 27-28 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 49-50 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 55-56 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 66-67 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 86-87 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 91-92 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 121-122 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
+edgetrim 34-35 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 edgetrim 128-129 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

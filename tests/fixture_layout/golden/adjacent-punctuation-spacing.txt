@@ -6,6 +6,7 @@ size 168.0x24.0
 grid container=220.0 measure=208.0(13字) slack=12.0 body=Start@0.0
 kinsoku measure=13.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:13字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=168.0 visual=168.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=168.0 occupied=0.0,0.0,168.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '说' adv=16.0
 cluster 2-3 '：' adv=8.0
@@ -59,6 +60,7 @@ size 168.0x24.0
 grid container=220.0 measure=208.0(13字) slack=12.0 body=Start@0.0
 kinsoku measure=13.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:13字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=168.0 visual=168.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=168.0 occupied=0.0,0.0,168.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '说' adv=16.0
 cluster 2-3 '：' adv=8.0
@@ -112,6 +114,7 @@ size 168.0x24.0
 grid container=220.0 measure=208.0(13字) slack=12.0 body=Start@0.0
 kinsoku measure=13.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:13字→Basic+Hang
 line[0] 0-13 natural=208.0 adjusted=168.0 visual=168.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=168.0 occupied=0.0,0.0,168.0,24.0
 cluster 0-1 '他' adv=16.0
 cluster 1-2 '说' adv=16.0
 cluster 2-3 '：' adv=8.0

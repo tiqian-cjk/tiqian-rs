@@ -7,6 +7,9 @@ kinsoku measure=5.0字 level=Basic hang=Disabled reason=Fixed:Basic
 line[0] 0-4 natural=64.0 adjusted=64.0 visual=80.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+5.3,CjkInterChar@1+5.3,CjkInterChar@2+5.3
 line[1] 4-9 natural=80.0 adjusted=72.0 visual=80.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@4+2.0,CjkInterChar@5+2.0,CjkInterChar@6+2.0,CjkInterChar@7+2.0
 line[2] 9-10 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=80.0 occupied=0.0,0.0,80.0,24.0
+line-geometry[1] alignment=80.0 occupied=0.0,24.0,80.0,48.0
+line-geometry[2] alignment=16.0 occupied=0.0,48.0,16.0,72.0
 cluster 0-1 '中' adv=21.3
 cluster 1-2 '文' adv=21.3
 cluster 2-3 '中' adv=21.3
@@ -39,6 +42,9 @@ kinsoku measure=5.0字 level=Basic hang=Disabled reason=Fixed:Basic
 line[0] 0-4 natural=64.0 adjusted=64.0 visual=80.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+5.3,CjkInterChar@1+5.3,CjkInterChar@2+5.3
 line[1] 4-9 natural=80.0 adjusted=72.0 visual=80.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@4+2.0,CjkInterChar@5+2.0,CjkInterChar@6+2.0,CjkInterChar@7+2.0
 line[2] 9-10 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=80.0 occupied=0.0,0.0,80.0,24.0
+line-geometry[1] alignment=80.0 occupied=0.0,24.0,80.0,48.0
+line-geometry[2] alignment=16.0 occupied=0.0,48.0,16.0,72.0
 cluster 0-1 '中' adv=21.3
 cluster 1-2 '文' adv=21.3
 cluster 2-3 '中' adv=21.3
@@ -68,8 +74,10 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 == paragraph-dp ==
 size 80.0x48.0
 kinsoku measure=5.0字 level=Basic hang=Disabled reason=Fixed:Basic
-line[0] 0-4 natural=64.0 adjusted=64.0 visual=80.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+5.3,CjkInterChar@1+5.3,CjkInterChar@2+5.3
-line[1] 4-10 natural=96.0 adjusted=80.0 visual=80.0 repair=PushIn(LineAdjustmentPushIn shrink=16.0) candidates=PushIn+ justify=-
+line[0] 0-4 natural=64.0 adjusted=64.0 visual=80.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+5.3,CjkInterChar@1+5.3,CjkInterChar@2+5.3
+line[1] 4-10 natural=96.0 adjusted=80.0 visual=80.0 repair=PushIn(LineAdjustmentPushIn shrink=16.0) candidates=- justify=-
+line-geometry[0] alignment=80.0 occupied=0.0,0.0,80.0,24.0
+line-geometry[1] alignment=80.0 occupied=0.0,24.0,80.0,48.0
 cluster 0-1 '中' adv=21.3
 cluster 1-2 '文' adv=21.3
 cluster 2-3 '中' adv=21.3

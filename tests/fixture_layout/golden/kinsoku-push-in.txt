@@ -7,6 +7,8 @@ grid container=60.0 measure=48.0(3字) slack=12.0 body=Start@0.0
 kinsoku measure=3.0字 level=Basic hang=Disabled reason=Fixed:Basic
 line[0] 0-2 natural=32.0 adjusted=32.0 visual=48.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+16.0
 line[1] 2-4 natural=32.0 adjusted=24.0 visual=24.0 repair=CarryPrevious(ForbiddenAtLineStart shrink=0.0) candidates=PushIn-,CarryPrevious+ justify=-
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '中' adv=32.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0
@@ -23,8 +25,10 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 48.0x48.0
 grid container=60.0 measure=48.0(3字) slack=12.0 body=Start@0.0
 kinsoku measure=3.0字 level=Basic hang=Disabled reason=Fixed:Basic
-line[0] 0-2 natural=32.0 adjusted=32.0 visual=48.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+16.0
+line[0] 0-2 natural=32.0 adjusted=32.0 visual=48.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=16.0->0.0 CjkInterChar@0+16.0
 line[1] 2-4 natural=32.0 adjusted=24.0 visual=24.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '中' adv=32.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0
@@ -43,6 +47,8 @@ grid container=60.0 measure=48.0(3字) slack=12.0 body=Start@0.0
 kinsoku measure=3.0字 level=Basic hang=Disabled reason=Fixed:Basic
 line[0] 0-2 natural=32.0 adjusted=32.0 visual=48.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+16.0
 line[1] 2-4 natural=32.0 adjusted=24.0 visual=24.0 repair=CarryPrevious(ForbiddenAtLineStart shrink=0.0) candidates=PushIn-,CarryPrevious+ justify=-
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '中' adv=32.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0

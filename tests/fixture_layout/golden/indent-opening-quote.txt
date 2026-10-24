@@ -5,8 +5,11 @@ maxWidth: 192.0
 size 192.0x72.0
 kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:12字→Basic+Hang
 line[0] 0-11 indent=32.0 natural=176.0 adjusted=156.0 visual=160.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=deficit=4.0->0.0 CjkInterChar@0+0.4,CjkInterChar@1+0.4,CjkInterChar@2+0.4,CjkInterChar@3+0.4,CjkInterChar@4+0.4,CjkInterChar@5+0.4,CjkInterChar@6+0.4,CjkInterChar@7+0.4,CjkInterChar@8+0.4,CjkInterChar@9+0.4
-line[1] 11-23 natural=192.0 adjusted=192.0 visual=192.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=-
+line[1] 11-23 natural=192.0 adjusted=192.0 visual=192.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=-
 line[2] 23-31 natural=128.0 adjusted=120.0 visual=120.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=32.0,0.0,192.0,24.0
+line-geometry[1] alignment=192.0 occupied=0.0,24.0,192.0,48.0
+line-geometry[2] alignment=120.0 occupied=0.0,48.0,120.0,72.0
 cluster 0-1 '“' adv=8.4
 cluster 1-2 '好' adv=16.4
 cluster 2-3 '咖' adv=16.4
@@ -89,8 +92,11 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 192.0x72.0
 kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:12字→Basic+Hang
 line[0] 0-11 indent=32.0 natural=176.0 adjusted=156.0 visual=160.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=deficit=4.0->0.0 CjkInterChar@0+0.4,CjkInterChar@1+0.4,CjkInterChar@2+0.4,CjkInterChar@3+0.4,CjkInterChar@4+0.4,CjkInterChar@5+0.4,CjkInterChar@6+0.4,CjkInterChar@7+0.4,CjkInterChar@8+0.4,CjkInterChar@9+0.4
-line[1] 11-23 natural=192.0 adjusted=192.0 visual=192.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=-
+line[1] 11-23 natural=192.0 adjusted=192.0 visual=192.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=-
 line[2] 23-31 natural=128.0 adjusted=120.0 visual=120.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=32.0,0.0,192.0,24.0
+line-geometry[1] alignment=192.0 occupied=0.0,24.0,192.0,48.0
+line-geometry[2] alignment=120.0 occupied=0.0,48.0,120.0,72.0
 cluster 0-1 '“' adv=8.4
 cluster 1-2 '好' adv=16.4
 cluster 2-3 '咖' adv=16.4
@@ -175,6 +181,9 @@ kinsoku measure=12.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsok
 line[0] 0-10 indent=32.0 natural=160.0 adjusted=136.0 visual=160.0 repair=- candidates=- justify=deficit=24.0->0.0 CjkInterChar@0+2.7,CjkInterChar@1+2.7,CjkInterChar@2+2.7,CjkInterChar@3+2.7,CjkInterChar@4+2.7,CjkInterChar@5+2.7,CjkInterChar@6+2.7,CjkInterChar@7+2.7,CjkInterChar@8+2.7
 line[1] 10-22 natural=192.0 adjusted=184.0 visual=192.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@10+0.7,CjkInterChar@11+0.7,CjkInterChar@12+0.7,CjkInterChar@13+0.7,CjkInterChar@14+0.7,CjkInterChar@15+0.7,CjkInterChar@16+0.7,CjkInterChar@17+0.7,CjkInterChar@18+0.7,CjkInterChar@19+0.7,CjkInterChar@20+0.7
 line[2] 22-31 natural=144.0 adjusted=136.0 visual=136.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=160.0 occupied=32.0,0.0,192.0,24.0
+line-geometry[1] alignment=192.0 occupied=0.0,24.0,192.0,48.0
+line-geometry[2] alignment=136.0 occupied=0.0,48.0,136.0,72.0
 cluster 0-1 '“' adv=10.7
 cluster 1-2 '好' adv=18.7
 cluster 2-3 '咖' adv=18.7

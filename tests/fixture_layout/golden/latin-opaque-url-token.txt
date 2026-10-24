@@ -5,15 +5,22 @@ maxWidth: 160.0
 size 160.0x144.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 tracking-eligibility 31-49 source='abc123def456ghi789' reason=LongMixedAlphaNumericIdentifier
-line[0] 0-10 natural=146.0 adjusted=146.0 visual=160.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@2+3.3,CjkInterChar@0+5.3,CjkInterChar@2+5.3
+line[0] 0-10 natural=152.0 adjusted=152.0 visual=160.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@0+4.0,CjkInterChar@2+4.0
 line[1] 10-19 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[2] 19-28 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[3] 28-38 natural=160.0 adjusted=160.0 visual=160.0 repair=- candidates=- justify=-
 line[4] 38-46 natural=128.0 adjusted=128.0 visual=160.0 repair=- candidates=- justify=deficit=32.0->0.0 EmergencyGraphemeTracking@38+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@39+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@40+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@41+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@42+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@43+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@44+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier)
 line[5] 46-49 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
-cluster 0-1 '链' adv=21.3
+whitespace 2-3 kind=Space action=Preserve
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=144.0 occupied=0.0,48.0,144.0,72.0
+line-geometry[3] alignment=160.0 occupied=0.0,72.0,160.0,96.0
+line-geometry[4] alignment=160.0 occupied=0.0,96.0,160.0,120.0
+line-geometry[5] alignment=48.0 occupied=0.0,120.0,48.0,144.0
+cluster 0-1 '链' adv=20.0
 cluster 1-2 '接' adv=16.0
-cluster 2-3 ' ' adv=10.7
+cluster 2-3 ' ' adv=12.0
 cluster 3-10 'https:/' adv=112.0
 cluster 10-11 '/' adv=16.0
 cluster 11-19 'example.' adv=128.0
@@ -68,21 +75,27 @@ font 45-46 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphP
 font 46-47 role=LatinText key=latin-primary display='7' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=LatinText key=latin-primary display='8' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=LatinText key=latin-primary display='9' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
 size 160.0x144.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 tracking-eligibility 31-49 source='abc123def456ghi789' reason=LongMixedAlphaNumericIdentifier
-line[0] 0-10 natural=146.0 adjusted=146.0 visual=160.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@2+3.3,CjkInterChar@0+5.3,CjkInterChar@2+5.3
+line[0] 0-10 natural=152.0 adjusted=152.0 visual=160.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@0+4.0,CjkInterChar@2+4.0
 line[1] 10-19 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[2] 19-28 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
-line[3] 28-38 natural=160.0 adjusted=160.0 visual=160.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=-
+line[3] 28-38 natural=160.0 adjusted=160.0 visual=160.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=-
 line[4] 38-46 natural=128.0 adjusted=128.0 visual=160.0 repair=- candidates=- justify=deficit=32.0->0.0 EmergencyGraphemeTracking@38+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@39+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@40+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@41+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@42+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@43+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@44+4.6(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier)
 line[5] 46-49 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
-cluster 0-1 '链' adv=21.3
+whitespace 2-3 kind=Space action=Preserve
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=144.0 occupied=0.0,48.0,144.0,72.0
+line-geometry[3] alignment=160.0 occupied=0.0,72.0,160.0,96.0
+line-geometry[4] alignment=160.0 occupied=0.0,96.0,160.0,120.0
+line-geometry[5] alignment=48.0 occupied=0.0,120.0,48.0,144.0
+cluster 0-1 '链' adv=20.0
 cluster 1-2 '接' adv=16.0
-cluster 2-3 ' ' adv=10.7
+cluster 2-3 ' ' adv=12.0
 cluster 3-10 'https:/' adv=112.0
 cluster 10-11 '/' adv=16.0
 cluster 11-19 'example.' adv=128.0
@@ -137,21 +150,27 @@ font 45-46 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphP
 font 46-47 role=LatinText key=latin-primary display='7' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=LatinText key=latin-primary display='8' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=LatinText key=latin-primary display='9' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
 size 160.0x144.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 tracking-eligibility 31-49 source='abc123def456ghi789' reason=LongMixedAlphaNumericIdentifier
-line[0] 0-10 natural=146.0 adjusted=146.0 visual=160.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@2+3.3,CjkInterChar@0+5.3,CjkInterChar@2+5.3
+line[0] 0-10 natural=152.0 adjusted=152.0 visual=160.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@0+4.0,CjkInterChar@2+4.0
 line[1] 10-19 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[2] 19-28 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[3] 28-37 natural=144.0 adjusted=144.0 visual=160.0 repair=- candidates=- justify=deficit=16.0->0.0 EmergencyGraphemeTracking@31+3.2(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@32+3.2(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@33+3.2(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@34+3.2(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@35+3.2(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier)
 line[4] 37-46 natural=144.0 adjusted=144.0 visual=160.0 repair=- candidates=- justify=deficit=16.0->0.0 EmergencyGraphemeTracking@37+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@38+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@39+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@40+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@41+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@42+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@43+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier),EmergencyGraphemeTracking@44+2.0(EmergencyGraphemeTracking:LongMixedAlphaNumericIdentifier)
 line[5] 46-49 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
-cluster 0-1 '链' adv=21.3
+whitespace 2-3 kind=Space action=Preserve
+line-geometry[0] alignment=160.0 occupied=0.0,0.0,160.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=144.0 occupied=0.0,48.0,144.0,72.0
+line-geometry[3] alignment=160.0 occupied=0.0,72.0,160.0,96.0
+line-geometry[4] alignment=160.0 occupied=0.0,96.0,160.0,120.0
+line-geometry[5] alignment=48.0 occupied=0.0,120.0,48.0,144.0
+cluster 0-1 '链' adv=20.0
 cluster 1-2 '接' adv=16.0
-cluster 2-3 ' ' adv=10.7
+cluster 2-3 ' ' adv=12.0
 cluster 3-10 'https:/' adv=112.0
 cluster 10-11 '/' adv=16.0
 cluster 11-19 'example.' adv=128.0
@@ -206,5 +225,4 @@ font 45-46 role=LatinText key=latin-primary display='i' sub=CjkPunctuationGlyphP
 font 46-47 role=LatinText key=latin-primary display='7' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 47-48 role=LatinText key=latin-primary display='8' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
 font 48-49 role=LatinText key=latin-primary display='9' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

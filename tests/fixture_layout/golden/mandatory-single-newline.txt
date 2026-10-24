@@ -6,6 +6,9 @@ size 48.0x48.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-4 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
 line[1] 4-7 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 3-4 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=48.0 occupied=0.0,24.0,48.0,48.0
 cluster 0-1 '第' adv=16.0
 cluster 1-2 '一' adv=16.0
 cluster 2-3 '行' adv=16.0
@@ -26,6 +29,9 @@ size 48.0x48.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-4 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
 line[1] 4-7 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 3-4 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=48.0 occupied=0.0,24.0,48.0,48.0
 cluster 0-1 '第' adv=16.0
 cluster 1-2 '一' adv=16.0
 cluster 2-3 '行' adv=16.0
@@ -46,6 +52,9 @@ size 48.0x48.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-4 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
 line[1] 4-7 natural=48.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 3-4 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=48.0 occupied=0.0,0.0,48.0,24.0
+line-geometry[1] alignment=48.0 occupied=0.0,24.0,48.0,48.0
 cluster 0-1 '第' adv=16.0
 cluster 1-2 '一' adv=16.0
 cluster 2-3 '行' adv=16.0

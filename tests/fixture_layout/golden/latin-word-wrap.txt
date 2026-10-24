@@ -8,6 +8,21 @@ line[0] 0-12 natural=184.0 adjusted=176.0 visual=240.0 repair=- candidates=- jus
 line[1] 12-28 natural=232.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[2] 28-43 natural=216.0 adjusted=208.0 visual=208.0 repair=- candidates=- justify=deficit=32.0->32.0
 line[3] 43-58 natural=232.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
+whitespace 11-12 kind=Space action=Preserve
+whitespace 17-18 kind=Space action=Preserve
+whitespace 23-24 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 33-34 kind=Space action=Preserve
+whitespace 38-39 kind=Space action=Preserve
+whitespace 42-43 kind=Space action=Preserve
+whitespace 47-48 kind=Space action=Preserve
+line-whitespace line=0 cluster=9 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=1 cluster=15 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=2 cluster=21 action=RemoveEnd occupied=0.0 hanging=0.0
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=224.0 occupied=0.0,24.0,224.0,48.0
+line-geometry[2] alignment=208.0 occupied=0.0,48.0,208.0,72.0
+line-geometry[3] alignment=224.0 occupied=0.0,72.0,224.0,96.0
 cluster 0-1 '他' adv=24.0
 cluster 1-2 '引' adv=24.0
 cluster 2-3 '用' adv=24.0
@@ -79,17 +94,29 @@ geom 7-8 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=8.0 resolved=24.0
 geom 51-52 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 57-58 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 edgetrim 57-58 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
-edgetrim 11-12 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 27-28 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 42-43 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
 size 240.0x96.0
 kinsoku measure=15.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:15字→Basic
-line[0] 0-12 natural=184.0 adjusted=176.0 visual=240.0 repair=- candidates=- justify=deficit=64.0->0.0 CjkInterChar@0+8.0,CjkInterChar@1+8.0,CjkInterChar@2+8.0,CjkInterChar@3+8.0,CjkInterChar@4+8.0,CjkInterChar@5+8.0,CjkInterChar@6+8.0,CjkInterChar@7+8.0
-line[1] 12-28 natural=232.0 adjusted=224.0 visual=224.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=deficit=16.0->16.0
-line[2] 28-43 natural=216.0 adjusted=208.0 visual=208.0 repair=- candidates=- justify=deficit=32.0->32.0
+line[0] 0-12 natural=184.0 adjusted=176.0 visual=240.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=64.0->0.0 CjkInterChar@0+8.0,CjkInterChar@1+8.0,CjkInterChar@2+8.0,CjkInterChar@3+8.0,CjkInterChar@4+8.0,CjkInterChar@5+8.0,CjkInterChar@6+8.0,CjkInterChar@7+8.0
+line[1] 12-28 natural=232.0 adjusted=224.0 visual=224.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=16.0->16.0
+line[2] 28-43 natural=216.0 adjusted=208.0 visual=208.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=32.0->32.0
 line[3] 43-58 natural=232.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
+whitespace 11-12 kind=Space action=Preserve
+whitespace 17-18 kind=Space action=Preserve
+whitespace 23-24 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 33-34 kind=Space action=Preserve
+whitespace 38-39 kind=Space action=Preserve
+whitespace 42-43 kind=Space action=Preserve
+whitespace 47-48 kind=Space action=Preserve
+line-whitespace line=0 cluster=9 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=1 cluster=15 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=2 cluster=21 action=RemoveEnd occupied=0.0 hanging=0.0
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=224.0 occupied=0.0,24.0,224.0,48.0
+line-geometry[2] alignment=208.0 occupied=0.0,48.0,208.0,72.0
+line-geometry[3] alignment=224.0 occupied=0.0,72.0,224.0,96.0
 cluster 0-1 '他' adv=24.0
 cluster 1-2 '引' adv=24.0
 cluster 2-3 '用' adv=24.0
@@ -161,17 +188,29 @@ geom 7-8 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=8.0 resolved=24.0
 geom 51-52 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 57-58 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 edgetrim 57-58 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
-edgetrim 11-12 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 27-28 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 42-43 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
 size 240.0x96.0
 kinsoku measure=15.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:15字→Basic
 line[0] 0-11 natural=176.0 adjusted=176.0 visual=240.0 repair=- candidates=- justify=deficit=64.0->0.0 CjkInterChar@0+8.0,CjkInterChar@1+8.0,CjkInterChar@2+8.0,CjkInterChar@3+8.0,CjkInterChar@4+8.0,CjkInterChar@5+8.0,CjkInterChar@6+8.0,CjkInterChar@7+8.0
 line[1] 11-27 natural=232.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=deficit=16.0->16.0
-line[2] 27-43 natural=224.0 adjusted=208.0 visual=208.0 repair=- candidates=- justify=deficit=32.0->32.0
-line[3] 43-58 natural=232.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
+line[2] 27-42 natural=216.0 adjusted=208.0 visual=208.0 repair=- candidates=- justify=deficit=32.0->32.0
+line[3] 42-58 natural=240.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
+whitespace 11-12 kind=Space action=Preserve
+whitespace 17-18 kind=Space action=Preserve
+whitespace 23-24 kind=Space action=Preserve
+whitespace 27-28 kind=Space action=Preserve
+whitespace 33-34 kind=Space action=Preserve
+whitespace 38-39 kind=Space action=Preserve
+whitespace 42-43 kind=Space action=Preserve
+whitespace 47-48 kind=Space action=Preserve
+line-whitespace line=1 cluster=9 action=RemoveStart occupied=0.0 hanging=0.0
+line-whitespace line=2 cluster=15 action=RemoveStart occupied=0.0 hanging=0.0
+line-whitespace line=3 cluster=21 action=RemoveStart occupied=0.0 hanging=0.0
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=224.0 occupied=0.0,24.0,224.0,48.0
+line-geometry[2] alignment=208.0 occupied=0.0,48.0,208.0,72.0
+line-geometry[3] alignment=224.0 occupied=0.0,72.0,224.0,96.0
 cluster 0-1 '他' adv=24.0
 cluster 1-2 '引' adv=24.0
 cluster 2-3 '用' adv=24.0
@@ -243,7 +282,4 @@ geom 7-8 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=8.0 resolved=24.0
 geom 51-52 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 57-58 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 edgetrim 57-58 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
-edgetrim 11-12 side=leading trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 42-43 side=trailing trim=8.0 reason=LineEdgeWordSpaceCollapse
-edgetrim 27-28 side=leading trim=8.0 reason=LineEdgeWordSpaceCollapse
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

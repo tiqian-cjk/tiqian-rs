@@ -1,0 +1,225 @@
+fixture: white-space-collapse
+text: 01 基础组件  A	B   \r\n02 Input 输入框   \n
+maxWidth: 96.0
+== greedy ==
+size 96.0x96.0
+kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
+line[0] 0-6 natural=88.0 adjusted=88.0 visual=96.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@3+2.7,CjkInterChar@4+2.7,CjkInterChar@2+2.7
+line[1] 6-19 natural=104.0 adjusted=92.0 visual=92.0 repair=PushIn(LineAdjustmentPushIn shrink=12.0) candidates=PushIn+ justify=deficit=4.0->4.0
+line[2] 19-26 natural=96.0 adjusted=80.0 visual=80.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+,PushIn+ justify=deficit=16.0->16.0
+line[3] 26-33 natural=56.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 7-8 kind=Space action=Preserve
+whitespace 8-9 kind=Space action=Collapse
+whitespace 10-11 kind=Tab action=ToSpace
+whitespace 12-13 kind=Space action=Preserve
+whitespace 13-14 kind=Space action=Collapse
+whitespace 14-15 kind=Space action=Collapse
+whitespace 15-17 kind=SegmentBreak action=Collapse
+whitespace 19-20 kind=Space action=Preserve
+whitespace 25-26 kind=Space action=Preserve
+whitespace 29-30 kind=Space action=Preserve
+whitespace 30-31 kind=Space action=Collapse
+whitespace 31-32 kind=Space action=Collapse
+whitespace 32-33 kind=SegmentBreak action=Collapse
+line-whitespace line=2 cluster=18 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=2 cluster=16 action=RemoveStart occupied=0.0 hanging=0.0
+line-whitespace line=3 cluster=22 action=RemoveEnd occupied=0.0 hanging=0.0
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=92.0 occupied=0.0,24.0,92.0,48.0
+line-geometry[2] alignment=80.0 occupied=0.0,48.0,80.0,72.0
+line-geometry[3] alignment=48.0 occupied=0.0,72.0,48.0,96.0
+cluster 0-2 '01' adv=32.0
+cluster 2-3 ' ' adv=10.7
+cluster 3-4 '基' adv=18.7
+cluster 4-5 '础' adv=18.7
+cluster 5-6 '组' adv=16.0
+cluster 6-7 '件' adv=16.0
+cluster 7-8 ' ' adv=4.0
+cluster 8-9 '' adv=0.0
+cluster 9-10 'A' adv=16.0
+cluster 10-11 ' ' adv=4.0
+cluster 11-12 'B' adv=16.0
+cluster 12-13 ' ' adv=4.0
+cluster 13-14 '' adv=0.0
+cluster 14-15 '' adv=0.0
+cluster 15-17 '' adv=0.0
+cluster 17-19 '02' adv=32.0
+cluster 19-20 ' ' adv=0.0
+cluster 20-25 'Input' adv=80.0
+cluster 25-26 ' ' adv=0.0
+cluster 26-27 '输' adv=16.0
+cluster 27-28 '入' adv=16.0
+cluster 28-29 '框' adv=16.0
+cluster 29-30 ' ' adv=0.0
+cluster 30-31 '' adv=0.0
+cluster 31-32 '' adv=0.0
+cluster 32-33 '' adv=0.0
+font 0-2 role=LatinText key=latin-primary display='01' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=CjkText key=cjk-primary display='基' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=CjkText key=cjk-primary display='础' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=CjkText key=cjk-primary display='组' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=CjkText key=cjk-primary display='件' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='	' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='B' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-19 role=LatinText key=latin-primary display='02' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-25 role=LatinText key=latin-primary display='Input' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=CjkText key=cjk-primary display='输' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=CjkText key=cjk-primary display='入' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=CjkText key=cjk-primary display='框' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
+== lookahead ==
+size 96.0x96.0
+kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
+line[0] 0-6 natural=88.0 adjusted=88.0 visual=96.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@3+2.7,CjkInterChar@4+2.7,CjkInterChar@2+2.7
+line[1] 6-19 natural=104.0 adjusted=92.0 visual=92.0 repair=PushIn(LineAdjustmentPushIn shrink=12.0) candidates=PushIn+ justify=deficit=4.0->4.0
+line[2] 19-26 natural=96.0 adjusted=80.0 visual=80.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+,PushIn+ justify=deficit=16.0->16.0
+line[3] 26-33 natural=56.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 7-8 kind=Space action=Preserve
+whitespace 8-9 kind=Space action=Collapse
+whitespace 10-11 kind=Tab action=ToSpace
+whitespace 12-13 kind=Space action=Preserve
+whitespace 13-14 kind=Space action=Collapse
+whitespace 14-15 kind=Space action=Collapse
+whitespace 15-17 kind=SegmentBreak action=Collapse
+whitespace 19-20 kind=Space action=Preserve
+whitespace 25-26 kind=Space action=Preserve
+whitespace 29-30 kind=Space action=Preserve
+whitespace 30-31 kind=Space action=Collapse
+whitespace 31-32 kind=Space action=Collapse
+whitespace 32-33 kind=SegmentBreak action=Collapse
+line-whitespace line=2 cluster=18 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=2 cluster=16 action=RemoveStart occupied=0.0 hanging=0.0
+line-whitespace line=3 cluster=22 action=RemoveEnd occupied=0.0 hanging=0.0
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=92.0 occupied=0.0,24.0,92.0,48.0
+line-geometry[2] alignment=80.0 occupied=0.0,48.0,80.0,72.0
+line-geometry[3] alignment=48.0 occupied=0.0,72.0,48.0,96.0
+cluster 0-2 '01' adv=32.0
+cluster 2-3 ' ' adv=10.7
+cluster 3-4 '基' adv=18.7
+cluster 4-5 '础' adv=18.7
+cluster 5-6 '组' adv=16.0
+cluster 6-7 '件' adv=16.0
+cluster 7-8 ' ' adv=4.0
+cluster 8-9 '' adv=0.0
+cluster 9-10 'A' adv=16.0
+cluster 10-11 ' ' adv=4.0
+cluster 11-12 'B' adv=16.0
+cluster 12-13 ' ' adv=4.0
+cluster 13-14 '' adv=0.0
+cluster 14-15 '' adv=0.0
+cluster 15-17 '' adv=0.0
+cluster 17-19 '02' adv=32.0
+cluster 19-20 ' ' adv=0.0
+cluster 20-25 'Input' adv=80.0
+cluster 25-26 ' ' adv=0.0
+cluster 26-27 '输' adv=16.0
+cluster 27-28 '入' adv=16.0
+cluster 28-29 '框' adv=16.0
+cluster 29-30 ' ' adv=0.0
+cluster 30-31 '' adv=0.0
+cluster 31-32 '' adv=0.0
+cluster 32-33 '' adv=0.0
+font 0-2 role=LatinText key=latin-primary display='01' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=CjkText key=cjk-primary display='基' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=CjkText key=cjk-primary display='础' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=CjkText key=cjk-primary display='组' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=CjkText key=cjk-primary display='件' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='	' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='B' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-19 role=LatinText key=latin-primary display='02' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-25 role=LatinText key=latin-primary display='Input' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=CjkText key=cjk-primary display='输' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=CjkText key=cjk-primary display='入' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=CjkText key=cjk-primary display='框' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
+== paragraph-dp ==
+size 96.0x96.0
+kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
+line[0] 0-6 natural=88.0 adjusted=88.0 visual=96.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@3+2.7,CjkInterChar@4+2.7,CjkInterChar@2+2.7
+line[1] 6-19 natural=104.0 adjusted=92.0 visual=92.0 repair=PushIn(LineAdjustmentPushIn shrink=12.0) candidates=- justify=deficit=4.0->4.0
+line[2] 19-25 natural=88.0 adjusted=80.0 visual=80.0 repair=- candidates=- justify=deficit=16.0->16.0
+line[3] 25-33 natural=64.0 adjusted=48.0 visual=48.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 7-8 kind=Space action=Preserve
+whitespace 8-9 kind=Space action=Collapse
+whitespace 10-11 kind=Tab action=ToSpace
+whitespace 12-13 kind=Space action=Preserve
+whitespace 13-14 kind=Space action=Collapse
+whitespace 14-15 kind=Space action=Collapse
+whitespace 15-17 kind=SegmentBreak action=Collapse
+whitespace 19-20 kind=Space action=Preserve
+whitespace 25-26 kind=Space action=Preserve
+whitespace 29-30 kind=Space action=Preserve
+whitespace 30-31 kind=Space action=Collapse
+whitespace 31-32 kind=Space action=Collapse
+whitespace 32-33 kind=SegmentBreak action=Collapse
+line-whitespace line=2 cluster=16 action=RemoveStart occupied=0.0 hanging=0.0
+line-whitespace line=3 cluster=22 action=RemoveEnd occupied=0.0 hanging=0.0
+line-whitespace line=3 cluster=18 action=RemoveStart occupied=0.0 hanging=0.0
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=92.0 occupied=0.0,24.0,92.0,48.0
+line-geometry[2] alignment=80.0 occupied=0.0,48.0,80.0,72.0
+line-geometry[3] alignment=48.0 occupied=0.0,72.0,48.0,96.0
+cluster 0-2 '01' adv=32.0
+cluster 2-3 ' ' adv=10.7
+cluster 3-4 '基' adv=18.7
+cluster 4-5 '础' adv=18.7
+cluster 5-6 '组' adv=16.0
+cluster 6-7 '件' adv=16.0
+cluster 7-8 ' ' adv=4.0
+cluster 8-9 '' adv=0.0
+cluster 9-10 'A' adv=16.0
+cluster 10-11 ' ' adv=4.0
+cluster 11-12 'B' adv=16.0
+cluster 12-13 ' ' adv=4.0
+cluster 13-14 '' adv=0.0
+cluster 14-15 '' adv=0.0
+cluster 15-17 '' adv=0.0
+cluster 17-19 '02' adv=32.0
+cluster 19-20 ' ' adv=0.0
+cluster 20-25 'Input' adv=80.0
+cluster 25-26 ' ' adv=0.0
+cluster 26-27 '输' adv=16.0
+cluster 27-28 '入' adv=16.0
+cluster 28-29 '框' adv=16.0
+cluster 29-30 ' ' adv=0.0
+cluster 30-31 '' adv=0.0
+cluster 31-32 '' adv=0.0
+cluster 32-33 '' adv=0.0
+font 0-2 role=LatinText key=latin-primary display='01' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 2-3 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 3-4 role=CjkText key=cjk-primary display='基' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 4-5 role=CjkText key=cjk-primary display='础' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 5-6 role=CjkText key=cjk-primary display='组' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 6-7 role=CjkText key=cjk-primary display='件' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 7-8 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 9-10 role=LatinText key=latin-primary display='A' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 10-11 role=LatinText key=latin-primary display='	' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 11-12 role=LatinText key=latin-primary display='B' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 12-13 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 17-19 role=LatinText key=latin-primary display='02' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 19-20 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 20-25 role=LatinText key=latin-primary display='Input' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 25-26 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 26-27 role=CjkText key=cjk-primary display='输' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 27-28 role=CjkText key=cjk-primary display='入' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 28-29 role=CjkText key=cjk-primary display='框' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+font 29-30 role=LatinText key=latin-primary display=' ' sub=CjkPunctuationGlyphPolicy:PreferClreqRecommendedCodepoints:preserve
+linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

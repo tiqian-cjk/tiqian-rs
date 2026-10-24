@@ -734,7 +734,7 @@ fn span_boundary_after_a_space_let_the_point_mark_see_its_whitespace_neighbour()
 }
 
 #[test]
-fn inline_object_over_the_cr_walks_the_lf_with_a_cr_behind_it() {
+fn inline_object_splits_crlf_and_the_lf_remains_mandatory() {
     let text = Text::from("\r\n");
     let options = ClusterRoleRangeOptions::builder()
         .inline_objects_by_start(HashMap::from([(
@@ -752,8 +752,8 @@ fn inline_object_over_the_cr_walks_the_lf_with_a_cr_behind_it() {
     assert_eq!(2, ranges.len());
     assert_eq!(text_range(0, 1), ranges[0].range);
     assert_eq!(text_range(1, 2), ranges[1].range);
-    assert!(!ranges[1].mandatory_break);
-    assert!(ranges.iter().all(|range| !range.mandatory_break));
+    assert!(ranges[1].mandatory_break);
+    assert!(ranges.iter().any(|range| range.mandatory_break));
 }
 
 #[test]

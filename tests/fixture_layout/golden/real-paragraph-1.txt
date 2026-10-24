@@ -9,11 +9,22 @@ line[1] 18-38 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- ju
 line[2] 38-58 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
 line[3] 58-78 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
 line[4] 78-98 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[5] 98-118 natural=306.0 adjusted=306.0 visual=320.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@99+3.3,CjkInterChar@100+1.0,CjkInterChar@108+1.0,CjkInterChar@109+1.0,CjkInterChar@110+1.0,CjkInterChar@111+1.0,CjkInterChar@112+1.0,CjkInterChar@113+1.0,CjkInterChar@114+1.0,CjkInterChar@115+1.0,CjkInterChar@116+1.0,CjkInterChar@99+1.0
+line[5] 98-118 natural=312.0 adjusted=312.0 visual=320.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@100+0.7,CjkInterChar@108+0.7,CjkInterChar@109+0.7,CjkInterChar@110+0.7,CjkInterChar@111+0.7,CjkInterChar@112+0.7,CjkInterChar@113+0.7,CjkInterChar@114+0.7,CjkInterChar@115+0.7,CjkInterChar@116+0.7,CjkInterChar@99+0.7
 line[6] 118-138 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
 line[7] 138-159 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=-
 line[8] 159-180 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+,PushIn+ justify=-
 line[9] 180-185 natural=80.0 adjusted=72.0 visual=72.0 repair=- candidates=- justify=-
+whitespace 99-100 kind=Space action=Preserve
+line-geometry[0] alignment=288.0 occupied=32.0,0.0,320.0,24.0
+line-geometry[1] alignment=320.0 occupied=0.0,24.0,320.0,48.0
+line-geometry[2] alignment=320.0 occupied=0.0,48.0,320.0,72.0
+line-geometry[3] alignment=320.0 occupied=0.0,72.0,320.0,96.0
+line-geometry[4] alignment=320.0 occupied=0.0,96.0,320.0,120.0
+line-geometry[5] alignment=320.0 occupied=0.0,120.0,320.0,144.0
+line-geometry[6] alignment=320.0 occupied=0.0,144.0,320.0,168.0
+line-geometry[7] alignment=320.0 occupied=0.0,168.0,320.0,192.0
+line-geometry[8] alignment=320.0 occupied=0.0,192.0,320.0,216.0
+line-geometry[9] alignment=72.0 occupied=0.0,216.0,72.0,240.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '（' adv=16.0
@@ -106,17 +117,17 @@ cluster 95-96 '人' adv=16.0
 cluster 96-97 '做' adv=16.0
 cluster 97-98 '出' adv=16.0
 cluster 98-99 '了' adv=16.0
-cluster 99-100 ' ' adv=6.3
-cluster 100-108 'espresso' adv=129.0
-cluster 108-109 '，' adv=17.0
-cluster 109-110 '维' adv=17.0
-cluster 110-111 '也' adv=17.0
-cluster 111-112 '纳' adv=17.0
-cluster 112-113 '人' adv=17.0
-cluster 113-114 '往' adv=17.0
-cluster 114-115 '杯' adv=17.0
-cluster 115-116 '里' adv=17.0
-cluster 116-117 '加' adv=17.0
+cluster 99-100 ' ' adv=8.7
+cluster 100-108 'espresso' adv=128.7
+cluster 108-109 '，' adv=16.7
+cluster 109-110 '维' adv=16.7
+cluster 110-111 '也' adv=16.7
+cluster 111-112 '纳' adv=16.7
+cluster 112-113 '人' adv=16.7
+cluster 113-114 '往' adv=16.7
+cluster 114-115 '杯' adv=16.7
+cluster 115-116 '里' adv=16.7
+cluster 116-117 '加' adv=16.7
 cluster 117-118 '奶' adv=16.0
 cluster 118-119 '油' adv=16.0
 cluster 119-120 '，' adv=16.0
@@ -391,7 +402,7 @@ geom 69-70 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 72-73 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 75-77 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 91-92 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 108-109 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=1.0 resolved=17.0
+geom 108-109 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.7 resolved=16.7
 geom 119-120 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 130-132 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 150-151 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
@@ -404,7 +415,6 @@ geom 176-177 body=8.0 lead=0.0/0.0 trail=4.0/8.0 justify=0.0 resolved=12.0
 geom 184-185 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 154-156 '：「' inner=16.0->8.0 target=154-155
 spacing 168-170 '」。' inner=8.0->0.0 target=168-169
-autospace 99-100 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 edgetrim 184-185 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
@@ -414,12 +424,23 @@ line[0] 0-18 indent=32.0 natural=288.0 adjusted=288.0 visual=288.0 repair=- cand
 line[1] 18-38 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
 line[2] 38-58 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
 line[3] 58-78 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[4] 78-98 natural=320.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=-
-line[5] 98-118 natural=306.0 adjusted=306.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=deficit=14.0->0.0 CjkLatinSpace@99+3.3,CjkInterChar@100+1.0,CjkInterChar@108+1.0,CjkInterChar@109+1.0,CjkInterChar@110+1.0,CjkInterChar@111+1.0,CjkInterChar@112+1.0,CjkInterChar@113+1.0,CjkInterChar@114+1.0,CjkInterChar@115+1.0,CjkInterChar@116+1.0,CjkInterChar@99+1.0
-line[6] 118-138 natural=320.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=-
-line[7] 138-159 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+,PushIn+ justify=-
-line[8] 159-180 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+,PushIn+,PushIn+ justify=-
+line[4] 78-98 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[5] 98-118 natural=312.0 adjusted=312.0 visual=320.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@100+0.7,CjkInterChar@108+0.7,CjkInterChar@109+0.7,CjkInterChar@110+0.7,CjkInterChar@111+0.7,CjkInterChar@112+0.7,CjkInterChar@113+0.7,CjkInterChar@114+0.7,CjkInterChar@115+0.7,CjkInterChar@116+0.7,CjkInterChar@99+0.7
+line[6] 118-138 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[7] 138-159 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=-
+line[8] 159-180 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+,PushIn+ justify=-
 line[9] 180-185 natural=80.0 adjusted=72.0 visual=72.0 repair=- candidates=- justify=-
+whitespace 99-100 kind=Space action=Preserve
+line-geometry[0] alignment=288.0 occupied=32.0,0.0,320.0,24.0
+line-geometry[1] alignment=320.0 occupied=0.0,24.0,320.0,48.0
+line-geometry[2] alignment=320.0 occupied=0.0,48.0,320.0,72.0
+line-geometry[3] alignment=320.0 occupied=0.0,72.0,320.0,96.0
+line-geometry[4] alignment=320.0 occupied=0.0,96.0,320.0,120.0
+line-geometry[5] alignment=320.0 occupied=0.0,120.0,320.0,144.0
+line-geometry[6] alignment=320.0 occupied=0.0,144.0,320.0,168.0
+line-geometry[7] alignment=320.0 occupied=0.0,168.0,320.0,192.0
+line-geometry[8] alignment=320.0 occupied=0.0,192.0,320.0,216.0
+line-geometry[9] alignment=72.0 occupied=0.0,216.0,72.0,240.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '（' adv=16.0
@@ -512,17 +533,17 @@ cluster 95-96 '人' adv=16.0
 cluster 96-97 '做' adv=16.0
 cluster 97-98 '出' adv=16.0
 cluster 98-99 '了' adv=16.0
-cluster 99-100 ' ' adv=6.3
-cluster 100-108 'espresso' adv=129.0
-cluster 108-109 '，' adv=17.0
-cluster 109-110 '维' adv=17.0
-cluster 110-111 '也' adv=17.0
-cluster 111-112 '纳' adv=17.0
-cluster 112-113 '人' adv=17.0
-cluster 113-114 '往' adv=17.0
-cluster 114-115 '杯' adv=17.0
-cluster 115-116 '里' adv=17.0
-cluster 116-117 '加' adv=17.0
+cluster 99-100 ' ' adv=8.7
+cluster 100-108 'espresso' adv=128.7
+cluster 108-109 '，' adv=16.7
+cluster 109-110 '维' adv=16.7
+cluster 110-111 '也' adv=16.7
+cluster 111-112 '纳' adv=16.7
+cluster 112-113 '人' adv=16.7
+cluster 113-114 '往' adv=16.7
+cluster 114-115 '杯' adv=16.7
+cluster 115-116 '里' adv=16.7
+cluster 116-117 '加' adv=16.7
 cluster 117-118 '奶' adv=16.0
 cluster 118-119 '油' adv=16.0
 cluster 119-120 '，' adv=16.0
@@ -797,7 +818,7 @@ geom 69-70 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 72-73 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 75-77 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 91-92 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 108-109 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=1.0 resolved=17.0
+geom 108-109 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.7 resolved=16.7
 geom 119-120 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 130-132 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 150-151 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
@@ -810,22 +831,33 @@ geom 176-177 body=8.0 lead=0.0/0.0 trail=4.0/8.0 justify=0.0 resolved=12.0
 geom 184-185 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 154-156 '：「' inner=16.0->8.0 target=154-155
 spacing 168-170 '」。' inner=8.0->0.0 target=168-169
-autospace 99-100 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 edgetrim 184-185 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
 size 320.0x240.0
 kinsoku measure=20.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:20字→Basic
 line[0] 0-18 indent=32.0 natural=288.0 adjusted=288.0 visual=288.0 repair=- candidates=- justify=-
-line[1] 18-38 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[2] 38-57 natural=304.0 adjusted=304.0 visual=320.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@38+0.9,CjkInterChar@39+0.9,CjkInterChar@40+0.9,CjkInterChar@41+0.9,CjkInterChar@42+0.9,CjkInterChar@43+0.9,CjkInterChar@44+0.9,CjkInterChar@45+0.9,CjkInterChar@46+0.9,CjkInterChar@47+0.9,CjkInterChar@48+0.9,CjkInterChar@49+0.9,CjkInterChar@50+0.9,CjkInterChar@51+0.9,CjkInterChar@52+0.9,CjkInterChar@53+0.9,CjkInterChar@54+0.9,CjkInterChar@55+0.9
-line[3] 57-77 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[4] 77-97 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[5] 97-118 natural=322.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=2.0) candidates=PushIn+ justify=-
-line[6] 118-138 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
-line[7] 138-159 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=-
-line[8] 159-180 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=PushIn+ justify=-
-line[9] 180-185 natural=80.0 adjusted=72.0 visual=72.0 repair=- candidates=- justify=-
+line[1] 18-39 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=16.0) candidates=- justify=-
+line[2] 39-59 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[3] 59-79 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[4] 79-99 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[5] 99-120 natural=328.0 adjusted=312.0 visual=320.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@100+0.7,CjkInterChar@108+0.7,CjkInterChar@109+0.7,CjkInterChar@110+0.7,CjkInterChar@111+0.7,CjkInterChar@112+0.7,CjkInterChar@113+0.7,CjkInterChar@114+0.7,CjkInterChar@115+0.7,CjkInterChar@116+0.7,CjkInterChar@117+0.7,CjkInterChar@118+0.7
+line[6] 120-140 natural=320.0 adjusted=320.0 visual=320.0 repair=- candidates=- justify=-
+line[7] 140-160 natural=320.0 adjusted=312.0 visual=320.0 repair=- candidates=- justify=deficit=8.0->0.0 CjkInterChar@140+0.4,CjkInterChar@141+0.4,CjkInterChar@142+0.4,CjkInterChar@143+0.4,CjkInterChar@144+0.4,CjkInterChar@145+0.4,CjkInterChar@146+0.4,CjkInterChar@147+0.4,CjkInterChar@148+0.4,CjkInterChar@149+0.4,CjkInterChar@150+0.4,CjkInterChar@151+0.4,CjkInterChar@152+0.4,CjkInterChar@153+0.4,CjkInterChar@154+0.4,CjkInterChar@155+0.4,CjkInterChar@156+0.4,CjkInterChar@157+0.4,CjkInterChar@158+0.4
+line[8] 160-181 natural=336.0 adjusted=320.0 visual=320.0 repair=PushIn(LineAdjustmentPushIn shrink=8.0) candidates=- justify=-
+line[9] 181-185 natural=64.0 adjusted=56.0 visual=56.0 repair=- candidates=- justify=-
+whitespace 99-100 kind=Space action=Preserve
+line-whitespace line=5 cluster=92 action=RemoveStart occupied=0.0 hanging=0.0
+line-geometry[0] alignment=288.0 occupied=32.0,0.0,320.0,24.0
+line-geometry[1] alignment=320.0 occupied=0.0,24.0,320.0,48.0
+line-geometry[2] alignment=320.0 occupied=0.0,48.0,320.0,72.0
+line-geometry[3] alignment=320.0 occupied=0.0,72.0,320.0,96.0
+line-geometry[4] alignment=320.0 occupied=0.0,96.0,320.0,120.0
+line-geometry[5] alignment=320.0 occupied=0.0,120.0,320.0,144.0
+line-geometry[6] alignment=320.0 occupied=0.0,144.0,320.0,168.0
+line-geometry[7] alignment=320.0 occupied=0.0,168.0,320.0,192.0
+line-geometry[8] alignment=320.0 occupied=0.0,192.0,320.0,216.0
+line-geometry[9] alignment=56.0 occupied=0.0,216.0,56.0,240.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '（' adv=16.0
@@ -844,7 +876,7 @@ cluster 19-20 '传' adv=16.0
 cluster 20-21 '入' adv=16.0
 cluster 21-22 '欧' adv=16.0
 cluster 22-23 '洲' adv=16.0
-cluster 23-24 '。' adv=16.0
+cluster 23-24 '。' adv=8.0
 cluster 24-25 '最' adv=16.0
 cluster 25-26 '初' adv=16.0
 cluster 26-27 '它' adv=16.0
@@ -855,28 +887,28 @@ cluster 30-31 '药' adv=16.0
 cluster 31-32 '物' adv=16.0
 cluster 32-33 '出' adv=16.0
 cluster 33-34 '售' adv=16.0
-cluster 34-35 '，' adv=16.0
+cluster 34-35 '，' adv=8.0
 cluster 35-36 '价' adv=16.0
 cluster 36-37 '格' adv=16.0
 cluster 37-38 '高' adv=16.0
-cluster 38-39 '得' adv=16.9
-cluster 39-40 '吓' adv=16.9
-cluster 40-41 '人' adv=16.9
-cluster 41-42 '，' adv=16.9
-cluster 42-43 '真' adv=16.9
-cluster 43-44 '正' adv=16.9
-cluster 44-45 '让' adv=16.9
-cluster 45-46 '它' adv=16.9
-cluster 46-47 '流' adv=16.9
-cluster 47-48 '行' adv=16.9
-cluster 48-49 '起' adv=16.9
-cluster 49-50 '来' adv=16.9
-cluster 50-51 '的' adv=16.9
-cluster 51-52 '是' adv=16.9
-cluster 52-53 '随' adv=16.9
-cluster 53-54 '后' adv=16.9
-cluster 54-55 '遍' adv=16.9
-cluster 55-56 '地' adv=16.9
+cluster 38-39 '得' adv=16.0
+cluster 39-40 '吓' adv=16.0
+cluster 40-41 '人' adv=16.0
+cluster 41-42 '，' adv=16.0
+cluster 42-43 '真' adv=16.0
+cluster 43-44 '正' adv=16.0
+cluster 44-45 '让' adv=16.0
+cluster 45-46 '它' adv=16.0
+cluster 46-47 '流' adv=16.0
+cluster 47-48 '行' adv=16.0
+cluster 48-49 '起' adv=16.0
+cluster 49-50 '来' adv=16.0
+cluster 50-51 '的' adv=16.0
+cluster 51-52 '是' adv=16.0
+cluster 52-53 '随' adv=16.0
+cluster 53-54 '后' adv=16.0
+cluster 54-55 '遍' adv=16.0
+cluster 55-56 '地' adv=16.0
 cluster 56-57 '开' adv=16.0
 cluster 57-58 '花' adv=16.0
 cluster 58-59 '的' adv=16.0
@@ -918,20 +950,20 @@ cluster 95-96 '人' adv=16.0
 cluster 96-97 '做' adv=16.0
 cluster 97-98 '出' adv=16.0
 cluster 98-99 '了' adv=16.0
-cluster 99-100 ' ' adv=2.0
-cluster 100-108 'espresso' adv=128.0
-cluster 108-109 '，' adv=14.0
-cluster 109-110 '维' adv=16.0
-cluster 110-111 '也' adv=16.0
-cluster 111-112 '纳' adv=16.0
-cluster 112-113 '人' adv=16.0
-cluster 113-114 '往' adv=16.0
-cluster 114-115 '杯' adv=16.0
-cluster 115-116 '里' adv=16.0
-cluster 116-117 '加' adv=16.0
-cluster 117-118 '奶' adv=16.0
-cluster 118-119 '油' adv=16.0
-cluster 119-120 '，' adv=16.0
+cluster 99-100 ' ' adv=0.0
+cluster 100-108 'espresso' adv=128.7
+cluster 108-109 '，' adv=16.7
+cluster 109-110 '维' adv=16.7
+cluster 110-111 '也' adv=16.7
+cluster 111-112 '纳' adv=16.7
+cluster 112-113 '人' adv=16.7
+cluster 113-114 '往' adv=16.7
+cluster 114-115 '杯' adv=16.7
+cluster 115-116 '里' adv=16.7
+cluster 116-117 '加' adv=16.7
+cluster 117-118 '奶' adv=16.7
+cluster 118-119 '油' adv=16.7
+cluster 119-120 '，' adv=8.0
 cluster 120-121 '土' adv=16.0
 cluster 121-122 '耳' adv=16.0
 cluster 122-123 '其' adv=16.0
@@ -951,25 +983,25 @@ cluster 136-137 '都' adv=16.0
 cluster 137-138 '相' adv=16.0
 cluster 138-139 '信' adv=16.0
 cluster 139-140 '自' adv=16.0
-cluster 140-141 '己' adv=16.0
-cluster 141-142 '手' adv=16.0
-cluster 142-143 '里' adv=16.0
-cluster 143-144 '那' adv=16.0
-cluster 144-145 '一' adv=16.0
-cluster 145-146 '杯' adv=16.0
-cluster 146-147 '才' adv=16.0
-cluster 147-148 '是' adv=16.0
-cluster 148-149 '正' adv=16.0
-cluster 149-150 '统' adv=16.0
-cluster 150-151 '。' adv=16.0
-cluster 151-152 '有' adv=16.0
-cluster 152-153 '人' adv=16.0
-cluster 153-154 '说' adv=16.0
-cluster 154-155 '：' adv=8.0
-cluster 155-156 '「' adv=8.0
-cluster 156-157 '先' adv=16.0
-cluster 157-158 '有' adv=16.0
-cluster 158-159 '咖' adv=16.0
+cluster 140-141 '己' adv=16.4
+cluster 141-142 '手' adv=16.4
+cluster 142-143 '里' adv=16.4
+cluster 143-144 '那' adv=16.4
+cluster 144-145 '一' adv=16.4
+cluster 145-146 '杯' adv=16.4
+cluster 146-147 '才' adv=16.4
+cluster 147-148 '是' adv=16.4
+cluster 148-149 '正' adv=16.4
+cluster 149-150 '统' adv=16.4
+cluster 150-151 '。' adv=16.4
+cluster 151-152 '有' adv=16.4
+cluster 152-153 '人' adv=16.4
+cluster 153-154 '说' adv=16.4
+cluster 154-155 '：' adv=8.4
+cluster 155-156 '「' adv=16.4
+cluster 156-157 '先' adv=16.4
+cluster 157-158 '有' adv=16.4
+cluster 158-159 '咖' adv=16.4
 cluster 159-160 '啡' adv=16.0
 cluster 160-161 '馆' adv=16.0
 cluster 161-162 '，' adv=12.0
@@ -1194,21 +1226,21 @@ punct 176-177 '，' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 ancho
 punct 184-185 '。' class=PauseOrStop adv=16.0 body=8.0 lead=0.0 trail=8.0 anchor=Leading source=ProfileGlueFallbackWithoutFontGeometry fallback=shaper-no-ink-bounds
 geom 2-3 body=8.0 lead=0.0/8.0 trail=0.0/0.0 justify=0.0 resolved=16.0
 geom 9-10 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 23-24 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 34-35 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 41-42 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.9 resolved=16.9
+geom 23-24 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
+geom 34-35 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
+geom 41-42 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 62-64 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 66-67 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 69-70 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 72-73 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 75-77 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
 geom 91-92 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 108-109 body=8.0 lead=0.0/0.0 trail=2.0/8.0 justify=0.0 resolved=14.0
-geom 119-120 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
+geom 108-109 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.7 resolved=16.7
+geom 119-120 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 geom 130-132 body=32.0 lead=0.0/0.0 trail=0.0/0.0 justify=0.0 resolved=32.0
-geom 150-151 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
-geom 154-155 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
-geom 155-156 body=8.0 lead=8.0/8.0 trail=0.0/0.0 justify=0.0 resolved=8.0
+geom 150-151 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.4 resolved=16.4
+geom 154-155 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.4 resolved=8.4
+geom 155-156 body=8.0 lead=0.0/8.0 trail=0.0/0.0 justify=0.4 resolved=16.4
 geom 161-162 body=8.0 lead=0.0/0.0 trail=4.0/8.0 justify=0.0 resolved=12.0
 geom 168-169 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 geom 169-170 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
@@ -1216,6 +1248,6 @@ geom 176-177 body=8.0 lead=0.0/0.0 trail=4.0/8.0 justify=0.0 resolved=12.0
 geom 184-185 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 154-156 '：「' inner=16.0->8.0 target=154-155
 spacing 168-170 '」。' inner=8.0->0.0 target=168-169
-autospace 99-100 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
+edgetrim 119-120 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 edgetrim 184-185 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault

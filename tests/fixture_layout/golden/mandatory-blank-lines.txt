@@ -8,6 +8,13 @@ line[0] 0-2 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify
 line[1] 2-3 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
 line[2] 3-5 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
 line[3] 5-5 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
+whitespace 1-2 kind=SegmentBreak action=Preserve
+whitespace 2-3 kind=SegmentBreak action=Preserve
+whitespace 4-5 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,16.0,24.0
+line-geometry[1] alignment=0.0 occupied=0.0,24.0,0.0,48.0
+line-geometry[2] alignment=16.0 occupied=0.0,48.0,16.0,72.0
+line-geometry[3] alignment=0.0 occupied=0.0,72.0,0.0,96.0
 cluster 0-1 '甲' adv=16.0
 cluster 1-2 '' adv=0.0
 cluster 2-3 '' adv=0.0
@@ -26,6 +33,13 @@ line[0] 0-2 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify
 line[1] 2-3 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
 line[2] 3-5 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
 line[3] 5-5 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
+whitespace 1-2 kind=SegmentBreak action=Preserve
+whitespace 2-3 kind=SegmentBreak action=Preserve
+whitespace 4-5 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,16.0,24.0
+line-geometry[1] alignment=0.0 occupied=0.0,24.0,0.0,48.0
+line-geometry[2] alignment=16.0 occupied=0.0,48.0,16.0,72.0
+line-geometry[3] alignment=0.0 occupied=0.0,72.0,0.0,96.0
 cluster 0-1 '甲' adv=16.0
 cluster 1-2 '' adv=0.0
 cluster 2-3 '' adv=0.0
@@ -44,6 +58,13 @@ line[0] 0-2 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify
 line[1] 2-3 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
 line[2] 3-5 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
 line[3] 5-5 natural=0.0 adjusted=0.0 visual=0.0 repair=- candidates=- justify=-
+whitespace 1-2 kind=SegmentBreak action=Preserve
+whitespace 2-3 kind=SegmentBreak action=Preserve
+whitespace 4-5 kind=SegmentBreak action=Preserve
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,16.0,24.0
+line-geometry[1] alignment=0.0 occupied=0.0,24.0,0.0,48.0
+line-geometry[2] alignment=16.0 occupied=0.0,48.0,16.0,72.0
+line-geometry[3] alignment=0.0 occupied=0.0,72.0,0.0,96.0
 cluster 0-1 '甲' adv=16.0
 cluster 1-2 '' adv=0.0
 cluster 2-3 '' adv=0.0

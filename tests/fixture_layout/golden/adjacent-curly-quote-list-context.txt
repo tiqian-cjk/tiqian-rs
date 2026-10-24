@@ -6,6 +6,9 @@ size 320.0x48.0
 kinsoku measure=20.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:20字→Basic
 line[0] 0-17 natural=274.0 adjusted=250.0 visual=320.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=70.0->0.0 CjkLatinSpace@3+3.3,CjkInterChar@0+4.2,CjkInterChar@1+4.2,CjkInterChar@2+4.2,CjkInterChar@3+4.2,CjkInterChar@4+4.2,CjkInterChar@5+4.2,CjkInterChar@6+4.2,CjkInterChar@7+4.2,CjkInterChar@8+4.2,CjkInterChar@9+4.2,CjkInterChar@10+4.2,CjkInterChar@11+4.2,CjkInterChar@12+4.2,CjkInterChar@13+4.2,CjkInterChar@14+4.2,CjkInterChar@15+4.2
 line[1] 17-38 natural=328.0 adjusted=312.0 visual=312.0 repair=- candidates=- justify=-
+whitespace 32-33 kind=Space action=Preserve
+line-geometry[0] alignment=320.0 occupied=0.0,0.0,320.0,24.0
+line-geometry[1] alignment=312.0 occupied=0.0,24.0,312.0,48.0
 cluster 0-1 '中' adv=20.2
 cluster 1-2 '文' adv=20.2
 cluster 2-3 '“' adv=20.2
@@ -102,6 +105,9 @@ size 320.0x48.0
 kinsoku measure=20.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:20字→Basic
 line[0] 0-17 natural=274.0 adjusted=250.0 visual=320.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=70.0->0.0 CjkLatinSpace@3+3.3,CjkInterChar@0+4.2,CjkInterChar@1+4.2,CjkInterChar@2+4.2,CjkInterChar@3+4.2,CjkInterChar@4+4.2,CjkInterChar@5+4.2,CjkInterChar@6+4.2,CjkInterChar@7+4.2,CjkInterChar@8+4.2,CjkInterChar@9+4.2,CjkInterChar@10+4.2,CjkInterChar@11+4.2,CjkInterChar@12+4.2,CjkInterChar@13+4.2,CjkInterChar@14+4.2,CjkInterChar@15+4.2
 line[1] 17-38 natural=328.0 adjusted=312.0 visual=312.0 repair=- candidates=- justify=-
+whitespace 32-33 kind=Space action=Preserve
+line-geometry[0] alignment=320.0 occupied=0.0,0.0,320.0,24.0
+line-geometry[1] alignment=312.0 occupied=0.0,24.0,312.0,48.0
 cluster 0-1 '中' adv=20.2
 cluster 1-2 '文' adv=20.2
 cluster 2-3 '“' adv=20.2
@@ -196,8 +202,11 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 == paragraph-dp ==
 size 320.0x48.0
 kinsoku measure=20.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:20字→Basic
-line[0] 0-17 natural=274.0 adjusted=250.0 visual=320.0 repair=CarryNext(ForbiddenAtLineEnd shrink=0.0) candidates=- justify=deficit=70.0->0.0 CjkLatinSpace@3+3.3,CjkInterChar@0+4.2,CjkInterChar@1+4.2,CjkInterChar@2+4.2,CjkInterChar@3+4.2,CjkInterChar@4+4.2,CjkInterChar@5+4.2,CjkInterChar@6+4.2,CjkInterChar@7+4.2,CjkInterChar@8+4.2,CjkInterChar@9+4.2,CjkInterChar@10+4.2,CjkInterChar@11+4.2,CjkInterChar@12+4.2,CjkInterChar@13+4.2,CjkInterChar@14+4.2,CjkInterChar@15+4.2
+line[0] 0-17 natural=274.0 adjusted=250.0 visual=320.0 repair=- candidates=- justify=deficit=70.0->0.0 CjkLatinSpace@3+3.3,CjkInterChar@0+4.2,CjkInterChar@1+4.2,CjkInterChar@2+4.2,CjkInterChar@3+4.2,CjkInterChar@4+4.2,CjkInterChar@5+4.2,CjkInterChar@6+4.2,CjkInterChar@7+4.2,CjkInterChar@8+4.2,CjkInterChar@9+4.2,CjkInterChar@10+4.2,CjkInterChar@11+4.2,CjkInterChar@12+4.2,CjkInterChar@13+4.2,CjkInterChar@14+4.2,CjkInterChar@15+4.2
 line[1] 17-38 natural=328.0 adjusted=312.0 visual=312.0 repair=- candidates=- justify=-
+whitespace 32-33 kind=Space action=Preserve
+line-geometry[0] alignment=320.0 occupied=0.0,0.0,320.0,24.0
+line-geometry[1] alignment=312.0 occupied=0.0,24.0,312.0,48.0
 cluster 0-1 '中' adv=20.2
 cluster 1-2 '文' adv=20.2
 cluster 2-3 '“' adv=20.2

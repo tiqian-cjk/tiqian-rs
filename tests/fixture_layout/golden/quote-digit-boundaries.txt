@@ -2,14 +2,17 @@ fixture: quote-digit-boundaries
 text: 中文 le“t”ters 中1“1”2文；中Ａ“Ｂ”Ｃ文。尾号是“1‘2’3”，用时1’30”。
 maxWidth: 1024.0
 == greedy ==
-size 730.0x24.0
+size 742.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
-line[0] 0-48 natural=746.0 adjusted=730.0 visual=730.0 repair=- candidates=- justify=-
+line[0] 0-48 natural=758.0 adjusted=742.0 visual=742.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 12-13 kind=Space action=Preserve
+line-geometry[0] alignment=742.0 occupied=0.0,0.0,742.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
-cluster 2-3 ' ' adv=2.0
+cluster 2-3 ' ' adv=8.0
 cluster 3-12 'le“t”ters' adv=144.0
-cluster 12-13 ' ' adv=2.0
+cluster 12-13 ' ' adv=8.0
 cluster 13-14 '中' adv=16.0
 cluster 14-15 '1' adv=18.0
 cluster 15-16 '“' adv=16.0
@@ -114,22 +117,23 @@ geom 38-39 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 geom 39-40 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 47-48 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 38-40 '”，' inner=8.0->0.0 target=38-39
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 12-13 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 autospace 14-15 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 18-19 side=trailing boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 42-47 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 edgetrim 47-48 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == lookahead ==
-size 730.0x24.0
+size 742.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
-line[0] 0-48 natural=746.0 adjusted=730.0 visual=730.0 repair=- candidates=- justify=-
+line[0] 0-48 natural=758.0 adjusted=742.0 visual=742.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 12-13 kind=Space action=Preserve
+line-geometry[0] alignment=742.0 occupied=0.0,0.0,742.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
-cluster 2-3 ' ' adv=2.0
+cluster 2-3 ' ' adv=8.0
 cluster 3-12 'le“t”ters' adv=144.0
-cluster 12-13 ' ' adv=2.0
+cluster 12-13 ' ' adv=8.0
 cluster 13-14 '中' adv=16.0
 cluster 14-15 '1' adv=18.0
 cluster 15-16 '“' adv=16.0
@@ -234,22 +238,23 @@ geom 38-39 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 geom 39-40 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 47-48 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 38-40 '”，' inner=8.0->0.0 target=38-39
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 12-13 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 autospace 14-15 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 18-19 side=trailing boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 42-47 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 edgetrim 47-48 side=trailing trim=8.0 reason=LineEndHalfWidthPunctuation
 linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reason=CjkBodyLineHeightDefault
 == paragraph-dp ==
-size 730.0x24.0
+size 742.0x24.0
 kinsoku measure=64.0字 level=Strict hang=Disabled reason=MeasureAdaptiveKinsoku:64字→Strict
-line[0] 0-48 natural=746.0 adjusted=730.0 visual=730.0 repair=- candidates=- justify=-
+line[0] 0-48 natural=758.0 adjusted=742.0 visual=742.0 repair=- candidates=- justify=-
+whitespace 2-3 kind=Space action=Preserve
+whitespace 12-13 kind=Space action=Preserve
+line-geometry[0] alignment=742.0 occupied=0.0,0.0,742.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
-cluster 2-3 ' ' adv=2.0
+cluster 2-3 ' ' adv=8.0
 cluster 3-12 'le“t”ters' adv=144.0
-cluster 12-13 ' ' adv=2.0
+cluster 12-13 ' ' adv=8.0
 cluster 13-14 '中' adv=16.0
 cluster 14-15 '1' adv=18.0
 cluster 15-16 '“' adv=16.0
@@ -354,8 +359,6 @@ geom 38-39 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 geom 39-40 body=8.0 lead=0.0/0.0 trail=0.0/8.0 justify=0.0 resolved=16.0
 geom 47-48 body=8.0 lead=0.0/0.0 trail=8.0/8.0 justify=0.0 resolved=8.0
 spacing 38-40 '”，' inner=8.0->0.0 target=38-39
-autospace 2-3 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
-autospace 12-13 side=gap boundary=EastAsianSpacing.Wide reduction=6.0
 autospace 14-15 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 18-19 side=trailing boundary=EastAsianSpacing.Wide reduction=-2.0
 autospace 42-47 side=leading boundary=EastAsianSpacing.Wide reduction=-2.0

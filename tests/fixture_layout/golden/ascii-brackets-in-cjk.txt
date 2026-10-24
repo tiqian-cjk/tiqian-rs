@@ -6,6 +6,8 @@ size 240.0x48.0
 kinsoku measure=15.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:15字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=240.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+3.2,CjkInterChar@1+3.2,CjkInterChar@2+3.2,CjkInterChar@3+3.2(WesternBracketCjkInterChar),CjkInterChar@4+3.2(WesternBracketCjkInterChar)
 line[1] 14-24 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
 cluster 0-1 '中' adv=19.2
 cluster 1-2 '文' adv=19.2
 cluster 2-3 '段' adv=19.2
@@ -35,6 +37,8 @@ size 240.0x48.0
 kinsoku measure=15.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:15字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=240.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+3.2,CjkInterChar@1+3.2,CjkInterChar@2+3.2,CjkInterChar@3+3.2(WesternBracketCjkInterChar),CjkInterChar@4+3.2(WesternBracketCjkInterChar)
 line[1] 14-24 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
 cluster 0-1 '中' adv=19.2
 cluster 1-2 '文' adv=19.2
 cluster 2-3 '段' adv=19.2
@@ -64,6 +68,8 @@ size 240.0x48.0
 kinsoku measure=15.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:15字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=240.0 repair=- candidates=- justify=deficit=16.0->0.0 CjkInterChar@0+3.2,CjkInterChar@1+3.2,CjkInterChar@2+3.2,CjkInterChar@3+3.2(WesternBracketCjkInterChar),CjkInterChar@4+3.2(WesternBracketCjkInterChar)
 line[1] 14-24 natural=160.0 adjusted=152.0 visual=152.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=240.0 occupied=0.0,0.0,240.0,24.0
+line-geometry[1] alignment=152.0 occupied=0.0,24.0,152.0,48.0
 cluster 0-1 '中' adv=19.2
 cluster 1-2 '文' adv=19.2
 cluster 2-3 '段' adv=19.2

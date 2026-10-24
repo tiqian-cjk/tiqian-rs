@@ -6,6 +6,8 @@ size 224.0x48.0
 kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:14字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
 line[1] 14-16 natural=32.0 adjusted=24.0 visual=24.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '屈' adv=16.0
 cluster 1-2 '原' adv=16.0
 cluster 2-3 '写' adv=16.0
@@ -53,6 +55,8 @@ size 224.0x48.0
 kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:14字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
 line[1] 14-16 natural=32.0 adjusted=24.0 visual=24.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '屈' adv=16.0
 cluster 1-2 '原' adv=16.0
 cluster 2-3 '写' adv=16.0
@@ -100,6 +104,8 @@ size 224.0x48.0
 kinsoku measure=14.0字 level=Basic hang=Disabled reason=MeasureAdaptiveKinsoku:14字→Basic
 line[0] 0-14 natural=224.0 adjusted=224.0 visual=224.0 repair=- candidates=- justify=-
 line[1] 14-16 natural=32.0 adjusted=24.0 visual=24.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=224.0 occupied=0.0,0.0,224.0,24.0
+line-geometry[1] alignment=24.0 occupied=0.0,24.0,24.0,48.0
 cluster 0-1 '屈' adv=16.0
 cluster 1-2 '原' adv=16.0
 cluster 2-3 '写' adv=16.0

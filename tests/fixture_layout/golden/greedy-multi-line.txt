@@ -7,6 +7,9 @@ kinsoku measure=9.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku
 line[0] 0-9 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[1] 9-18 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[2] 18-22 natural=64.0 adjusted=56.0 visual=56.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=144.0 occupied=0.0,0.0,144.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=56.0 occupied=0.0,48.0,56.0,72.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '馆' adv=16.0
@@ -61,6 +64,9 @@ kinsoku measure=9.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku
 line[0] 0-9 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[1] 9-18 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[2] 18-22 natural=64.0 adjusted=56.0 visual=56.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=144.0 occupied=0.0,0.0,144.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=56.0 occupied=0.0,48.0,56.0,72.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '馆' adv=16.0
@@ -115,6 +121,9 @@ kinsoku measure=9.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku
 line[0] 0-9 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[1] 9-18 natural=144.0 adjusted=144.0 visual=144.0 repair=- candidates=- justify=-
 line[2] 18-22 natural=64.0 adjusted=56.0 visual=56.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=144.0 occupied=0.0,0.0,144.0,24.0
+line-geometry[1] alignment=144.0 occupied=0.0,24.0,144.0,48.0
+line-geometry[2] alignment=56.0 occupied=0.0,48.0,56.0,72.0
 cluster 0-1 '咖' adv=16.0
 cluster 1-2 '啡' adv=16.0
 cluster 2-3 '馆' adv=16.0

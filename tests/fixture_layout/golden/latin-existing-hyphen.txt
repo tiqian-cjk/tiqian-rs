@@ -6,6 +6,8 @@ size 112.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
 line[0] 0-7 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[1] 7-14 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=112.0 occupied=0.0,0.0,112.0,24.0
+line-geometry[1] alignment=112.0 occupied=0.0,24.0,112.0,48.0
 cluster 0-4 'out-' adv=64.0
 cluster 4-7 'of-' adv=48.0
 cluster 7-11 'the-' adv=64.0
@@ -21,6 +23,8 @@ size 112.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
 line[0] 0-7 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[1] 7-14 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=112.0 occupied=0.0,0.0,112.0,24.0
+line-geometry[1] alignment=112.0 occupied=0.0,24.0,112.0,48.0
 cluster 0-4 'out-' adv=64.0
 cluster 4-7 'of-' adv=48.0
 cluster 7-11 'the-' adv=64.0
@@ -36,6 +40,8 @@ size 112.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
 line[0] 0-7 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=deficit=16.0->16.0
 line[1] 7-14 natural=112.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=112.0 occupied=0.0,0.0,112.0,24.0
+line-geometry[1] alignment=112.0 occupied=0.0,24.0,112.0,48.0
 cluster 0-4 'out-' adv=64.0
 cluster 4-7 'of-' adv=48.0
 cluster 7-11 'the-' adv=64.0

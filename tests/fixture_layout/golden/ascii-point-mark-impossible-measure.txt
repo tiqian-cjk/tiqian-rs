@@ -7,6 +7,8 @@ kinsoku measure=0.9字 level=Basic hang=Disabled reason=Fixed:Basic
 context-kinsoku 1-2 source=',' cluster=1 forbid=LineStart reason=AttachedAsciiPointMarkKinsoku fallback=AttachedAsciiPointMarkImpossibleMeasureHang
 line[0] 0-2 natural=32.0 adjusted=16.0 visual=32.0 repair=Hang(ForbiddenAtLineStart shrink=0.0) candidates=PushIn-,Hang+ justify=-
 line[1] 2-3 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,32.0,24.0
+line-geometry[1] alignment=16.0 occupied=0.0,24.0,16.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 ',' adv=16.0
 cluster 2-3 '文' adv=16.0
@@ -20,6 +22,8 @@ kinsoku measure=0.9字 level=Basic hang=Disabled reason=Fixed:Basic
 context-kinsoku 1-2 source=',' cluster=1 forbid=LineStart reason=AttachedAsciiPointMarkKinsoku fallback=AttachedAsciiPointMarkImpossibleMeasureHang
 line[0] 0-2 natural=32.0 adjusted=16.0 visual=32.0 repair=Hang(ForbiddenAtLineStart shrink=0.0) candidates=PushIn-,Hang+ justify=-
 line[1] 2-3 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,32.0,24.0
+line-geometry[1] alignment=16.0 occupied=0.0,24.0,16.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 ',' adv=16.0
 cluster 2-3 '文' adv=16.0
@@ -33,6 +37,8 @@ kinsoku measure=0.9字 level=Basic hang=Disabled reason=Fixed:Basic
 context-kinsoku 1-2 source=',' cluster=1 forbid=LineStart reason=AttachedAsciiPointMarkKinsoku fallback=AttachedAsciiPointMarkImpossibleMeasureHang
 line[0] 0-2 natural=32.0 adjusted=16.0 visual=32.0 repair=Hang(ForbiddenAtLineStart shrink=0.0) candidates=PushIn-,Hang+ justify=-
 line[1] 2-3 natural=16.0 adjusted=16.0 visual=16.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=16.0 occupied=0.0,0.0,32.0,24.0
+line-geometry[1] alignment=16.0 occupied=0.0,24.0,16.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 ',' adv=16.0
 cluster 2-3 '文' adv=16.0

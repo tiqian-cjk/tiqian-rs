@@ -7,6 +7,10 @@ kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku
 line[0] 0-7 natural=114.0 adjusted=114.0 visual=128.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@1+3.3,CjkInterChar@0+3.6,CjkInterChar@1+3.6,CjkInterChar@5+3.6
 line[1] 7-11 natural=64.0 adjusted=64.0 visual=128.0 repair=- candidates=- justify=deficit=64.0->0.0 CjkInterChar@7+21.3,CjkInterChar@8+21.3,CjkInterChar@9+21.3
 line[2] 11-18 natural=114.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-whitespace line=2 cluster=10 action=RemoveAutoSpaceStart occupied=2.0 hanging=0.0
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=128.0 occupied=0.0,24.0,128.0,48.0
+line-geometry[2] alignment=112.0 occupied=0.0,48.0,112.0,72.0
 cluster 0-1 '中' adv=19.6
 cluster 1-2 '文' adv=22.9
 cluster 2-4 '50' adv=34.0
@@ -36,9 +40,13 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 == lookahead ==
 size 128.0x72.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
-line[0] 0-7 natural=114.0 adjusted=114.0 visual=128.0 repair=PushIn(LineAdjustmentPushIn shrink=0.0) candidates=PushIn+ justify=deficit=14.0->0.0 CjkLatinSpace@1+3.3,CjkInterChar@0+3.6,CjkInterChar@1+3.6,CjkInterChar@5+3.6
+line[0] 0-7 natural=114.0 adjusted=114.0 visual=128.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=14.0->0.0 CjkLatinSpace@1+3.3,CjkInterChar@0+3.6,CjkInterChar@1+3.6,CjkInterChar@5+3.6
 line[1] 7-11 natural=64.0 adjusted=64.0 visual=128.0 repair=- candidates=- justify=deficit=64.0->0.0 CjkInterChar@7+21.3,CjkInterChar@8+21.3,CjkInterChar@9+21.3
 line[2] 11-18 natural=114.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-whitespace line=2 cluster=10 action=RemoveAutoSpaceStart occupied=2.0 hanging=0.0
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=128.0 occupied=0.0,24.0,128.0,48.0
+line-geometry[2] alignment=112.0 occupied=0.0,48.0,112.0,72.0
 cluster 0-1 '中' adv=19.6
 cluster 1-2 '文' adv=22.9
 cluster 2-4 '50' adv=34.0
@@ -71,6 +79,10 @@ kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku
 line[0] 0-7 natural=114.0 adjusted=114.0 visual=128.0 repair=- candidates=- justify=deficit=14.0->0.0 CjkLatinSpace@1+3.3,CjkInterChar@0+3.6,CjkInterChar@1+3.6,CjkInterChar@5+3.6
 line[1] 7-11 natural=64.0 adjusted=64.0 visual=128.0 repair=- candidates=- justify=deficit=64.0->0.0 CjkInterChar@7+21.3,CjkInterChar@8+21.3,CjkInterChar@9+21.3
 line[2] 11-18 natural=114.0 adjusted=112.0 visual=112.0 repair=- candidates=- justify=-
+line-whitespace line=2 cluster=10 action=RemoveAutoSpaceStart occupied=2.0 hanging=0.0
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=128.0 occupied=0.0,24.0,128.0,48.0
+line-geometry[2] alignment=112.0 occupied=0.0,48.0,112.0,72.0
 cluster 0-1 '中' adv=19.6
 cluster 1-2 '文' adv=22.9
 cluster 2-4 '50' adv=34.0

@@ -5,6 +5,7 @@ maxWidth: 160.0
 size 88.0x24.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=88.0 visual=88.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=88.0 occupied=0.0,0.0,88.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '，' adv=16.0
@@ -27,6 +28,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 88.0x24.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=88.0 visual=88.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=88.0 occupied=0.0,0.0,88.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '，' adv=16.0
@@ -49,6 +51,7 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 size 88.0x24.0
 kinsoku measure=10.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:10字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=88.0 visual=88.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=88.0 occupied=0.0,0.0,88.0,24.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '，' adv=16.0

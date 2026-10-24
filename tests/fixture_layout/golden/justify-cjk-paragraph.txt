@@ -7,6 +7,8 @@ grid container=100.0 measure=96.0(6字) slack=4.0 body=Start@0.0
 kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
 line[1] 6-12 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0
@@ -38,6 +40,8 @@ grid container=100.0 measure=96.0(6字) slack=4.0 body=Start@0.0
 kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
 line[1] 6-12 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0
@@ -69,6 +73,8 @@ grid container=100.0 measure=96.0(6字) slack=4.0 body=Start@0.0
 kinsoku measure=6.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:6字→Basic+Hang
 line[0] 0-6 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
 line[1] 6-12 natural=96.0 adjusted=96.0 visual=96.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=96.0 occupied=0.0,0.0,96.0,24.0
+line-geometry[1] alignment=96.0 occupied=0.0,24.0,96.0,48.0
 cluster 0-1 '中' adv=16.0
 cluster 1-2 '文' adv=16.0
 cluster 2-3 '中' adv=16.0

@@ -402,10 +402,19 @@ fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
     }];
     let tiny = layout_with_spans(text, 96.004, spans.clone(), None);
     assert_eq!(
-        IntRange::new(0, 5),
+        IntRange::new(0, 6),
         tiny.lines[0].cluster_range,
         "{:?}",
         tiny.lines
+    );
+    assert_eq!(96.0, tiny.lines[0].adjusted_width);
+    assert_eq!(
+        "中中中中中中 ",
+        tiny.clusters[tiny.lines[0].cluster_range.first() as usize
+            ..=tiny.lines[0].cluster_range.last() as usize]
+            .iter()
+            .map(|cluster| cluster.text.as_str())
+            .collect::<String>()
     );
     let deltas: Vec<_> = tiny
         .debug
@@ -438,7 +447,7 @@ fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
             .debug
             .emergency_tracking_eligibility_decisions
             .iter()
-            .any(|decision| decision.reason == "CurrentLineTechnicalTierRejection:WholeToken"),
+            .any(|decision| decision.reason == "CurrentLineTechnicalTierRejection:Whitespace"),
         "{:?}",
         rejected.debug.emergency_tracking_eligibility_decisions
     );

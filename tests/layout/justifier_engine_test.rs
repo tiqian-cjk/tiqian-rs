@@ -1,6 +1,7 @@
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{
-    AdjustmentStylePolicy, ClreqProfile, ClreqProfileResolver, LineAdjustmentStrategy,
+    AdjustmentStylePolicy, AutoSpaceMode, ClreqProfile, ClreqProfileResolver,
+    LineAdjustmentStrategy,
 };
 use tiqian::core::geometry::{LayoutConstraints, scalar_offset};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
@@ -570,12 +571,34 @@ fn dash_boundaries_do_not_receive_uniform_tracking() {
 
 #[test]
 fn typed_sino_western_spaces_stretch_in_tier_two() {
-    let result = layout(
-        "中文 Hello 中文中文中文",
-        180.0,
-        ParagraphStyle::builder()
-            .first_line_indent(Some(Ic::ZERO))
-            .build(),
+    struct TypedSinoWesternSpacesProfile;
+
+    impl ClreqProfileResolver for TypedSinoWesternSpacesProfile {
+        fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
+            let mut profile = ClreqProfile::mainland_horizontal();
+            profile.adjustment.line_adjustment = LineAdjustmentStrategy::PushOutOnly;
+            profile.auto_space.cjk_latin = AutoSpaceMode::Replace;
+            profile.auto_space.cjk_digit = AutoSpaceMode::Replace;
+            profile
+        }
+    }
+
+    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(
+        DeterministicStubFontBackend::default(),
+    ))
+    .clreq_profile_resolver(Box::new(TypedSinoWesternSpacesProfile))
+    .build();
+    let result = engine.layout(
+        LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中文 Hello 中文中文中文")),
+            LayoutConstraints::with_defaults(180.0),
+        )
+        .paragraph_style(
+            ParagraphStyle::builder()
+                .first_line_indent(Some(Ic::ZERO))
+                .build(),
+        )
+        .build(),
     );
 
     assert!(result.lines.len() >= 2);

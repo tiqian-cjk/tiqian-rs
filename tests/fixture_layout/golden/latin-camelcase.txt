@@ -6,6 +6,8 @@ size 128.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
 line[0] 0-6 natural=98.0 adjusted=98.0 visual=128.0 repair=- candidates=- justify=deficit=30.0->0.0 CjkLatinSpace@0+3.3,CjkInterChar@0+26.7
 line[1] 6-12 natural=98.0 adjusted=98.0 visual=98.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=98.0 occupied=0.0,24.0,98.0,48.0
 cluster 0-1 '用' adv=46.0
 cluster 1-6 'Power' adv=82.0
 cluster 6-11 'Point' adv=82.0
@@ -21,8 +23,10 @@ linespacing natural=16.0 requested=- resolved=24.0 floor=0.0 applied=false reaso
 == lookahead ==
 size 128.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
-line[0] 0-6 natural=98.0 adjusted=98.0 visual=128.0 repair=- candidates=- justify=deficit=30.0->0.0 CjkLatinSpace@0+3.3,CjkInterChar@0+26.7
+line[0] 0-6 natural=98.0 adjusted=98.0 visual=128.0 repair=PushIn(LineAdjustmentPushIn shrink=-0.0) candidates=PushIn+ justify=deficit=30.0->0.0 CjkLatinSpace@0+3.3,CjkInterChar@0+26.7
 line[1] 6-12 natural=98.0 adjusted=98.0 visual=98.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=98.0 occupied=0.0,24.0,98.0,48.0
 cluster 0-1 '用' adv=46.0
 cluster 1-6 'Power' adv=82.0
 cluster 6-11 'Point' adv=82.0
@@ -40,6 +44,8 @@ size 128.0x48.0
 kinsoku measure=8.0字 level=Basic hang=PauseStops reason=MeasureAdaptiveKinsoku:8字→Basic+Hang
 line[0] 0-6 natural=98.0 adjusted=98.0 visual=128.0 repair=- candidates=- justify=deficit=30.0->0.0 CjkLatinSpace@0+3.3,CjkInterChar@0+26.7
 line[1] 6-12 natural=98.0 adjusted=98.0 visual=98.0 repair=- candidates=- justify=-
+line-geometry[0] alignment=128.0 occupied=0.0,0.0,128.0,24.0
+line-geometry[1] alignment=98.0 occupied=0.0,24.0,98.0,48.0
 cluster 0-1 '用' adv=46.0
 cluster 1-6 'Power' adv=82.0
 cluster 6-11 'Point' adv=82.0

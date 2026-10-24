@@ -1,4 +1,7 @@
 use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::{
+    AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver,
+};
 use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -76,11 +79,44 @@ fn layout_with_breaker(
     breaker: Box<dyn LineBreaker>,
     hyphenator: &'static dyn Hyphenator,
 ) -> tiqian::core::layout_model::LayoutResult {
+    layout_with_breaker_mode(
+        text,
+        max_width,
+        spans,
+        breaker,
+        hyphenator,
+        AutoSpaceMode::Insert,
+    )
+}
+
+fn layout_with_breaker_mode(
+    text: &str,
+    max_width: f32,
+    spans: Vec<LineBreakSpan>,
+    breaker: Box<dyn LineBreaker>,
+    hyphenator: &'static dyn Hyphenator,
+    mode: AutoSpaceMode,
+) -> tiqian::core::layout_model::LayoutResult {
+    struct ProfileResolver(AutoSpaceMode);
+
+    impl ClreqProfileResolver for ProfileResolver {
+        fn resolve(&self, _: &tiqian::core::text_model::LayoutProfileId) -> ClreqProfile {
+            let mut profile = ClreqProfile::mainland_horizontal();
+            profile.auto_space = AutoSpacePolicy {
+                cjk_latin: self.0,
+                cjk_digit: self.0,
+                ..AutoSpacePolicy::default()
+            };
+            profile
+        }
+    }
+
     let line_breaker = breaker;
     let hyphenator = hyphenator;
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
         .line_breaker(line_breaker)
         .hyphenator(hyphenator)
+        .clreq_profile_resolver(Box::new(ProfileResolver(mode)))
         .build()
         .layout(
             LayoutInput::builder(
@@ -541,12 +577,13 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
     ];
 
     for breaker in breakers {
-        let result = layout_with_breaker(
+        let result = layout_with_breaker_mode(
             text,
             100.0,
             vec![span.clone()],
             breaker,
             &TWO_FOUR_SIX_HYPHENATOR,
+            AutoSpaceMode::Replace,
         );
         assert_eq!(scalar_offset(7), result.lines[0].range.end());
         assert_eq!(0.0, result.lines[0].hyphen_advance);
@@ -573,7 +610,7 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
 fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_measure() {
     let text = "Swift 这边是我最有体感的。JSONDecoder 慢是个老问题，SR-6252[36] 那个 issue 里挖出的根因是底层走 NSJSONSerialization 再桥接回 Objective-C，swift_dynamicCast 吃掉大量时间。";
     let swift_range = text_range(104, 121);
-    let result = layout_with_breaker(
+    let result = layout_with_breaker_mode(
         text,
         579.0,
         vec![
@@ -592,6 +629,7 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
         ],
         Box::new(LookaheadLineBreaker::default()),
         &NoHyphenator,
+        AutoSpaceMode::Replace,
     );
 
     let affected_line_index = (0..result.lines.len())
