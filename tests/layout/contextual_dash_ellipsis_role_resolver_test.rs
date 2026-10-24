@@ -139,8 +139,7 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
     );
     assert!(latin.iter().all(|decision| {
         decision.role == FontRole::LatinText
-            && decision.source == "ParentheticalDashPairContext"
-            && decision.reason == "matching-outer-script"
+            && decision.source == "ParentheticalDashPairContext"&& decision.reason == "matching-outer-script"
     }));
 
     let independent = resolver.resolve(
@@ -150,7 +149,7 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
     assert!(
         independent
             .iter()
-            .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext")
+            .all(|decision|decision.source == "DashEllipsisSurroundingScriptContext")
     );
 }
 
@@ -254,7 +253,7 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
         .collect();
     assert_eq!(3, western_marks.len());
     assert!(western_marks.iter().all(|decision| {
-        decision.role == "LatinText" && decision.source_text == decision.display_text
+        decision.role == FontRole::LatinText && decision.source_text == decision.display_text
     }));
     assert_eq!(
         vec!["—", "——", "……"],
@@ -288,7 +287,7 @@ fn layout_uses_final_role_for_cluster_display_and_debug() {
                 override_info.source_text.as_str().contains('—')
                     || override_info.source_text.as_str().contains('…')
             })
-            .all(|override_info| override_info.source == "DashEllipsisSurroundingScriptContext")
+            .all(|override_info|override_info.source == "DashEllipsisSurroundingScriptContext")
     );
 
     let cjk = layout("中—文，等…真；中文——下句，省略号……。", "zh-Hans");
@@ -317,7 +316,10 @@ fn latin_dash_run_at_paragraph_end_stays_one_cluster() {
         .find(|decision| decision.source_text.as_str().contains('—'))
         .unwrap();
     assert_eq!("——", decision.source_text);
-    assert_eq!("LatinText", decision.role);
+    assert_eq!(
+            FontRole::LatinText,
+            decision.role
+        );
 }
 
 #[test]
@@ -353,7 +355,7 @@ fn style_span_inside_latin_dash_run_splits_the_cluster() {
     assert!(
         dash_decisions
             .iter()
-            .all(|decision| decision.role == "LatinText")
+            .all(|decision| decision.role == FontRole::LatinText)
     );
 }
 
@@ -411,7 +413,7 @@ fn latin_dash_run_honors_profile_repeat_coalescing_and_style_boundaries() {
             .debug
             .font_decisions
             .iter()
-            .filter(|decision| decision.source_text == "—" && decision.role == "LatinText")
+            .filter(|decision| decision.source_text == "—" && decision.role == FontRole::LatinText)
             .count(),
     );
 }

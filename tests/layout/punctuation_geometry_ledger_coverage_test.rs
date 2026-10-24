@@ -3,7 +3,9 @@ use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{Rect, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{Cluster, SyntheticClusterKind};
+use tiqian::core::layout_model::{
+    Cluster, LineEdgeTrimReason, LineEdgeTrimSide, SyntheticClusterKind,
+};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineAttachment;
 use tiqian::layout::line_breaker::LineCandidate;
@@ -12,8 +14,9 @@ use tiqian::layout::punctuation_geometry_ledger::{
 };
 use tiqian::layout::punctuation_geometry_stage::punctuation_atoms;
 use tiqian::layout::punctuation_model::{
-    PunctuationAtomBuilder, PunctuationInkInput, PunctuationSpacingAdjustment,
-    PunctuationSpacingCompressionResult, PunctuationSpacingCompressor,
+    AttachedInlineBoundaryCase, PunctuationAtomBuilder, PunctuationInkInput,
+    PunctuationSpacingAdjustment, PunctuationSpacingCompressionResult,
+    PunctuationSpacingCompressor, SpacingReason,
 };
 
 const EM: f32 = 16.0;
@@ -153,7 +156,7 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
         natural_inner_glue: 8.0,
         adjusted_inner_glue: 0.0,
         reduction: 8.0,
-        reason: "stray".to_owned(),
+        reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
     };
     let stray_ledger = PunctuationGeometryLedger::from(
         clusters.clone(),
@@ -170,7 +173,7 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
         natural_inner_glue: 8.0,
         adjusted_inner_glue: 4.0,
         reduction: 4.0,
-        reason: "leading-side".to_owned(),
+        reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
     };
     let leading_ledger = PunctuationGeometryLedger::from(
         clusters,
@@ -211,7 +214,7 @@ fn spacing_plan_adjustments_consume_by_target_and_anchor() {
         natural_inner_glue: 8.0,
         adjusted_inner_glue: 2.0,
         reduction: 6.0,
-        reason: "centred".to_owned(),
+        reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
     };
     let centred_ledger = PunctuationGeometryLedger::from(
         centred_clusters,
@@ -268,7 +271,7 @@ fn attached_inline_boundary_at_line_end_consumes_trailing_glue() {
     assert_eq!('」', decision.left_char);
     assert_eq!('\0', decision.right_char);
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:line-end",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::LineEnd),
         decision.reason
     );
     assert_eq!(8.0, decision.reduction);
@@ -297,7 +300,9 @@ fn attached_inline_boundary_adjacent_punctuation_halves_virtual_glue() {
     let result = ledger.resolve_attached_inline_punctuation_boundaries(&attachments, &atoms, EM);
     let decision = &result.decisions[0];
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::AdjacentPunctuation,
+        ),
         decision.reason
     );
     assert_eq!(16.0, decision.natural_inner_glue);
@@ -338,7 +343,9 @@ fn attached_inline_boundary_before_ascii_point_mark_collapses_like_adjacent() {
     );
     let decision = &result.decisions[0];
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:ascii-point-mark",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::AsciiPointMark,
+        ),
         decision.reason
     );
     assert_eq!(8.0, decision.natural_inner_glue);
@@ -376,7 +383,7 @@ fn attached_inline_boundary_skips_mandatory_break_neighbour() {
         EM,
     );
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:line-end",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::LineEnd),
         result.decisions[0].reason
     );
 }
@@ -426,7 +433,7 @@ fn attached_inline_boundary_without_glue_emits_no_decision() {
         EM,
     );
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:natural",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::Natural),
         natural.decisions[0].reason
     );
     assert_eq!(8.0, natural.decisions[0].natural_inner_glue);
@@ -494,10 +501,13 @@ fn line_edge_trim_consumes_half_width_at_edges_and_skips_empty_inputs() {
 
     let trimmed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], true);
     let decision = &trimmed.decisions[0];
-    assert_eq!("trailing", decision.side);
+    assert_eq!(
+            LineEdgeTrimSide::Trailing,
+            decision.side
+        );
     assert_eq!(8.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
-    assert_eq!("LineEndHalfWidthPunctuation", decision.reason);
+    assert_eq!(LineEdgeTrimReason::LineEndHalfWidthPunctuation, decision.reason);
     assert_eq!(text_range(0, 1), decision.cluster_range);
     assert_eq!(8.0, trimmed.geometry.resolve_clusters()[0].advance);
 
@@ -537,11 +547,14 @@ fn line_edge_trim_consumes_centred_punctuation_once_per_line() {
     );
     let trimmed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], true);
     let decision = &trimmed.decisions[0];
-    assert_eq!("both", decision.side);
+    assert_eq!(
+            LineEdgeTrimSide::Both,
+            decision.side
+        );
     assert_eq!(4.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
     assert_eq!(
-        "LineEndCenteredPunctuationPairedCompression",
+        LineEdgeTrimReason::LineEndCenteredPunctuationPairedCompression,
         decision.reason
     );
     let capacity = trimmed.geometry.glue_capacities()[&0];

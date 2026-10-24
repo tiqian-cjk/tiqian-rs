@@ -83,28 +83,28 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             fmt(grid.measure),
             grid.cells,
             fmt(grid.slack),
-            grid.body_alignment,
+            format!("{:?}", grid.body_alignment),
             fmt(grid.body_offset)
         ));
     }
     if let Some(indent) = &result.debug.first_line_indent_decision
-        && indent.source != "Explicit"
+        && indent.source != tiqian::core::layout_model::FirstLineIndentSource::Explicit
     {
         output.push_str(&format!(
             "firstindent {}字 measure={}字 threshold={}字 {}\n",
             fmt(indent.resolved_em),
             fmt(indent.measure_em),
             fmt(indent.threshold_em),
-            indent.source
+            indent.source.name()
         ));
     }
     if let Some(kinsoku) = &result.debug.kinsoku_decision {
         output.push_str(&format!(
-            "kinsoku measure={}字 level={} hang={} reason={}\n",
+            "kinsoku measure={}字 level={:?} hang={:?} reason={}\n",
             fmt(kinsoku.measure_em),
             kinsoku.level,
             kinsoku.hanging,
-            kinsoku.reason
+            kinsoku_reason_text(kinsoku)
         ));
     }
     for decision in &result.debug.contextual_kinsoku_decisions {
@@ -114,12 +114,12 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             decision.range.end(),
             escape(decision.source_text.as_str()),
             decision.cluster_index,
-            decision.forbidden_position,
-            decision.reason,
+            decision.forbidden_position.name(),
+            decision.reason.name(),
             decision
                 .impossible_measure_fallback
                 .as_ref()
-                .map(|value| format!(" fallback={value}"))
+                .map(|value| format!(" fallback={}", value.name()))
                 .unwrap_or_default()
         ));
     }
@@ -138,7 +138,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             decision
                 .tier
                 .as_ref()
-                .map(|value| format!(" tier={value}"))
+                .map(|value| format!(" tier={value:?}"))
                 .unwrap_or_default(),
             decision.reason
         ));
@@ -149,7 +149,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             decision.range.start(),
             decision.range.end(),
             escape(decision.source_text.as_str()),
-            decision.reason
+            decision.reason.name()
         ));
     }
     for attachment in &result.debug.inline_object_punctuation_attachment_decisions {
@@ -161,7 +161,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             .and_then(|value| value.repair_decision.as_ref())
             .map_or("-".to_owned(), |value| {
                 format!(
-                    "{}({} shrink={})",
+                    "{:?}({:?} shrink={})",
                     value.kind,
                     value.reason_code,
                     fmt(value.shrink)
@@ -174,7 +174,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
                     .iter()
                     .map(|candidate| {
                         format!(
-                            "{}{}",
+                            "{:?}{}",
                             candidate.kind,
                             if candidate.accepted { "+" } else { "-" }
                         )
@@ -194,15 +194,17 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
                     .allocations
                     .iter()
                     .map(|allocation| {
+                        let kind = glue_kind_name(allocation.kind);
+                        let reason = allocation.reason.name();
                         format!(
                             "{}@{}+{}{}",
-                            allocation.kind,
+                            kind,
                             allocation.cluster_range.start(),
                             fmt(allocation.delta),
-                            if allocation.reason == allocation.kind {
+                            if reason == kind {
                                 String::new()
                             } else {
-                                format!("({})", allocation.reason)
+                                format!("({})", reason)
                             }
                         )
                     })
@@ -253,7 +255,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
     }
     for font in &result.debug.font_decisions {
         output.push_str(&format!(
-            "font {}-{} role={} key={} display='{}' sub={}\n",
+            "font {}-{} role={:?} key={} display='{}' sub={}\n",
             font.range.start(),
             font.range.end(),
             font.role,
@@ -268,14 +270,14 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             role.range.start(),
             role.range.end(),
             escape(role.source_text.as_str()),
-            role.original_role,
-            role.overridden_role,
+            format!("{:?}", role.original_role),
+            format!("{:?}", role.overridden_role),
             role.source,
             role.reason
         ));
     }
     for punctuation in &result.debug.punctuation_decisions {
-        output.push_str(&format!("punct {}-{} '{}' class={} adv={} body={} lead={} trail={} {}anchor={} source={}{}{}{}{}{}{}\n", punctuation.range.start(), punctuation.range.end(), punctuation.ch, punctuation.punctuation_class, fmt(punctuation.advance), fmt(punctuation.body_width), fmt(punctuation.leading_glue_natural), fmt(punctuation.trailing_glue_natural), if punctuation.leading_glue_initially_consumed != 0.0 || punctuation.trailing_glue_initially_consumed != 0.0 { format!("initial={}/{} ", fmt(punctuation.leading_glue_initially_consumed), fmt(punctuation.trailing_glue_initially_consumed)) } else { String::new() }, punctuation.anchor, punctuation.geometry_source, if punctuation.advance_expansion != 0.0 { format!(" expand={}", fmt(punctuation.advance_expansion)) } else { String::new() }, if punctuation.glyph_inline_shift != 0.0 { format!(" glyphShift={}", fmt(punctuation.glyph_inline_shift)) } else { String::new() }, punctuation.glyph_placement_reason.as_ref().map(|value| format!(" placement={value}")).unwrap_or_default(), punctuation.halt_advance.map(|value| format!(" halt={}", fmt(value))).unwrap_or_default(), punctuation.ink_bounds_fallback.as_ref().map(|value| format!(" fallback={value}")).unwrap_or_default(), punctuation.halt_validation.as_ref().map(|value| format!(" haltWarn={value}")).unwrap_or_default()));
+        output.push_str(&format!("punct {}-{} '{}' class={} adv={} body={} lead={} trail={} {}anchor={} source={}{}{}{}{}{}{}\n", punctuation.range.start(), punctuation.range.end(), punctuation.ch, format!("{:?}", punctuation.punctuation_class), fmt(punctuation.advance), fmt(punctuation.body_width), fmt(punctuation.leading_glue_natural), fmt(punctuation.trailing_glue_natural), if punctuation.leading_glue_initially_consumed != 0.0 || punctuation.trailing_glue_initially_consumed != 0.0 { format!("initial={}/{} ", fmt(punctuation.leading_glue_initially_consumed), fmt(punctuation.trailing_glue_initially_consumed)) } else { String::new() }, format!("{:?}", punctuation.anchor), punctuation.geometry_source.name(), if punctuation.advance_expansion != 0.0 { format!(" expand={}", fmt(punctuation.advance_expansion)) } else { String::new() }, if punctuation.glyph_inline_shift != 0.0 { format!(" glyphShift={}", fmt(punctuation.glyph_inline_shift)) } else { String::new() }, punctuation.glyph_placement_reason.as_ref().map(|value| format!(" placement={value}")).unwrap_or_default(), punctuation.halt_advance.map(|value| format!(" halt={}", fmt(value))).unwrap_or_default(), punctuation.ink_bounds_fallback.as_ref().map(|value| format!(" fallback={value}")).unwrap_or_default(), punctuation.halt_validation.as_ref().map(|value| format!(" haltWarn={value}")).unwrap_or_default()));
     }
     for geometry in &result.debug.geometry_decisions {
         output.push_str(&format!(
@@ -313,7 +315,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             decision.range.end(),
             fmt(decision.inline_start),
             fmt(decision.inline_end),
-            decision.outer_spacing,
+            format!("{:?}", decision.outer_spacing),
             decision.first_cluster_index,
             decision.last_cluster_index,
             decision.reason
@@ -334,7 +336,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
                     fmt(discard)
                 )
             };
-        output.push_str(&format!("inline-object {}-{} advance={} ascent={} descent={} cluster={} line={} edges={}..{} reason={}\n", decision.range.start(), decision.range.end(), fmt(decision.advance), fmt(decision.ascent), fmt(decision.descent), decision.cluster_index, decision.line_index, edge(decision.leading_uniform_stretch, decision.leading_preferred_stretch_kind.as_deref(), decision.leading_preferred_stretch_natural_width, decision.leading_preferred_stretch_target_width, decision.leading_preferred_stretch_capacity, decision.leading_prevents_line_break, decision.leading_shrink_capacity, decision.leading_line_end_discardable_advance), edge(decision.trailing_uniform_stretch, decision.trailing_preferred_stretch_kind.as_deref(), decision.trailing_preferred_stretch_natural_width, decision.trailing_preferred_stretch_target_width, decision.trailing_preferred_stretch_capacity, decision.trailing_prevents_line_break, decision.trailing_shrink_capacity, decision.trailing_line_end_discardable_advance), decision.reason));
+        output.push_str(&format!("inline-object {}-{} advance={} ascent={} descent={} cluster={} line={} edges={}..{} reason={}\n", decision.range.start(), decision.range.end(), fmt(decision.advance), fmt(decision.ascent), fmt(decision.descent), decision.cluster_index, decision.line_index, edge(decision.leading_uniform_stretch, decision.leading_preferred_stretch_kind.map(preferred_stretch_kind_name), decision.leading_preferred_stretch_natural_width, decision.leading_preferred_stretch_target_width, decision.leading_preferred_stretch_capacity, decision.leading_prevents_line_break, decision.leading_shrink_capacity, decision.leading_line_end_discardable_advance), edge(decision.trailing_uniform_stretch, decision.trailing_preferred_stretch_kind.map(preferred_stretch_kind_name), decision.trailing_preferred_stretch_natural_width, decision.trailing_preferred_stretch_target_width, decision.trailing_preferred_stretch_capacity, decision.trailing_prevents_line_break, decision.trailing_shrink_capacity, decision.trailing_line_end_discardable_advance), decision.reason));
     }
     for decision in &result.debug.spacing_decisions {
         output.push_str(&format!(
@@ -354,8 +356,8 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             "autospace {}-{} side={} boundary={} reduction={}\n",
             decision.cluster_range.start(),
             decision.cluster_range.end(),
-            decision.side,
-            decision.boundary_role,
+            auto_space_side_name(decision.side),
+            decision.boundary_role.name(),
             fmt(decision.total_reduction)
         ));
     }
@@ -383,9 +385,9 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             "edgetrim {}-{} side={} trim={} reason={}\n",
             decision.cluster_range.start(),
             decision.cluster_range.end(),
-            decision.side,
+            decision.side.name(),
             fmt(decision.trim_amount),
-            decision.reason
+            decision.reason.name()
         ));
     }
     for decision in &result.debug.decoration_decisions {
@@ -399,7 +401,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             fmt(decision.anchor_x),
             fmt(decision.anchor_y),
             fmt(decision.dot_diameter),
-            decision.reason
+            decision.reason.name()
         ));
     }
     if let Some(spacing) = &result.debug.line_spacing_decision {
@@ -413,14 +415,14 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             fmt(spacing.resolved_height),
             fmt(spacing.spacing_floor),
             spacing.floor_applied,
-            spacing.reason
+            spacing.reason.name()
         ));
     }
     if let Some(decision) = &result.debug.ruby_line_height_decision {
-        output.push_str(&format!("rubylineheight mode={} base={} face={} ruby={} available={} maxExtra={} extras={} lines={} reason={}\n", decision.mode, fmt(decision.base_line_height), fmt(decision.base_face_height), fmt(decision.ruby_extent), fmt(decision.available_interline_space), fmt(decision.max_extra), fmts(&decision.line_extras), ints(&decision.expanded_line_indices), decision.reason));
+        output.push_str(&format!("rubylineheight mode={:?} base={} face={} ruby={} available={} maxExtra={} extras={} lines={} reason={}\n", decision.mode, fmt(decision.base_line_height), fmt(decision.base_face_height), fmt(decision.ruby_extent), fmt(decision.available_interline_space), fmt(decision.max_extra), fmts(&decision.line_extras), ints(&decision.expanded_line_indices), decision.reason.name()));
     }
     if let Some(decision) = &result.debug.inline_object_line_height_decision {
-        output.push_str(&format!("inlineobjectlineheight base={} face={}+{} available={} clearance={} ascents={} descents={} extras={} boundaries={} trailing={} lines={} reason={}\n", fmt(decision.base_line_height), fmt(decision.base_face_ascent), fmt(decision.base_face_descent), fmt(decision.available_interline_space), fmt(decision.minimum_clearance), fmts(&decision.line_ascents), fmts(&decision.line_descents), fmts(&decision.line_extras), fmts(&decision.boundary_shifts_after), fmt(decision.trailing_extra), ints(&decision.expanded_line_indices), decision.reason));
+        output.push_str(&format!("inlineobjectlineheight base={} face={}+{} available={} clearance={} ascents={} descents={} extras={} boundaries={} trailing={} lines={} reason={}\n", fmt(decision.base_line_height), fmt(decision.base_face_ascent), fmt(decision.base_face_descent), fmt(decision.available_interline_space), fmt(decision.minimum_clearance), fmts(&decision.line_ascents), fmts(&decision.line_descents), fmts(&decision.line_extras), fmts(&decision.boundary_shifts_after), fmt(decision.trailing_extra), ints(&decision.expanded_line_indices), decision.reason.name()));
     }
     if let Some(decision) = &result.debug.max_lines_decision {
         output.push_str(&format!(
@@ -441,7 +443,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             fmt(segment.bottom),
             if segment.open_start { "start" } else { "-" },
             if segment.open_end { "end" } else { "-" },
-            segment.reason
+            segment_reason_text(segment)
         ));
     }
     for decision in &result.debug.ruby_decisions {
@@ -529,4 +531,79 @@ fn escape(value: &str) -> String {
         .replace('\u{2028}', "\\u2028")
         .replace('\u{2029}', "\\u2029")
         .replace('\u{200B}', "\\u200B")
+}
+
+/// `KinsokuDecisionInfo` 的 dump 文本：`Fixed:{level}{+Hang}` 或
+/// `MeasureAdaptiveKinsoku:{n}字→{level}{+Hang}`。
+///
+/// dump 必须逐字节复现类型化之前的输出，因此这里自行拼装，
+/// 不依赖 `src/` 提供同义函数。
+fn kinsoku_reason_text(kinsoku: &tiqian::core::layout_model::KinsokuDecisionInfo) -> String {
+    use tiqian::clreq::clreq_profile::HangingPunctuationStyle;
+    use tiqian::core::layout_model::KinsokuPolicySource;
+    let hang = if kinsoku.hanging != HangingPunctuationStyle::Disabled {
+        "+Hang"
+    } else {
+        ""
+    };
+    match kinsoku.source {
+        KinsokuPolicySource::Fixed => format!("Fixed:{:?}{hang}", kinsoku.level),
+        KinsokuPolicySource::MeasureAdaptiveKinsoku => format!(
+            "MeasureAdaptiveKinsoku:{}字→{:?}{hang}",
+            kinsoku.adaptive_measure_cells.unwrap_or(0),
+            kinsoku.level
+        ),
+    }
+}
+
+/// `InlineObjectPreferredStretchKind` 的 dump 文本，与类型化之前的 `{:?}` 输出一致。
+fn preferred_stretch_kind_name(
+    kind: tiqian::core::text_model::InlineObjectPreferredStretchKind,
+) -> &'static str {
+    use tiqian::core::text_model::InlineObjectPreferredStretchKind;
+    match kind {
+        InlineObjectPreferredStretchKind::PunctuationTrailing => "PunctuationTrailing",
+        InlineObjectPreferredStretchKind::Relation => "Relation",
+        InlineObjectPreferredStretchKind::BinaryOperator => "BinaryOperator",
+    }
+}
+
+/// `DecorationSegmentInfo` 的 dump 文本：基础原因，且相邻行间线相向缩短时追加后缀。
+fn segment_reason_text(segment: &tiqian::core::layout_model::DecorationSegmentInfo) -> String {
+    if segment.adjacent_shortened {
+        format!(
+            "{};AdjacentInterlinearLineShortening",
+            segment.reason.name()
+        )
+    } else {
+        segment.reason.name().to_owned()
+    }
+}
+
+/// `GlueKind` 的 dump 文本，与类型化之前的 `{:?}` 输出一致。
+fn glue_kind_name(kind: tiqian::layout::punctuation_model::GlueKind) -> &'static str {
+    use tiqian::layout::punctuation_model::GlueKind;
+    match kind {
+        GlueKind::PunctuationLeading => "PunctuationLeading",
+        GlueKind::PunctuationTrailing => "PunctuationTrailing",
+        GlueKind::CjkLatinSpace => "CjkLatinSpace",
+        GlueKind::WordSpace => "WordSpace",
+        GlueKind::CjkInterChar => "CjkInterChar",
+        GlueKind::ProgressiveTechnical => "ProgressiveTechnical",
+        GlueKind::EmergencyGraphemeTracking => "EmergencyGraphemeTracking",
+        GlueKind::InlineObjectPunctuationTrailing => "InlineObjectPunctuationTrailing",
+        GlueKind::InlineObjectRelation => "InlineObjectRelation",
+        GlueKind::InlineObjectBinaryOperator => "InlineObjectBinaryOperator",
+        GlueKind::InlineObjectBoundary => "InlineObjectBoundary",
+    }
+}
+
+/// `AutoSpaceSide` 的 dump 文本，与类型化之前的小写输出一致。
+fn auto_space_side_name(side: tiqian::core::layout_model::AutoSpaceSide) -> &'static str {
+    use tiqian::core::layout_model::AutoSpaceSide;
+    match side {
+        AutoSpaceSide::Leading => "leading",
+        AutoSpaceSide::Trailing => "trailing",
+        AutoSpaceSide::Gap => "gap",
+    }
 }

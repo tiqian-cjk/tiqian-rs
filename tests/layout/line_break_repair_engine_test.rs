@@ -13,6 +13,9 @@ use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
 use tiqian::linebreak::hyphenation::{Hyphenator, NoHyphenator};
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::layout::line_optimization::RepairReasonCode;
+use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
 
 fn layout(
     text: &str,
@@ -222,7 +225,7 @@ fn greedy_breaker_produces_multiple_lines_when_width_overflows() {
             .debug
             .line_decisions
             .iter()
-            .all(|decision| decision.kind == "greedy")
+            .all(|decision|decision.kind == "greedy")
     );
     assert_eq!(48.0, result.size.height);
 }
@@ -326,7 +329,7 @@ fn url_like_latin_token_breaks_at_separators_without_synthetic_hyphen() {
         decision
             .repair_decision
             .as_ref()
-            .is_none_or(|repair| repair.reason_code != "ForbiddenAtLineStart")
+            .is_none_or(|repair| repair.reason_code != RepairReasonCode::ForbiddenAtLineStart)
     }));
 }
 
@@ -425,9 +428,8 @@ fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() 
         assert_eq!(0.0, result.lines[0].hyphen_advance);
         assert!(
             result.debug.line_decisions[0]
-                .notes
-                .iter()
-                .any(|note| note == "technical-break:Emergency")
+                .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
         );
         let adjustment = result
             .debug
@@ -439,10 +441,10 @@ fn progressive_technical_break_uses_emergency_tracking_instead_of_cjk_stretch() 
             adjustment
                 .allocations
                 .iter()
-                .all(|allocation| allocation.kind != "CjkInterChar")
+                .all(|allocation| allocation.kind != GlueKind::CjkInterChar)
         );
         assert!(adjustment.allocations.iter().any(|allocation| {
-            allocation.kind == "EmergencyGraphemeTracking"
+            allocation.kind == GlueKind::EmergencyGraphemeTracking
                 && allocation.cluster_range.start() >= technical_range.start()
         }));
         assert!(adjustment.deficit_after.abs() < 0.001);
@@ -466,9 +468,8 @@ fn progressive_technical_structural_break_falls_through_to_emergency_before_trac
     assert_eq!("中文ab.cd", line_text(&result, 0));
     assert!(
         result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency")
+            .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
     );
     assert!(result.lines.iter().all(|line| line.hyphen_advance == 0.0));
     let adjustment = &result.debug.justification_decisions[0];
@@ -476,13 +477,13 @@ fn progressive_technical_structural_break_falls_through_to_emergency_before_trac
         adjustment
             .allocations
             .iter()
-            .all(|allocation| allocation.kind != "CjkInterChar")
+            .all(|allocation| allocation.kind != GlueKind::CjkInterChar)
     );
     assert!(adjustment.allocations.iter().any(|allocation| {
-        allocation.kind == "EmergencyGraphemeTracking"
-            && allocation
-                .reason
-                .starts_with("TerminalTechnicalEmergencyTracking")
+        allocation.kind == GlueKind::EmergencyGraphemeTracking
+            && allocation.reason.name().starts_with(
+                "TerminalTechnicalEmergencyTracking"
+            )
     }));
 }
 
@@ -504,9 +505,8 @@ fn progressive_technical_hard_break_overrides_number_run_cohesion() {
         assert_eq!("aaaaa12345", line_text(&result, 0));
         assert!(
             result.debug.line_decisions[0]
-                .notes
-                .iter()
-                .any(|note| note == "technical-break:Emergency")
+                .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
         );
     }
 }
@@ -532,16 +532,14 @@ fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
         .iter()
         .position(|decision| {
             decision
-                .notes
-                .iter()
-                .any(|note| note.starts_with("technical-break:"))
+                .technical_break
+            .is_some()
         })
         .expect("expected technical break decision");
     assert!(
         result.debug.line_decisions[affected_line_index]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency")
+            .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
     );
     let affected_range = result.lines[affected_line_index].range;
     let adjustment = result
@@ -553,7 +551,7 @@ fn progressive_technical_clean_break_may_not_stretch_earlier_opaque_token() {
     let tracking: Vec<_> = adjustment
         .allocations
         .iter()
-        .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+        .filter(|allocation| allocation.kind == GlueKind::EmergencyGraphemeTracking)
         .collect();
     assert!(!tracking.is_empty());
     assert!(
@@ -589,9 +587,8 @@ fn progressive_technical_break_falls_through_structural_tier_before_overstretchi
         assert_eq!(0.0, result.lines[0].hyphen_advance);
         assert!(
             result.debug.line_decisions[0]
-                .notes
-                .iter()
-                .any(|note| note == "technical-break:Syllable")
+                .technical_break
+            == Some(ProgressiveBreakTier::Syllable)
         );
         let adjustment = result
             .debug
@@ -642,9 +639,8 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
     );
     assert!(
         result.debug.line_decisions[affected_line_index]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency")
+            .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
     );
     let adjustment = result
         .debug
@@ -656,7 +652,7 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
             decision
                 .allocations
                 .iter()
-                .filter(|allocation| allocation.kind == "CjkInterChar")
+                .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
                 .map(|allocation| allocation.delta)
                 .fold(0.0_f32, f32::max)
         })
@@ -672,7 +668,7 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
             .iter()
             .any(|decision| {
                 decision.range == swift_range
-                    && decision.tier.as_deref() == Some("Emergency")
+                    && decision.tier == Some(ProgressiveBreakTier::Emergency)
                     && decision.reason == "CurrentLineTechnicalEmergencyBreak"
             })
     );
@@ -685,7 +681,7 @@ fn progressive_technical_emergency_is_exposed_by_current_line_stretch_not_full_m
                 decision.range == swift_range
                     && decision
                         .reason
-                        .starts_with("CurrentLineTechnicalTierRejection:")
+                        .name().starts_with("CurrentLineTechnicalTierRejection:")
             })
     );
 }
@@ -714,9 +710,8 @@ fn unbroken_progressive_span_uses_source_space_then_keeps_body_opportunities_ava
 
     assert!(
         result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .all(|note| !note.starts_with("technical-break:"))
+            .technical_break
+            .is_none()
     );
     let adjustment = &result.debug.justification_decisions[0];
     assert!(!adjustment.allocations.is_empty());
@@ -735,8 +730,10 @@ fn unbroken_progressive_span_uses_source_space_then_keeps_body_opportunities_ava
     assert!(adjustment.deficit_after.abs() < 0.001);
     assert!(adjustment.allocations.iter().any(|allocation| {
         allocation.cluster_range == text_range(4, 5)
-            && allocation.kind == "ProgressiveTechnical"
-            && allocation.reason == "ProgressiveTechnicalWhitespaceStretch"
+            && allocation.kind == GlueKind::ProgressiveTechnical
+            && allocation.reason == tiqian::layout::justifier::JustificationAllocationReason::Stage(
+                tiqian::layout::justifier::JustificationStage::ProgressiveTechnicalWhitespaceStretch
+            )
     }));
     assert!(adjustment.allocations.iter().any(|allocation| {
         allocation.cluster_range.end() <= technical_range.start()

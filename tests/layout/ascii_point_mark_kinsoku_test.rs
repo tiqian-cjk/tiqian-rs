@@ -13,6 +13,11 @@ use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
+use tiqian::core::layout_model::ContextualKinsokuRule;
+use tiqian::core::layout_model::Uax14BoundaryRule;
+use tiqian::core::layout_model::ImpossibleMeasureFallback;
+use tiqian::font::font_policy::FontRole;
 
 struct FixedKinsokuProfile {
     level: KinsokuLevel,
@@ -207,7 +212,7 @@ fn cjk_attached_ascii_point_marks_cannot_start_wrapped_lines_and_stay_latin() {
                     .resource_id()
             );
             assert_eq!(
-                "LatinText",
+                FontRole::LatinText,
                 result
                     .debug
                     .font_decisions
@@ -229,8 +234,14 @@ fn cjk_attached_ascii_point_marks_cannot_start_wrapped_lines_and_stay_latin() {
                 .iter()
                 .find(|decision| decision.range == point.range)
                 .unwrap();
-            assert_eq!("LineStart", decision.forbidden_position);
-            assert_eq!("AttachedAsciiPointMarkKinsoku", decision.reason);
+            assert_eq!(
+            KinsokuForbiddenPosition::LineStart,
+            decision.forbidden_position
+        );
+            assert_eq!(
+            ContextualKinsokuRule::AttachedAsciiPointMarkKinsoku,
+            decision.reason
+        );
         }
     }
 }
@@ -293,17 +304,16 @@ fn latin_tokens_and_ambiguous_ascii_characters_keep_existing_segmentation() {
     for token in ["foo,bar", "1,234", "50%", "\"quoted\""] {
         assert!(texts.contains(&token), "missing {token}: {texts:?}");
     }
-    let positions: std::collections::HashSet<_> = result
+    let positions: Vec<_> = result
         .debug
         .contextual_kinsoku_decisions
         .iter()
         .filter(|decision| decision.source_text == "\"quoted\"")
-        .map(|decision| decision.forbidden_position.as_str())
+        .map(|decision| decision.forbidden_position)
         .collect();
-    assert_eq!(
-        std::collections::HashSet::from(["LineStart", "LineEnd"]),
-        positions
-    );
+    assert_eq!(2, positions.len());
+    assert!(positions.contains(&KinsokuForbiddenPosition::LineStart));
+    assert!(positions.contains(&KinsokuForbiddenPosition::LineEnd));
 }
 
 #[test]
@@ -376,10 +386,9 @@ fn impossible_measure_hangs_the_point_mark_instead_of_leaving_it_at_line_start()
                     .all(|line| !line.starts_with(','))
             );
             assert_eq!(
-                "AttachedAsciiPointMarkImpossibleMeasureHang",
+                ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang,
                 result.debug.contextual_kinsoku_decisions[0]
                     .impossible_measure_fallback
-                    .as_deref()
                     .unwrap()
             );
             assert!(
@@ -414,10 +423,9 @@ fn first_line_indent_uses_the_same_impossible_measure_fallback() {
                 .all(|line| !line.starts_with(','))
         );
         assert_eq!(
-            "AttachedAsciiPointMarkImpossibleMeasureHang",
+            ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang,
             result.debug.contextual_kinsoku_decisions[0]
                 .impossible_measure_fallback
-                .as_deref()
                 .unwrap()
         );
     }
@@ -448,10 +456,9 @@ fn line_break_geometry_includes_bopomofo_spread_when_choosing_the_fallback() {
                 .all(|line| !line.starts_with(','))
         );
         assert_eq!(
-            "AttachedAsciiPointMarkImpossibleMeasureHang",
+            ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang,
             result.debug.contextual_kinsoku_decisions[0]
                 .impossible_measure_fallback
-                .as_deref()
                 .unwrap()
         );
     }
@@ -489,8 +496,8 @@ fn styled_point_mark_run_can_extend_one_impossible_measure_hang() {
                 .debug
                 .contextual_kinsoku_decisions
                 .iter()
-                .filter(|decision| decision.impossible_measure_fallback.as_deref()
-                    == Some("AttachedAsciiPointMarkImpossibleMeasureHang"))
+                .filter(|decision| decision.impossible_measure_fallback
+                    == Some(ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang))
                 .count()
         );
         let hanging = result
@@ -529,10 +536,9 @@ fn contextual_run_can_extend_a_profile_hang_only_within_the_same_protected_group
                 .all(|line| !line.starts_with(',') && !line.starts_with('，'))
         );
         assert_eq!(
-            "AttachedAsciiPointMarkImpossibleMeasureHang",
+            ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang,
             result.debug.contextual_kinsoku_decisions[0]
                 .impossible_measure_fallback
-                .as_deref()
                 .unwrap()
         );
     }
@@ -626,7 +632,7 @@ fn kinsoku_none_disables_clreq_but_keeps_the_uax14_ascii_point_mark_boundary() {
                 .all(|line| !line.starts_with(','))
         );
         assert_eq!(
-            "Uax14WesternPunctuationBoundary:LB15d",
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
             result
                 .debug
                 .contextual_kinsoku_decisions
@@ -669,7 +675,7 @@ fn authored_whitespace_and_mandatory_break_do_not_create_contextual_kinsoku() {
             true,
         );
         assert_eq!(
-            "Uax14WesternPunctuationBoundary:LB15d",
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
             result
                 .debug
                 .contextual_kinsoku_decisions
@@ -702,10 +708,9 @@ fn mandatory_break_control_after_a_hung_point_mark_stays_in_the_trailing_suffix(
                 .all(|line| !line.starts_with(','))
         );
         assert_eq!(
-            "AttachedAsciiPointMarkImpossibleMeasureHang",
+            ImpossibleMeasureFallback::AttachedAsciiPointMarkImpossibleMeasureHang,
             result.debug.contextual_kinsoku_decisions[0]
                 .impossible_measure_fallback
-                .as_deref()
                 .unwrap()
         );
     }

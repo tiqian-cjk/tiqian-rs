@@ -8,7 +8,7 @@ use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{
     GreedyLineBreaker, LineBreaker, LineBreakerConfig, LookaheadLineBreaker,
 };
-use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
+use tiqian::layout::line_optimization::{LineCandidate, RepairDetail, RepairOption, RepairReasonCode};
 use tiqian::layout::progressive_break_decisions::{
     ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
 };
@@ -69,7 +69,8 @@ fn compatibility_hanging_index_skips_a_trailing_mandatory_break_control() {
     let mut line = LineCandidate::new(IntRange::new(0, 2), text_range(0, 3), 32.0, 16.0);
     line.repair = Some(RepairOption::Hang {
         penalty: 5,
-        reason: "test".to_owned(),
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
+        detail: RepairDetail::Hang,
         offender_cluster_index: 1,
     });
     line.hanging_cluster_indices = HashSet::from([1, 2]);

@@ -4,7 +4,9 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{LineBreaker, LineBreakerConfig};
-use tiqian::layout::line_optimization::{LineSolution, RepairOption};
+use tiqian::layout::line_optimization::{
+    LineSolution, RepairOption, RepairReasonCode,
+};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -134,7 +136,7 @@ fn line_end_only_capacity_feeds_the_compressed_edge_at_the_line_end() {
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
         "{:?}",
         solution.lines
     );
@@ -163,7 +165,7 @@ fn compressed_ends_may_reach_the_segment_end() {
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
         "{:?}",
         solution.lines
     );
@@ -197,7 +199,7 @@ fn compressed_final_mandatory_line_uses_the_compressed_commit_branch() {
     );
     assert_eq!(LineEndReason::MandatoryBreak, solution.lines[0].end_reason);
     assert!(
-        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
         "{:?}",
         solution.lines
     );
@@ -232,7 +234,7 @@ fn tier_promotion_routes_the_repair_reason_through_the_promotion_code() {
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("ProgressiveTechnicalTierPromotion")),
+        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::ProgressiveTechnicalTierPromotion, .. })),
         "{:?}",
         solution.lines
     );

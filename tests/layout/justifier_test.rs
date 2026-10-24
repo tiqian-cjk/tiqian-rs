@@ -4,11 +4,11 @@ use tiqian::core::east_asian_spacing::unicode_east_asian_spacing;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationRequest, Justifier};
+use tiqian::layout::justifier::{JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier};
 use tiqian::layout::punctuation_model::GlueKind;
 
 const EM: f32 = 16.0;
@@ -28,8 +28,8 @@ struct JustificationRequestConfig {
     preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
     technical_boundary_after_clusters:
         HashMap<i32, tiqian::layout::progressive_break_decisions::ProgressiveBreakTier>,
-    emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
-    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
+    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
 }
 
 impl Default for JustificationRequestConfig {
@@ -552,7 +552,7 @@ fn western_brackets_touching_cjk_share_tier_three_stretch() {
             .collect::<HashSet<i32>>()
     );
     assert!(allocations.iter().all(
-        |allocation| allocation.reason == "WesternBracketCjkInterChar"
+        |allocation| allocation.reason == JustificationAllocationReason::Opportunity(JustificationReason::WesternBracketCjkInterChar)
             && (allocation.delta - 0.25 * EM).abs() < 0.001
     ));
     assert_eq!(0.0, plan.unfilled_deficit);
@@ -583,7 +583,7 @@ fn attached_reference_uses_the_virtual_prose_boundary_for_stretching() {
     assert_eq!(1, middle.allocations.len());
     assert_eq!(3, middle.allocations[0].target_cluster_index);
     assert_eq!(
-        "AttachedInlineVirtualInterChar",
+        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
         middle.allocations[0].reason
     );
     assert_eq!(EM, middle.allocations[0].delta);

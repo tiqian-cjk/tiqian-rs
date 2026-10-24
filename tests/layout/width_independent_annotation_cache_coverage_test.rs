@@ -19,7 +19,10 @@ use tiqian::core::units::Ic;
 use tiqian::font::font_policy::CjkFontRoleClassifier;
 use tiqian::layout::default_hyphenator::default_hyphenator;
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
-use tiqian::layout::punctuation_model::{PunctuationAtomBuilder, PunctuationSpacingCompressor};
+use tiqian::layout::punctuation_model::{
+    AttachedInlineBoundaryCase, PunctuationAtomBuilder, PunctuationSpacingCompressor,
+    SpacingReason,
+};
 use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
     LruWidthIndependentAnnotationCache, WidthIndependentAnnotationCache,
@@ -685,14 +688,15 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
         .debug
         .spacing_decisions
         .iter()
-        .find(|decision| {
-            decision
-                .reason
-                .starts_with("AttachedInlineVirtualPunctuationBoundary")
-        })
+        .find(|decision| matches!(
+            decision.reason,
+            SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
+        ))
         .unwrap();
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::AdjacentPunctuation
+        ),
         decision.reason
     );
     assert_eq!('·', decision.left_char);
@@ -1007,10 +1011,7 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         assert!(!prep.clusters.is_empty());
     }
 
-    annotation.segment_font_resolutions = std::mem::take(&mut annotation.segment_font_resolutions)
-        .into_iter()
-        .take(1)
-        .collect();
+    annotation.base_shaping_stage.segment_font_resolutions.clear();
     let prep_unknown_roles = build_paragraph_layout_prep(
         &input,
         &annotation,
@@ -1063,7 +1064,7 @@ fn dynamic_shaping_emphasis_italic_at_and_zero_paired_capacity_branches() {
         &quote_pair_analyzer,
         hyphenator,
     );
-    annotation.segment_shaping_cache = HashMap::new();
+    annotation.base_shaping_stage.segment_shaping_cache.clear();
     let rejected = HashMap::from([(
         text_range(0, 17),
         HashSet::from([ProgressiveBreakTier::Structural]),

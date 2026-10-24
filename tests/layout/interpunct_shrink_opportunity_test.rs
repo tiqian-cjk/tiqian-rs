@@ -5,9 +5,11 @@ use tiqian::core::layout_model::{Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
+use tiqian::clreq::clreq_profile::PunctuationClass;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use super::font_backend_test_support::stub_backend_with_transform;
+use tiqian::layout::punctuation_model::{PunctuationAnchor, PunctuationGeometrySource};
 
 struct PreserveInputProfile;
 
@@ -110,14 +112,17 @@ fn interpunct_ink_evidence_frees_paired_glue_for_tier_three_shrink() {
     for dot in dots {
         assert!(dot.leading_glue_natural > 0.0);
         assert!(dot.trailing_glue_natural > 0.0);
-        assert_eq!("Center", dot.anchor.as_str());
-        assert_eq!("FontHaltFittedBodyCompression", dot.geometry_source);
+        assert_eq!(PunctuationAnchor::Center, dot.anchor);
+        assert_eq!(
+            PunctuationGeometrySource::FontHaltFittedBodyCompression,
+            dot.geometry_source
+        );
     }
     let ellipsis = result
         .debug
         .punctuation_decisions
         .iter()
-        .find(|decision| decision.punctuation_class == "Ellipsis")
+        .find(|decision| decision.punctuation_class == PunctuationClass::Ellipsis)
         .unwrap();
     assert_eq!(0.0, ellipsis.leading_glue_natural);
     assert!(ellipsis.trailing_glue_natural > 0.0);
@@ -147,7 +152,7 @@ fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink()
         .debug
         .punctuation_decisions
         .iter()
-        .filter(|decision| decision.punctuation_class == "Interpunct")
+        .filter(|decision| decision.punctuation_class == PunctuationClass::Interpunct)
         .collect();
     assert_eq!(
         vec!['・', '・'],
@@ -159,7 +164,7 @@ fn preserved_interpunct_codepoint_keeps_interpunct_class_for_tier_three_shrink()
     for dot in interpuncts {
         assert!(dot.leading_glue_natural > 0.0);
         assert!(dot.trailing_glue_natural > 0.0);
-        assert_eq!("Center", dot.anchor.as_str());
+        assert_eq!(PunctuationAnchor::Center, dot.anchor);
     }
     assert!(!result.lines.is_empty());
 }

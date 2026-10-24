@@ -8,6 +8,7 @@ use tiqian::core::text_model::{
     TiqianTextContent,
 };
 use tiqian::core::units::Ic;
+use tiqian::core::layout_model::AutoSpaceBoundaryRole;
 
 fn layout(text: &str, boxes: Vec<InlineBoxSpan>) -> tiqian::core::layout_model::LayoutResult {
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
@@ -79,7 +80,7 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
         .debug
         .auto_space_decisions
         .iter()
-        .map(|decision| decision.reason.as_str())
+        .map(|decision| decision.reason.clone())
         .collect::<std::collections::HashSet<_>>();
     assert_eq!(
         std::collections::HashSet::from([
@@ -93,9 +94,9 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
             .debug
             .auto_space_decisions
             .iter()
-            .all(|decision| decision.boundary_role == "InlineBox.Narrow")
+            .all(|decision| decision.boundary_role == AutoSpaceBoundaryRole::InlineBoxNarrow)
     );
-    assert_eq!("Narrow", narrow.debug.inline_box_decisions[0].outer_spacing);
+    assert_eq!(InlineBoxOuterSpacing::Narrow, narrow.debug.inline_box_decisions[0].outer_spacing);
 
     let source = layout(
         "中./中",
@@ -107,5 +108,5 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
         )],
     );
     assert!(source.debug.auto_space_decisions.is_empty());
-    assert_eq!("Source", source.debug.inline_box_decisions[0].outer_spacing);
+    assert_eq!(InlineBoxOuterSpacing::Source, source.debug.inline_box_decisions[0].outer_spacing);
 }

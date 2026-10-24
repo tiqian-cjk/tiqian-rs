@@ -2,6 +2,7 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{TextRange, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo};
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::core::layout_queries::RichTextCornerRadii;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -316,8 +317,8 @@ fn background_segments_trim_glue_apply_padding_and_use_glyph_advances() {
         1.0,
         0.0,
         10.0,
-        "test".to_owned(),
-        "test".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build();
     let content = result_with_rich_text(
@@ -777,8 +778,8 @@ fn glue_trim_skips_interior_segment_edges() {
         1.0,
         0.0,
         20.0,
-        "test".to_owned(),
-        "test".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build();
     let right_content = result_with_rich_text(

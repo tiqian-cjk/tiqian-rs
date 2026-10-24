@@ -14,6 +14,8 @@ use tiqian::shaping::text_shaper::UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 struct PreserveInputProfile;
 
@@ -252,9 +254,9 @@ fn shaping_without_bounds_produces_named_profile_fallback() {
     assert_eq!(1, result.debug.punctuation_decisions.len());
     let punctuation = &result.debug.punctuation_decisions[0];
     assert_eq!(
-        "ProfileGlueFallbackWithoutFontGeometry",
-        punctuation.geometry_source
-    );
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+            punctuation.geometry_source
+        );
     assert_eq!(
         Some("shaper-no-ink-bounds".to_owned()),
         punctuation.ink_bounds_fallback
@@ -613,7 +615,7 @@ fn ambiguous_glyph_cluster_mapping_falls_back_to_policy_with_recorded_reason() {
     assert_eq!(2, result.debug.punctuation_decisions.len());
     for punctuation in &result.debug.punctuation_decisions {
         assert_eq!(
-            "ProfileGlueFallbackWithoutFontGeometry",
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
             punctuation.geometry_source
         );
         assert_eq!(
@@ -747,7 +749,7 @@ fn rolled_back_dash_still_keeps_its_boundaries_closed_under_justification() {
     assert_eq!("——", dash.display_text);
     assert!(
         decision.allocations.iter().all(|allocation| {
-            allocation.kind != "CjkInterChar" || allocation.cluster_range != dash.range
+            allocation.kind != GlueKind::CjkInterChar || allocation.cluster_range != dash.range
         }),
         "allocations={:?}",
         decision.allocations

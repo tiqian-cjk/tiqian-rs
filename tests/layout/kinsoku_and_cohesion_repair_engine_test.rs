@@ -8,6 +8,7 @@ use tiqian::core::units::Ic;
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
 
 struct FixedBasicProfile;
 
@@ -113,8 +114,11 @@ fn kinsoku_carries_previous_cluster_when_forbidden_punctuation_would_start_line(
         .repair_decision
         .as_ref()
         .unwrap();
-    assert_eq!("CarryPrevious", repair.kind);
-    assert_eq!("ForbiddenAtLineStart", repair.reason_code);
+    assert_eq!(RepairKind::CarryPrevious, repair.kind);
+    assert_eq!(
+            RepairReasonCode::ForbiddenAtLineStart,
+            repair.reason_code
+        );
     assert_eq!(Some(3), repair.carried_cluster_index);
 }
 
@@ -136,8 +140,11 @@ fn kinsoku_pushes_line_start_punctuation_in_when_glue_can_shrink() {
         .repair_decision
         .as_ref()
         .unwrap();
-    assert_eq!("PushIn", repair.kind);
-    assert_eq!("ForbiddenAtLineStart", repair.reason_code);
+    assert_eq!(RepairKind::PushIn, repair.kind);
+    assert_eq!(
+            RepairReasonCode::ForbiddenAtLineStart,
+            repair.reason_code
+        );
     assert_eq!(4.0, repair.shrink);
     assert_eq!(8.0, repair.available_capacity);
 }
@@ -172,10 +179,10 @@ fn kinsoku_falls_back_to_leave_ragged_when_previous_line_cannot_spare_cluster() 
     assert_eq!(20, result.debug.line_decisions[1].repair_penalty);
     assert!(
         result.debug.line_decisions[1]
-            .notes
+            .repair_candidates
             .iter()
-            .any(|note| note.contains("ForbiddenAtLineStart:。")
-                && note.contains("no-room-to-carry"))
+            .any(|candidate| candidate.reason_code == RepairReasonCode::ForbiddenAtLineStart
+                && candidate.rejection_reason == Some(RepairRejection::NoRoomToCarry))
     );
 }
 

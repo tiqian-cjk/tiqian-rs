@@ -6,6 +6,7 @@ use tiqian::core::text_model::{
     InlineAttachment, LayoutInput, RubySpan, TextSpan, TextStyle, TiqianTextContent,
 };
 use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackendShapingResult};
+use tiqian::layout::punctuation_model::SpacingReason;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 
@@ -160,7 +161,7 @@ fn attached_reference_at_source_end_lays_out_without_virtual_boundary() {
             .debug
             .spacing_decisions
             .iter()
-            .all(|decision| !decision.reason.starts_with("AttachedInlineVirtual"))
+            .all(|decision| !matches!(decision.reason, SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)))
     );
     let collapse = result
         .debug

@@ -8,6 +8,7 @@ use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 struct PreserveInputProfile;
 
@@ -143,7 +144,7 @@ fn stub_shaper_records_named_profile_fallback_without_ink_bounds() {
     assert!(!result.debug.punctuation_decisions.is_empty());
     for punctuation in &result.debug.punctuation_decisions {
         assert_eq!(
-            "ProfileGlueFallbackWithoutFontGeometry",
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
             punctuation.geometry_source
         );
         assert_eq!(

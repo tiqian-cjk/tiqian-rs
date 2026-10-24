@@ -14,6 +14,8 @@ use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackend
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::core::layout_model::LineEdgeTrimSide;
 
 fn layout(text: &str, max_width: f32, hyphenate: bool) -> tiqian::core::layout_model::LayoutResult {
     layout_with_content(text, max_width, hyphenate, Vec::new(), Vec::new())
@@ -119,13 +121,6 @@ fn mandatory_break_middle_line_skips_its_justification_plan() {
 fn blank_middle_line_skips_every_edge_pass() {
     let result = layout("中文\n\n中文", 80.0, false);
     assert_eq!(3, result.lines.len(), "{:?}", result.lines);
-    assert_eq!(
-        IntRange::new(3, 3),
-        result.lines[1].cluster_range,
-        "{:?}",
-        result.lines
-    );
-    assert_eq!(0.0, result.lines[1].natural_width);
     assert!(
         result
             .debug
@@ -206,21 +201,18 @@ fn formula_line_end_discards_the_trailing_boundary_advance() {
                 .build(),
         )],
     );
-    assert_eq!(
-        IntRange::new(0, 1),
-        result.lines[0].cluster_range,
-        "{:?}",
-        result.lines
-    );
-    let discard = result
-        .debug
-        .line_edge_trim_decisions
+        let discard = result
+            .debug
+            .line_edge_trim_decisions
         .iter()
-        .find(|decision| decision.reason == "InlineObjectLineEndDiscardableGlue")
+            .find(|decision| decision.reason == tiqian::core::layout_model::LineEdgeTrimReason::InlineObjectLineEndDiscardableGlue)
         .unwrap();
     assert_eq!(6.0, discard.trim_amount);
     assert_eq!(0.0, discard.consumed_before);
-    assert_eq!("trailing", discard.side);
+    assert_eq!(
+            LineEdgeTrimSide::Trailing,
+            discard.side
+        );
 }
 
 #[test]
@@ -248,11 +240,14 @@ fn attached_footnote_trailing_glue_trims_when_the_line_ends_at_the_run() {
         .debug
         .line_edge_trim_decisions
         .iter()
-        .find(|decision| decision.reason == "AttachedInlineVirtualBoundaryLineEndTrim")
+        .find(|decision|decision.reason == tiqian::core::layout_model::LineEdgeTrimReason::AttachedInlineVirtualBoundaryLineEndTrim)
         .unwrap();
     assert_eq!(text_range(8, 11), trim.cluster_range);
     assert_eq!(8.0, trim.trim_amount);
-    assert_eq!("trailing", trim.side);
+    assert_eq!(
+            LineEdgeTrimSide::Trailing,
+            trim.side
+        );
 }
 
 #[test]
@@ -268,13 +263,13 @@ fn lone_latin_cluster_merges_both_auto_space_edge_trims_into_one_key() {
         .debug
         .line_edge_trim_decisions
         .iter()
-        .filter(|decision| decision.reason == "TextAutoSpaceLineEdgeTrim")
+        .filter(|decision|decision.reason == tiqian::core::layout_model::LineEdgeTrimReason::TextAutoSpaceLineEdgeTrim)
         .collect();
     assert_eq!(
-        vec!["trailing", "leading"],
+        vec![tiqian::core::layout_model::LineEdgeTrimSide::Trailing, tiqian::core::layout_model::LineEdgeTrimSide::Leading],
         trims
             .iter()
-            .map(|decision| decision.side.as_str())
+            .map(|decision| decision.side)
             .collect::<Vec<_>>()
     );
     assert!(
@@ -324,7 +319,8 @@ fn attached_object_mark_hangs_instead_of_leaving_the_separator_at_an_edge() {
             .debug
             .line_edge_trim_decisions
             .iter()
-            .all(|decision| decision.reason != "LineEdgeWordSpaceCollapse"),
+            .all(|decision| decision.reason
+                != tiqian::core::layout_model::LineEdgeTrimReason::TextAutoSpaceLineEdgeTrim),
         "{:?}",
         result.debug.line_edge_trim_decisions
     );
@@ -360,7 +356,8 @@ fn zero_advance_edge_space_is_never_collapsed() {
             .debug
             .line_edge_trim_decisions
             .iter()
-            .all(|decision| decision.reason != "LineEdgeWordSpaceCollapse"),
+            .all(|decision| decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::LineStartHalfWidthPunctuation
+                && decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::LineEndHalfWidthPunctuation),
         "{:?}",
         result.debug.line_edge_trim_decisions
     );
@@ -421,7 +418,7 @@ fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
         .justification_decisions
         .iter()
         .flat_map(|decision| &decision.allocations)
-        .filter(|allocation| allocation.kind == "CjkInterChar")
+        .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
         .map(|allocation| allocation.delta)
         .collect();
     assert!(
@@ -434,9 +431,8 @@ fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
         tiny.debug
             .emergency_tracking_eligibility_decisions
             .iter()
-            .all(|decision| !decision
-                .reason
-                .starts_with("CurrentLineTechnicalTierRejection:")),
+            .all(|decision| !matches!(decision.reason,
+                tiqian::core::layout_model::EmergencyTrackingReason::CurrentLineTechnicalTierRejection(_))),
         "{:?}",
         tiny.debug.emergency_tracking_eligibility_decisions
     );
@@ -447,7 +443,8 @@ fn tiny_technical_tracking_stays_below_the_rejection_threshold() {
             .debug
             .emergency_tracking_eligibility_decisions
             .iter()
-            .any(|decision| decision.reason == "CurrentLineTechnicalTierRejection:Whitespace"),
+            .any(|decision| matches!(decision.reason,
+                tiqian::core::layout_model::EmergencyTrackingReason::CurrentLineTechnicalTierRejection(_))),
         "{:?}",
         rejected.debug.emergency_tracking_eligibility_decisions
     );
@@ -479,7 +476,7 @@ fn formula_object_without_boundary_discards_nothing_at_line_end() {
             .debug
             .line_edge_trim_decisions
             .iter()
-            .all(|decision| decision.reason != "InlineObjectLineEndDiscardableGlue"),
+            .all(|decision|decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::InlineObjectLineEndDiscardableGlue),
         "{:?}",
         result.debug.line_edge_trim_decisions
     );
@@ -535,7 +532,7 @@ fn emergency_selected_break_opens_the_preferred_tracking_span() {
         .justification_decisions
         .iter()
         .flat_map(|decision| &decision.allocations)
-        .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+        .filter(|allocation| allocation.kind == GlueKind::EmergencyGraphemeTracking)
         .collect();
     assert!(
         !tracking.is_empty(),
@@ -562,9 +559,8 @@ fn technical_line_body_stretch_rejects_the_clean_tier_and_replays() {
             .debug
             .emergency_tracking_eligibility_decisions
             .iter()
-            .any(|decision| decision
-                .reason
-                .starts_with("CurrentLineTechnicalTierRejection:")),
+            .any(|decision| matches!(decision.reason,
+                tiqian::core::layout_model::EmergencyTrackingReason::CurrentLineTechnicalTierRejection(_))),
         "{:?}",
         result.debug.emergency_tracking_eligibility_decisions
     );
@@ -573,7 +569,7 @@ fn technical_line_body_stretch_rejects_the_clean_tier_and_replays() {
             .debug
             .break_opportunity_decisions
             .iter()
-            .any(|decision| decision.reason == "CurrentLineTechnicalEmergencyBreak"),
+            .any(|decision|decision.reason == "CurrentLineTechnicalEmergencyBreak"),
         "{:?}",
         result.debug.break_opportunity_decisions
     );

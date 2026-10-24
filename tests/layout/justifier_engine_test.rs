@@ -15,6 +15,7 @@ use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
 
 struct PushOutOnlyProfile;
 
@@ -83,7 +84,7 @@ fn connector_boundaries_remain_closed_during_justification() {
     let inter_char: Vec<_> = decision
         .allocations
         .iter()
-        .filter(|allocation| allocation.kind == "CjkInterChar")
+        .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
         .collect();
     assert_eq!(
         vec![scalar_offset(2)],
@@ -127,7 +128,7 @@ fn inseparable_number_and_unit_boundary_remains_closed_during_justification() {
 
     assert!(decision.allocations.iter().all(|allocation| {
         allocation.cluster_range != number.range
-            || (allocation.kind != "CjkLatinSpace" && allocation.kind != "CjkInterChar")
+            || (allocation.kind != GlueKind::CjkLatinSpace && allocation.kind != GlueKind::CjkInterChar)
     }));
     assert_eq!(0.0, decision.deficit_after);
 }
@@ -215,7 +216,7 @@ fn sino_western_gap_knob_disables_stretch_and_shrink() {
             .justification_decisions
             .iter()
             .flat_map(|decision| &decision.allocations)
-            .all(|allocation| allocation.kind != "CjkLatinSpace")
+            .all(|allocation| allocation.kind != GlueKind::CjkLatinSpace)
     );
 }
 
@@ -236,7 +237,7 @@ fn half_em_word_spaces_do_not_stretch_under_justification() {
         decision
             .allocations
             .iter()
-            .all(|allocation| allocation.kind != "WordSpace")
+            .all(|allocation| allocation.kind != GlueKind::WordSpace)
     );
     assert!(!decision.allocations.is_empty());
     assert_eq!(160.0, result.lines[0].visual_width);
@@ -273,7 +274,7 @@ fn justify_fills_saturated_line_with_uncapped_even_share() {
     let deltas: Vec<_> = decision
         .allocations
         .iter()
-        .filter(|allocation| allocation.kind == "CjkInterChar")
+        .filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
         .map(|allocation| allocation.delta)
         .collect();
     assert_eq!(3, deltas.len());
@@ -331,7 +332,7 @@ fn justify_distributes_deficit_across_priority_chain() {
         decision
             .allocations
             .iter()
-            .all(|allocation| allocation.kind == "CjkInterChar")
+            .all(|allocation| allocation.kind == GlueKind::CjkInterChar)
     );
     assert!(
         decision
@@ -382,7 +383,7 @@ fn cjk_inter_char_acts_as_last_resort_when_punct_glue_exhausted() {
         decision
             .allocations
             .iter()
-            .all(|allocation| allocation.kind == "CjkInterChar")
+            .all(|allocation| allocation.kind == GlueKind::CjkInterChar)
     );
     assert_eq!(5, decision.allocations.len());
     assert!(
@@ -425,7 +426,7 @@ fn uniform_tracking_includes_bracket_inner_sides() {
         decision
             .allocations
             .iter()
-            .all(|allocation| allocation.kind == "CjkInterChar")
+            .all(|allocation| allocation.kind == GlueKind::CjkInterChar)
     );
     assert!(
         decision
@@ -449,13 +450,13 @@ fn bracket_western_interior_stretches_in_tier_three_not_tier_two() {
         decision
             .allocations
             .iter()
-            .all(|allocation| allocation.kind != "CjkLatinSpace")
+            .all(|allocation| allocation.kind != GlueKind::CjkLatinSpace)
     );
     assert!(decision.allocations.iter().any(|allocation| {
-        allocation.kind == "CjkInterChar" && allocation.cluster_range.start().value() == 2
+        allocation.kind == GlueKind::CjkInterChar && allocation.cluster_range.start().value() == 2
     }));
     assert!(decision.allocations.iter().any(|allocation| {
-        allocation.kind == "CjkInterChar" && allocation.cluster_range.start().value() == 3
+        allocation.kind == GlueKind::CjkInterChar && allocation.cluster_range.start().value() == 3
     }));
 }
 
@@ -530,7 +531,7 @@ fn latin_glyph_positions_survive_autospace_and_justification() {
             .iter()
             .flat_map(|decision| &decision.allocations)
             .any(|allocation| allocation.cluster_range == latin.range
-                && allocation.kind == "CjkLatinSpace")
+                && allocation.kind == GlueKind::CjkLatinSpace)
     );
     let glyphs: Vec<_> = result
         .glyph_runs
@@ -562,10 +563,10 @@ fn dash_boundaries_do_not_receive_uniform_tracking() {
     let before = &result.clusters[dash_index - 1];
     let allocations = &result.debug.justification_decisions[0].allocations;
     assert!(allocations.iter().all(|allocation| {
-        allocation.kind != "CjkInterChar" || allocation.cluster_range != before.range
+        allocation.kind != GlueKind::CjkInterChar || allocation.cluster_range != before.range
     }));
     assert!(allocations.iter().all(|allocation| {
-        allocation.kind != "CjkInterChar" || allocation.cluster_range != dash.range
+        allocation.kind != GlueKind::CjkInterChar || allocation.cluster_range != dash.range
     }));
 }
 
@@ -606,7 +607,7 @@ fn typed_sino_western_spaces_stretch_in_tier_two() {
     let sino: Vec<_> = decision
         .allocations
         .iter()
-        .filter(|allocation| allocation.kind == "CjkLatinSpace")
+        .filter(|allocation| allocation.kind == GlueKind::CjkLatinSpace)
         .collect();
     assert_eq!(2, sino.len());
     assert!(sino.iter().all(|allocation| {
@@ -628,7 +629,7 @@ fn punctuation_to_western_boundary_stretches_in_tier_three() {
 
     let allocations = &result.debug.justification_decisions[0].allocations;
     assert!(allocations.iter().any(|allocation| {
-        allocation.kind == "CjkInterChar"
+        allocation.kind == GlueKind::CjkInterChar
             && result
                 .clusters
                 .iter()

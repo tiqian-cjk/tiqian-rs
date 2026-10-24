@@ -29,6 +29,7 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
 use tiqian::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
+use std::sync::Arc;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
@@ -621,7 +622,7 @@ fn direct_shape_paragraph_edge_cases() {
     .build();
     let substitutor = ClreqPunctuationGlyphSubstitutor::default();
     let style = |_| TextStyle::builder().font_size(16.0).build();
-    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_segment_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
     let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
     let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
 
@@ -741,7 +742,7 @@ fn progressive_technical_tier_priority_and_false_branches() {
     .build();
     let backend = DeterministicStubFontBackend::default();
     let ranges = [text_range(0, 7), text_range(2, 7), text_range(0, 0)];
-    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_segment_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
     let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
     let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
     let result = shape_paragraph(
@@ -838,7 +839,7 @@ fn progressive_tier_loop_revisits_offsets_with_lower_priority_tiers() {
     .build();
     let ranges = [text_range(0, 7), text_range(2, 7)];
     let backend = DeterministicStubFontBackend::default();
-    let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+    let cached_segment_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
     let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
     let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
     let result = shape_paragraph(
@@ -876,7 +877,7 @@ fn latin_separator_tokens_cover_url_leading_slash_and_dash_locators() {
         )
         .build();
         let backend = DeterministicStubFontBackend::default();
-        let cached_segment_shaping: HashMap<TextRange, ShapingResult> = HashMap::new();
+        let cached_segment_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
         let cached_font_resolutions: HashMap<TextRange, FontResolution> = HashMap::new();
         let cached_rollbacks: HashMap<TextRange, String> = HashMap::new();
         for measure in [500.0, 8.0] {

@@ -10,7 +10,7 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::line_breaker::rebuild_line;
-use tiqian::layout::line_optimization::{LineCandidate, RepairOption};
+use tiqian::layout::line_optimization::{LineCandidate, RepairDetail, RepairOption, RepairReasonCode};
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -117,7 +117,7 @@ fn fill_push_in_count(result: &tiqian::core::layout_model::LayoutResult) -> usiz
             decision
                 .repair_decision
                 .as_ref()
-                .is_some_and(|repair| repair.reason_code == "LineAdjustmentPushIn")
+                .is_some_and(|repair| repair.reason_code == RepairReasonCode::LineAdjustmentPushIn)
         })
         .count()
 }
@@ -278,7 +278,8 @@ fn source_space_compression_promotes_emergency_break_to_syllable() {
     assert_eq!(IntRange::new(0, 3), output[0].cluster_range);
     assert_eq!(80.0, output[0].adjusted_width);
     let RepairOption::PushIn {
-        reason,
+        reason_code,
+        detail,
         total_shrink,
         allocations,
         ..
@@ -286,7 +287,8 @@ fn source_space_compression_promotes_emergency_break_to_syllable() {
     else {
         unreachable!()
     };
-    assert!(reason.starts_with("ProgressiveTechnicalTierPromotion"));
+    assert_eq!(RepairReasonCode::ProgressiveTechnicalTierPromotion, *reason_code);
+    assert_eq!(RepairDetail::PushedIn, *detail);
     assert_eq!(5.0, *total_shrink);
     assert_eq!(1, allocations.len());
     assert_eq!(1, allocations[0].cluster_index);
@@ -365,8 +367,8 @@ fn selected_tier_refills_across_intermediate_cleaner_boundary() {
     assert_eq!(1, output.len());
     assert_eq!(IntRange::new(0, 4), output[0].cluster_range);
     assert_eq!(100.0, output[0].adjusted_width);
-    let RepairOption::PushIn { reason, .. } = push_in(&output[0]) else {
+    let RepairOption::PushIn { reason_code, .. } = push_in(&output[0]) else {
         unreachable!()
     };
-    assert!(reason.starts_with("LineAdjustmentPushIn"));
+    assert_eq!(RepairReasonCode::LineAdjustmentPushIn, *reason_code);
 }

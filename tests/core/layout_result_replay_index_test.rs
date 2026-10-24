@@ -13,6 +13,7 @@ use tiqian::core::text_model::{RichTextLayer, RichTextLayerKind, RichTextSpan};
 use super::layout_queries_test_support::{
     cluster, line, result, result_with_rich_text, word_boundary_result,
 };
+use tiqian::font::font_policy::FontRole;
 
 #[test]
 fn replay_index_keeps_selection_and_rich_text_on_engine_geometry() {
@@ -180,10 +181,10 @@ fn replay_index_builds_glyph_feature_and_font_role_evidence_per_cluster() {
                 range: text_range(0, 2),
                 source_text: Text::from("甲乙"),
                 display_text: Text::from("甲乙"),
-                role: "CjkText".to_owned(),
+                role: FontRole::CjkText,
                 candidate_key: "test".to_owned(),
                 resolved_face: Some(FontFaceId::with_resource_id("test")),
-                reason: "test".to_owned(),
+                reason: "test",
                 substitution_reason: "test".to_owned(),
             }])
             .build(),
@@ -192,15 +193,15 @@ fn replay_index_builds_glyph_feature_and_font_role_evidence_per_cluster() {
     let index = to_replay_index(&result);
     assert_eq!(2, index.glyphs_by_cluster_range[&text_range(0, 1)].len());
     assert_eq!(
-        vec!["kern=1"],
-        index.open_type_features_by_cluster_range[&text_range(1, 2)]
+        ["kern=1".to_owned()],
+        &*index.open_type_features_by_cluster_range[&text_range(1, 2)]
     );
     assert_eq!(
         Vec::<String>::new(),
-        index.open_type_features_by_cluster_range[&text_range(2, 3)]
+        &*index.open_type_features_by_cluster_range[&text_range(2, 3)]
     );
     assert_eq!(
-        Some("CjkText".to_owned()),
+        Some(FontRole::CjkText),
         index.font_role_by_cluster_range[&text_range(0, 1)]
     );
     assert_eq!(None, index.font_role_by_cluster_range[&text_range(2, 3)]);

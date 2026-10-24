@@ -1,10 +1,7 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph,
-    GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyDecisionInfo,
-};
+use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyDecisionInfo};
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
@@ -15,6 +12,8 @@ use tiqian::core::text_model::{
     InlineObjectSpan, LayoutInput, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
     RichTextSpan, TextStyle, TiqianTextContent,
 };
+use tiqian::clreq::clreq_profile::AutoSpaceMode;
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 fn layout_input(text: &str, max_width: f32) -> LayoutInput {
     LayoutInput::builder(
@@ -114,13 +113,13 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
     let debug = LayoutDebugInfo::builder()
         .auto_space_decisions(vec![AutoSpaceDecisionInfo {
             cluster_range: text_range(1, 3),
-            side: "leading".to_owned(),
-            boundary_role: "CjkLatin".to_owned(),
-            mode: "Insert".to_owned(),
+            side: AutoSpaceSide::Leading,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: -2.5,
             total_reduction: -2.5,
-            reason: "TextAutoSpaceInsert:ideograph-alpha:quarter-em".to_owned(),
+            reason: "TextAutoSpaceInsert:ideograph-alpha:quarter-em",
         }])
         .build();
     let result = LayoutResult::with_debug(
@@ -519,8 +518,8 @@ fn punctuation_geometry(
         0.0,
         0.0,
         10.0,
-        "test".to_owned(),
-        "PunctuationGlueTest".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build()
 }

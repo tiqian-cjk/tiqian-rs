@@ -75,10 +75,10 @@ fn ruby_uses_existing_interline_space_without_changing_line_box() {
     assert_eq!(plain.lines[0].bottom, ruby.lines[0].bottom);
     assert_eq!(plain.size.height, ruby.size.height);
     let decision = ruby.debug.ruby_line_height_decision.as_ref().unwrap();
-    assert_eq!("PerLine", decision.mode);
+    assert_eq!(RubyLineHeightMode::PerLine, decision.mode);
     assert_eq!(0.0, decision.max_extra);
     assert!(decision.line_extras.iter().all(|extra| *extra == 0.0));
-    assert_eq!("ExistingInterlineSpaceFitsRuby", decision.reason);
+    assert_eq!(tiqian::core::layout_model::RubyLineHeightReason::ExistingInterlineSpaceFitsRuby, decision.reason);
     let annotation = &ruby.debug.ruby_decisions[0];
     assert_eq!("zhōng", annotation.text);
     assert!(annotation.center_x >= 0.0 && annotation.center_x <= ruby.clusters[0].advance);
@@ -105,7 +105,7 @@ fn per_line_mode_expands_only_the_annotated_line_when_ruby_collides() {
     assert_eq!(24.0, annotated.lines[1].bottom - annotated.lines[1].top);
     assert_eq!(18.0, annotated.lines[2].bottom - annotated.lines[2].top);
     let decision = annotated.debug.ruby_line_height_decision.as_ref().unwrap();
-    assert_eq!("PerLine", decision.mode);
+    assert_eq!(RubyLineHeightMode::PerLine, decision.mode);
     assert_eq!(6.0, decision.max_extra);
     assert_eq!(vec![0.0, 6.0, 0.0], decision.line_extras);
     assert_eq!(vec![1], decision.expanded_line_indices);
@@ -134,7 +134,7 @@ fn uniform_paragraph_mode_expands_every_line_by_same_ruby_deficit() {
     );
     assert_eq!(72.0, result.size.height);
     let decision = result.debug.ruby_line_height_decision.as_ref().unwrap();
-    assert_eq!("UniformParagraph", decision.mode);
+    assert_eq!(RubyLineHeightMode::UniformParagraph, decision.mode);
     assert_eq!(6.0, decision.max_extra);
     assert_eq!(vec![6.0, 6.0, 6.0], decision.line_extras);
     assert_eq!(vec![0, 1, 2], decision.expanded_line_indices);

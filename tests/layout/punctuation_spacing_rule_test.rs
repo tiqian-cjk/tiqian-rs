@@ -2,7 +2,7 @@ use tiqian::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPol
 use tiqian::core::geometry::text_range;
 use tiqian::core::text::Text;
 use tiqian::layout::punctuation_model::{
-    PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor,
+    PunctuationAtom, PunctuationAtomBuilder, PunctuationSpacingCompressor, SpacingReason,
 };
 
 const EM: f32 = 16.0;
@@ -82,7 +82,7 @@ fn cjk_closing_before_ascii_point_mark_consumes_only_closing_glue() {
     assert_eq!(8.0, adjustment.reduction);
     assert_eq!(text_range(0, 1), adjustment.reduction_target_range);
     assert_eq!(
-        "collapse-cjk-closing-before-ascii-point-mark",
+        SpacingReason::CollapseCjkClosingBeforeAsciiPointMark,
         adjustment.reason
     );
 }

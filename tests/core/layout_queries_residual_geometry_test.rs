@@ -4,6 +4,7 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyDecisionInfo,
 };
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::core::layout_queries::{
     get_bounding_box, get_bounding_boxes, get_cursor_rect, get_line_for_offset,
     get_offset_for_position, get_selection_offset_for_position, glyph_ink_bounds,
@@ -628,8 +629,8 @@ fn ruby_spread_shifts_selection_boxes_and_zero_width_rubies_are_ignored() {
             0.0,
             0.0,
             advance,
-            "test".to_owned(),
-            "test".to_owned(),
+            "test",
+            PunctuationGeometrySource::PolicyDerived,
         )
         .ruby_spread(spread)
         .build()

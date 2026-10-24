@@ -200,17 +200,17 @@ fn test_emergency_tracking_eligibility_decisions_branches() {
         EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(100, 200),
             source_text: Text::from("unmapped"),
-            reason: "reason".to_owned(),
+            reason: tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan,
         },
         EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(0, 4),
             source_text: Text::from("中文字符"),
-            reason: "validReason".to_owned(),
+            reason: tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan,
         },
         EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(0, 4),
             source_text: Text::from("中文字符"),
-            reason: "duplicateReason".to_owned(),
+            reason: tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan,
         },
     ];
 
@@ -255,7 +255,7 @@ fn test_emergency_tracking_boundary_whitespace_and_empty() {
         vec![EmergencyTrackingEligibilityDecisionInfo {
             range: text_range(0, 2),
             source_text: Text::from("ab"),
-            reason: "reason".to_owned(),
+            reason: tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan,
         }];
 
     assert!(!plan(&prep).line_solution.lines.is_empty());

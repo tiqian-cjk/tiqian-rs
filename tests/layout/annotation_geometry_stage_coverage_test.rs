@@ -1,14 +1,12 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
+use tiqian::clreq::clreq_profile::{AutoSpaceMode, BuiltInClreqProfileResolver, ClreqProfileResolver};
 use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, LineBox, LineEndReason,
-};
+use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, EmphasisDotReason, Glyph, LineBox, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch,
@@ -24,6 +22,7 @@ use tiqian::layout::annotation_geometry_stage::{
 };
 use tiqian::layout::line_geometry_stage::ClusterMetricDecision;
 use tiqian::layout::line_optimization::{LineCandidate, LineSolution};
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use crate::support::DeterministicStubFontBackend;
@@ -185,11 +184,9 @@ fn inline_object_decisions_with_preferred_stretch_and_fixed() {
     assert!(!result.lines.is_empty());
     assert_eq!(2, result.debug.inline_object_decisions.len());
     assert_eq!(
-        "PunctuationTrailing",
+        Some(InlineObjectPreferredStretchKind::PunctuationTrailing),
         result.debug.inline_object_decisions[0]
             .leading_preferred_stretch_kind
-            .as_deref()
-            .unwrap()
     );
     assert_eq!(
         "MeasurableOpaqueInlineObject",
@@ -227,14 +224,14 @@ fn decoration_decisions_emphasis_on_han_punctuation_and_western() {
             .debug
             .decoration_decisions
             .iter()
-            .any(|decision| decision.reason == "clreq-no-dot-on-punctuation")
+            .any(|decision| decision.reason == EmphasisDotReason::ClreqNoDotOnPunctuation)
     );
     assert!(
         result
             .debug
             .decoration_decisions
             .iter()
-            .any(|decision| decision.reason == "no-dot-on-non-han")
+            .any(|decision| decision.reason == EmphasisDotReason::NoDotOnNonHan)
     );
 }
 
@@ -303,7 +300,7 @@ fn decoration_segments_mourning_proper_noun_book_title_and_shortening() {
             .debug
             .decoration_segments
             .iter()
-            .any(|segment| segment.reason.contains("AdjacentInterlinearLineShortening"))
+            .any(|segment| segment.adjacent_shortened)
     );
 }
 
@@ -515,8 +512,8 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         2.0,
         0.0,
         32.0,
-        "test".to_owned(),
-        "test".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build();
     let leading = InlineObjectBoundaryAdjustment::builder()
@@ -572,43 +569,43 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
     let auto_space = vec![
         AutoSpaceDecisionInfo {
             cluster_range: text_range(0, 2),
-            side: "leading".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Leading,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(2, 3),
-            side: "leading".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Leading,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(3, 5),
-            side: "trailing".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Trailing,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(5, 12),
-            side: "trailing".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Trailing,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
     ];
     let result = resolve_annotation_geometry(AnnotationGeometryRequest {
@@ -801,8 +798,8 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         2.0,
         0.0,
         32.0,
-        "test".to_owned(),
-        "test".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build();
     let metric_cjk = ClusterMetricDecision {
@@ -903,43 +900,43 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
     let auto_space = vec![
         AutoSpaceDecisionInfo {
             cluster_range: text_range(0, 2),
-            side: "leading".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Leading,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(2, 3),
-            side: "leading".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Leading,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(2, 3),
-            side: "trailing".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Trailing,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
         AutoSpaceDecisionInfo {
             cluster_range: text_range(3, 5),
-            side: "trailing".to_owned(),
-            boundary_role: "Wide".to_owned(),
-            mode: "Normal".to_owned(),
+            side: AutoSpaceSide::Trailing,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+            mode: AutoSpaceMode::Insert,
             characters_affected: 1,
             reduction_per_char: 0.0,
             total_reduction: 0.0,
-            reason: "test".to_owned(),
+            reason: "test",
         },
     ];
     let result = resolve_annotation_geometry(AnnotationGeometryRequest {

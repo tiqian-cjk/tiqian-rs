@@ -775,7 +775,9 @@ mod tests {
         );
         assert_eq!('\0', result.decisions[0].right_char);
         assert_eq!(
-            "AttachedInlineVirtualPunctuationBoundary:natural",
+            SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+                AttachedInlineBoundaryCase::Natural
+            ),
             result.decisions[0].reason
         );
         assert_eq!(8.0, result.trailing_glue_by_cluster[&1]);
@@ -830,7 +832,9 @@ mod tests {
         );
         assert_eq!('\0', result.decisions[0].left_char);
         assert_eq!(
-            "AttachedInlineVirtualPunctuationBoundary:adjacent-punctuation",
+            SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+                AttachedInlineBoundaryCase::AdjacentPunctuation
+            ),
             result.decisions[0].reason
         );
     }

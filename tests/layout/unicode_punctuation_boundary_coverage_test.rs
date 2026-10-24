@@ -11,6 +11,8 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::{
     resolve_attached_inline_inter_char_boundaries, resolve_attached_inline_virtual_boundaries,
     resolve_unicode_punctuation_boundaries,
 };
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
+use tiqian::core::layout_model::{ContextualKinsokuRule, Uax14BoundaryRule};
 
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
@@ -75,11 +77,9 @@ fn resolve_unicode_punctuation_boundaries_with_paired_quotes() {
             QuoteType::Double,
         )],
     );
-    assert!(result.decisions.iter().any(|decision| {
-        decision.reason == "Uax14WesternPunctuationBoundary:PairedOpeningQuote"
+    assert!(result.decisions.iter().any(|decision| {decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedOpeningQuote)
     }));
-    assert!(result.decisions.iter().any(|decision| {
-        decision.reason == "Uax14WesternPunctuationBoundary:PairedClosingQuote"
+    assert!(result.decisions.iter().any(|decision| {decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedClosingQuote)
     }));
 }
 
@@ -112,7 +112,7 @@ fn resolve_unicode_punctuation_boundaries_with_cjk_closing_at_line_start() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -148,7 +148,7 @@ fn resolve_unicode_punctuation_boundaries_with_exclamation_mark() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -165,7 +165,7 @@ fn resolve_unicode_punctuation_boundaries_with_initial_quote_forbid_line_end() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -182,7 +182,7 @@ fn resolve_unicode_punctuation_boundaries_with_unresolved_quote() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -199,7 +199,7 @@ fn resolve_unicode_punctuation_boundaries_with_multiple_clusters() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -265,7 +265,7 @@ fn resolve_unicode_punctuation_boundaries_with_open_punctuation_forbid_line_end(
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -302,7 +302,10 @@ fn resolve_unicode_punctuation_boundaries_with_rule_for_line_start_infix() {
         .iter()
         .find(|decision| decision.source_text == ",")
         .unwrap();
-    assert_eq!("Uax14WesternPunctuationBoundary:LB15d", infix.reason);
+    assert_eq!(
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
+            infix.reason
+        );
 }
 
 #[test]
@@ -568,7 +571,7 @@ fn resolve_unicode_punctuation_boundaries_with_punctuation_and_space() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -607,7 +610,7 @@ fn resolve_unicode_punctuation_boundaries_with_follows_authored_boundary() {
         &[],
     );
     assert!(!result.decisions.iter().any(|decision| {
-        decision.source_text == "（" && decision.forbidden_position == "LineStart"
+        decision.source_text == "（" && decision.forbidden_position == KinsokuForbiddenPosition::LineStart
     }));
 }
 
@@ -624,7 +627,7 @@ fn resolve_unicode_punctuation_boundaries_with_close_punctuation_class() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -797,7 +800,7 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_final() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -814,7 +817,7 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_initial() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -831,7 +834,7 @@ fn resolve_unicode_punctuation_boundaries_with_quote_direction_unresolved() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -872,7 +875,7 @@ fn resolve_unicode_punctuation_boundaries_with_first_significant_code_point() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -889,7 +892,7 @@ fn resolve_unicode_punctuation_boundaries_with_last_significant_code_point() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 

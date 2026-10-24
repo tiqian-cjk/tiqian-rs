@@ -10,6 +10,8 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::core::layout_model::AutoSpaceSide;
+use tiqian::core::layout_model::AutoSpaceBoundaryRole;
 
 struct LetterOnlyAutoSpace;
 
@@ -86,7 +88,7 @@ fn auto_space_replaces_typed_space_at_cjk_latin_boundary() {
     assert!(spaces.iter().all(|space| space.advance == 2.0));
     assert_eq!(2, result.debug.auto_space_decisions.len());
     assert!(result.debug.auto_space_decisions.iter().all(|decision| {
-        decision.mode == "Replace" && decision.side == "gap" && decision.total_reduction == 6.0
+        decision.mode == AutoSpaceMode::Replace && decision.side == AutoSpaceSide::Gap && decision.total_reduction == 6.0
     }));
 }
 
@@ -269,8 +271,14 @@ fn attached_reference_before_latin_text_gets_the_virtual_cjk_latin_gap() {
     let decision = &layout_with_attached_reference("正文1ABC")
         .debug
         .auto_space_decisions[0];
-    assert_eq!("trailing", decision.side);
-    assert_eq!("InlineAttachment.Previous", decision.boundary_role);
+    assert_eq!(
+            AutoSpaceSide::Trailing,
+            decision.side
+        );
+    assert_eq!(
+            AutoSpaceBoundaryRole::InlineAttachmentPrevious,
+            decision.boundary_role
+        );
     assert_eq!(
         "AttachedInlineVirtualAutoSpace:east-asian-spacing-W-N",
         decision.reason
@@ -314,7 +322,7 @@ fn unicode_east_asian_spacing_covers_narrow_scripts_without_script_whitelists() 
                 .debug
                 .auto_space_decisions
                 .iter()
-                .all(|decision| decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
+                .all(|decision|decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
         );
     }
 }
@@ -328,7 +336,7 @@ fn conditional_punctuation_follows_chinese_language_resolution() {
             .debug
             .auto_space_decisions
             .iter()
-            .all(|decision| decision.boundary_role == "EastAsianSpacing.Wide")
+            .all(|decision| decision.boundary_role == AutoSpaceBoundaryRole::EastAsianSpacingWide)
     );
 }
 
@@ -350,7 +358,7 @@ fn autospace_does_not_fire_before_slash_led_latin_technical_run() {
         .iter()
         .find(|cluster| cluster.text == "/TERFism")
         .unwrap();
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range != technical.range || decision.side != "leading"));
+    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range != technical.range || decision.side != AutoSpaceSide::Leading));
 }
 
 #[test]
@@ -360,9 +368,9 @@ fn autospace_still_fires_between_latin_and_cjk_text_even_with_punctuation_nearby
     assert!(
         decisions
             .iter()
-            .all(|decision| decision.boundary_role == "EastAsianSpacing.Wide")
+            .all(|decision| decision.boundary_role == AutoSpaceBoundaryRole::EastAsianSpacingWide)
     );
-    assert!(decisions.iter().all(|decision| decision.side == "gap"));
+    assert!(decisions.iter().all(|decision| decision.side == AutoSpaceSide::Gap));
 }
 
 #[test]
@@ -381,7 +389,7 @@ fn absent_authored_space_inserts_one_gap_at_each_cjk_latin_edge() {
             .debug
             .auto_space_decisions
             .iter()
-            .all(|decision| decision.mode == "Insert")
+            .all(|decision| decision.mode == AutoSpaceMode::Insert)
     );
     assert!(
         result

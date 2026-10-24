@@ -1,12 +1,13 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo,
-    LayoutResult, LineBox, MetricDecisionInfo, RubyDecisionInfo,
-};
+use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, MetricDecisionInfo, RubyDecisionInfo};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent};
+use tiqian::clreq::clreq_profile::AutoSpaceMode;
+use tiqian::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
+use tiqian::font::font_policy::FontRole;
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 pub fn input_with_rich_text(
     text: &str,
@@ -95,17 +96,17 @@ pub fn metric(range: TextRange, ascent: f32, descent: f32, metric_box: &str) -> 
     MetricDecisionInfo {
         range,
         source_text: Text::from("test"),
-        role: "test".to_owned(),
+        role: FontRole::Unknown,
         font_face: FontFaceId::with_resource_id("test"),
         raw_ascent: ascent,
         raw_descent: descent,
         raw_leading: 0.0,
-        raw_source: "test".to_owned(),
+        raw_source: FontMetricSource::RawTables,
         layout_ascent: ascent,
         layout_descent: descent,
-        baseline_class: "test".to_owned(),
-        metric_box: metric_box.to_owned(),
-        layout_source: "test".to_owned(),
+        baseline_class: BaselineClass::Roman,
+        metric_box: match metric_box { "IdeographicEmBox" => MetricBox::IdeographicEmBox, "LatinBox" => MetricBox::RawFontBox, _ => MetricBox::RawFontBox },
+        layout_source: FontMetricSource::RawTables,
         reason: "test".to_owned(),
     }
 }
@@ -129,8 +130,8 @@ pub fn punctuation_geometry(
         0.0,
         0.0,
         10.0,
-        "test".to_owned(),
-        "PunctuationGlueTest".to_owned(),
+        "test",
+        PunctuationGeometrySource::PolicyDerived,
     )
     .build()
 }
@@ -259,13 +260,13 @@ pub fn background_geometry_result_with_rich_text(
         LayoutDebugInfo::builder()
             .auto_space_decisions(vec![AutoSpaceDecisionInfo {
                 cluster_range: text_range(2, 3),
-                side: "leading".to_owned(),
-                boundary_role: "CjkLatin".to_owned(),
-                mode: "Insert".to_owned(),
+                side: AutoSpaceSide::Leading,
+                boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+                mode: AutoSpaceMode::Insert,
                 characters_affected: 1,
                 reduction_per_char: -2.0,
                 total_reduction: -2.0,
-                reason: "test-leading-gap".to_owned(),
+                reason: "test-leading-gap",
             }])
             .metric_decisions(metrics)
             .build(),
@@ -359,8 +360,8 @@ pub fn ruby_selection_result() -> LayoutResult {
                     0.0,
                     0.0,
                     35.0,
-                    "test".to_owned(),
-                    "RubyAvoidanceSpread".to_owned(),
+                    "test",
+                    PunctuationGeometrySource::PolicyDerived,
                 )
                 .ruby_spread(15.0)
                 .build(),
@@ -376,8 +377,8 @@ pub fn ruby_selection_result() -> LayoutResult {
                     0.0,
                     0.0,
                     35.0,
-                    "test".to_owned(),
-                    "RubyAvoidanceSpread".to_owned(),
+                    "test",
+                    PunctuationGeometrySource::PolicyDerived,
                 )
                 .ruby_spread(15.0)
                 .build(),
@@ -393,8 +394,8 @@ pub fn ruby_selection_result() -> LayoutResult {
                     0.0,
                     0.0,
                     20.0,
-                    "test".to_owned(),
-                    "RubyAvoidanceSpread".to_owned(),
+                    "test",
+                    PunctuationGeometrySource::PolicyDerived,
                 )
                 .build(),
             ])

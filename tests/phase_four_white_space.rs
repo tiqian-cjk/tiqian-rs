@@ -6,7 +6,7 @@ use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::{get_cursor_rect, get_text_for_copy, occupied_bounds, positioned_clusters};
 use tiqian::core::layout_result_replay_index::{cursor_rect, to_replay_index};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{LayoutInput, LastLineAlignment, LineLengthGrid, ParagraphStyle, TabSize, TextWrapMode, TiqianTextContent, WhiteSpaceMode};
+use tiqian::core::text_model::{LastLineAlignment, LayoutInput, LineLengthGrid, ParagraphStyle, TabSize, TextWrapMode, TiqianTextContent, WhiteSpaceMode};
 use tiqian::core::units::Ic;
 
 fn layout(text: &str, mode: WhiteSpaceMode, wrap: TextWrapMode, width: f32, alignment: LastLineAlignment) -> LayoutResult {
@@ -297,11 +297,11 @@ fn cached_justification_stages_match_existing_priorities_and_capacities() {
                 InlineObjectPreferredStretch::new(kind, 1.0 + index as f32, 8.0),
             );
         }
-        let emergency: HashMap<i32, String> = (0..count)
-            .map(|index| (index as i32 + 1, format!("emergency-{index}")))
+        let emergency: HashMap<i32, tiqian::core::layout_model::EmergencyTrackingReason> = (0..count)
+            .map(|index| (index as i32 + 1, tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan))
             .collect();
-        let preferred_emergency: HashMap<i32, String> = (0..count)
-            .map(|index| (index as i32 + 4, format!("preferred-{index}")))
+        let preferred_emergency: HashMap<i32, tiqian::core::layout_model::EmergencyTrackingReason> = (0..count)
+            .map(|index| (index as i32 + 4, tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan))
             .collect();
         let technical = HashMap::from([(2, ProgressiveBreakTier::Whitespace)]);
         let request = JustificationRequest {

@@ -100,7 +100,7 @@ fn whitespace_delimited_western_quote_unmatched() {
     assert!(
         classify_without_pairs("中文 ’90s")
             .iter()
-            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+            .any(|decision|decision.source == "DelimitedUnmatchedWesternQuote")
     );
 }
 
@@ -199,7 +199,7 @@ fn unmatched_quote_with_whitespace_before_and_latin_right() {
     assert!(
         classify_without_pairs(" ’abc")
             .iter()
-            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+            .any(|decision|decision.source == "DelimitedUnmatchedWesternQuote")
     );
 }
 

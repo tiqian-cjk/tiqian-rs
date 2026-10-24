@@ -14,6 +14,8 @@ use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::font::font_policy::FontRole;
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 fn layout(text: &str) -> tiqian::core::layout_model::LayoutResult {
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
@@ -85,7 +87,7 @@ fn ascii_brackets_remain_latin_inside_cjk_text() {
             .iter()
             .find(|decision| decision.range == cluster.range)
             .unwrap();
-        assert_eq!("LatinText", decision.role, "{bracket}");
+        assert_eq!(FontRole::LatinText, decision.role, "{bracket}");
     }
 }
 
@@ -115,7 +117,7 @@ fn western_quote_pair_reaches_latin_font_pipeline_without_cjk_geometry() {
     assert!(
         overrides
             .iter()
-            .all(|override_info| override_info.overridden_role == "LatinText")
+            .all(|override_info| override_info.overridden_role == FontRole::LatinText)
     );
     assert!(
         result
@@ -142,12 +144,12 @@ fn cjk_quote_pair_reaches_punctuation_geometry_with_outer_context_evidence() {
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info| override_info.overridden_role == "CjkPunctuation")
+            .all(|override_info| override_info.overridden_role == FontRole::CjkPunctuation)
     );
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext")
+            .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext")
     );
     assert_eq!(
         vec![scalar_offset(1), scalar_offset(3)],
@@ -177,12 +179,12 @@ fn mixed_paragraph_start_quote_uses_paragraph_language_fallback() {
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info| override_info.overridden_role == "CjkPunctuation")
+            .all(|override_info| override_info.overridden_role == FontRole::CjkPunctuation)
     );
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info| override_info.source == "ParagraphLanguageQuoteContext")
+            .all(|override_info|override_info.source == "ParagraphLanguageQuoteContext")
     );
     assert_eq!("“Json是谁？”", result.input.content.text);
 }
@@ -197,7 +199,10 @@ fn contraction_apostrophe_stays_latin_inside_cjk_single_quotes() {
         .iter()
         .find(|decision| decision.source_text == "that’s")
         .unwrap();
-    assert_eq!("LatinText", contraction.role);
+    assert_eq!(
+            FontRole::LatinText,
+            contraction.role
+        );
     assert_eq!("latin-primary", contraction.candidate_key);
     assert!(
         result
@@ -234,7 +239,7 @@ fn latin_word_internal_curly_quotes_stay_in_latin_run_inside_mixed_paragraph() {
     assert!(
         overrides
             .iter()
-            .all(|override_info| override_info.overridden_role == "LatinText")
+            .all(|override_info| override_info.overridden_role == FontRole::LatinText)
     );
 }
 
@@ -250,7 +255,7 @@ fn latin_word_internal_quotes_support_supplementary_letters() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "LatinText"
+        override_info.overridden_role == FontRole::LatinText
             && override_info.source == "NonCjkWordInternalQuotePair"
     }));
 }
@@ -267,7 +272,7 @@ fn letter_bounded_word_internal_quotes_stay_latin() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "LatinText"
+        override_info.overridden_role == FontRole::LatinText
             && override_info.source == "NonCjkWordInternalQuotePair"
     }));
 }
@@ -284,7 +289,7 @@ fn digit_content_inside_letter_bounded_quotes_stays_latin() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "LatinText"
+        override_info.overridden_role == FontRole::LatinText
             && override_info.source == "NonCjkWordInternalQuotePair"
     }));
 }
@@ -301,7 +306,7 @@ fn digit_bounded_word_internal_quotes_stay_cjk() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "CjkPunctuation"
+        override_info.overridden_role == FontRole::CjkPunctuation
             && override_info.source == "PairedPunctuationOuterScriptContext"
     }));
 }
@@ -318,7 +323,7 @@ fn fullwidth_letter_bounded_word_internal_quotes_stay_cjk() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "CjkPunctuation"
+        override_info.overridden_role == FontRole::CjkPunctuation
             && override_info.source == "ParagraphLanguageQuoteContext"
     }));
 }
@@ -335,7 +340,7 @@ fn empty_word_internal_quotes_stay_latin() {
         .collect::<Vec<_>>();
     assert_eq!(2, overrides.len());
     assert!(overrides.iter().all(|override_info| {
-        override_info.overridden_role == "LatinText"
+        override_info.overridden_role == FontRole::LatinText
             && override_info.source == "NonCjkWordInternalQuotePair"
     }));
 }
@@ -379,17 +384,17 @@ fn quote_roles_survive_style_and_source_boundaries() {
         .map(|override_info| {
             (
                 override_info.range.start(),
-                override_info.overridden_role.as_str(),
+                override_info.overridden_role,
             )
         })
         .collect::<std::collections::HashMap<_, _>>();
     assert_eq!(
-        Some(&"CjkPunctuation"),
+        Some(&FontRole::CjkPunctuation),
         roles_by_index.get(&scalar_offset(1))
     );
-    assert_eq!(Some(&"LatinText"), roles_by_index.get(&scalar_offset(6)));
+    assert_eq!(Some(&FontRole::LatinText), roles_by_index.get(&scalar_offset(6)));
     assert_eq!(
-        Some(&"CjkPunctuation"),
+        Some(&FontRole::CjkPunctuation),
         roles_by_index.get(&scalar_offset(8))
     );
     assert_eq!(
@@ -436,7 +441,7 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
                 .font_decisions
                 .iter()
                 .filter(|decision| {
-                    decision.role == "CjkPunctuation"
+                    decision.role == FontRole::CjkPunctuation
                         && quote_indices.contains(&decision.range.start())
                 })
                 .map(|decision| decision.range.start())
@@ -483,7 +488,7 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         assert!(
             final_overrides
                 .iter()
-                .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext"),
+                .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext"),
             "{text}",
         );
         assert_eq!(text, result.input.content.text);
@@ -537,12 +542,12 @@ fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
     assert!(
         final_overrides
             .iter()
-            .all(|override_info| override_info.overridden_role == "CjkPunctuation")
+            .all(|override_info| override_info.overridden_role == FontRole::CjkPunctuation)
     );
     assert!(
         final_overrides
             .iter()
-            .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext")
+            .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext")
     );
     assert!(result.lines.iter().all(|line| {
         !result
@@ -590,10 +595,19 @@ fn records_role_overrides_for_resolved_quote_pairs() {
         .iter()
         .find(|override_info| override_info.range.start().value() == 6)
         .unwrap();
-    assert_eq!("LatinText", opening.overridden_role);
-    assert_eq!("CjkPunctuation", opening.original_role);
+    assert_eq!(
+            FontRole::LatinText,
+            opening.overridden_role
+        );
+    assert_eq!(
+            FontRole::CjkPunctuation,
+            opening.original_role
+        );
     assert_eq!("PairedPunctuationOuterScriptContext", opening.source);
-    assert_eq!("LatinText", closing.overridden_role);
+    assert_eq!(
+            FontRole::LatinText,
+            closing.overridden_role
+        );
 }
 
 #[test]
@@ -607,7 +621,10 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         .iter()
         .find(|decision| decision.range.start().value() == 2)
         .unwrap();
-    assert_eq!("CjkPunctuation", opening.role);
+    assert_eq!(
+            FontRole::CjkPunctuation,
+            opening.role
+        );
     assert_eq!("cjk-primary", opening.candidate_key);
 
     let override_info = result
@@ -621,7 +638,10 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         override_info.source
     );
     assert_eq!("quoted-content-script", override_info.reason);
-    assert_eq!("CjkPunctuation", override_info.overridden_role);
+    assert_eq!(
+            FontRole::CjkPunctuation,
+            override_info.overridden_role
+        );
 }
 
 #[test]
@@ -636,7 +656,7 @@ fn keeps_digit_bounded_single_quote_pair_cjk_via_enclosing_quotation() {
         .collect();
     assert_eq!(2, singles.len());
     assert!(singles.iter().all(|override_info| {
-        override_info.overridden_role == "CjkPunctuation"
+        override_info.overridden_role == FontRole::CjkPunctuation
             && override_info.source == "PairedPunctuationEnclosingQuoteContext"
     }));
 }
@@ -653,9 +673,8 @@ fn resolves_digit_bound_unmatched_quotes_as_primes() {
         .collect();
     assert_eq!(3, marks.len());
     assert!(marks.iter().all(|override_info| {
-        override_info.overridden_role == "LatinText"
-            && override_info.source == "NumericPrimeUnmatchedQuote"
-            && override_info.reason == "digit-bound-unmatched-quote-as-prime"
+        override_info.overridden_role == FontRole::LatinText
+            && override_info.source == "NumericPrimeUnmatchedQuote"&& override_info.reason == "digit-bound-unmatched-quote-as-prime"
     }));
 }
 
@@ -669,7 +688,10 @@ fn keeps_decade_style_apostrophe_with_letter_flank_latin() {
         .iter()
         .find(|override_info| override_info.source_text == "’")
         .unwrap();
-    assert_eq!("LatinText", apostrophe.overridden_role);
+    assert_eq!(
+            FontRole::LatinText,
+            apostrophe.overridden_role
+        );
     assert_eq!("NonCjkInWordApostrophe", apostrophe.source);
 }
 
@@ -780,13 +802,13 @@ fn requests_full_width_cjk_quotes_and_synthesizes_cell_for_proportional_glyphs()
     );
     assert_eq!(None, closing_decision.glyph_placement_reason);
     assert_eq!(
-        "InkBoundsFittedBodyCompression",
-        opening_decision.geometry_source
-    );
+            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+            opening_decision.geometry_source
+        );
     assert_eq!(
-        "InkBoundsFittedBodyCompression",
-        closing_decision.geometry_source
-    );
+            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+            closing_decision.geometry_source
+        );
 
     let positioned = positioned_clusters(&result);
     let positioned_opening = positioned

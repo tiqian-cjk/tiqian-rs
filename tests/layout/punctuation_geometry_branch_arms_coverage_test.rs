@@ -16,10 +16,7 @@ use tiqian::layout::punctuation_geometry_stage::{
     inline_object_attached_marks, is_attached_ascii_point_mark_at,
     is_east_asian_spacing_boundary_at, punctuation_atoms,
 };
-use tiqian::layout::punctuation_model::{
-    PunctuationAtomBuilder, PunctuationInkInput, PunctuationSpacingAdjustment,
-    PunctuationSpacingCompressionResult, PunctuationSpacingCompressor,
-};
+use tiqian::layout::punctuation_model::{AttachedInlineBoundaryCase, PunctuationAtomBuilder, PunctuationGeometrySource, PunctuationInkInput, PunctuationSpacingAdjustment, PunctuationSpacingCompressionResult, PunctuationSpacingCompressor, SpacingReason};
 
 const EM: f32 = 16.0;
 
@@ -103,9 +100,9 @@ fn halt_advance_is_rejected_at_zero_and_at_full_width() {
         .unwrap();
     assert_eq!(None, zero.halt_advance);
     assert_eq!(
-        "ProfileGlueFallbackWithoutFontGeometry",
-        zero.geometry_source
-    );
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+            zero.geometry_source
+        );
     let full = builder
         .build(
             '，',
@@ -122,9 +119,9 @@ fn halt_advance_is_rejected_at_zero_and_at_full_width() {
         .unwrap();
     assert_eq!(None, full.halt_advance);
     assert_eq!(
-        "ProfileGlueFallbackWithoutFontGeometry",
-        full.geometry_source
-    );
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+            full.geometry_source
+        );
 }
 
 #[test]
@@ -152,9 +149,9 @@ fn non_finite_halt_placement_is_ignored() {
         )
         .unwrap();
     assert_eq!(
-        "FontHaltAdvanceWithInkBoundsFittedPlacement",
-        ink.geometry_source
-    );
+            PunctuationGeometrySource::FontHaltAdvanceWithInkBoundsFittedPlacement,
+            ink.geometry_source
+        );
     let no_ink = builder
         .build(
             '，',
@@ -170,7 +167,10 @@ fn non_finite_halt_placement_is_ignored() {
             PunctuationWidthPolicy::default(),
         )
         .unwrap();
-    assert_eq!("FontHaltAdvanceWithProfileFallback", no_ink.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback,
+            no_ink.geometry_source
+        );
     assert_eq!(8.0, no_ink.trailing_glue.natural);
 }
 
@@ -645,7 +645,7 @@ fn spacing_plan_ignores_targets_outside_the_budgets() {
             natural_inner_glue: 8.0,
             adjusted_inner_glue: 0.0,
             reduction: 8.0,
-            reason: "test-stray".to_owned(),
+            reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
         },
         PunctuationSpacingAdjustment {
             range: text_range(8, 9),
@@ -655,7 +655,7 @@ fn spacing_plan_ignores_targets_outside_the_budgets() {
             natural_inner_glue: 8.0,
             adjusted_inner_glue: 0.0,
             reduction: 8.0,
-            reason: "test-past-end".to_owned(),
+            reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
         },
     ];
     let capacity = PunctuationGeometryLedger::from(
@@ -711,7 +711,7 @@ fn attached_boundary_reason_falls_back_to_natural_without_left_atom() {
         EM,
     );
     assert_eq!(
-        "AttachedInlineVirtualPunctuationBoundary:natural",
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::Natural),
         result.decisions[0].reason
     );
     assert_eq!('」', result.decisions[0].left_char);

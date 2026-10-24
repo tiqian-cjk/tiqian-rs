@@ -12,6 +12,8 @@ use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
 
 fn no_indent_style() -> ParagraphStyle {
     ParagraphStyle::builder()
@@ -49,7 +51,7 @@ fn rejected_letter_digit_structural_offsets_remain_emergency_cuts() {
         .debug
         .break_opportunity_decisions
         .iter()
-        .filter(|decision| decision.tier.as_deref() == Some("Emergency"))
+        .filter(|decision| decision.tier == Some(ProgressiveBreakTier::Emergency))
         .flat_map(|decision| decision.break_offsets.iter().copied())
         .collect();
 
@@ -107,9 +109,8 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
     assert_eq!(text_range(0, 8), result.lines[0].range);
     assert!(
         result.debug.line_decisions[0]
-            .notes
-            .iter()
-            .any(|note| note == "technical-break:Emergency")
+            .technical_break
+            == Some(ProgressiveBreakTier::Emergency)
     );
     assert_eq!(0.0, result.lines[0].hyphen_advance);
 }
@@ -124,7 +125,7 @@ fn hash_inside_technical_url_skips_syllable_classification() {
         .debug
         .break_opportunity_decisions
         .iter()
-        .filter(|decision| decision.tier.as_deref() == Some("Syllable"))
+        .filter(|decision| decision.tier == Some(ProgressiveBreakTier::Syllable))
         .flat_map(|decision| decision.break_offsets.iter().copied())
         .collect();
 
@@ -160,9 +161,12 @@ fn technical_hash_uses_emergency_tracking_to_fill_auto_wrapped_lines() {
             .iter()
             .flat_map(|decision| &decision.allocations)
             .any(|allocation| {
-                allocation.kind == "EmergencyGraphemeTracking"
-                    && allocation.reason
-                        == "TerminalTechnicalEmergencyTracking:ProgressiveTechnicalSpan"
+                allocation.kind == GlueKind::EmergencyGraphemeTracking
+                    && allocation.reason == tiqian::layout::justifier::JustificationAllocationReason::Opportunity(
+                        tiqian::layout::justifier::JustificationReason::TerminalTechnicalEmergencyTracking(
+                            tiqian::core::layout_model::EmergencyTrackingReason::ProgressiveTechnicalSpan,
+                        ),
+                    )
             })
     );
 }
@@ -196,7 +200,7 @@ fn long_all_caps_word_is_not_tracking_eligible() {
             .justification_decisions
             .iter()
             .flat_map(|decision| &decision.allocations)
-            .all(|allocation| allocation.kind != "EmergencyGraphemeTracking")
+            .all(|allocation| allocation.kind != GlueKind::EmergencyGraphemeTracking)
     );
 }
 
@@ -223,8 +227,10 @@ fn repeated_plain_token_gets_narrow_non_lexical_authorization() {
             .emergency_tracking_eligibility_decisions
             .iter()
             .any(|decision| {
-                decision.range == text_range(0, text.chars().count() as i32)
-                    && decision.reason == "LongRepeatedLetterRun"
+                decision.range == text_range(0,text.chars().count() as i32)
+                    && decision.reason == tiqian::core::layout_model::EmergencyTrackingReason::StrongNonLexical(
+                        tiqian::core::layout_model::StrongNonLexicalReason::LongRepeatedLetterRun,
+                    )
             })
     );
     for line in result
@@ -293,7 +299,7 @@ fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_
         .justification_decisions
         .iter()
         .flat_map(|decision| &decision.allocations)
-        .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+        .filter(|allocation| allocation.kind == GlueKind::EmergencyGraphemeTracking)
         .collect();
     assert!(!object_allocations.is_empty());
     assert!(object_allocations.iter().all(|allocation| {
@@ -324,7 +330,7 @@ fn technical_tracking_does_not_open_edges_touching_inline_objects_or_zero_width_
         .justification_decisions
         .iter()
         .flat_map(|decision| &decision.allocations)
-        .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+        .filter(|allocation| allocation.kind == GlueKind::EmergencyGraphemeTracking)
         .collect();
     assert!(!zero_width_allocations.is_empty());
     assert!(zero_width_allocations.iter().all(|allocation| {
@@ -374,7 +380,7 @@ fn unannotated_url_does_not_authorize_tracking_across_ordinary_path_components()
             .justification_decisions
             .iter()
             .flat_map(|decision| &decision.allocations)
-            .filter(|allocation| allocation.kind == "EmergencyGraphemeTracking")
+            .filter(|allocation| allocation.kind == GlueKind::EmergencyGraphemeTracking)
             .all(|allocation| allocation.cluster_range.start() >= identity_start)
     );
 }
@@ -408,7 +414,7 @@ fn ordinary_western_prose_is_never_inferred_as_tracking_eligible() {
             .justification_decisions
             .iter()
             .flat_map(|decision| &decision.allocations)
-            .all(|allocation| allocation.kind != "EmergencyGraphemeTracking")
+            .all(|allocation| allocation.kind != GlueKind::EmergencyGraphemeTracking)
     );
     assert!(
         result

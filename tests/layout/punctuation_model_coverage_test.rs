@@ -5,11 +5,7 @@ use tiqian::clreq::clreq_profile::{
 };
 use tiqian::core::geometry::{Rect, scalar_offset, text_range};
 use tiqian::core::text::Text;
-use tiqian::layout::punctuation_model::{
-    AdjustmentOpportunity, Glue, GlueKind, PunctuationAnchor, PunctuationAtom,
-    PunctuationAtomBuilder, PunctuationInkInput, PunctuationSpacingAdjustment,
-    PunctuationSpacingCompressionResult, PunctuationSpacingCompressor,
-};
+use tiqian::layout::punctuation_model::{AdjustmentOpportunity, Glue, GlueKind, PunctuationAnchor, PunctuationAtom, PunctuationAtomBuilder, PunctuationGeometrySource, PunctuationInkInput, PunctuationSpacingAdjustment, PunctuationSpacingCompressionResult, PunctuationSpacingCompressor, SpacingReason};
 
 use crate::support::DeterministicStubFontBackend;
 
@@ -122,7 +118,7 @@ fn compression_result_sums_adjustment_reductions() {
             natural_inner_glue: 16.0,
             adjusted_inner_glue: 8.0,
             reduction: 8.0,
-            reason: "test-a".to_owned(),
+            reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
         },
         PunctuationSpacingAdjustment {
             range: text_range(2, 4),
@@ -132,7 +128,7 @@ fn compression_result_sums_adjustment_reductions() {
             natural_inner_glue: 8.0,
             adjusted_inner_glue: 4.0,
             reduction: 4.0,
-            reason: "test-b".to_owned(),
+            reason: SpacingReason::CollapseAdjacentPunctuationInnerGlue,
         },
     ]);
     assert_eq!(12.0, result.total_reduction());
@@ -158,7 +154,7 @@ fn adjacent_punctuation_inner_glue_collapses_by_half_em() {
     assert_eq!('。', adjustment.left_char);
     assert_eq!('「', adjustment.right_char);
     assert_eq!(
-        "collapse-adjacent-punctuation-inner-glue",
+        SpacingReason::CollapseAdjacentPunctuationInnerGlue,
         adjustment.reason
     );
     assert_eq!(text_range(0, 2), adjustment.range);
@@ -230,7 +226,7 @@ fn cjk_closing_before_ascii_point_mark_collapses_trailing_glue() {
     assert_eq!('」', adjustment.left_char);
     assert_eq!(',', adjustment.right_char);
     assert_eq!(
-        "collapse-cjk-closing-before-ascii-point-mark",
+        SpacingReason::CollapseCjkClosingBeforeAsciiPointMark,
         adjustment.reason
     );
 }
@@ -330,7 +326,10 @@ fn ink_bounds_determine_compression_amount_and_sides() {
     assert!(!comma.ink_containment_applied);
     assert_eq!(4.0, comma.leading_glue.natural);
     assert_eq!(4.0, comma.trailing_glue.natural);
-    assert_eq!("InkBoundsFittedBodyCompression", comma.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+            comma.geometry_source
+        );
     assert_eq!(Some(2.0), comma.ink_width);
     assert_eq!(Some(10.0), comma.ink_center);
 }
@@ -375,9 +374,9 @@ fn policy_fallback_splits_glue_by_class_side() {
     assert_eq!(PunctuationAnchor::Leading, stop.anchor);
     assert_eq!(8.0, stop.body_width);
     assert_eq!(
-        "ProfileGlueFallbackWithoutFontGeometry",
-        stop.geometry_source
-    );
+            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+            stop.geometry_source
+        );
     assert_eq!(None, stop.halt_advance);
     assert_eq!(None, stop.ink_containment_body_floor);
     assert!(!stop.ink_containment_applied);
@@ -446,7 +445,10 @@ fn halt_fitted_compression_uses_font_measurements() {
                 .build(),
         ),
     );
-    assert_eq!("FontHaltFittedBodyCompression", result.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::FontHaltFittedBodyCompression,
+            result.geometry_source
+        );
     assert_eq!(2.0, result.leading_glue.natural);
     assert_eq!(6.0, result.trailing_glue.natural);
     assert_eq!(8.0, result.body_width);
@@ -502,9 +504,9 @@ fn halt_advance_without_placement_falls_back_to_fitted_ink_or_profile() {
         ),
     );
     assert_eq!(
-        "FontHaltAdvanceWithInkBoundsFittedPlacement",
-        with_ink.geometry_source
-    );
+            PunctuationGeometrySource::FontHaltAdvanceWithInkBoundsFittedPlacement,
+            with_ink.geometry_source
+        );
     let without_ink = atom(
         '，',
         0,
@@ -515,9 +517,9 @@ fn halt_advance_without_placement_falls_back_to_fitted_ink_or_profile() {
         ),
     );
     assert_eq!(
-        "FontHaltAdvanceWithProfileFallback",
-        without_ink.geometry_source
-    );
+            PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback,
+            without_ink.geometry_source
+        );
     assert_eq!(0.0, without_ink.leading_glue.natural);
     assert_eq!(8.0, without_ink.trailing_glue.natural);
 }
@@ -561,7 +563,10 @@ fn ink_bounds_fitted_frame_picks_the_narrowest_containing_anchor() {
     assert_eq!(PunctuationAnchor::Trailing, right.anchor);
     assert_eq!(8.0, right.leading_glue.natural);
     assert_eq!(0.0, right.trailing_glue.natural);
-    assert_eq!("InkBoundsFittedBodyCompression", right.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+            right.geometry_source
+        );
     assert!(!right.ink_containment_applied);
     let left = atom(
         '「',
@@ -603,7 +608,7 @@ fn forced_half_width_connectors_consume_glue_up_front() {
     let hyphen = atom('-', 0, None);
     assert_eq!(8.0, hyphen.advance);
     assert_eq!(8.0, hyphen.body_width);
-    assert!(hyphen.geometry_source.ends_with("FixedHalfWidth"));
+    assert!(hyphen.geometry_forced_half_width);
     assert_eq!(0.0, hyphen.leading_glue_initially_consumed);
     assert_eq!(0.0, hyphen.trailing_glue_initially_consumed);
     let gb = PunctuationWidthPolicy::with_gb_fixed_separators(true);
@@ -617,7 +622,7 @@ fn forced_half_width_connectors_consume_glue_up_front() {
             gb,
         )
         .unwrap();
-    assert!(dot.geometry_source.ends_with("FixedHalfWidth"));
+    assert!(dot.geometry_forced_half_width);
     assert_eq!(4.0, dot.leading_glue_initially_consumed);
     assert_eq!(4.0, dot.trailing_glue_initially_consumed);
     let kaiming = PunctuationWidthPolicy::with_interior(InteriorPunctuationStyle::Kaiming);
@@ -631,7 +636,7 @@ fn forced_half_width_connectors_consume_glue_up_front() {
             kaiming,
         )
         .unwrap();
-    assert!(comma.geometry_source.ends_with("FixedHalfWidth"));
+    assert!(comma.geometry_forced_half_width);
     assert_eq!(8.0, comma.trailing_glue_initially_consumed);
     let stop = PunctuationAtomBuilder::new(PunctuationGluePlacement::MainlandSimplified, kaiming)
         .build(
@@ -643,7 +648,7 @@ fn forced_half_width_connectors_consume_glue_up_front() {
             kaiming,
         )
         .unwrap();
-    assert!(!stop.geometry_source.ends_with("FixedHalfWidth"));
+    assert!(!stop.geometry_forced_half_width);
 }
 
 #[test]

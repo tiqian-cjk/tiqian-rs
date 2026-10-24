@@ -8,6 +8,7 @@ use tiqian::layout::line_optimization::RepairOption;
 use tiqian::layout::progressive_break_decisions::{
     ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
 };
+use tiqian::layout::line_optimization::{RepairDetail, RepairKind, RepairReasonCode, RepairRejection};
 
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
@@ -105,11 +106,11 @@ fn push_in_rejects_when_line_wide_capacity_is_insufficient() {
     let rejected = solution.lines[1]
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "PushIn")
+        .find(|candidate| candidate.kind == RepairKind::PushIn)
         .unwrap();
     assert!(!rejected.accepted);
     assert_eq!(
-        Some("insufficient-capacity".to_owned()),
+        Some(RepairRejection::InsufficientCapacity),
         rejected.rejection_reason
     );
     assert_eq!(4.0, rejected.available_capacity);
@@ -190,14 +191,16 @@ fn push_in_merges_an_offender_that_fits_after_chained_repairs() {
     );
     let Some(RepairOption::PushIn {
         total_shrink,
-        reason,
+        reason_code,
+        detail,
         ..
     }) = &solution.lines[1].repair
     else {
         panic!("expected zero-shrink PushIn repair")
     };
     assert_eq!(0.0, *total_shrink);
-    assert!(reason.ends_with("fits-no-shrink"));
+    assert_eq!(RepairReasonCode::ForbiddenAtLineStart, *reason_code);
+    assert_eq!(RepairDetail::FitsNoShrink, *detail);
     assert_eq!(64.0, solution.lines[1].adjusted_width);
 }
 
@@ -222,17 +225,17 @@ fn carry_previous_refuses_to_split_an_unbreakable_span() {
     let solution = GreedyLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
 
     assert_eq!(2, solution.lines.len());
-    let Some(RepairOption::LeaveRagged { reason, .. }) = &solution.lines[1].repair else {
+    let Some(RepairOption::LeaveRagged { detail, .. }) = &solution.lines[1].repair else {
         panic!("expected LeaveRagged repair")
     };
-    assert!(reason.ends_with("carry-would-split-mourning-span"));
+    assert_eq!(RepairDetail::Rejected(RepairRejection::CarryWouldSplitMourningSpan), *detail);
     let carry = solution.lines[1]
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "CarryPrevious")
+        .find(|candidate| candidate.kind == RepairKind::CarryPrevious)
         .unwrap();
     assert_eq!(
-        Some("carry-would-split-mourning-span".to_owned()),
+        Some(RepairRejection::CarryWouldSplitMourningSpan),
         carry.rejection_reason
     );
 }

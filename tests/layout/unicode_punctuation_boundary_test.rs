@@ -14,6 +14,9 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_western_brack
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
+use tiqian::core::layout_model::ContextualKinsokuRule;
+use tiqian::core::layout_model::Uax14BoundaryRule;
 
 struct KinsokuNoneProfile;
 
@@ -143,8 +146,14 @@ fn western_closing_punctuation_is_forbidden_at_automatic_line_start() {
             .iter()
             .find(|decision| decision.source_text == ")")
             .unwrap();
-        assert_eq!("LineStart", decision.forbidden_position);
-        assert_eq!("Uax14WesternPunctuationBoundary:LB13", decision.reason);
+        assert_eq!(
+            KinsokuForbiddenPosition::LineStart,
+            decision.forbidden_position
+        );
+        assert_eq!(
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb13),
+            decision.reason
+        );
     }
 }
 
@@ -166,8 +175,14 @@ fn western_opening_bracket_is_forbidden_at_automatic_line_end() {
             .iter()
             .find(|decision| decision.source_text == "(")
             .unwrap();
-        assert_eq!("LineEnd", decision.forbidden_position);
-        assert_eq!("Uax14WesternPunctuationBoundary:LB14", decision.reason);
+        assert_eq!(
+            KinsokuForbiddenPosition::LineEnd,
+            decision.forbidden_position
+        );
+        assert_eq!(
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb14),
+            decision.reason
+        );
     }
 }
 
@@ -209,8 +224,14 @@ fn attached_ascii_point_mark_remains_latin_and_cannot_start_wrapped_line() {
             .iter()
             .find(|decision| decision.range == comma.range)
             .unwrap();
-        assert_eq!("LineStart", decision.forbidden_position);
-        assert_eq!("Uax14WesternPunctuationBoundary:LB15d", decision.reason);
+        assert_eq!(
+            KinsokuForbiddenPosition::LineStart,
+            decision.forbidden_position
+        );
+        assert_eq!(
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
+            decision.reason
+        );
     }
 }
 
@@ -233,7 +254,7 @@ fn paired_latin_curly_quotes_keep_content_across_both_line_edges() {
             .find(|decision| decision.source_text == "”")
             .unwrap();
         assert_eq!(
-            "Uax14WesternPunctuationBoundary:PairedClosingQuote",
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedClosingQuote),
             decision.reason
         );
     }

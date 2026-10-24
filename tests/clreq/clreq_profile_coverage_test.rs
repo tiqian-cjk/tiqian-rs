@@ -1,12 +1,14 @@
 use tiqian::clreq::bopomofo_reading::{BopomofoReading, BopomofoTone, bopomofo_parser};
 use tiqian::clreq::clreq_profile::{
     AdjustmentStylePolicy, AutoSpaceMode, AutoSpacePolicy, BuiltInClreqProfileResolver,
-    CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver, ClreqRegion, ClreqStrictness,
-    GlueSide, HangingPunctuationStyle, InteriorPunctuationStyle, KinsokuLevel, KinsokuMode,
+    CjkPunctuationGlyphPolicy, CjkPunctuationGlyphSubstitutionReason, ClreqProfile,
+    ClreqProfileResolver, ClreqRegion, ClreqStrictness, GlueSide, HangingPunctuationStyle,
+    InteriorPunctuationStyle, KinsokuLevel, KinsokuMode,
     LineAdjustmentStrategy, LineEndPunctuationStyle, PunctuationClass, PunctuationGluePlacement,
     PunctuationWidthPolicy, clreq_punctuation_advance_policy, clreq_punctuation_policies,
 };
 use tiqian::core::text::Text;
+use tiqian::core::layout_model::KinsokuPolicySource;
 use tiqian::core::text_model::{LayoutProfileId, built_in_layout_profiles};
 
 #[test]
@@ -293,7 +295,10 @@ fn punctuation_advance_and_substitutor() {
     );
     let unchanged = force.substitute(&Text::from("abc"));
     assert_eq!("abc", unchanged.display_text.as_str());
-    assert!(unchanged.reason.contains("preserve"));
+    assert!(matches!(
+        unchanged.reason,
+        CjkPunctuationGlyphSubstitutionReason::PolicyPreserved(_)
+    ));
 }
 
 #[test]
@@ -357,5 +362,6 @@ fn profile_builder_and_kinsoku_resolution_keep_region_and_measure_policy_explici
         KinsokuMode::fixed_with_hanging(KinsokuLevel::None, HangingPunctuationStyle::PauseStops)
             .resolve(80.0);
     assert_eq!(KinsokuLevel::None, fixed.level);
-    assert!(fixed.reason.contains("Fixed:None+Hang"));
+    assert_eq!(KinsokuPolicySource::Fixed, fixed.source);
+    assert_eq!(HangingPunctuationStyle::PauseStops, fixed.hanging);
 }

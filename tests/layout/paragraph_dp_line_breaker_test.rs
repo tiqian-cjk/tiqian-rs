@@ -6,7 +6,7 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{LineBreaker, LineBreakerConfig};
-use tiqian::layout::line_optimization::RepairOption;
+use tiqian::layout::line_optimization::{RepairOption, RepairReasonCode};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -208,8 +208,11 @@ fn compressed_same_tier_boundary_is_not_reported_as_promotion() {
     assert_eq!(IntRange::new(0, 2), solution.lines[0].cluster_range);
     assert!(matches!(
         &solution.lines[0].repair,
-        Some(RepairOption::PushIn { reason, .. })
-            if reason.starts_with("LineAdjustmentPushIn")
+        Some(RepairOption::PushIn {
+            reason_code: RepairReasonCode::LineAdjustmentPushIn
+                | RepairReasonCode::LineAdjustmentPushInDpFeasibility,
+            ..
+        })
     ));
 }
 
@@ -237,10 +240,14 @@ fn compression_edge_records_push_in_repair() {
         .expect("expected a PushIn compressed line");
     assert_eq!(IntRange::new(0, 3), line.cluster_range);
     assert!(line.adjusted_width <= 56.01);
-    let Some(RepairOption::PushIn { reason, .. }) = &line.repair else {
+    let Some(RepairOption::PushIn { reason_code, .. }) = &line.repair else {
         unreachable!()
     };
-    assert!(reason.starts_with("LineAdjustmentPushIn"));
+    assert!(matches!(
+        reason_code,
+        RepairReasonCode::LineAdjustmentPushIn
+            | RepairReasonCode::LineAdjustmentPushInDpFeasibility
+    ));
 }
 
 #[test]
@@ -260,8 +267,11 @@ fn compression_disabled_without_push_in_flag() {
     assert_tiles(&solution, 5);
     assert!(solution.lines.iter().all(|line| !matches!(
         &line.repair,
-        Some(RepairOption::PushIn { reason, .. })
-            if reason.starts_with("LineAdjustmentPushIn")
+        Some(RepairOption::PushIn {
+            reason_code: RepairReasonCode::LineAdjustmentPushIn
+                | RepairReasonCode::LineAdjustmentPushInDpFeasibility,
+            ..
+        })
     )));
 }
 

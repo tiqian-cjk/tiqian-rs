@@ -18,6 +18,7 @@ use tiqian::layout::progressive_break_decisions::{
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
+use tiqian::layout::punctuation_model::GlueKind;
 
 struct FixedBasicProfile;
 
@@ -108,7 +109,7 @@ fn inline_object_reuses_existing_interline_space_without_moving_baseline_grid() 
     assert!(decision.line_extras.iter().all(|extra| *extra == 0.0));
     assert!(decision.expanded_line_indices.is_empty());
     assert!(decision.boundary_shifts_after[0] < 0.0);
-    assert_eq!("ExistingInterlineSpaceFitsInlineObjects", decision.reason);
+    assert_eq!(tiqian::core::layout_model::InlineObjectLineHeightReason::ExistingInterlineSpaceFitsInlineObjects, decision.reason);
     assert!(
         (with_object.lines[1].baseline
             - 20.0
@@ -133,7 +134,7 @@ fn inline_object_expands_only_the_boundary_with_actual_collision() {
     assert_eq!(0.0, decision.line_extras[0]);
     assert!((decision.line_extras[1] - 7.6).abs() < 0.001);
     assert_eq!(vec![1], decision.expanded_line_indices);
-    assert_eq!("InlineObjectInterlineCollision", decision.reason);
+    assert_eq!(tiqian::core::layout_model::InlineObjectLineHeightReason::InlineObjectInterlineCollision, decision.reason);
     let without_clearance =
         ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
             .build()
@@ -357,7 +358,7 @@ fn formula_boundary_compression_pushes_attached_comma_into_previous_line() {
         .repair_decision
         .as_ref()
         .unwrap();
-    assert_eq!("PushIn", repair.kind);
+    assert_eq!(tiqian::layout::line_optimization::RepairKind::PushIn, repair.kind);
     assert!(
         repair
             .push_in_allocations
@@ -438,8 +439,8 @@ fn punctuation_attached_to_inline_object_never_starts_wrapped_line() {
                         .debug
                         .contextual_kinsoku_decisions
                         .iter()
-                        .any(|decision| decision.source_text == comma.to_string()
-                            && decision.reason == "InlineObjectAttachedKinsoku")
+                        .any(|decision| decision.source_text ==comma.to_string()
+                            && decision.reason == tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsoku)
                 );
             }
         }
@@ -496,9 +497,7 @@ fn separator_space_before_punctuation_collapses_and_stays_with_inline_object() {
                     .debug
                     .contextual_kinsoku_decisions
                     .iter()
-                    .any(|decision| decision.source_text == "，"
-                        && decision.reason
-                            == "InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace")
+                    .any(|decision| decision.source_text == "，"&& decision.reason == tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace)
             );
             let attachment = &result.debug.inline_object_punctuation_attachment_decisions[0];
             assert_eq!(text_range(2, 3), attachment.separator_range);
@@ -510,7 +509,7 @@ fn separator_space_before_punctuation_collapses_and_stays_with_inline_object() {
                     .iter()
                     .flat_map(|decision| &decision.allocations)
                     .all(|allocation| allocation.cluster_range != text_range(1, 2)
-                        || allocation.kind != "InlineObjectBoundary")
+                        || allocation.kind != GlueKind::InlineObjectBoundary)
             );
         }
     }
@@ -571,7 +570,7 @@ fn relation_stretch_moves_both_formula_sides_by_the_same_final_geometry() {
     let allocations: Vec<_> = result.debug.justification_decisions[0]
         .allocations
         .iter()
-        .filter(|allocation| allocation.kind == "InlineObjectRelation")
+        .filter(|allocation| allocation.kind == GlueKind::InlineObjectRelation)
         .collect();
     assert_eq!(2, allocations.len());
     assert!((allocations[0].delta - allocations[1].delta).abs() < 0.001);
@@ -594,7 +593,9 @@ fn phase_two_object_separator_attachment_respects_white_space_mode() {
             let collapse = matches!(mode, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks);
             let attached = separator.is_empty() || (collapse && matches!(separator, " " | "  " | "\t"));
             assert_eq!(attached, result.debug.contextual_kinsoku_decisions.iter()
-                .any(|decision| decision.reason.starts_with("InlineObjectAttachedKinsoku")),
+                .any(|decision| matches!(decision.reason,
+                    tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsoku
+                    | tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace)),
                 "{mode:?}, {separator:?}");
             if !separator.is_empty() && separator.chars().all(|c| c == ' ') && !collapse {
                 assert_eq!(separator.len() as f32 * 8., result.clusters.iter()
@@ -694,8 +695,8 @@ fn formula_break_keeps_baseline_operator_on_previous_line() {
                 .draw_x
         );
         assert!(result.debug.line_edge_trim_decisions.iter().any(
-            |decision| decision.cluster_range == text_range(1, 2)
-                && decision.reason == "InlineObjectLineEndDiscardableGlue"
+            |decision| decision.cluster_range == text_range(1,2)
+                && decision.reason == tiqian::core::layout_model::LineEdgeTrimReason::InlineObjectLineEndDiscardableGlue
                 && decision.natural_glue == 4.0
         ));
         let decision = result
@@ -731,7 +732,7 @@ fn formula_break_keeps_baseline_operator_on_previous_line() {
                 .debug
                 .line_edge_trim_decisions
                 .iter()
-                .all(|decision| decision.reason != "InlineObjectLineEndDiscardableGlue")
+                .all(|decision|decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::InlineObjectLineEndDiscardableGlue)
         );
     }
 }

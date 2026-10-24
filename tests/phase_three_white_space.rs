@@ -4,16 +4,18 @@ use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{Cluster, LineEndReason, SyntheticClusterKind};
+use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceSide, Cluster, LineEndReason, SyntheticClusterKind};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{TextWrapMode, WhiteSpaceMode};
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig, LookaheadLineBreaker};
 use tiqian::layout::line_measurement::LineMeasurement;
-use tiqian::layout::line_optimization::RepairOption;
+use tiqian::layout::line_optimization::{RepairOption, RepairReasonCode};
 use tiqian::layout::line_repair::try_push_in;
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
+use tiqian::layout::progressive_break_decisions::{ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity};
 use tiqian::layout::white_space::{scan_white_space, LineWhiteSpaceAction};
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::clreq::clreq_profile::AutoSpaceMode;
 
 fn prepared(text: &str, mode: WhiteSpaceMode, wrap: TextWrapMode, interval: f32, indent: f32) -> (Vec<Cluster>, LineBreakerConfig) {
     let source = Text::from(text);
@@ -94,7 +96,7 @@ fn repair_case(pen: f32, capacity: f32, limit: f32) -> (bool, f32, f32) {
     let previous = config.build_line(IntRange::new(0, 1), &clusters, &clusters, LineEndReason::AutoWrap, limit);
     let current = config.build_line(IntRange::new(2, 2), &clusters, &clusters, LineEndReason::ParagraphEnd, limit);
     let result = try_push_in(&previous, &current, &clusters, &clusters, limit,
-        &[ShrinkOpportunity::new(0, 2, capacity, ShrinkChannel::RawAdvance)], 2, None, "test");
+        &[ShrinkOpportunity::new(0, 2, capacity, ShrinkChannel::RawAdvance)], 2, None, RepairReasonCode::LineAdjustmentPushIn);
     let shrink = match result.previous.repair { Some(RepairOption::PushIn { total_shrink, .. }) => total_shrink, _ => 0.0 };
     (result.candidate.accepted, result.previous.adjusted_width, shrink)
 }
@@ -186,9 +188,9 @@ fn phase_three_autospace_disappears_before_tab_pen_and_is_recorded_once() {
     let (mut clusters, mut config) = prepared("a\tb", WhiteSpaceMode::BreakSpaces, TextWrapMode::NoWrap, 8.0, 0.0);
     clusters[0].advance = 7.75;
     let units = scan_white_space(&Text::from("a\tb"), WhiteSpaceMode::BreakSpaces, &HashMap::new()).into_iter().map(|unit| (unit.range, unit)).collect();
-    let decision = AutoSpaceDecisionInfo { cluster_range: text_range(0, 1), side: "leading".to_owned(),
-        boundary_role: "test".to_owned(), mode: "Insert".to_owned(), characters_affected: 0,
-        reduction_per_char: 0.0, total_reduction: -0.5, reason: "test".to_owned() };
+    let decision = AutoSpaceDecisionInfo { cluster_range: text_range(0, 1), side: AutoSpaceSide::Leading,
+        boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide, mode: AutoSpaceMode::Insert, characters_affected: 0,
+        reduction_per_char: 0.0, total_reduction: -0.5, reason: "test" };
     config.measurement = Some(Arc::new(LineMeasurement::new(&clusters, &clusters, &units, &[decision], WhiteSpaceMode::BreakSpaces,
         TextWrapMode::NoWrap, 8.0, &HashMap::from([(1, 0.5)]), 0.0, 0.0)));
     for breaker in breakers() {
@@ -339,7 +341,7 @@ fn phase_three_push_in_preserves_space_run_boundary_and_records_actual_tail_adva
     let (clusters, config) = prepared("ab  c", WhiteSpaceMode::Preserve, TextWrapMode::Wrap, 8.0, 0.0);
     let previous = config.build_line(IntRange::new(0, 0), &clusters, &clusters, LineEndReason::AutoWrap, 2.0);
     let current = config.build_line(IntRange::new(1, 4), &clusters, &clusters, LineEndReason::ParagraphEnd, 2.0);
-    let pushed = try_push_in(&previous, &current, &clusters, &clusters, 2.0, &[], 2, Some(2), "test");
+    let pushed = try_push_in(&previous, &current, &clusters, &clusters, 2.0, &[], 2, Some(2), RepairReasonCode::LineAdjustmentPushIn);
     assert!(pushed.candidate.accepted);
     assert_eq!(IntRange::new(0, 3), pushed.previous.cluster_range);
     assert_eq!(IntRange::new(4, 4), pushed.current.unwrap().cluster_range);
@@ -479,7 +481,8 @@ fn phase_three_progressive_engine_insert_and_replace_evidence() {
                 .iter().map(|cluster| cluster.text.as_str()).collect()).collect();
             if width == 100.0 {
                 assert_eq!("中 ab/cd", texts[0]);
-                assert!(result.debug.line_decisions[0].notes.iter().any(|note| note == "technical-break:Syllable"));
+                assert!(result.debug.line_decisions[0].technical_break
+            == Some(ProgressiveBreakTier::Syllable));
                 assert_eq!(mode == AutoSpaceMode::Replace, result.debug.justification_decisions.iter()
                     .any(|decision| decision.line_range == result.lines[0].range));
             } else {
@@ -492,10 +495,10 @@ fn phase_three_progressive_engine_insert_and_replace_evidence() {
                 assert_eq!(text, texts.concat());
                 let index = texts.iter().position(|text| text == affected).unwrap();
                 assert!(result.debug.justification_decisions.iter().filter(|decision| decision.line_range == result.lines[index].range)
-                    .flat_map(|decision| &decision.allocations).filter(|allocation| allocation.kind == "CjkInterChar")
+                    .flat_map(|decision| &decision.allocations).filter(|allocation| allocation.kind == GlueKind::CjkInterChar)
                     .all(|allocation| allocation.delta <= 0.001));
                 assert!(result.debug.break_opportunity_decisions.iter().any(|decision| decision.range == text_range(104, 121)
-                    && decision.tier.as_deref() == Some("Emergency") && decision.reason == "CurrentLineTechnicalEmergencyBreak"));
+                    && decision.tier == Some(ProgressiveBreakTier::Emergency) && decision.reason == "CurrentLineTechnicalEmergencyBreak"));
             }
             }
         }
@@ -510,9 +513,9 @@ fn phase_three_conditional_hanging_with_body_trailing_gap_matches_samples() {
         let (clusters, _) = prepared(text, WhiteSpaceMode::Preserve, TextWrapMode::Wrap, 8.0, 0.0);
         let units = scan_white_space(&Text::from(text), WhiteSpaceMode::Preserve, &HashMap::new())
             .into_iter().map(|unit| (unit.range, unit)).collect();
-        let decision = AutoSpaceDecisionInfo { cluster_range: text_range(1, 2), side: "trailing".to_owned(),
-            boundary_role: "test".to_owned(), mode: "Insert".to_owned(), characters_affected: 0,
-            reduction_per_char: 0.0, total_reduction: -0.5, reason: "test".to_owned() };
+        let decision = AutoSpaceDecisionInfo { cluster_range: text_range(1, 2), side: AutoSpaceSide::Trailing,
+            boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide, mode: AutoSpaceMode::Insert, characters_affected: 0,
+            reduction_per_char: 0.0, total_reduction: -0.5, reason: "test" };
         let measurement = LineMeasurement::new(&clusters, &clusters, &units, &[decision], WhiteSpaceMode::Preserve,
             TextWrapMode::Wrap, 8.0, &HashMap::from([(2, 0.5)]), 0.0, 0.0);
         let range = IntRange::new(0, clusters.len() as i32 - 1);

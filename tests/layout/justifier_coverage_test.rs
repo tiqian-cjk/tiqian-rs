@@ -3,11 +3,11 @@ use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingVa
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationPlan, JustificationRequest, Justifier};
+use tiqian::layout::justifier::{JustificationAllocationReason, JustificationPlan, JustificationReason, JustificationRequest, JustificationStage, Justifier};
 use tiqian::layout::line_optimization::PushInAllocation;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -31,8 +31,8 @@ struct JustificationRequestConfig {
     uniform_inline_object_boundary_after_clusters: HashSet<i32>,
     preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
     technical_boundary_after_clusters: HashMap<i32, ProgressiveBreakTier>,
-    emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
-    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
+    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
 }
 
 impl Default for JustificationRequestConfig {
@@ -329,7 +329,7 @@ fn technical_whitespace_stretch_fills_and_stops_the_tier_chain() {
     };
     assert_eq!(1, allocation.target_cluster_index);
     assert_eq!(GlueKind::ProgressiveTechnical, allocation.kind);
-    assert_eq!("ProgressiveTechnicalWhitespaceStretch", allocation.reason);
+    assert_eq!(JustificationAllocationReason::Stage(JustificationStage::ProgressiveTechnicalWhitespaceStretch), allocation.reason);
     assert_eq!(4.0, allocation.delta);
     assert_eq!(0.0, plan.unfilled_deficit);
 }
@@ -430,7 +430,7 @@ fn word_space_stretches_within_its_cap() {
     assert_eq!(GlueKind::WordSpace, allocation.kind);
     assert_eq!(1, allocation.target_cluster_index);
     assert_eq!(2.0, allocation.delta);
-    assert_eq!("WordSpace", allocation.reason);
+    assert_eq!(JustificationAllocationReason::Stage(JustificationStage::WordSpace), allocation.reason);
 }
 
 #[test]
@@ -686,7 +686,7 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         panic!("expected exactly one allocation: {:?}", happy.allocations);
     };
     assert_eq!(GlueKind::CjkLatinSpace, allocation.kind);
-    assert_eq!("AttachedInlineVirtualAutoSpace", allocation.reason);
+    assert_eq!(JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace), allocation.reason);
     assert_eq!(2, allocation.target_cluster_index);
     assert_eq!(4.0, allocation.delta);
 
@@ -706,7 +706,7 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         no_previous
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != "AttachedInlineVirtualAutoSpace")
+            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
     );
 
     let target_out_of_range = justify(
@@ -726,7 +726,7 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         target_out_of_range
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != "AttachedInlineVirtualAutoSpace")
+            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
     );
 
     let next_out_of_range = justify(
@@ -746,7 +746,7 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         next_out_of_range
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != "AttachedInlineVirtualAutoSpace")
+            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
     );
 
     for protected in [HashSet::from([0]), HashSet::from([3])] {
@@ -767,7 +767,7 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         assert!(
             plan.allocations
                 .iter()
-                .all(|allocation| allocation.reason != "AttachedInlineVirtualAutoSpace")
+                .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
         );
     }
 }
@@ -1035,17 +1035,17 @@ fn preferred_inline_object_stretch_runs_by_semantic_kind() {
     for (kind, reason, glue) in [
         (
             InlineObjectPreferredStretchKind::PunctuationTrailing,
-            "InlineObjectPunctuationTrailing",
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::PunctuationTrailing)),
             GlueKind::InlineObjectPunctuationTrailing,
         ),
         (
             InlineObjectPreferredStretchKind::Relation,
-            "InlineObjectRelation",
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::Relation)),
             GlueKind::InlineObjectRelation,
         ),
         (
             InlineObjectPreferredStretchKind::BinaryOperator,
-            "InlineObjectBinaryOperator",
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::BinaryOperator)),
             GlueKind::InlineObjectBinaryOperator,
         ),
     ] {
@@ -1265,14 +1265,23 @@ fn emergency_tracking_fills_the_residual_for_authorized_boundaries() {
         &Justifier::default(),
         |request| {
             request.emergency_tracking_boundary_after_clusters =
-                HashMap::from([(0, "token".to_owned())]);
+                HashMap::from([(0, EmergencyTrackingReason::StrongNonLexical(tiqian::core::layout_model::StrongNonLexicalReason::LongMixedAlphaNumericIdentifier))]);
         },
     );
     let [allocation] = plan.allocations.as_slice() else {
         panic!("expected exactly one allocation: {:?}", plan.allocations);
     };
     assert_eq!(GlueKind::EmergencyGraphemeTracking, allocation.kind);
-    assert_eq!("EmergencyGraphemeTracking:token", allocation.reason);
+    assert_eq!(
+        tiqian::layout::justifier::JustificationAllocationReason::Opportunity(
+            tiqian::layout::justifier::JustificationReason::EmergencyGraphemeTracking(
+                EmergencyTrackingReason::StrongNonLexical(
+                    tiqian::core::layout_model::StrongNonLexicalReason::LongMixedAlphaNumericIdentifier
+                )
+            )
+        ),
+        allocation.reason
+    );
     assert_eq!(4.0, allocation.delta);
     assert_eq!(0.0, plan.unfilled_deficit);
 
@@ -1285,9 +1294,9 @@ fn emergency_tracking_fills_the_residual_for_authorized_boundaries() {
         &Justifier::default(),
         |request| {
             request.emergency_tracking_boundary_after_clusters =
-                HashMap::from([(0, "token".to_owned())]);
+                HashMap::from([(0, EmergencyTrackingReason::StrongNonLexical(tiqian::core::layout_model::StrongNonLexicalReason::LongMixedAlphaNumericIdentifier))]);
             request.preferred_emergency_tracking_boundary_after_clusters =
-                HashMap::from([(0, "code".to_owned())]);
+                HashMap::from([(0, EmergencyTrackingReason::StrongNonLexical(tiqian::core::layout_model::StrongNonLexicalReason::LongMixedAlphaNumericIdentifier))]);
         },
     );
     let [preferred_allocation] = preferred.allocations.as_slice() else {
@@ -1297,7 +1306,13 @@ fn emergency_tracking_fills_the_residual_for_authorized_boundaries() {
         );
     };
     assert_eq!(
-        "TerminalTechnicalEmergencyTracking:code",
+        tiqian::layout::justifier::JustificationAllocationReason::Opportunity(
+            tiqian::layout::justifier::JustificationReason::TerminalTechnicalEmergencyTracking(
+                EmergencyTrackingReason::StrongNonLexical(
+                    tiqian::core::layout_model::StrongNonLexicalReason::LongMixedAlphaNumericIdentifier
+                )
+            )
+        ),
         preferred_allocation.reason
     );
     assert_eq!(
@@ -1366,7 +1381,7 @@ fn uniform_text_boundaries_exclude_protected_classes() {
         },
     );
     assert_eq!(
-        "WesternBracketCjkInterChar",
+        JustificationAllocationReason::Opportunity(JustificationReason::WesternBracketCjkInterChar),
         bracket
             .allocations
             .first()
@@ -1401,7 +1416,7 @@ fn uniform_text_boundaries_exclude_protected_classes() {
         },
     );
     assert_eq!(
-        "AttachedInlineVirtualInterChar",
+        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
         virtual_owned
             .allocations
             .first()
@@ -1515,7 +1530,7 @@ fn attached_inline_virtual_inter_char_honours_no_stretch_protection() {
         },
     );
     assert_eq!(
-        "AttachedInlineVirtualInterChar",
+        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
         happy
             .allocations
             .first()
@@ -1545,7 +1560,7 @@ fn attached_inline_virtual_inter_char_honours_no_stretch_protection() {
         assert!(
             plan.allocations
                 .iter()
-                .all(|allocation| allocation.reason != "AttachedInlineVirtualInterChar")
+                .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar))
         );
         assert!(plan.unfilled_deficit > 0.0);
     }
@@ -1626,7 +1641,7 @@ fn attached_inline_virtual_sino_western_needs_stretch_enabled() {
     assert!(
         plan.allocations
             .iter()
-            .all(|allocation| allocation.reason != "AttachedInlineVirtualInterChar")
+            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar))
     );
     assert!(plan.unfilled_deficit > 0.0);
 }

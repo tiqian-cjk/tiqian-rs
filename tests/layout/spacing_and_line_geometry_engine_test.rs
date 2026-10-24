@@ -3,10 +3,10 @@ use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
 use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{
-    DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
-};
+use tiqian::core::text_model::{DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::{Ic, IcLiteral};
+use tiqian::layout::punctuation_model::GlueKind;
+use tiqian::font::font_policy::FontRole;
 
 struct FixedBasicProfile;
 
@@ -50,15 +50,21 @@ fn cjk_line_box_uses_font_declared_ideographic_typo_metrics() {
         .debug
         .metric_decisions
         .iter()
-        .find(|decision| decision.role == "CjkText")
+        .find(|decision| decision.role == FontRole::CjkText)
         .unwrap();
 
     assert!((line.baseline - 18.08).abs() < 0.001);
     assert_eq!(24.0, line.bottom);
     assert_eq!(14.08, cjk.layout_ascent);
     assert_eq!(1.92, cjk.layout_descent);
-    assert_eq!("IdeographicLow", cjk.baseline_class);
-    assert_eq!("IdeographicEmBox", cjk.metric_box);
+    assert_eq!(
+        tiqian::font::font_metrics::BaselineClass::IdeographicLow,
+        cjk.baseline_class
+    );
+    assert_eq!(
+        tiqian::font::font_metrics::MetricBox::IdeographicEmBox,
+        cjk.metric_box
+    );
 }
 
 #[test]
@@ -126,16 +132,20 @@ fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
         .collect();
     assert_eq!(11, applied.len());
     assert!(
-        applied
-            .iter()
-            .all(|decision| decision.reason == "EmphasisDotOnHanText")
+        applied.iter().all(|decision| {
+            decision.reason
+                == tiqian::core::layout_model::EmphasisDotReason::EmphasisDotOnHanText
+        })
     );
     let comma = decisions
         .iter()
         .find(|decision| decision.source_text == "，")
         .unwrap();
     assert!(!comma.applied);
-    assert_eq!("clreq-no-dot-on-punctuation", comma.reason);
+    assert_eq!(
+        tiqian::core::layout_model::EmphasisDotReason::ClreqNoDotOnPunctuation,
+        comma.reason
+    );
     assert!(
         decisions
             .iter()
@@ -327,7 +337,7 @@ fn first_line_indent_adapts_to_measure_and_can_be_overridden() {
     );
     assert_eq!(32.0, long.lines[0].indent);
     assert_eq!(
-        "MeasureAdaptiveFirstLineIndent",
+        tiqian::core::layout_model::FirstLineIndentSource::MeasureAdaptiveFirstLineIndent,
         long.debug
             .first_line_indent_decision
             .as_ref()
@@ -390,7 +400,7 @@ fn first_line_indent_adapts_to_measure_and_can_be_overridden() {
     );
     assert_eq!(32.0, pinned.lines[0].indent);
     assert_eq!(
-        "Explicit",
+        tiqian::core::layout_model::FirstLineIndentSource::Explicit,
         pinned
             .debug
             .first_line_indent_decision
@@ -434,8 +444,7 @@ fn mourning_span_is_kept_unbroken_and_framed_per_line() {
     assert_eq!(scalar_offset(3), result.lines[0].range.end());
     let segments = &result.debug.decoration_segments;
     assert_eq!(2, segments.len());
-    assert!(segments.iter().all(|segment| {
-        segment.reason == "MourningSpanKeptUnbroken" && !segment.open_start && !segment.open_end
+    assert!(segments.iter().all(|segment| {segment.reason == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanKeptUnbroken && !segment.open_start && !segment.open_end
     }));
     let first = segments
         .iter()
@@ -476,7 +485,7 @@ fn mourning_span_wider_than_measure_splits_with_open_edges() {
     assert!(
         segments
             .iter()
-            .all(|segment| segment.reason == "mourning-span-split-across-lines")
+            .all(|segment|segment.reason == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanSplitAcrossLines)
     );
     assert!(!segments[0].open_start);
     assert!(segments[0].open_end);
@@ -510,7 +519,7 @@ fn justify_stretches_punctuation_latin_boundary_in_tier_three() {
         .find(|decision| decision.line_range.start().value() == 0)
         .unwrap();
     assert!(line0.allocations.iter().any(|allocation| {
-        allocation.cluster_range == text_range(5, 6) && allocation.kind == "CjkInterChar"
+        allocation.cluster_range == text_range(5, 6) && allocation.kind == GlueKind::CjkInterChar
     }));
     assert_eq!(0.0, line0.deficit_after);
 }
@@ -567,7 +576,10 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
     assert_eq!(32.0, quyuan.right);
     assert!((quyuan.top - (baseline + 16.0 * 0.18)).abs() < 0.01);
     assert!((quyuan.bottom - (baseline + 16.0 * 0.18)).abs() < 0.01);
-    assert_eq!("InterlinearLinePerAnnotatedItem", quyuan.reason);
+    assert_eq!(
+        tiqian::core::layout_model::DecorationSegmentReason::InterlinearLinePerAnnotatedItem,
+        quyuan.reason
+    );
     let lisao = segments
         .iter()
         .find(|segment| segment.source_range.start().value() == 4)
@@ -582,11 +594,7 @@ fn interlinear_lines_get_per_item_segments_with_adjacent_shortening() {
         .unwrap();
     assert_eq!(112.0, guyanwu.left);
     assert_eq!(159.0, guyanwu.right);
-    assert!(
-        guyanwu
-            .reason
-            .ends_with("AdjacentInterlinearLineShortening")
-    );
+    assert!(guyanwu.adjacent_shortened);
     let wangfuzhi = segments
         .iter()
         .find(|segment| segment.source_range.start().value() == 10)
@@ -667,7 +675,7 @@ fn interlinear_marks_raise_auto_line_height_to_spacing_floor() {
             );
     assert_eq!(24.0, plain.lines[0].bottom);
     assert_eq!(
-        "CjkBodyLineHeightDefault",
+        tiqian::core::layout_model::LineSpacingReason::CjkBodyLineHeightDefault,
         plain.debug.line_spacing_decision.as_ref().unwrap().reason
     );
     assert!(

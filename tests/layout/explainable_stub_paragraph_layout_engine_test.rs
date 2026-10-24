@@ -15,6 +15,7 @@ use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
+use tiqian::font::font_policy::FontRole;
 
 fn input(text: &str) -> LayoutInput {
     LayoutInput::builder(
@@ -319,23 +320,23 @@ fn records_fallback_decisions_per_cluster() {
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "……"
             && decision.display_text == "⋯⋯"
-            && decision.role == "CjkPunctuation"
+            && decision.role == FontRole::CjkPunctuation
             && decision.candidate_key == "cjk-primary"
     }));
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "English"
-            && decision.role == "LatinText"
+            && decision.role == FontRole::LatinText
             && decision.candidate_key == "latin-primary"
     }));
     assert!(result.debug.shaping_decisions.iter().any(|decision| {
         decision.source_text == "——"
             && decision.display_text == "⸺"
-            && decision.advance == 32.0
+            && decision.advance ==32.0
             && decision.source == "Stub"
     }));
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "English"
-            && decision.role == "LatinText"
+            && decision.role == FontRole::LatinText
             && decision.candidate_key == "latin-primary"
     }));
     assert_eq!(
@@ -406,7 +407,7 @@ fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
             .debug
             .font_decisions
             .iter()
-            .filter(|decision| decision.role == "Emoji")
+            .filter(|decision| decision.role == FontRole::Emoji)
             .map(|decision| decision.range)
             .collect::<Vec<_>>(),
     );
@@ -435,7 +436,7 @@ fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
             .debug
             .font_decisions
             .iter()
-            .filter(|decision| decision.role == "Emoji")
+            .filter(|decision| decision.role == FontRole::Emoji)
             .map(|decision| decision.source_text.as_str())
             .collect::<Vec<_>>(),
     );
@@ -517,11 +518,11 @@ fn records_unicode_emoji_sequence_role_promotions() {
         vec![
             (
                 text_range(0, 2),
-                "Symbol",
-                "Emoji",
+                FontRole::Symbol,
+                FontRole::Emoji,
                 "EmojiStyleVariationSequence"
             ),
-            (text_range(3, 6), "LatinText", "Emoji", "KeycapSequence"),
+            (text_range(3, 6), FontRole::LatinText, FontRole::Emoji, "KeycapSequence"),
         ],
         result
             .debug
@@ -529,8 +530,8 @@ fn records_unicode_emoji_sequence_role_promotions() {
             .iter()
             .map(|info| (
                 info.range,
-                info.original_role.as_str(),
-                info.overridden_role.as_str(),
+                info.original_role,
+                info.overridden_role,
                 info.reason.as_str(),
             ))
             .collect::<Vec<_>>(),
@@ -542,67 +543,67 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
     let tag_flag = "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
     let tag_flag_case = format!("a{tag_flag}中");
     let cases = vec![
-        ("a1️⃣", vec![("a", "LatinText"), ("1️⃣", "Emoji")]),
-        ("1️⃣a", vec![("1️⃣", "Emoji"), ("a", "LatinText")]),
+        ("a1️⃣", vec![("a", FontRole::LatinText), ("1️⃣", FontRole::Emoji)]),
+        ("1️⃣a", vec![("1️⃣", FontRole::Emoji), ("a", FontRole::LatinText)]),
         (
             "a😀中",
-            vec![("a", "LatinText"), ("😀", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("😀", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a❤️中",
-            vec![("a", "LatinText"), ("❤️", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("❤️", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a©️中",
-            vec![("a", "LatinText"), ("©️", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("©️", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a⌚︎中",
-            vec![("a", "LatinText"), ("⌚︎", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("⌚︎", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a1⃣中",
-            vec![("a", "LatinText"), ("1⃣", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("1⃣", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a👍🏽中",
-            vec![("a", "LatinText"), ("👍🏽", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("👍🏽", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a👩🏽‍💻中",
-            vec![("a", "LatinText"), ("👩🏽‍💻", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("👩🏽‍💻", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a🏳️‍⚧️中",
-            vec![("a", "LatinText"), ("🏳️‍⚧️", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("🏳️‍⚧️", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "a🇨🇳中",
-            vec![("a", "LatinText"), ("🇨🇳", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("🇨🇳", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             tag_flag_case.as_str(),
-            vec![("a", "LatinText"), (tag_flag, "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), (tag_flag, FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
-        ("中\u{FE0F}", vec![("中\u{FE0F}", "CjkText")]),
-        ("a\u{FE0F}", vec![("a\u{FE0F}", "LatinText")]),
-        ("a⃣中", vec![("a⃣", "LatinText"), ("中", "CjkText")]),
+        ("中\u{FE0F}", vec![("中\u{FE0F}", FontRole::CjkText)]),
+        ("a\u{FE0F}", vec![("a\u{FE0F}", FontRole::LatinText)]),
+        ("a⃣中", vec![("a⃣", FontRole::LatinText), ("中", FontRole::CjkText)]),
         (
             "a1\u{FE0F}中",
-            vec![("a1\u{FE0F}", "LatinText"), ("中", "CjkText")],
+            vec![("a1\u{FE0F}", FontRole::LatinText), ("中", FontRole::CjkText)],
         ),
-        ("中🏽", vec![("中", "CjkText"), ("🏽", "Emoji")]),
+        ("中🏽", vec![("中", FontRole::CjkText), ("🏽", FontRole::Emoji)]),
         (
             "a👩‍中",
-            vec![("a", "LatinText"), ("👩‍", "Emoji"), ("中", "CjkText")],
+            vec![("a", FontRole::LatinText), ("👩‍", FontRole::Emoji), ("中", FontRole::CjkText)],
         ),
         (
             "中‍👩a",
             vec![
-                ("中", "CjkText"),
-                ("‍", "Unknown"),
-                ("👩", "Emoji"),
-                ("a", "LatinText"),
+                ("中", FontRole::CjkText),
+                ("‍", FontRole::Unknown),
+                ("👩", FontRole::Emoji),
+                ("a", FontRole::LatinText),
             ],
         ),
     ];
@@ -616,7 +617,7 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
             .debug
             .font_decisions
             .iter()
-            .map(|decision| (decision.source_text.as_str(), decision.role.as_str()))
+            .map(|decision| (decision.source_text.as_str(), decision.role))
             .collect::<Vec<_>>();
 
         assert_eq!(expected, actual, "emoji role mismatch for {text:?}");

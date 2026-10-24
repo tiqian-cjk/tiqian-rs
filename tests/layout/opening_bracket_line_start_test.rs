@@ -4,6 +4,7 @@ use tiqian::core::geometry::LayoutConstraints;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
+use tiqian::core::layout_model::{LineEdgeTrimReason, LineEdgeTrimSide};
 
 #[test]
 fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
@@ -33,13 +34,13 @@ fn opening_bracket_at_line_start_uses_half_width_leading_trim() {
         .debug
         .line_edge_trim_decisions
         .iter()
-        .filter(|decision| decision.reason == "LineStartHalfWidthPunctuation")
+        .filter(|decision|decision.reason == LineEdgeTrimReason::LineStartHalfWidthPunctuation)
         .collect();
     assert_eq!(2, start_trims.len());
     assert!(
         start_trims
             .iter()
-            .all(|decision| decision.side == "leading"
+            .all(|decision| decision.side == LineEdgeTrimSide::Leading
                 && (decision.trim_amount - 8.0).abs() < 0.01)
     );
 }

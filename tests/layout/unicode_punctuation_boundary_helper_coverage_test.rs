@@ -4,6 +4,7 @@ use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::FontRole;
 use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_unicode_punctuation_boundaries;
+use tiqian::core::layout_model::{ContextualKinsokuRule, KinsokuForbiddenPosition, Uax14BoundaryRule};
 
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
@@ -266,7 +267,7 @@ fn resolve_unicode_punctuation_boundaries_quote_direction_2019_right_word_only()
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 }
 
@@ -283,7 +284,7 @@ fn resolve_unicode_punctuation_boundaries_quote_direction_2019_left_word_only() 
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -300,7 +301,7 @@ fn resolve_unicode_punctuation_boundaries_quote_direction_2019_neither_word() {
         result
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 
@@ -327,7 +328,7 @@ fn resolve_unicode_punctuation_boundaries_infix_numeric_separator_with_space_and
         result2
             .decisions
             .iter()
-            .any(|decision| decision.reason == "Uax14WesternPunctuationBoundary:LB15d")
+            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
     );
 
     let text3 = Text::from(".5");
@@ -380,7 +381,7 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_following_variations() {
         result_hash
             .decisions
             .iter()
-            .any(|decision| decision.reason == "Uax14WesternPunctuationBoundary:LB15d")
+            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
     );
 
     let text_letter = Text::from("a .a");
@@ -395,7 +396,7 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_following_variations() {
         result_letter
             .decisions
             .iter()
-            .any(|decision| decision.reason == "Uax14WesternPunctuationBoundary:LB15d")
+            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
     );
 
     let text_inside = Text::from(" .5");
@@ -434,7 +435,7 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_and_latin_word_branches() {
         result_left
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 
     let text_right = Text::from(" ’a");
@@ -448,7 +449,7 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_and_latin_word_branches() {
         result_right
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineEnd")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
     );
 
     let text_latin = Text::from("À’ɏ");
@@ -490,7 +491,7 @@ fn resolve_unicode_punctuation_boundaries_apostrophe_and_latin_word_branches() {
         result_not_latin
             .decisions
             .iter()
-            .any(|decision| decision.forbidden_position == "LineStart")
+            .any(|decision| decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
     );
 }
 

@@ -6,7 +6,10 @@ use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::layout::kinsoku_rule::ClreqKinsokuRule;
 use tiqian::layout::line_breaker::{empty_line_candidate, rebuild_line};
-use tiqian::layout::line_optimization::{LineCandidate, LineSolution, RepairOption};
+use tiqian::layout::line_optimization::{
+    LineCandidate, LineSolution, RepairDetail, RepairKind, RepairOption, RepairReasonCode,
+    RepairRejection,
+};
 use tiqian::layout::line_repair::{
     apply_fill_push_in, apply_kinsoku_repairs, try_push_in, with_fill_push_in,
 };
@@ -154,7 +157,8 @@ fn push_in_fits_without_shrink_when_the_merged_line_already_matches() {
     assert_eq!(2, solution.lines.len());
     let RepairOption::PushIn {
         total_shrink,
-        reason,
+        reason_code,
+        detail,
         ..
     } = solution.lines[0].repair.as_ref().unwrap()
     else {
@@ -163,7 +167,8 @@ fn push_in_fits_without_shrink_when_the_merged_line_already_matches() {
     assert_eq!(IntRange::new(0, 4), solution.lines[0].cluster_range);
     assert_eq!(0.0, *total_shrink);
     assert_eq!(IntRange::new(5, 8), solution.lines[1].cluster_range);
-    assert!(reason.ends_with("fits-no-shrink"));
+    assert_eq!(RepairReasonCode::ForbiddenAtLineStart, *reason_code);
+    assert_eq!(RepairDetail::FitsNoShrink, *detail);
 }
 
 #[test]
@@ -186,7 +191,8 @@ fn push_in_promotes_the_offenders_own_trailing_glue_to_tier_one() {
     let RepairOption::PushIn {
         total_shrink,
         allocations,
-        reason,
+        reason_code,
+        detail,
         ..
     } = solution.lines[0].repair.as_ref().unwrap()
     else {
@@ -198,7 +204,8 @@ fn push_in_promotes_the_offenders_own_trailing_glue_to_tier_one() {
     assert_eq!(4.0, allocations[0].shrink);
     assert_eq!(8.0, allocations[0].available_capacity);
     assert_eq!(ShrinkChannel::TrailingGlue, allocations[0].channel);
-    assert_eq!("ForbiddenAtLineStart:，:pushed-in=4.0/16.0", reason);
+    assert_eq!(RepairReasonCode::ForbiddenAtLineStart, *reason_code);
+    assert_eq!(RepairDetail::PushedIn, *detail);
 }
 
 #[test]
@@ -224,12 +231,12 @@ fn push_in_rejects_when_capacity_is_insufficient() {
     let rejected = current
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "PushIn")
+        .find(|candidate| candidate.kind == RepairKind::PushIn)
         .unwrap();
     assert!(!rejected.accepted);
     assert_eq!(
-        Some("insufficient-capacity"),
-        rejected.rejection_reason.as_deref()
+        Some(RepairRejection::InsufficientCapacity),
+        rejected.rejection_reason
     );
     assert_eq!(20.0, rejected.required_shrink);
     assert_eq!(8.0, rejected.available_capacity);
@@ -252,7 +259,7 @@ fn push_in_rejects_merge_through_outside_the_current_line() {
         &[],
         10,
         Some(9),
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
 }
 
@@ -279,7 +286,7 @@ fn push_in_filters_out_of_range_zero_capacity_and_foreign_line_end_only_opportun
         ],
         10,
         None,
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
     assert!(result.candidate.accepted);
     let RepairOption::PushIn {
@@ -317,16 +324,19 @@ fn push_in_reports_infinity_capacity_with_a_portable_debug_string() {
         )],
         10,
         None,
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
     assert!(result.candidate.accepted);
     assert!(result.candidate.shrink.is_infinite());
-    let RepairOption::PushIn { reason, .. } = result.previous.repair.as_ref().unwrap() else {
+    let RepairOption::PushIn {
+        reason_code, detail, ..
+    } = result.previous.repair.as_ref().unwrap()
+    else {
         panic!()
     };
     assert_eq!(
-        "ForbiddenAtLineStart:，:pushed-in=Infinity.0/Infinity.0",
-        reason
+        (RepairReasonCode::ForbiddenAtLineStart, RepairDetail::PushedIn),
+        (*reason_code, *detail)
     );
 }
 
@@ -363,7 +373,7 @@ fn push_in_underflow_shares_skip_zero_valued_proportional_shares() {
         ],
         10,
         None,
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
     assert!(result.candidate.accepted);
     let RepairOption::PushIn { allocations, .. } = result.previous.repair.as_ref().unwrap() else {
@@ -433,7 +443,7 @@ fn push_in_rejects_a_merge_through_cluster_outside_the_current_line() {
         &[],
         10,
         Some(0),
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
 }
 
@@ -711,14 +721,17 @@ fn leave_ragged_records_no_room_to_carry_for_a_single_cluster_line() {
     let carry = current
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "CarryPrevious")
+        .find(|candidate| candidate.kind == RepairKind::CarryPrevious)
         .unwrap();
     assert!(!carry.accepted);
-    assert_eq!(Some("no-room-to-carry"), carry.rejection_reason.as_deref());
-    let RepairOption::LeaveRagged { reason, .. } = current.repair.as_ref().unwrap() else {
+    assert_eq!(Some(RepairRejection::NoRoomToCarry), carry.rejection_reason);
+    let RepairOption::LeaveRagged { detail, .. } = current.repair.as_ref().unwrap() else {
         panic!()
     };
-    assert!(reason.contains("no-room-to-carry"));
+    assert_eq!(
+        RepairDetail::Rejected(RepairRejection::NoRoomToCarry),
+        *detail
+    );
 }
 
 #[test]
@@ -739,17 +752,20 @@ fn leave_ragged_refuses_carries_that_would_split_an_unbreakable_span() {
     let carry = current
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "CarryPrevious")
+        .find(|candidate| candidate.kind == RepairKind::CarryPrevious)
         .unwrap();
     assert_eq!(
-        Some("carry-would-split-mourning-span"),
-        carry.rejection_reason.as_deref()
+        Some(RepairRejection::CarryWouldSplitMourningSpan),
+        carry.rejection_reason
     );
     assert_eq!(Some(3), carry.carried_cluster_index);
-    let RepairOption::LeaveRagged { reason, .. } = current.repair.as_ref().unwrap() else {
+    let RepairOption::LeaveRagged { detail, .. } = current.repair.as_ref().unwrap() else {
         panic!()
     };
-    assert!(reason.contains("carry-would-split-mourning-span"));
+    assert_eq!(
+        RepairDetail::Rejected(RepairRejection::CarryWouldSplitMourningSpan),
+        *detail
+    );
 }
 
 #[test]
@@ -798,19 +814,26 @@ fn carry_previous_moves_the_previous_tail_down_when_it_fits() {
     assert_eq!(IntRange::new(3, 6), solution.lines[1].cluster_range);
     let RepairOption::CarryPrevious {
         carried_cluster_index,
-        reason,
+        reason_code,
+        detail,
         ..
     } = solution.lines[1].repair.as_ref().unwrap()
     else {
         panic!()
     };
     assert_eq!(3, *carried_cluster_index);
-    assert!(reason.contains("carried=A"));
+    assert_eq!(RepairReasonCode::ForbiddenAtLineStart, *reason_code);
+    assert_eq!(
+        RepairDetail::Carried {
+            carried_cluster_index: 3
+        },
+        *detail
+    );
     assert!(
         solution.lines[1]
             .repair_candidates
             .iter()
-            .any(|candidate| candidate.kind == "CarryPrevious"
+            .any(|candidate| candidate.kind == RepairKind::CarryPrevious
                 && candidate.accepted
                 && candidate.carried_cluster_index == Some(3))
     );
@@ -945,7 +968,7 @@ fn default_arguments_run_the_full_ragged_chain() {
     let rejected = current
         .repair_candidates
         .iter()
-        .find(|candidate| candidate.kind == "PushIn")
+        .find(|candidate| candidate.kind == RepairKind::PushIn)
         .unwrap();
     assert!(!rejected.accepted);
     assert_eq!(10, rejected.penalty);
@@ -1020,7 +1043,8 @@ fn fill_push_in_skips_repaired_hanging_and_non_auto_wrap_lines() {
         LineEndReason::AutoWrap,
         Some(RepairOption::Hang {
             penalty: 5,
-            reason: "ForbiddenAtLineStart:，:hang".to_owned(),
+            reason_code: RepairReasonCode::ForbiddenAtLineStart,
+            detail: RepairDetail::Hang,
             offender_cluster_index: 3,
         }),
         HashSet::new(),
@@ -1221,7 +1245,7 @@ fn mandatory_break_tail_end_returns_the_merge_through_at_the_line_end() {
         &[],
         10,
         Some(5),
-        "ForbiddenAtLineStart",
+        RepairReasonCode::ForbiddenAtLineStart,
     );
     assert_eq!(IntRange::new(0, 5), result.previous.cluster_range);
 }
@@ -1303,14 +1327,16 @@ fn fill_push_in_pulls_the_group_and_cascades_zero_shrink_fills() {
     assert_eq!(IntRange::new(5, 7), result[1].cluster_range);
     let RepairOption::PushIn {
         total_shrink,
-        reason,
+        reason_code,
+        detail,
         ..
     } = result[0].repair.as_ref().unwrap()
     else {
         panic!()
     };
     assert_eq!(0.0, *total_shrink);
-    assert!(reason.starts_with("LineAdjustmentPushIn:B:fits-no-shrink"));
+    assert_eq!(RepairReasonCode::LineAdjustmentPushIn, *reason_code);
+    assert_eq!(RepairDetail::FitsNoShrink, *detail);
 }
 
 #[test]
@@ -1507,12 +1533,15 @@ fn fill_push_in_honours_progressive_tier_promotion_boundaries() {
         &HashSet::new(),
         &HashMap::from([(2, emergency), (3, whitespace)]),
     );
-    let RepairOption::PushIn { reason, .. } = promoted[0].repair.as_ref().unwrap() else {
+    let RepairOption::PushIn {
+        reason_code, ..
+    } = promoted[0].repair.as_ref().unwrap()
+    else {
         panic!()
     };
     assert_eq!(
-        "ProgressiveTechnicalTierPromotion",
-        reason.split(':').next().unwrap()
+        RepairReasonCode::ProgressiveTechnicalTierPromotion,
+        *reason_code
     );
     let degraded = fill(
         &lines,
@@ -1618,10 +1647,10 @@ fn fill_push_in_honours_progressive_tier_promotion_boundaries() {
         ]),
     );
     assert_eq!(IntRange::new(0, 5), refill[0].cluster_range);
-    let RepairOption::PushIn { reason, .. } = refill[0].repair.as_ref().unwrap() else {
+    let RepairOption::PushIn { reason_code, .. } = refill[0].repair.as_ref().unwrap() else {
         panic!()
     };
-    assert_eq!("LineAdjustmentPushIn", reason.split(':').next().unwrap());
+    assert_eq!(RepairReasonCode::LineAdjustmentPushIn, *reason_code);
 }
 
 #[test]

@@ -2,9 +2,7 @@ use tiqian::clreq::clreq_profile::{
     InteriorPunctuationStyle, PunctuationGluePlacement, PunctuationWidthPolicy,
 };
 use tiqian::core::geometry::{Rect, text_range};
-use tiqian::layout::punctuation_model::{
-    PunctuationAnchor, PunctuationAtomBuilder, PunctuationInkInput,
-};
+use tiqian::layout::punctuation_model::{PunctuationAnchor, PunctuationAtomBuilder, PunctuationGeometrySource, PunctuationInkInput};
 
 const EM: f32 = 16.0;
 
@@ -34,7 +32,10 @@ fn halt_advance_without_placement_uses_named_profile_fallback() {
     assert_eq!(Some(7.5), result.halt_advance);
     assert_eq!(0.0, result.leading_glue.natural);
     assert_eq!(8.5, result.trailing_glue.natural);
-    assert_eq!("FontHaltAdvanceWithProfileFallback", result.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback,
+            result.geometry_source
+        );
 }
 
 #[test]
@@ -59,7 +60,10 @@ fn halt_placement_defines_both_compression_sides() {
     assert_eq!(4.0, result.trailing_glue.natural);
     assert_eq!(8.0, result.body_width);
     assert_eq!(PunctuationAnchor::Center, result.anchor);
-    assert_eq!("FontHaltFittedBodyCompression", result.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::FontHaltFittedBodyCompression,
+            result.geometry_source
+        );
     assert_eq!(None, result.halt_validation);
 }
 
@@ -141,9 +145,10 @@ fn fixed_half_width_consumes_measured_sidebearing() {
     assert_eq!(0.0, result.trailing_glue_initially_consumed);
     assert_eq!(0.0, result.glyph_inline_shift);
     assert_eq!(
-        "InkBoundsFittedBodyCompressionFixedHalfWidth",
+        PunctuationGeometrySource::InkBoundsFittedBodyCompression,
         result.geometry_source
     );
+    assert!(result.geometry_forced_half_width);
 }
 
 #[test]
@@ -187,7 +192,10 @@ fn equal_halt_advance_falls_through_to_ink_bounds() {
     assert_eq!(None, result.halt_advance);
     assert_eq!(4.0, result.leading_glue.natural);
     assert_eq!(4.0, result.trailing_glue.natural);
-    assert_eq!("InkBoundsFittedBodyCompression", result.geometry_source);
+    assert_eq!(
+            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+            result.geometry_source
+        );
 }
 
 fn font_unit_atom(

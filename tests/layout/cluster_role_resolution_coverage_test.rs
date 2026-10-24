@@ -158,7 +158,7 @@ fn complex_emoji_graphemes_ignore_geometry_only_source_boundaries() {
             .debug
             .font_decisions
             .iter()
-            .filter(|decision| decision.role == "Emoji")
+            .filter(|decision| decision.role == FontRole::Emoji)
             .map(|decision| decision.range)
             .collect::<Vec<_>>(),
         vec![text_range(0, 4)],
@@ -216,7 +216,7 @@ fn complex_emoji_graphemes_honor_layout_style_boundaries() {
             .debug
             .font_decisions
             .iter()
-            .filter(|decision| decision.role == "Emoji")
+            .filter(|decision| decision.role == FontRole::Emoji)
             .map(|decision| decision.range)
             .collect::<Vec<_>>(),
         vec![text_range(0, 1), text_range(1, 4)],

@@ -3,11 +3,11 @@ use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingVa
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationRequest, Justifier};
+use tiqian::layout::justifier::{JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier};
 use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
 use tiqian::layout::punctuation_model::GlueKind;
 
@@ -27,8 +27,8 @@ struct JustificationRequestConfig {
     preferred_inline_object_boundary_after_clusters: HashMap<i32, InlineObjectPreferredStretch>,
     technical_boundary_after_clusters:
         HashMap<i32, tiqian::layout::progressive_break_decisions::ProgressiveBreakTier>,
-    emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
-    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
+    preferred_emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
 }
 
 impl Default for JustificationRequestConfig {
@@ -541,8 +541,8 @@ fn virtual_non_sino_western_boundary_when_allow_sino_western_gap_stretch_is_fals
     );
 
     assert!(plan.allocations.iter().any(|allocation| {
-        allocation.target_cluster_index == 3
-            && allocation.reason == "AttachedInlineVirtualInterChar"
+        allocation.target_cluster_index ==3
+            && allocation.reason == JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar)
     }));
 }
 

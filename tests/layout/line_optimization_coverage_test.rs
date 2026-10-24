@@ -3,7 +3,7 @@ use tiqian::core::geometry::text_range;
 use tiqian::core::int_range::IntRange;
 use tiqian::layout::line_optimization::{
     BreakCandidate, LineCandidate, LineOptimizationStrategy, LineSolution, RepairCandidate,
-    RepairOption,
+    RepairDetail, RepairKind, RepairOption, RepairReasonCode,
 };
 use tiqian::linebreak::line_break::BreakKind;
 
@@ -34,7 +34,8 @@ fn break_candidate_defaults_are_usable() {
 fn break_candidate_carries_explicit_forbidden_reason_and_repairs() {
     let repair = RepairOption::LeaveRagged {
         penalty: 30,
-        reason: "ForbiddenAtLineStart:，:leave-ragged".to_owned(),
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
+        detail: RepairDetail::FitsNoShrink,
         offender_cluster_index: 3,
     };
     let candidate = BreakCandidate {
@@ -81,7 +82,8 @@ fn hanging_cluster_index_prefers_the_hang_offender_over_the_suffix_end() {
     let mut with_repair = line_with_hanging(HashSet::from([3, 4]));
     with_repair.repair = Some(RepairOption::Hang {
         penalty: 5,
-        reason: "ForbiddenAtLineStart:，:hang".to_owned(),
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
+        detail: RepairDetail::Hang,
         offender_cluster_index: 3,
     });
     assert_eq!(Some(3), with_repair.hanging_cluster_index());
@@ -103,12 +105,14 @@ fn in_measure_cluster_range_excludes_the_hanging_suffix() {
 fn carry_next_records_the_moved_mark() {
     let carry_next = RepairOption::CarryNext {
         penalty: 15,
-        reason: "ForbiddenAtLineEnd:“:carry-next".to_owned(),
+        reason_code: RepairReasonCode::ForbiddenAtLineEnd,
+        detail: RepairDetail::MovedToNextLine { moved_cluster_index: 4 },
         moved_cluster_index: 4,
     };
 
     assert_eq!(15, carry_next.penalty());
-    assert_eq!("ForbiddenAtLineEnd:“:carry-next", carry_next.reason());
+    assert_eq!(RepairReasonCode::ForbiddenAtLineEnd, carry_next.reason_code());
+    assert_eq!(RepairDetail::MovedToNextLine { moved_cluster_index: 4 }, carry_next.detail());
     assert!(matches!(
         carry_next,
         RepairOption::CarryNext {
@@ -121,8 +125,8 @@ fn carry_next_records_the_moved_mark() {
 #[test]
 fn repair_candidate_defaults_are_usable() {
     let candidate = RepairCandidate::new(
-        "PushIn".to_owned(),
-        "ForbiddenAtLineStart".to_owned(),
+        RepairKind::PushIn,
+        RepairReasonCode::ForbiddenAtLineStart,
         4,
         10,
         true,

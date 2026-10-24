@@ -4,7 +4,7 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{LineBreaker, LineBreakerConfig};
-use tiqian::layout::line_optimization::RepairOption;
+use tiqian::layout::line_optimization::{RepairOption, RepairReasonCode};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -59,7 +59,7 @@ fn foreign_span_candidate_survives_the_promotion_pool_purge() {
     let solution =
         ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
     assert!(
-        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("ProgressiveTechnicalTierPromotion")),
+        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::ProgressiveTechnicalTierPromotion, .. })),
         "{:?}",
         solution.lines
     );
@@ -99,7 +99,7 @@ fn committed_compressed_line_with_foreign_span_opportunities_keeps_plain_push_in
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
         "{:?}",
         solution.lines
     );
@@ -133,7 +133,7 @@ fn committed_compressed_end_without_opportunity_keeps_plain_push_in_reason() {
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason, .. }) if reason.starts_with("LineAdjustmentPushIn")),
+        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
         "{:?}",
         solution.lines
     );
