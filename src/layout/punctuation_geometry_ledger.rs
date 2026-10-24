@@ -7,7 +7,7 @@ use super::super::core::layout_model::{
 };
 use super::super::core::text_model::InlineAttachment;
 use super::punctuation_model::{
-    PunctuationAnchor, PunctuationAtom, PunctuationSpacingAdjustment,
+    PunctuationAnchor, PunctuationAtom, PunctuationGeometrySource, PunctuationSpacingAdjustment,
     PunctuationSpacingCompressionResult,
 };
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
@@ -375,8 +375,8 @@ impl PunctuationGeometryLedger {
                     glyph_inline_shift: g.glyph_inline_shift,
                     glyph_placement_reason: g.glyph_placement_reason.clone(),
                     resolved_advance: self.resolved_advance(i, cluster),
-                    source: "PunctuationGeometryLedger".to_owned(),
-                    reason: g.reason.clone(),
+                    source: "PunctuationGeometryLedger",
+                    reason: g.reason,
                 })
             })
             .collect()
@@ -471,7 +471,8 @@ pub struct PunctuationClusterGeometry {
     pub glyph_inline_shift: f32,
     pub glyph_placement_reason: Option<String>,
     pub anchor: Option<PunctuationAnchor>,
-    pub reason: String,
+    /// 该 cluster 的几何证据来源。
+    pub reason: PunctuationGeometrySource,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlueBudget {
@@ -551,7 +552,7 @@ fn build_geometries(
                 glyph_inline_shift: one.map_or(0., |a| a.glyph_inline_shift),
                 glyph_placement_reason: one.and_then(|a| a.glyph_placement_reason.clone()),
                 anchor: one.map(|a| a.anchor),
-                reason: v[0].geometry_source.clone(),
+                reason: v[0].geometry_source,
             },
         );
     }

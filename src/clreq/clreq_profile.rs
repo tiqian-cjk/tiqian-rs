@@ -843,11 +843,49 @@ pub mod clreq_punctuation_advance_policy {
     }
 }
 
+/// 一个显示替换决策的原因。
+///
+/// 码点标签与 role 文本在输出时才生成，避免每次 shaping 都拼接字符串。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CjkPunctuationGlyphSubstitutionReason {
+    /// 按 policy 保持了输入码点。
+    PolicyPreserved(CjkPunctuationGlyphPolicy),
+    /// 按 policy 替换了码点。
+    PolicyReplaced(CjkPunctuationGlyphPolicy),
+    /// role 门控保留了输入码点（非 CJK 标点角色）。
+    RolePreserved(FontRole),
+}
+
+impl CjkPunctuationGlyphSubstitutionReason {
+    /// 输出时生成的原因文本。
+    ///
+    /// `source_label` 与 `display_label` 只在真正替换时才需要，由调用方按需提供。
+    pub fn render(
+        self,
+        source_label: impl FnOnce() -> String,
+        display_label: impl FnOnce() -> String,
+    ) -> String {
+        match self {
+            Self::PolicyPreserved(policy) => {
+                format!("CjkPunctuationGlyphPolicy:{policy:?}:preserve")
+            }
+            Self::PolicyReplaced(policy) => format!(
+                "CjkPunctuationGlyphPolicy:{policy:?}:{}->{}",
+                source_label(),
+                display_label()
+            ),
+            Self::RolePreserved(role) => {
+                format!("CjkRoleGatedDisplaySubstitution:preserve-role-{role:?}")
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CjkPunctuationGlyphSubstitution {
     pub source_text: Text,
     pub display_text: Text,
-    pub reason: String,
+    pub reason: CjkPunctuationGlyphSubstitutionReason,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -891,19 +929,36 @@ impl ClreqPunctuationGlyphSubstitutor {
     pub fn substitute(&self, source_text: &Text) -> CjkPunctuationGlyphSubstitution {
         let display_text = self.policy_display_text(source_text);
         let reason = if display_text == *source_text {
-            format!("CjkPunctuationGlyphPolicy:{:?}:preserve", self.policy)
+            CjkPunctuationGlyphSubstitutionReason::PolicyPreserved(self.policy)
         } else {
-            format!(
-                "CjkPunctuationGlyphPolicy:{:?}:{}->{}",
-                self.policy,
-                to_code_point_labels(source_text),
-                to_code_point_labels(&display_text)
-            )
+            CjkPunctuationGlyphSubstitutionReason::PolicyReplaced(self.policy)
         };
         CjkPunctuationGlyphSubstitution {
             source_text: source_text.clone(),
             display_text,
             reason,
+        }
+    }
+
+    /// 按 role 门控结果与已知显示文本推导原因，不重新计算显示文本。
+    pub fn reason_for_role(
+        &self,
+        source_text: &Text,
+        role: FontRole,
+        display_text: &Text,
+    ) -> CjkPunctuationGlyphSubstitutionReason {
+        let substituted_by_policy = display_text != source_text;
+        if role == FontRole::CjkPunctuation {
+            if substituted_by_policy {
+                CjkPunctuationGlyphSubstitutionReason::PolicyReplaced(self.policy)
+            } else {
+                CjkPunctuationGlyphSubstitutionReason::PolicyPreserved(self.policy)
+            }
+        } else if display_text == source_text {
+            CjkPunctuationGlyphSubstitutionReason::RolePreserved(role)
+        } else {
+            // 非 CJK 标点角色不会替换；保留分支以防调用方传入不一致的显示文本。
+            CjkPunctuationGlyphSubstitutionReason::PolicyReplaced(self.policy)
         }
     }
 
@@ -923,7 +978,7 @@ impl ClreqPunctuationGlyphSubstitutor {
             CjkPunctuationGlyphSubstitution {
                 source_text: source_text.clone(),
                 display_text: source_text.clone(),
-                reason: format!("CjkRoleGatedDisplaySubstitution:preserve-role-{role:?}"),
+                reason: CjkPunctuationGlyphSubstitutionReason::RolePreserved(role),
             }
         }
     }
@@ -941,7 +996,8 @@ fn to_clreq_recommended_display_text(source_text: &Text) -> Text {
     }
 }
 
-fn to_code_point_labels(text: &Text) -> String {
+/// 逐码点生成 `U+XXXX+X+...` 标签，用于替换原因的展示输出。
+pub fn to_code_point_labels(text: &Text) -> String {
     text.chars()
         .map(|character| format!("U+{:04X}", character as u32))
         .collect::<Vec<_>>()

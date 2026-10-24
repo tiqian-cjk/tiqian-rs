@@ -79,6 +79,9 @@ pub struct ParagraphLayoutPrep {
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
     pub substitution_rollbacks: HashMap<TextRange, String>,
+    /// shaping 实际采用的显示替换，供 debug 汇编复用。
+    pub substitutions:
+        HashMap<TextRange, super::super::clreq::clreq_profile::CjkPunctuationGlyphSubstitution>,
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,

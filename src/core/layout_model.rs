@@ -12,6 +12,7 @@ use crate::clreq::clreq_profile::AutoSpaceMode;
 use crate::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
 use crate::font::font_policy::FontRole;
 use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
+use crate::layout::punctuation_model::PunctuationGeometrySource;
 use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -294,7 +295,6 @@ pub struct LineBox {
     pub hyphen_advance: f32,
     /// 在 `indent + visual_width` 重放的 synthetic line-end hyphen shape-once glyph。
     pub hyphen_glyphs: Vec<Glyph>,
-    pub debug: LineDebugInfo,
 }
 impl LineBox {
     pub fn builder(
@@ -323,7 +323,6 @@ impl LineBox {
                 end_reason: LineEndReason::ParagraphEnd,
                 hyphen_advance: 0.0,
                 hyphen_glyphs: Vec::new(),
-                debug: LineDebugInfo::default(),
             },
         }
     }
@@ -356,10 +355,6 @@ impl LineBoxBuilder {
         self.line.hyphen_glyphs = value;
         self
     }
-    pub fn debug(mut self, value: LineDebugInfo) -> Self {
-        self.line.debug = value;
-        self
-    }
     pub fn build(self) -> LineBox {
         self.line
     }
@@ -370,26 +365,6 @@ pub enum LineEndReason {
     AutoWrap,
     MandatoryBreak,
     ParagraphEnd,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct LineDebugInfo {
-    pub repair: Option<String>,
-    pub notes: Vec<String>,
-}
-impl LineDebugInfo {
-    pub fn new() -> Self {
-        Self::default()
-    }
-    pub fn with_repair(repair: Option<String>) -> Self {
-        Self {
-            repair,
-            notes: Vec::new(),
-        }
-    }
-    pub fn with_all(repair: Option<String>, notes: Vec<String>) -> Self {
-        Self { repair, notes }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1717,7 +1692,9 @@ pub struct PunctuationDecisionInfo {
     pub trailing_glue_natural: f32,
     pub anchor: PunctuationAnchor,
     pub ink_bounds: Option<Rect>,
-    pub geometry_source: String,
+    pub geometry_source: PunctuationGeometrySource,
+    /// `geometry_source` 是否再叠加了固定半宽修饰。
+    pub geometry_forced_half_width: bool,
     pub policy_body_floor: f32,
     pub ink_width: Option<f32>,
     pub ink_center: Option<f32>,
@@ -1764,7 +1741,8 @@ impl PunctuationDecisionInfo {
                 trailing_glue_natural,
                 anchor,
                 ink_bounds: None,
-                geometry_source: "PolicyDerived".to_owned(),
+                geometry_source: PunctuationGeometrySource::PolicyDerived,
+                geometry_forced_half_width: false,
                 policy_body_floor: body_width,
                 ink_width: None,
                 ink_center: None,
@@ -1790,8 +1768,12 @@ impl PunctuationDecisionInfoBuilder {
         self.decision.ink_bounds = value;
         self
     }
-    pub fn geometry_source(mut self, value: String) -> Self {
+    pub fn geometry_source(mut self, value: PunctuationGeometrySource) -> Self {
         self.decision.geometry_source = value;
+        self
+    }
+    pub fn geometry_forced_half_width(mut self, value: bool) -> Self {
+        self.decision.geometry_forced_half_width = value;
         self
     }
     pub fn policy_body_floor(mut self, value: f32) -> Self {
@@ -1871,8 +1853,10 @@ pub struct ClusterGeometryDecisionInfo {
     /// `glyph_inline_shift` 的具名来源；未施加 shift 时为 None。
     pub glyph_placement_reason: Option<String>,
     pub resolved_advance: f32,
-    pub source: String,
-    pub reason: String,
+    /// 产生该记录的组件名称（内置常量）。
+    pub source: &'static str,
+    /// 该 cluster 的几何证据来源。
+    pub reason: PunctuationGeometrySource,
 }
 impl ClusterGeometryDecisionInfo {
     pub fn builder(
@@ -1887,8 +1871,8 @@ impl ClusterGeometryDecisionInfo {
         trailing_glue_consumed: f32,
         justification_delta: f32,
         resolved_advance: f32,
-        source: String,
-        reason: String,
+        source: &'static str,
+        reason: PunctuationGeometrySource,
     ) -> ClusterGeometryDecisionInfoBuilder {
         ClusterGeometryDecisionInfoBuilder {
             decision: Self {
@@ -1959,15 +1943,19 @@ pub struct RoleOverrideInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineDecisionInfo {
     pub range: TextRange,
-    pub kind: String,
+    /// 断行器策略名，来自 `LineBreaker::strategy_name()`。
+    pub kind: &'static str,
     pub repair: Option<String>,
     pub repair_penalty: i32,
     pub repair_decision: Option<LineRepairDecisionInfo>,
     pub repair_candidates: Vec<LineRepairCandidateInfo>,
-    pub notes: Vec<String>,
+    /// 该行选中的 progressive technical break tier；每行至多一个。
+    pub technical_break: Option<ProgressiveBreakTier>,
+    /// 该行两端对齐未填满时的 fallback 原因；每行至多一个。
+    pub justify_fallback: Option<String>,
 }
 impl LineDecisionInfo {
-    pub fn new(range: TextRange, kind: String) -> Self {
+    pub fn new(range: TextRange, kind: &'static str) -> Self {
         Self {
             range,
             kind,
@@ -1975,10 +1963,11 @@ impl LineDecisionInfo {
             repair_penalty: 0,
             repair_decision: None,
             repair_candidates: Vec::new(),
-            notes: Vec::new(),
+            technical_break: None,
+            justify_fallback: None,
         }
     }
-    pub fn builder(range: TextRange, kind: String) -> LineDecisionInfoBuilder {
+    pub fn builder(range: TextRange, kind: &'static str) -> LineDecisionInfoBuilder {
         LineDecisionInfoBuilder {
             decision: Self::new(range, kind),
         }
@@ -2004,8 +1993,12 @@ impl LineDecisionInfoBuilder {
         self.decision.repair_candidates = value;
         self
     }
-    pub fn notes(mut self, value: Vec<String>) -> Self {
-        self.decision.notes = value;
+    pub fn technical_break(mut self, value: Option<ProgressiveBreakTier>) -> Self {
+        self.decision.technical_break = value;
+        self
+    }
+    pub fn justify_fallback(mut self, value: Option<String>) -> Self {
+        self.decision.justify_fallback = value;
         self
     }
     pub fn build(self) -> LineDecisionInfo {

@@ -7,6 +7,43 @@ use super::super::clreq::clreq_profile::{
 use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::text::Text;
 
+/// 标点几何证据的来源。
+///
+/// 与 `ClusterGeometryDecisionInfo.source` 不同：后者记录「哪一组件产生记录」，
+/// 这里记录「几何证据来自哪里」。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PunctuationGeometrySource {
+    /// 仅由 profile 的策略推导，没有字体证据。
+    PolicyDerived,
+    /// 字体 `halt` 的 advance 与 placement 联合给出 body。
+    FontHaltFittedBodyCompression,
+    /// 字体 `halt` advance 配合 ink bounds 拟合 placement。
+    FontHaltAdvanceWithInkBoundsFittedPlacement,
+    /// 无 `halt`，用 ink bounds 拟合 body。
+    InkBoundsFittedBodyCompression,
+    /// 有 `halt` advance 但缺少可用 ink bounds，退回 profile glue。
+    FontHaltAdvanceWithProfileFallback,
+    /// 既无字体几何也无 `halt`，使用 profile glue。
+    ProfileGlueFallbackWithoutFontGeometry,
+}
+
+impl PunctuationGeometrySource {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::PolicyDerived => "PolicyDerived",
+            Self::FontHaltFittedBodyCompression => "FontHaltFittedBodyCompression",
+            Self::FontHaltAdvanceWithInkBoundsFittedPlacement => {
+                "FontHaltAdvanceWithInkBoundsFittedPlacement"
+            }
+            Self::InkBoundsFittedBodyCompression => "InkBoundsFittedBodyCompression",
+            Self::FontHaltAdvanceWithProfileFallback => "FontHaltAdvanceWithProfileFallback",
+            Self::ProfileGlueFallbackWithoutFontGeometry => {
+                "ProfileGlueFallbackWithoutFontGeometry"
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationAtom {
     pub range: TextRange,
@@ -22,7 +59,10 @@ pub struct PunctuationAtom {
     pub leading_glue: Glue,
     pub trailing_glue: Glue,
     pub anchor: PunctuationAnchor,
-    pub geometry_source: String,
+    /// 几何证据的来源。
+    pub geometry_source: PunctuationGeometrySource,
+    /// `geometry_source` 是否再叠加了固定半宽修饰。
+    pub geometry_forced_half_width: bool,
     pub policy_body_floor: f32,
     pub ink_width: Option<f32>,
     pub ink_center: Option<f32>,
@@ -450,11 +490,8 @@ impl PunctuationAtomBuilder {
                 0,
             ),
             anchor: compression.anchor,
-            geometry_source: if forced_half {
-                format!("{}FixedHalfWidth", compression.source)
-            } else {
-                compression.source.to_owned()
-            },
+            geometry_source: compression.source,
+            geometry_forced_half_width: forced_half,
             policy_body_floor,
             ink_width,
             ink_center,
@@ -512,7 +549,7 @@ impl PunctuationAtomBuilder {
                 trailing_trim: trailing,
                 body_width: advance - leading - trailing,
                 anchor: anchor_for(leading, trailing),
-                source: "FontHaltFittedBodyCompression",
+                source: PunctuationGeometrySource::FontHaltFittedBodyCompression,
                 ink_body_floor: ink_bounds.map(|_| advance - leading - trailing),
                 ink_containment_applied: limited,
                 halt_validation: limited
@@ -527,9 +564,9 @@ impl PunctuationAtomBuilder {
                 body_width: frame.width,
                 anchor: frame.anchor,
                 source: if halt_body.is_some() {
-                    "FontHaltAdvanceWithInkBoundsFittedPlacement"
+                    PunctuationGeometrySource::FontHaltAdvanceWithInkBoundsFittedPlacement
                 } else {
-                    "InkBoundsFittedBodyCompression"
+                    PunctuationGeometrySource::InkBoundsFittedBodyCompression
                 },
                 ink_body_floor: Some(frame.width),
                 ink_containment_applied: frame.width > target_body + PLACEMENT_EPSILON,
@@ -544,9 +581,9 @@ impl PunctuationAtomBuilder {
             body_width: advance - leading - trailing,
             anchor: anchor_for(leading, trailing),
             source: if halt_body.is_some() {
-                "FontHaltAdvanceWithProfileFallback"
+                PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback
             } else {
-                "ProfileGlueFallbackWithoutFontGeometry"
+                PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry
             },
             ink_body_floor: None,
             ink_containment_applied: false,
@@ -567,7 +604,7 @@ struct CompressionGeometry {
     trailing_trim: f32,
     body_width: f32,
     anchor: PunctuationAnchor,
-    source: &'static str,
+    source: PunctuationGeometrySource,
     ink_body_floor: Option<f32>,
     ink_containment_applied: bool,
     halt_validation: Option<String>,

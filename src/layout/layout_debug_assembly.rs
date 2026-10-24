@@ -2,7 +2,9 @@
 
 use crate::common::HashMap;
 
-use super::super::clreq::clreq_profile::ClreqPunctuationGlyphSubstitutor;
+use super::super::clreq::clreq_profile::{
+    CjkPunctuationGlyphSubstitution, CjkPunctuationGlyphSubstitutionReason,
+};
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, BopomofoDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
@@ -31,8 +33,9 @@ use super::quote_pair_analyzer::QuoteRoleDecision;
 pub struct LayoutDebugStageInput<'a> {
     pub text: &'a Text,
     pub font_resolutions: &'a HashMap<TextRange, FontResolution>,
-    pub punctuation_glyph_substitutor: &'a ClreqPunctuationGlyphSubstitutor,
     pub substitution_rollbacks: &'a HashMap<TextRange, String>,
+    /// shaping 实际采用的显示替换，按 segment range 记录。
+    pub substitutions: &'a HashMap<TextRange, CjkPunctuationGlyphSubstitution>,
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
     pub metric_decisions: &'a [ClusterMetricDecision],
     pub punctuation_atoms: &'a [PunctuationAtom],
@@ -40,7 +43,7 @@ pub struct LayoutDebugStageInput<'a> {
     pub spacing_plan: &'a PunctuationSpacingCompressionResult,
     pub attached_punctuation_boundary: &'a AttachedInlinePunctuationBoundaryResult,
     pub role_override_infos: &'a [RoleOverrideInfo],
-    pub line_breaker_strategy_name: &'a str,
+    pub line_breaker_strategy_name: &'static str,
     pub laid_out_lines: &'a [LineBox],
     pub line_solution: &'a LineSolution,
     pub clusters: &'a [Cluster],
@@ -84,31 +87,50 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 return None;
             };
             let cluster_text = stage.text.slice_text(resolution.range);
-            let substitution = stage
-                .punctuation_glyph_substitutor
-                .substitute_for_role(&cluster_text, resolution.role);
+            // 复用 shaping 实际采用的替换结果，不再重跑替换器：
+            // 因此 debug 的 display_text 与测量、绘制同源。
+            let adopted = stage
+                .substitutions
+                .iter()
+                .find(|(range, _)| is_inside(**range, resolution.range))
+                .map(|(_, substitution)| substitution);
             let rollback_cause = stage
                 .substitution_rollbacks
                 .iter()
                 .find(|(range, _)| is_inside(**range, resolution.range))
                 .map(|(_, cause)| cause);
+            let (display_text, substitution_reason) = match (rollback_cause, adopted) {
+                (Some(cause), Some(substitution)) => (
+                    cluster_text.clone(),
+                    substitution
+                        .reason
+                        .render(|| code_point_labels(&cluster_text), String::new)
+                        + ":"
+                        + cause,
+                ),
+                (Some(cause), None) => (cluster_text.clone(), cause.clone()),
+                (None, Some(substitution)) => (
+                    substitution.display_text.clone(),
+                    substitution.reason.render(
+                        || code_point_labels(&cluster_text),
+                        || code_point_labels(&substitution.display_text),
+                    ),
+                ),
+                (None, None) => (
+                    cluster_text.clone(),
+                    CjkPunctuationGlyphSubstitutionReason::RolePreserved(resolution.role)
+                        .render(String::new, String::new),
+                ),
+            };
             Some(FontDecisionInfo {
                 range: resolution.range,
-                source_text: cluster_text.clone(),
-                display_text: if rollback_cause.is_some() {
-                    cluster_text
-                } else {
-                    substitution.display_text
-                },
+                source_text: cluster_text,
+                display_text,
                 role: resolution.role,
                 candidate_key: selected_attempt.candidate_key.clone(),
                 resolved_face: Some(resolution.face.clone()),
                 reason: "FontBackendCompleteShapingSelection",
-                substitution_reason: if let Some(cause) = rollback_cause {
-                    format!("{}:{cause}", substitution.reason)
-                } else {
-                    substitution.reason
-                },
+                substitution_reason,
             })
         })
         .collect();
@@ -147,7 +169,8 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 atom.anchor,
             )
             .ink_bounds(atom.ink_bounds)
-            .geometry_source(atom.geometry_source.clone())
+            .geometry_source(atom.geometry_source)
+            .geometry_forced_half_width(atom.geometry_forced_half_width)
             .policy_body_floor(atom.policy_body_floor)
             .ink_width(atom.ink_width)
             .ink_center(atom.ink_center)
@@ -192,34 +215,19 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .zip(&stage.line_solution.lines)
         .enumerate()
         .map(|(line_index, (line, candidate))| {
-            let mut notes = vec![
-                format!("index:{line_index}"),
-                format!("end:{:?}", line.end_reason),
-                format!("natural:{}", line.natural_width),
-                format!("adjusted:{}", line.adjusted_width),
-                format!("alignment:{}", line.alignment_width),
-                format!("visual:{}", line.visual_width),
-            ];
-            if let Some(opportunity) = stage
+            // 行号、end reason 与各项宽度都能从 `LineBox` 直接读到，不再重复写入 notes。
+            let technical_break = stage
                 .progressive_break_opportunities
                 .get(&(candidate.cluster_range.last() + 1))
-            {
-                notes.push(format!("technical-break:{:?}", opportunity.tier));
-            }
-            if let Some(repair) = candidate.repair.as_ref() {
-                notes.push(format!("repair-reason:{}", repair.reason()));
-            }
-            if let Some(fallback) = stage
+                .map(|opportunity| opportunity.tier);
+            let justify_fallback = stage
                 .justification_plans
                 .get(line_index)
                 .and_then(Option::as_ref)
-                .and_then(|plan| plan.fallback_reason.as_ref())
-            {
-                notes.push(format!("justify-fallback:{fallback}"));
-            }
+                .and_then(|plan| plan.fallback_reason.clone());
             super::super::core::layout_model::LineDecisionInfo::builder(
                 line.range,
-                stage.line_breaker_strategy_name.to_owned(),
+                stage.line_breaker_strategy_name,
             )
             .repair(candidate.repair.as_ref().map(repair_name))
             .repair_penalty(candidate.repair.as_ref().map_or(0, RepairOption::penalty))
@@ -236,7 +244,8 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                     .map(|candidate| repair_candidate_to_decision_info(candidate, stage.clusters))
                     .collect(),
             )
-            .notes(notes)
+            .technical_break(technical_break)
+            .justify_fallback(justify_fallback)
             .build()
         })
         .collect();
@@ -444,4 +453,12 @@ fn repair_name(repair: &RepairOption) -> String {
 
 fn is_inside(inner: TextRange, outer: TextRange) -> bool {
     inner.start() >= outer.start() && inner.end() <= outer.end()
+}
+
+/// 与 `ClreqPunctuationGlyphSubstitutor` 内部使用的码点标签格式一致。
+fn code_point_labels(text: &Text) -> String {
+    text.chars()
+        .map(|character| format!("U+{:04X}", character as u32))
+        .collect::<Vec<_>>()
+        .join("+")
 }

@@ -39,7 +39,7 @@ pub struct LineAdjustmentRequest<'a> {
     pub prep: ParagraphLayoutPrep,
     pub plan: &'a LineBreakPlanningStageResult,
     pub justifier: &'a Justifier,
-    pub line_breaker_strategy_name: &'a str,
+    pub line_breaker_strategy_name: &'static str,
     pub font_backend: &'a dyn FontBackend,
 }
 
@@ -556,7 +556,6 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         &vertical_geometry.line_bottom,
         &|index| line_hyphen_advance_at(index as usize),
         &prep.hyphen_glyphs,
-        &justification_plans,
     );
     let annotation = resolve_annotation_geometry(AnnotationGeometryRequest {
         input: &prep.input,
@@ -604,8 +603,8 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
     let mut debug = build_layout_debug_info(LayoutDebugStageInput {
         text: &prep.text,
         font_resolutions: &prep.font_resolutions,
-        punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
         substitution_rollbacks: &prep.substitution_rollbacks,
+        substitutions: &prep.substitutions,
         shaping_decisions: prep.shaping_decisions,
         metric_decisions: &plan.metric_decisions,
         punctuation_atoms: &prep.punctuation_atoms,

@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphShapingStage.kt
 
 use super::super::clreq::clreq_profile::{
-    ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
+    CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
 };
 use super::super::core::geometry::{ScalarOffset, TextRange, text_range};
 use super::super::core::layout_model::{
@@ -31,6 +31,11 @@ pub struct ParagraphShapingStageResult {
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
     pub substitution_rollbacks: HashMap<TextRange, String>,
+    /// shaping 实际采用的显示替换，按 segment range 记录。
+    ///
+    /// debug 汇编直接复用这些结果，不再第二次调用替换器；`display_text` 因此
+    /// 与测量、绘制使用的那份是同源的。
+    pub substitutions: HashMap<TextRange, CjkPunctuationGlyphSubstitution>,
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
@@ -61,6 +66,7 @@ pub fn shape_paragraph(
     let mut segment_cache = cached_segment_shaping.clone();
     let mut segment_font_resolutions = cached_segment_font_resolutions.clone();
     let mut rollbacks = cached_substitution_rollbacks.clone();
+    let mut substitutions: HashMap<TextRange, CjkPunctuationGlyphSubstitution> = HashMap::new();
     let mut shape_segment = |role: FontRole, range: TextRange| -> ShapingResult {
         if let Some(cached) = segment_cache.get(&range) {
             if segment_font_resolutions.contains_key(&range) {
@@ -109,7 +115,7 @@ pub fn shape_paragraph(
         let source = text.slice_text(range);
         // shaping 只消费显示文本；替换原因由 debug 汇编按需生成，见
         // `ClreqPunctuationGlyphSubstitutor::substitute_for_role`。
-        let display_text = punctuation_glyph_substitutor.display_text_for_role(&source, role);
+        let substituted = punctuation_glyph_substitutor.display_text_for_role(&source, role);
         let base = style_at(range.start());
         let mut style = base.clone();
         if role == FontRole::LatinText && emphasis_italic_at(range.start()) {
@@ -117,11 +123,11 @@ pub fn shape_paragraph(
         }
         let shaped = font_backend.shape(
             &FontBackendRequest::builder(text.clone(), range, style.clone(), role)
-                .display_text(display_text.clone())
-                .open_type_features(cjk_punctuation_full_width_features(role, &display_text))
+                .display_text(substituted.clone())
+                .open_type_features(cjk_punctuation_full_width_features(role, &substituted))
                 .build(),
         );
-        let rollback = if display_text == source {
+        let rollback = if substituted == source {
             None
         } else if shaped.shaping.decisions.iter().any(|it| {
             it.capability_issue.as_deref() == Some(UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE)
@@ -134,7 +140,7 @@ pub fn shape_paragraph(
             .any(|it| it.missing_glyphs > 0)
         {
             Some("SubstitutionRollbackOnMissingGlyph")
-        } else if dash_ink_coverage_deficient(&shaped.shaping, &display_text, style.font_size) {
+        } else if dash_ink_coverage_deficient(&shaped.shaping, &substituted, style.font_size) {
             Some("DashSubstitutionInkCoverageRollback")
         } else {
             None
@@ -143,7 +149,7 @@ pub fn shape_paragraph(
             rollbacks.insert(range, cause.to_owned());
             font_backend.shape(
                 &FontBackendRequest::builder(text.clone(), range, style, role)
-                    .display_text(source)
+                    .display_text(source.clone())
                     .open_type_features(cjk_punctuation_full_width_features(
                         role,
                         &text.slice_text(range),
@@ -151,6 +157,16 @@ pub fn shape_paragraph(
                     .build(),
             )
         } else {
+            // 记录实际采用的替换，供 debug 汇编直接复用。
+            substitutions.insert(
+                range,
+                CjkPunctuationGlyphSubstitution {
+                    source_text: source.clone(),
+                    display_text: substituted.clone(),
+                    reason: punctuation_glyph_substitutor
+                        .reason_for_role(&source, role, &substituted),
+                },
+            );
             shaped
         };
         let resolution = result.resolution(range, role);
@@ -566,6 +582,7 @@ pub fn shape_paragraph(
         hyphen_advance: hyphen_advance.unwrap_or(0.),
         hyphen_glyphs,
         substitution_rollbacks: rollbacks,
+        substitutions,
         break_opportunity_decisions: decisions,
         emergency_tracking_eligibility_decisions: emergency,
         progressive_break_offsets: progressive,

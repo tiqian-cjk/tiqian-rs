@@ -1305,6 +1305,7 @@ pub fn build_paragraph_layout_prep(
         hyphen_advance: shaping_stage.hyphen_advance,
         hyphen_glyphs: shaping_stage.hyphen_glyphs.clone(),
         substitution_rollbacks: shaping_stage.substitution_rollbacks.clone(),
+        substitutions: shaping_stage.substitutions.clone(),
         break_opportunity_decisions: shaping_stage.break_opportunity_decisions.clone(),
         emergency_tracking_eligibility_decisions: shaping_stage
             .emergency_tracking_eligibility_decisions

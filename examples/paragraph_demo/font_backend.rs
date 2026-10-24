@@ -908,7 +908,7 @@ mod tests {
                 .debug
                 .metric_decisions
                 .iter()
-                .all(|decision| { decision.raw_source == "RawTables" })
+                .all(|decision| { decision.raw_source == FontMetricSource::RawTables })
         );
     }
 

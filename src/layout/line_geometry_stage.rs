@@ -4,7 +4,7 @@ use crate::common::HashMap;
 
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    Cluster, Glyph, InlineObjectLineHeightDecisionInfo, LineBox, LineDebugInfo, LineEndReason,
+    Cluster, Glyph, InlineObjectLineHeightDecisionInfo, LineBox, LineEndReason,
     MaxLinesDecisionInfo, RubyLineHeightDecisionInfo,
 };
 use super::super::core::text::Text;
@@ -15,9 +15,7 @@ use super::super::core::text_model::{
 use super::super::font::font_metrics::{FontMetricsRequest, MetricBox};
 use super::super::font::font_policy::{LayoutFontMetrics, RawFontMetrics};
 use super::annotation_geometry_stage::RubyFontGeometry;
-use super::justifier::JustificationPlan;
 use super::line_optimization::LineSolution;
-use super::line_optimization::RepairOption;
 use super::paragraph_shaping_stage::is_inline_object_cluster;
 use super::punctuation_geometry_ledger::cluster_index_range_for;
 
@@ -67,7 +65,6 @@ pub fn build_line_boxes(
     line_bottom: &[f32],
     line_hyphen_advance_at: &dyn Fn(i32) -> f32,
     hyphen_glyphs: &[Glyph],
-    justification_plans: &[Option<JustificationPlan>],
 ) -> LineBoxStageResult {
     let laid_out_lines: Vec<_> = line_solution
         .lines
@@ -126,40 +123,6 @@ pub fn build_line_boxes(
                     LastLineAlignment::End => (limit - alignment_width).max(0.0),
                 }
             };
-            let repair = candidate.repair.as_ref().map(|repair| {
-                let kind = match repair {
-                    RepairOption::PushIn { .. } => "PushIn",
-                    RepairOption::Hang { .. } => "Hang",
-                    RepairOption::CarryPrevious { .. } => "CarryPrevious",
-                    RepairOption::CarryNext { .. } => "CarryNext",
-                    RepairOption::LeaveRagged { .. } => "LeaveRagged",
-                };
-                format!("{kind}:{}", repair.reason())
-            });
-            let range_note = if candidate.cluster_range.is_empty() {
-                format!("line:{line_index}:clusters=empty")
-            } else {
-                format!(
-                    "line:{line_index}:clusters={}-{}",
-                    candidate.cluster_range.first(),
-                    candidate.cluster_range.last()
-                )
-            };
-            let mut notes = vec![
-                range_note,
-                format!("end:{:?}", candidate.end_reason),
-                format!(
-                    "natural={},adjusted={},visual={visual_width}",
-                    candidate.natural_width, candidate.adjusted_width
-                ),
-            ];
-            if let Some(fallback) = justification_plans
-                .get(line_index)
-                .and_then(Option::as_ref)
-                .and_then(|plan| plan.fallback_reason.as_deref())
-            {
-                notes.push(format!("justify-fallback:{fallback}"));
-            }
             LineBox::builder(
                 candidate.source_range,
                 candidate.cluster_range,
@@ -180,7 +143,6 @@ pub fn build_line_boxes(
             } else {
                 Vec::new()
             })
-            .debug(LineDebugInfo::with_all(repair, notes))
             .build()
         })
         .collect();
