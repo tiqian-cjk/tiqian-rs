@@ -3,7 +3,7 @@
 use crate::common::HashMap;
 
 use super::super::clreq::clreq_profile::{
-    CjkPunctuationGlyphSubstitution, CjkPunctuationGlyphSubstitutionReason,
+    CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor,
 };
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
@@ -34,6 +34,8 @@ pub struct LayoutDebugStageInput<'a> {
     pub text: &'a Text,
     pub font_resolutions: &'a HashMap<TextRange, FontResolution>,
     pub substitution_rollbacks: &'a HashMap<TextRange, String>,
+    /// shaping 与 debug 共用的标点显示替换器；debug 按整段范围重新解析显示文本。
+    pub punctuation_glyph_substitutor: &'a ClreqPunctuationGlyphSubstitutor,
     /// shaping 实际采用的显示替换，按 segment range 记录。
     pub substitutions: &'a HashMap<TextRange, CjkPunctuationGlyphSubstitution>,
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
@@ -87,39 +89,40 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 return None;
             };
             let cluster_text = stage.text.slice_text(resolution.range);
-            // 复用 shaping 实际采用的替换结果，不再重跑替换器：
-            // 因此 debug 的 display_text 与测量、绘制同源。
-            let adopted = stage
-                .substitutions
-                .iter()
-                .find(|(range, _)| is_inside(**range, resolution.range))
-                .map(|(_, substitution)| substitution);
+            // debug 记录按 font resolution 的整段范围给出显示文本与原因。
+            // shaping 的 substitutions 以 segment 为 key，粒度更细，不能直接当整段结果用；
+            // 因此这里按整段重新走一次 role 门控的显示文本解析，
+            // 与测量、绘制使用的是同一条规则。
+            let substituted = stage
+                .punctuation_glyph_substitutor
+                .display_text_for_role_with_candidate(&cluster_text, resolution.role);
+            let candidate = stage
+                .punctuation_glyph_substitutor
+                .policy_display_text(&cluster_text);
             let rollback_cause = stage
                 .substitution_rollbacks
                 .iter()
                 .find(|(range, _)| is_inside(**range, resolution.range))
                 .map(|(_, cause)| cause);
-            let (display_text, substitution_reason) = match (rollback_cause, adopted) {
-                (Some(cause), Some(substitution)) => (
+            let (display_text, substitution_reason) = match rollback_cause {
+                Some(cause) => (
                     cluster_text.clone(),
-                    substitution
-                        .reason
+                    stage
+                        .punctuation_glyph_substitutor
+                        .reason_for_role(&cluster_text, resolution.role, &candidate)
                         .render(|| code_point_labels(&cluster_text), String::new)
                         + ":"
                         + cause,
                 ),
-                (Some(cause), None) => (cluster_text.clone(), cause.clone()),
-                (None, Some(substitution)) => (
-                    substitution.display_text.clone(),
-                    substitution.reason.render(
-                        || code_point_labels(&cluster_text),
-                        || code_point_labels(&substitution.display_text),
-                    ),
-                ),
-                (None, None) => (
-                    cluster_text.clone(),
-                    CjkPunctuationGlyphSubstitutionReason::RolePreserved(resolution.role)
-                        .render(String::new, String::new),
+                None => (
+                    substituted.clone(),
+                    stage
+                        .punctuation_glyph_substitutor
+                        .reason_for_role(&cluster_text, resolution.role, &candidate)
+                        .render(
+                            || code_point_labels(&cluster_text),
+                            || code_point_labels(&substituted),
+                        ),
                 ),
             };
             Some(FontDecisionInfo {

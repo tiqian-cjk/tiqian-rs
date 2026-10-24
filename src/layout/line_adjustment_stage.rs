@@ -601,6 +601,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         text: &prep.text,
         font_resolutions: &prep.font_resolutions,
         substitution_rollbacks: &prep.substitution_rollbacks,
+        punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
         substitutions: &prep.substitutions,
         shaping_decisions: prep.shaping_decisions,
         metric_decisions: &plan.metric_decisions,

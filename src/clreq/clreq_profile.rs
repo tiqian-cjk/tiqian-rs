@@ -895,8 +895,8 @@ impl ClreqPunctuationGlyphSubstitutor {
         Self { policy }
     }
 
-    /// 仅按 policy 解析显示文本，不生成任何原因文本。
-    fn policy_display_text(&self, source_text: &Text) -> Text {
+    /// 仅按 policy 解析显示文本，不应用 role 门控。
+    pub fn policy_display_text(&self, source_text: &Text) -> Text {
         match self.policy {
             CjkPunctuationGlyphPolicy::PreserveInput => source_text.clone(),
             CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints
@@ -931,25 +931,36 @@ impl ClreqPunctuationGlyphSubstitutor {
         }
     }
 
-    /// 按 role 门控结果与已知显示文本推导原因，不重新计算显示文本。
+    /// 按 role 门控结果与已知候选显示文本推导原因，不重新计算显示文本。
+    ///
+    /// 语义与 [`Self::substitute_for_role`] 一致：role 门控只在 policy 确实要替换码点、
+    /// 而角色又不是 `CjkPunctuation` 时生效；此时显示文本退回 source，原因是
+    /// [`CjkPunctuationGlyphSubstitutionReason::RolePreserved`]。
+    /// policy 不替换时角色无影响，原因仍是 policy 层的结果。
+    ///
+    /// `display_text` 是 policy 解析出的候选显示文本，不是 role 门控后的结果。
     pub fn reason_for_role(
         &self,
         source_text: &Text,
         role: FontRole,
         display_text: &Text,
     ) -> CjkPunctuationGlyphSubstitutionReason {
-        let substituted_by_policy = display_text != source_text;
-        if role == FontRole::CjkPunctuation {
-            if substituted_by_policy {
-                CjkPunctuationGlyphSubstitutionReason::PolicyReplaced(self.policy)
-            } else {
-                CjkPunctuationGlyphSubstitutionReason::PolicyPreserved(self.policy)
-            }
-        } else if display_text == source_text {
+        if display_text != source_text && role != FontRole::CjkPunctuation {
             CjkPunctuationGlyphSubstitutionReason::RolePreserved(role)
+        } else if display_text == source_text {
+            CjkPunctuationGlyphSubstitutionReason::PolicyPreserved(self.policy)
         } else {
-            // 非 CJK 标点角色不会替换；保留分支以防调用方传入不一致的显示文本。
             CjkPunctuationGlyphSubstitutionReason::PolicyReplaced(self.policy)
+        }
+    }
+
+    /// role 门控后的显示文本：只有 policy 确实要替换、角色又不是 `CjkPunctuation` 时退回 source。
+    pub fn display_text_for_role_with_candidate(&self, source_text: &Text, role: FontRole) -> Text {
+        let candidate = self.policy_display_text(source_text);
+        if candidate != *source_text && role != FontRole::CjkPunctuation {
+            source_text.clone()
+        } else {
+            candidate
         }
     }
 
