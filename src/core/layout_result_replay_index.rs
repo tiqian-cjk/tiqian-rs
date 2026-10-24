@@ -9,6 +9,7 @@ use super::layout_queries::{
 };
 use super::source_interaction_boundaries::SourceBoundaryBias;
 use crate::font::font_policy::FontRole;
+use std::sync::Arc;
 
 /// Immutable lookup data derived exclusively from one [`LayoutResult`].
 #[derive(Clone, Debug)]
@@ -21,7 +22,10 @@ pub struct LayoutResultReplayIndex {
     pub rich_text_layer_cluster_segments: Vec<RichTextLayerClusterSegment>,
     pub decoration_cluster_segments: Vec<DecorationClusterSegment>,
     pub glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>>,
-    pub open_type_features_by_cluster_range: HashMap<TextRange, Vec<String>>,
+    /// 按 cluster 引用共享的 OpenType feature 列表。
+    ///
+    /// 同一 glyph run 内所有 cluster 共用一份不可变列表，因此不逐 cluster 复制字符串。
+    pub open_type_features_by_cluster_range: HashMap<TextRange, Arc<[String]>>,
     pub font_role_by_cluster_range: HashMap<TextRange, Option<FontRole>>,
 }
 
@@ -51,7 +55,9 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             .or_default()
             .push(glyph.clone());
     }
-    let mut open_type_features_by_cluster_range = HashMap::new();
+    let mut open_type_features_by_cluster_range: HashMap<TextRange, Arc<[String]>> = HashMap::new();
+    // 每个 glyph run 的 feature 只共享一份；同一 run 内的 cluster 共用该句柄。
+    let mut shared_features: HashMap<usize, Arc<[String]>> = HashMap::new();
     let mut run_index = 0;
     for cluster in &result.clusters {
         while result
@@ -67,7 +73,12 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             .filter(|run| {
                 cluster.range.start() >= run.range.start() && cluster.range.end() <= run.range.end()
             })
-            .map(|run| run.open_type_features.clone())
+            .map(|run| {
+                shared_features
+                    .entry(run_index)
+                    .or_insert_with(|| Arc::from(run.open_type_features.as_slice()))
+                    .clone()
+            })
             .unwrap_or_default();
         open_type_features_by_cluster_range.insert(cluster.range, features);
     }

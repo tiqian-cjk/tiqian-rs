@@ -23,10 +23,11 @@ use super::white_space::{WhiteSpaceAction, WhiteSpaceKind, WhiteSpaceUnit};
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use crate::common::{HashMap, HashSet};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {
-    pub shaping_results: Vec<ShapingResult>,
+    pub shaping_results: Vec<Arc<ShapingResult>>,
     pub hyphen_offsets: HashSet<ScalarOffset>,
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
@@ -39,7 +40,7 @@ pub struct ParagraphShapingStageResult {
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
-    pub segment_shaping_cache: HashMap<TextRange, ShapingResult>,
+    pub segment_shaping_cache: HashMap<TextRange, Arc<ShapingResult>>,
     pub segment_font_resolutions: HashMap<TextRange, FontResolution>,
 }
 
@@ -59,19 +60,26 @@ pub fn shape_paragraph(
     style_at: &dyn Fn(ScalarOffset) -> TextStyle,
     emphasis_italic_at: &dyn Fn(ScalarOffset) -> bool,
     rejected_technical_tiers_by_span: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
-    cached_segment_shaping: &HashMap<TextRange, ShapingResult>,
+    cached_segment_shaping: &HashMap<TextRange, Arc<ShapingResult>>,
     cached_segment_font_resolutions: &HashMap<TextRange, FontResolution>,
     cached_substitution_rollbacks: &HashMap<TextRange, String>,
 ) -> ParagraphShapingStageResult {
-    let mut segment_cache = cached_segment_shaping.clone();
+    // `ShapingResult` clone 会复制 cluster、glyph run 与 decision 三个向量，是这里最贵的一项。
+    // 它只用于 segment 命中复用，不会被下游消费，因此改为「本次新增项」局部表：
+    // 查询时先查新增项，再查传入的基础缓存，不再整份复制。
+    let mut added_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
+    // 这两份会被下游与 debug 读取，需要完整集合，保持原有语义。
     let mut segment_font_resolutions = cached_segment_font_resolutions.clone();
     let mut rollbacks = cached_substitution_rollbacks.clone();
     let mut substitutions: HashMap<TextRange, CjkPunctuationGlyphSubstitution> = HashMap::new();
-    let mut shape_segment = |role: FontRole, range: TextRange| -> ShapingResult {
-        if let Some(cached) = segment_cache.get(&range) {
-            if segment_font_resolutions.contains_key(&range) {
-                return cached.clone();
-            }
+    let mut shape_segment = |role: FontRole, range: TextRange| -> Arc<ShapingResult> {
+        if let Some(cached) = added_shaping
+            .get(&range)
+            .or_else(|| cached_segment_shaping.get(&range))
+            && segment_font_resolutions.contains_key(&range)
+        {
+            // 命中时共享同一份不可变结果，不复制 cluster、glyph run 与 decision。
+            return cached.clone();
         }
         if let Some(unit) = white_space_units.get(&range) {
             let source = text.slice_text(range);
@@ -85,7 +93,7 @@ pub fn shape_paragraph(
                     vec![ShapingDecisionInfo::builder(range, source, display, None, 0, 0.,
                         "WhiteSpace".to_owned(), format!("WhiteSpace:{:?}:{:?}", unit.kind, unit.action)).build()],
                 );
-                return result;
+                return Arc::new(result);
             }
             if unit.action == WhiteSpaceAction::ToSpace {
                 // 按实际显示内容 shaping，避免 backend 的源字符规则把 CRLF／Tab
@@ -108,8 +116,9 @@ pub fn shape_paragraph(
                     decision.reason = format!("WhiteSpaceToSpace:{}", decision.reason);
                 }
                 segment_font_resolutions.insert(range, resolution);
-                segment_cache.insert(range, result.shaping.clone());
-                return result.shaping;
+                let shape = Arc::new(result.shaping);
+                added_shaping.insert(range, shape.clone());
+                return shape;
             }
         }
         let source = text.slice_text(range);
@@ -171,8 +180,9 @@ pub fn shape_paragraph(
         };
         let resolution = result.resolution(range, role);
         segment_font_resolutions.insert(range, resolution);
-        segment_cache.insert(range, result.shaping.clone());
-        result.shaping
+        let shape = Arc::new(result.shaping);
+        added_shaping.insert(range, shape.clone());
+        shape
     };
     let mut hyphen_offsets = HashSet::new();
     let mut hyphen_advance = None;
@@ -545,15 +555,18 @@ pub fn shape_paragraph(
     let mut shaping_results = Vec::new();
     for resolved in cluster_ranges {
         if let Some(object) = inline_object_by_range.get(&resolved.range) {
-            shaping_results.push(inline_object_shaping_result(text, object));
+            shaping_results.push(Arc::new(inline_object_shaping_result(text, object)));
             continue;
         }
         if resolved.mandatory_break {
-            shaping_results.push(mandatory_break_shaping_result(text, resolved.range));
+            shaping_results.push(Arc::new(mandatory_break_shaping_result(text, resolved.range)));
             continue;
         }
         if resolved.zero_width_soft_break {
-            shaping_results.push(zero_width_soft_break_shaping_result(text, resolved.range));
+            shaping_results.push(Arc::new(zero_width_soft_break_shaping_result(
+                text,
+                resolved.range,
+            )));
             continue;
         }
         if white_space_units.contains_key(&resolved.range) {
@@ -586,7 +599,7 @@ pub fn shape_paragraph(
         break_opportunity_decisions: decisions,
         emergency_tracking_eligibility_decisions: emergency,
         progressive_break_offsets: progressive,
-        segment_shaping_cache: segment_cache,
+        segment_shaping_cache: added_shaping,
         segment_font_resolutions,
     }
 }
@@ -662,7 +675,7 @@ fn latin_word_cuts(
     range: TextRange,
     syllable: &[i32],
     measure: f32,
-    shape: &mut dyn FnMut(FontRole, TextRange) -> ShapingResult,
+    shape: &mut dyn FnMut(FontRole, TextRange) -> Arc<ShapingResult>,
     role: FontRole,
 ) -> Vec<ScalarOffset> {
     let mut cuts: HashSet<_> = syllable.iter().map(|x| range.start() + *x).collect();
@@ -861,7 +874,7 @@ fn opaque_hard_cuts(
     clean: &[ScalarOffset],
     measure: f32,
     force: bool,
-    shape: &mut dyn FnMut(FontRole, TextRange) -> ShapingResult,
+    shape: &mut dyn FnMut(FontRole, TextRange) -> Arc<ShapingResult>,
     role: FontRole,
 ) -> Vec<ScalarOffset> {
     let mut bounds = vec![range.start()];

@@ -28,8 +28,7 @@ use super::super::core::text_model::{
 use super::super::font::font_metrics::FontMetricsRequest;
 use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::linebreak::hyphenation::Hyphenator;
-use super::super::shaping::font_backend::{FontBackend, FontBackendRequest, FontResolution};
-use super::super::shaping::text_shaper::ShapingResult;
+use super::super::shaping::font_backend::{FontBackend, FontBackendRequest};
 use super::annotation_geometry_stage::RubyFontGeometry;
 use super::cluster_role_resolution::{
     ClusterRoleRangeOptions, ResolvedClusterRange, cluster_role_ranges_with_options,
@@ -111,9 +110,7 @@ pub struct WidthIndependentParagraphAnnotation {
     pub cluster_ranges: Vec<ResolvedClusterRange>,
     pub white_space_units: HashMap<TextRange, WhiteSpaceUnit>,
     pub inline_object_by_range: HashMap<TextRange, InlineObjectSpan>,
-    pub segment_shaping_cache: HashMap<TextRange, ShapingResult>,
-    pub segment_font_resolutions: HashMap<TextRange, FontResolution>,
-    pub substitution_rollbacks: HashMap<TextRange, String>,
+    /// 三份 shaping 缓存只在 `base_shaping_stage` 中保存一份，避免同一数据被拥有两次。
     pub ruby_font_geometry_by_span: HashMap<RubySpan, RubyFontGeometry>,
     pub base_shaping_stage: ParagraphShapingStageResult,
 }
@@ -561,9 +558,6 @@ pub fn prepare_width_independent_annotation(
         cluster_ranges,
         white_space_units,
         inline_object_by_range,
-        segment_shaping_cache: base.segment_shaping_cache.clone(),
-        segment_font_resolutions: base.segment_font_resolutions.clone(),
-        substitution_rollbacks: base.substitution_rollbacks.clone(),
         ruby_font_geometry_by_span: ruby_geometry,
         base_shaping_stage: base,
     }
@@ -670,9 +664,9 @@ pub fn build_paragraph_layout_prep(
             &*annotation.style_at,
             &emphasis,
             rejected,
-            &annotation.segment_shaping_cache,
-            &annotation.segment_font_resolutions,
-            &annotation.substitution_rollbacks,
+            &annotation.base_shaping_stage.segment_shaping_cache,
+            &annotation.base_shaping_stage.segment_font_resolutions,
+            &annotation.base_shaping_stage.substitution_rollbacks,
         );
         &dynamic_shaping_stage
     } else {
