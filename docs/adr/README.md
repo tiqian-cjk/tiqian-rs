@@ -15,3 +15,5 @@ Alternatives considered 和 Verification 说明当时的取舍与验证证据；
 - [R0004 显式字体后端的段落引擎构造](R0004-explicit-font-backend-engine.md)
 - [R0005 运行时布局的局部回退](R0005-runtime-layout-local-fallback.md)
 - [R0006 字体合成策略与最终字体实例身份](R0006-font-synthesis-final-face-identity.md)
+- [R0007 CSS 风格自动间距与显式空格（待实施）](R0007-css-autospace-and-explicit-spaces.md)
+- [R0008 空白处理策略与独立换行控制（待实施）](R0008-white-space-policy-and-wrapping.md)

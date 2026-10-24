@@ -66,6 +66,9 @@ cargo run --release --example paragraph-layout-bench -- --cluster-queries
 
 需要采样时使用 `cargo flamegraph --example paragraph-layout-bench -- --iterations 1000`。火焰图包含进程启动、预热、输入准备和析构；分析核心时筛选 `engine.layout` 调用树，不要把采样运行时间直接与普通 release 运行比较。
 
+专项工具：`examples/white-space-bench.rs` 测量空白策略的耗时与累计分配；
+`tools/text-autospace-probe.html` 用于浏览器空白与自动间距对照。具体测量条件和结果保存在对应迭代记录中。
+
 ## 覆盖率
 
 在提供 Bash 的环境中运行：
@@ -85,6 +88,8 @@ HTML 报告位于 `target/llvm-cov/html/index.html`。
 	段落 shaping 的每个 backend request 都是独立的字体选择原子范围；同一个旧 range 被内部切分后，不应在调用方
 	重新合并 `FontResolution`。桌面示例中的字体 backend 提供了参考实现。
 - `LayoutResult` 同时包含行、cluster、glyph replay 数据和结构化 debug 信息。renderer 应重放布局结果，不应自行重新计算断行或标点几何。
+- 获取实际占位范围时使用 `core::layout_queries` 中的 `line_occupied_bounds` 或 `occupied_bounds`；`LayoutResult.size` 的宽度可能受 `max-width` 限制，小于实际占位宽度。
+- 自动间距和空白规则见 [R0007](adr/R0007-css-autospace-and-explicit-spaces.md) 与 [R0008](adr/R0008-white-space-policy-and-wrapping.md)。
 
 ## 文档与同步
 

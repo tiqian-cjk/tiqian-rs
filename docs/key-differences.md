@@ -11,6 +11,30 @@
 
 ## 关键差异列表（技术决策）
 
+### CSS 风格自动间距与显式空格（已实现）
+
+Rust 已实现 R0007：自动间距默认采用 `Insert`，已有显式空格时保留；`Replace` 在无空格时添加 gap，
+在适用边界之间恰好一个有效 U+0020 时替换；折叠模式下多个原始空格折叠后也可由 `Replace` 替换。其他空格分隔字符阻止跨字符添加或替换自动间距。
+
+上游 ADR 0009 的 `Insert` 同时替换已有空格，并将多个 U+0020 归一为一个 gap；Rust 保留显式空格，且由独立空白策略处理折叠。后续同步需保留这项决策差异。
+
+自动间距不再承担多个空格的折叠；空白处理与行边空格行为由 R0008 独立管理，`Replace` 按
+折叠后的有效空格数量判断。宽度预设、边界分类和自动间距抑制维持既有决策。完整语义与验收要求见
+[`R0007-css-autospace-and-explicit-spaces.md`](adr/R0007-css-autospace-and-explicit-spaces.md)。
+
+### 空白处理与独立换行控制（已实现）
+
+Rust 已实现 R0008：空白模式采用 `Collapse`、`PreserveBreaks`、`Preserve`、`BreakSpaces`，与
+`Wrap / NoWrap` 和自动间距独立组合，并已接入布局 pipeline、geometry 与 replay。核心默认
+`PreserveBreaks + Wrap + Insert`；多行输入框推荐 `BreakSpaces + Wrap`，保留行首尾空格占位及交互宽度；
+`Preserve + Wrap` 提供 CSS 风格行尾悬挂，悬挂范围可通过 `occupied_bounds` 查询。相关公开字段和占位查询已提供。
+
+上游及 Rust 旧有的 `LineEdgeWordSpaceCollapse` 无条件折叠行首、行尾普通空格；Rust 现由 R0008
+的可配置策略取代，并相应处理断行成本与最终几何。同步时保留此决策差异。Phase5 全量测试、
+57 项 fixture golden、浏览器、仓库字体验证及性能比较均已执行，证据见当前联合迭代。
+具体组合顺序、与 R0007 的关系及验收要求见
+[`R0008-white-space-policy-and-wrapping.md`](adr/R0008-white-space-policy-and-wrapping.md)。
+
 ### Source coordinate 使用 Unicode scalar value
 
 R0001 已决定 tiqian-rs 的核心和公开 Rust API 使用 Unicode scalar value 表示 source offset 与
@@ -152,7 +176,7 @@ tiqian-rs 当前没有对应的 Web 或 FFI 消费者，也没有外部调用者
 
 ### Rust 本地 layout fixture 与 golden
 
-Rust 在 `tests/fixture_layout/` 维护 52 项 deterministic stub fixture 与完整 layout dump golden。
+Rust 在 `tests/fixture_layout/` 维护 57 项 deterministic stub fixture 与完整 layout dump golden。
 它们由 `cargo test --test tiqian layout_fixture_golden_test` 执行，并作为 Rust 日常排版回归测试。
 Kotlin fixture、golden、recorded shaping evidence 和相邻 checkout 不属于 Rust 测试依赖。
 
