@@ -264,8 +264,8 @@ pub fn cluster_role_ranges_with_options(
                 RoleOverrideInfo {
                     range,
                     source_text: text.slice_text(range),
-                    original_role: format!("{classified_role:?}"),
-                    overridden_role: format!("{role:?}"),
+                    original_role: classified_role,
+                    overridden_role: role,
                     source: "UnicodeEmojiSequenceRolePromotion".to_owned(),
                     reason: promotion_reason
                         .unwrap_or("EmojiPresentationCodePoint")

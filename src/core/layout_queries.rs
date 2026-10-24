@@ -6,7 +6,8 @@ use std::sync::Arc;
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
-use super::layout_model::{Glyph, LayoutResult, LineBox, MetricDecisionInfo};
+use super::layout_model::{AutoSpaceSide, Glyph, LayoutResult, LineBox, MetricDecisionInfo};
+use crate::font::font_metrics::MetricBox;
 use super::source_interaction_boundaries::{
     SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
 };
@@ -1226,7 +1227,7 @@ fn uniform_text_style_vertical_bounds(
         .collect();
     let reference = matching_style
         .iter()
-        .find(|decision| decision.metric_box == IDEOGRAPHIC_EM_BOX_NAME)
+        .find(|decision| decision.metric_box == MetricBox::IdeographicEmBox)
         .copied()
         .or_else(|| matching_style.first().copied());
     let ascent = reference
@@ -1259,7 +1260,6 @@ fn same_font_metric_style(left: &TextStyle, right: &TextStyle) -> bool {
         && left.baseline_shift == right.baseline_shift
 }
 
-const IDEOGRAPHIC_EM_BOX_NAME: &str = "IdeographicEmBox";
 const BACKGROUND_FALLBACK_ASCENT_EM: f32 = 0.88;
 const BACKGROUND_FALLBACK_DESCENT_EM: f32 = 0.12;
 
@@ -1696,7 +1696,7 @@ impl<'a> PositionedClusterLookup<'a> {
         }
         let mut leading_gap = HashMap::new();
         for decision in &result.debug.auto_space_decisions {
-            if decision.side == "leading" {
+            if decision.side == AutoSpaceSide::Leading {
                 leading_gap
                     .entry(decision.cluster_range)
                     .or_insert(-decision.total_reduction);

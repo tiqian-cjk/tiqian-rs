@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use super::super::clreq::clreq_profile::ClreqProfileResolver;
 use super::super::clreq::clreq_profile::{
-    ClreqProfile, ClreqPunctuationGlyphSubstitutor, PunctuationClass,
+    AutoSpaceMode, ClreqProfile, ClreqPunctuationGlyphSubstitutor, PunctuationClass,
 };
 use super::super::core::east_asian_spacing::{
     EastAsianSpacingEdges, EastAsianSpacingValue, unicode_east_asian_spacing,
@@ -15,9 +15,9 @@ use super::super::core::east_asian_spacing::{
 use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, InlineObjectPunctuationAttachmentDecisionInfo,
-    LineLengthGridDecisionInfo, MandatoryBreakDecisionInfo, RoleOverrideInfo,
-    ZeroWidthBreakDecisionInfo,
+    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
+    InlineObjectPunctuationAttachmentDecisionInfo, LineLengthGridDecisionInfo,
+    MandatoryBreakDecisionInfo, RoleOverrideInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -375,11 +375,8 @@ pub fn prepare_width_independent_annotation(
             RoleOverrideInfo {
                 range,
                 source_text: text.slice_text(range),
-                original_role: format!(
-                    "{:?}",
-                    font_role_classifier.classify(&text, range, &context)
-                ),
-                overridden_role: format!("{:?}", decision.role),
+                original_role: font_role_classifier.classify(&text, range, &context),
+                overridden_role: decision.role,
                 source: decision.source.clone(),
                 reason: decision.reason.clone(),
             }
@@ -394,16 +391,13 @@ pub fn prepare_width_independent_annotation(
             RoleOverrideInfo {
                 range: decision.range,
                 source_text: text.slice_text(decision.range),
-                original_role: format!(
-                    "{:?}",
-                    if overrides.is_empty() {
-                        font_role_classifier.classify(&text, first_code_point_range, &context)
-                    } else {
-                        QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides)
-                            .classify(&text, first_code_point_range, &context)
-                    }
-                ),
-                overridden_role: format!("{:?}", decision.role),
+                original_role: if overrides.is_empty() {
+                    font_role_classifier.classify(&text, first_code_point_range, &context)
+                } else {
+                    QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides)
+                        .classify(&text, first_code_point_range, &context)
+                },
+                overridden_role: decision.role,
                 source: decision.source.clone(),
                 reason: decision.reason.clone(),
             }
@@ -624,12 +618,12 @@ pub fn build_paragraph_layout_prep(
         },
         measure,
         slack: grid_slack,
-        body_alignment: format!("{:?}", alignment),
+        body_alignment: alignment,
         body_offset: grid_body_offset,
         reason: if grid.enabled {
-            "LineLengthGridQuantization".to_owned()
+            "LineLengthGridQuantization"
         } else {
-            "GridBypassed".to_owned()
+            "GridBypassed"
         },
     };
     let measure_em = measure / font_size;
@@ -812,13 +806,13 @@ pub fn build_paragraph_layout_prep(
             {
                 verbatim_decisions.push(AutoSpaceDecisionInfo {
                     cluster_range: cluster.range,
-                    side: "leading".to_owned(),
-                    boundary_role: "EastAsianSpacing.Wide".to_owned(),
-                    mode: "Disabled".to_owned(),
+                    side: AutoSpaceSide::Leading,
+                    boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+                    mode: AutoSpaceMode::Disabled,
                     characters_affected: 0,
                     reduction_per_char: 0.,
                     total_reduction: 0.,
-                    reason: "VerbatimRangeAutoSpace:east-asian-spacing-W-N-suppressed".to_owned(),
+                    reason: "VerbatimRangeAutoSpace:east-asian-spacing-W-N-suppressed",
                 });
             }
             let mut result = *edge;
@@ -1185,7 +1179,7 @@ pub fn build_paragraph_layout_prep(
     let glue_caps = base_geometry.glue_capacities();
     let gap_ranges: HashSet<TextRange> = auto_space_decisions
         .iter()
-        .filter(|decision| decision.side == "gap")
+        .filter(|decision| decision.side == AutoSpaceSide::Gap)
         .map(|decision| decision.cluster_range)
         .collect();
     let atom_class: HashMap<TextRange, PunctuationClass> =

@@ -1,7 +1,7 @@
 use crate::common::HashMap;
 use crate::core::geometry::TextRange;
 use crate::core::int_range::IntRange;
-use crate::core::layout_model::{AutoSpaceDecisionInfo, Cluster, LineEndReason};
+use crate::core::layout_model::{AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, LineEndReason};
 use crate::core::text_model::{TextWrapMode, WhiteSpaceMode};
 use super::line_optimization::PushInAllocation;
 use super::progressive_break_decisions::{ShrinkOpportunity, ProgressiveBreakOpportunity, ProgressiveBreakTier};
@@ -67,14 +67,13 @@ impl LineMeasurement {
         let by_range: HashMap<_, _> = adjusted.iter().enumerate().map(|(i, c)| (c.range, i)).collect();
         for decision in decisions {
             if let Some(&i) = by_range.get(&decision.cluster_range) {
-                match decision.side.as_str() {
-                    "leading" => result.leading_gap[i] += (-decision.total_reduction).max(0.0),
-                    "trailing" => result.trailing_gap[i] += (-decision.total_reduction).max(0.0),
-                    "gap" => {
+                match decision.side {
+                    AutoSpaceSide::Leading => result.leading_gap[i] += (-decision.total_reduction).max(0.0),
+                    AutoSpaceSide::Trailing => result.trailing_gap[i] += (-decision.total_reduction).max(0.0),
+                    AutoSpaceSide::Gap => {
                         result.leading_gap[i] = adjusted[i].advance;
                         result.trailing_gap[i] = adjusted[i].advance;
                     }
-                    _ => {}
                 }
             }
         }

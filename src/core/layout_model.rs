@@ -4,7 +4,15 @@ use super::font_face::FontFaceId;
 use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;
 use super::text::Text;
-use super::text_model::{DecorationKind, LayoutInput};
+use super::text_model::{
+    DecorationKind, InlineBoxOuterSpacing, LastLineAlignment, LayoutInput, RubyLineHeightMode,
+};
+use crate::clreq::clreq_profile::{HangingPunctuationStyle, KinsokuLevel, PunctuationClass};
+use crate::clreq::clreq_profile::AutoSpaceMode;
+use crate::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
+use crate::font::font_policy::FontRole;
+use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
+use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cluster {
@@ -626,16 +634,17 @@ pub struct BreakOpportunityDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub break_offsets: Vec<ScalarOffset>,
-    pub reason: String,
+    /// 内置标签，取值有限。
+    pub reason: &'static str,
     /// 当此 decision 属于 progressive break span 时的有序 policy tier。
-    pub tier: Option<String>,
+    pub tier: Option<ProgressiveBreakTier>,
 }
 impl BreakOpportunityDecisionInfo {
     pub fn new(
         range: TextRange,
         source_text: Text,
         break_offsets: Vec<ScalarOffset>,
-        reason: String,
+        reason: &'static str,
     ) -> Self {
         Self {
             range,
@@ -649,8 +658,8 @@ impl BreakOpportunityDecisionInfo {
         range: TextRange,
         source_text: Text,
         break_offsets: Vec<ScalarOffset>,
-        reason: String,
-        tier: Option<String>,
+        reason: &'static str,
+        tier: Option<ProgressiveBreakTier>,
     ) -> Self {
         Self {
             range,
@@ -662,13 +671,115 @@ impl BreakOpportunityDecisionInfo {
     }
 }
 
+/// progressive technical span 内被拒绝 tier 的紧凑集合。
+///
+/// 5 个 tier 用 `u8` 位表示，使原因相等比较退化为整数比较且不分配。
+/// 迭代顺序按 `ProgressiveBreakTier::priority()` 升序，与既有 dump 文本一致。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RejectedTierSet(u8);
+
+impl RejectedTierSet {
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn insert(&mut self, tier: ProgressiveBreakTier) {
+        self.0 |= 1 << tier.priority();
+    }
+
+    pub fn contains(self, tier: ProgressiveBreakTier) -> bool {
+        self.0 & (1 << tier.priority()) != 0
+    }
+
+    /// 从 `HashSet` 转换；空集合返回 `None`，以便用 `Option` 表达「未被拒绝」。
+    pub fn from_tiers(tiers: impl IntoIterator<Item = ProgressiveBreakTier>) -> Option<Self> {
+        let mut set = Self::default();
+        for tier in tiers {
+            set.insert(tier);
+        }
+        (!set.is_empty()).then_some(set)
+    }
+
+    /// 按 priority 升序输出 tier，供 dump 拼成原有文本。
+    pub fn ordered(self) -> impl Iterator<Item = ProgressiveBreakTier> {
+        const ORDER: [ProgressiveBreakTier; 5] = [
+            ProgressiveBreakTier::Whitespace,
+            ProgressiveBreakTier::Structural,
+            ProgressiveBreakTier::Syllable,
+            ProgressiveBreakTier::WholeToken,
+            ProgressiveBreakTier::Emergency,
+        ];
+        ORDER.into_iter().filter(move |tier| self.contains(*tier))
+    }
+}
+
+/// 非词典形式的强 token 分类：命中后该 token 不参与 syllable 分类。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StrongNonLexicalReason {
+    LongRepeatedLetterRun,
+    LongHexIdentityRun,
+    LongMixedAlphaNumericIdentifier,
+}
+
+impl StrongNonLexicalReason {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::LongRepeatedLetterRun => "LongRepeatedLetterRun",
+            Self::LongHexIdentityRun => "LongHexIdentityRun",
+            Self::LongMixedAlphaNumericIdentifier => "LongMixedAlphaNumericIdentifier",
+        }
+    }
+}
+
+/// 一个 source range 成为 emergency tracking eligible 的原因。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmergencyTrackingReason {
+    /// progressive technical span 内的整体候选。
+    ProgressiveTechnicalSpan,
+    /// 当前行的技术 tier 被拒绝，因而改走 emergency。
+    CurrentLineTechnicalTierRejection(RejectedTierSet),
+    /// 非词典形式的强 token。
+    StrongNonLexical(StrongNonLexicalReason),
+}
+
+impl EmergencyTrackingReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> String {
+        match self {
+            Self::ProgressiveTechnicalSpan => "ProgressiveTechnicalSpan".to_owned(),
+            Self::StrongNonLexical(reason) => reason.name().to_owned(),
+            Self::CurrentLineTechnicalTierRejection(tiers) => {
+                let mut out = String::from("CurrentLineTechnicalTierRejection:");
+                for (index, tier) in tiers.ordered().enumerate() {
+                    if index > 0 {
+                        out.push('+');
+                    }
+                    out.push_str(tier_name(tier));
+                }
+                out
+            }
+        }
+    }
+}
+
+/// 与 `format!("{:?}", tier)` 等价的固定名称，避免依赖 `Debug` 格式。
+pub fn tier_name(tier: ProgressiveBreakTier) -> &'static str {
+    match tier {
+        ProgressiveBreakTier::Whitespace => "Whitespace",
+        ProgressiveBreakTier::Structural => "Structural",
+        ProgressiveBreakTier::Syllable => "Syllable",
+        ProgressiveBreakTier::WholeToken => "WholeToken",
+        ProgressiveBreakTier::Emergency => "Emergency",
+    }
+}
+
 /// 显式允许以 grapheme-safe tracking 吸收原本无法填满的行 deficit 的 source range。普通 Western prose
 /// 不在此列表中，因而默认绝不成为 tracking-eligible。
 #[derive(Clone, Debug, PartialEq)]
 pub struct EmergencyTrackingEligibilityDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
-    pub reason: String,
+    pub reason: EmergencyTrackingReason,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -676,7 +787,7 @@ pub struct InlineBoxDecisionInfo {
     pub range: TextRange,
     pub inline_start: f32,
     pub inline_end: f32,
-    pub outer_spacing: String,
+    pub outer_spacing: InlineBoxOuterSpacing,
     pub first_cluster_index: i32,
     pub last_cluster_index: i32,
     /// 内置常量标签，不随输入变化。
@@ -687,7 +798,7 @@ impl InlineBoxDecisionInfo {
         range: TextRange,
         inline_start: f32,
         inline_end: f32,
-        outer_spacing: String,
+        outer_spacing: InlineBoxOuterSpacing,
         first_cluster_index: i32,
         last_cluster_index: i32,
     ) -> Self {
@@ -913,9 +1024,10 @@ pub struct LineLengthGridDecisionInfo {
     pub cells: i32,
     pub measure: f32,
     pub slack: f32,
-    pub body_alignment: String,
+    pub body_alignment: LastLineAlignment,
     pub body_offset: f32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 
 /// 段落解析出的 kinsoku level + hanging style 及其原因（`MeasureAdaptiveKinsoku` 按 measure 的字数决策；
@@ -923,8 +1035,9 @@ pub struct LineLengthGridDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct KinsokuDecisionInfo {
     pub measure_em: f32,
-    pub level: String,
-    pub hanging: String,
+    pub level: KinsokuLevel,
+    pub hanging: HangingPunctuationStyle,
+    /// 内置常量标签或自适应解析说明。
     pub reason: String,
 }
 
@@ -1032,7 +1145,7 @@ pub struct LineSpacingDecisionInfo {
 /// 按 `mode` 改变 line box；既有 line height 容纳时 `expanded_line_indices` 为空。
 #[derive(Clone, Debug, PartialEq)]
 pub struct RubyLineHeightDecisionInfo {
-    pub mode: String,
+    pub mode: RubyLineHeightMode,
     pub base_line_height: f32,
     pub base_face_height: f32,
     pub ruby_extent: f32,
@@ -1420,16 +1533,48 @@ pub struct LineWhiteSpaceDecisionInfo {
     pub adjustment: crate::layout::white_space::LineWhiteSpaceAdjustment,
 }
 
+/// autospace 作用在 cluster 的哪一侧。
+///
+/// 含 `Gap` 三态，不能等同于仅有前后的 `GlueSide`。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutoSpaceSide {
+    Leading,
+    Trailing,
+    /// 替换一个窄空白字符本身的宽度。
+    Gap,
+}
+
+/// autospace 决策所依据的边界类别。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AutoSpaceBoundaryRole {
+    EastAsianSpacingWide,
+    InlineBoxNarrow,
+    /// 附着在行内对象前方的虚拟 gap。
+    InlineAttachmentPrevious,
+}
+
+impl AutoSpaceBoundaryRole {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::EastAsianSpacingWide => "EastAsianSpacing.Wide",
+            Self::InlineBoxNarrow => "InlineBox.Narrow",
+            Self::InlineAttachmentPrevious => "InlineAttachment.Previous",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AutoSpaceDecisionInfo {
     pub cluster_range: TextRange,
-    pub side: String,
-    pub boundary_role: String,
-    pub mode: String,
+    pub side: AutoSpaceSide,
+    pub boundary_role: AutoSpaceBoundaryRole,
+    pub mode: AutoSpaceMode,
     pub characters_affected: i32,
     pub reduction_per_char: f32,
     pub total_reduction: f32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1437,10 +1582,12 @@ pub struct FontDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub display_text: Text,
-    pub role: String,
+    pub role: FontRole,
     pub candidate_key: String,
     pub resolved_face: Option<FontFaceId>,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
+    /// 替换策略与 rollback 原因的组合。码点标签可由 `source_text`/`display_text` 在 dump 时生成。
     pub substitution_reason: String,
 }
 
@@ -1544,17 +1691,18 @@ impl ShapingDecisionInfoBuilder {
 pub struct MetricDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
-    pub role: String,
+    pub role: FontRole,
     pub font_face: FontFaceId,
     pub raw_ascent: f32,
     pub raw_descent: f32,
     pub raw_leading: f32,
-    pub raw_source: String,
+    pub raw_source: FontMetricSource,
     pub layout_ascent: f32,
     pub layout_descent: f32,
-    pub baseline_class: String,
-    pub metric_box: String,
-    pub layout_source: String,
+    pub baseline_class: BaselineClass,
+    pub metric_box: MetricBox,
+    pub layout_source: FontMetricSource,
+    /// 规范化分支的具名原因。来源是可替换的 `FontMetricsNormalizer`，因此保留文本而不封闭成枚举。
     pub reason: String,
 }
 
@@ -1562,12 +1710,12 @@ pub struct MetricDecisionInfo {
 pub struct PunctuationDecisionInfo {
     pub range: TextRange,
     pub ch: char,
-    pub punctuation_class: String,
+    pub punctuation_class: PunctuationClass,
     pub advance: f32,
     pub body_width: f32,
     pub leading_glue_natural: f32,
     pub trailing_glue_natural: f32,
-    pub anchor: String,
+    pub anchor: PunctuationAnchor,
     pub ink_bounds: Option<Rect>,
     pub geometry_source: String,
     pub policy_body_floor: f32,
@@ -1598,12 +1746,12 @@ impl PunctuationDecisionInfo {
     pub fn builder(
         range: TextRange,
         ch: char,
-        punctuation_class: String,
+        punctuation_class: PunctuationClass,
         advance: f32,
         body_width: f32,
         leading_glue_natural: f32,
         trailing_glue_natural: f32,
-        anchor: String,
+        anchor: PunctuationAnchor,
     ) -> PunctuationDecisionInfoBuilder {
         PunctuationDecisionInfoBuilder {
             decision: Self {
@@ -1801,8 +1949,9 @@ pub struct SpacingDecisionInfo {
 pub struct RoleOverrideInfo {
     pub range: TextRange,
     pub source_text: Text,
-    pub original_role: String,
-    pub overridden_role: String,
+    pub original_role: FontRole,
+    pub overridden_role: FontRole,
+    /// 解析规则的具名来源；可能来自可扩展 resolver。
     pub source: String,
     pub reason: String,
 }
@@ -2033,7 +2182,7 @@ pub struct JustificationDecisionInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct JustificationAllocationInfo {
     pub cluster_range: TextRange,
-    pub kind: String,
+    pub kind: GlueKind,
     pub priority: i32,
     pub delta: f32,
     pub reason: String,

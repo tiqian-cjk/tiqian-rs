@@ -4,7 +4,7 @@ use crate::common::{HashMap, HashSet};
 
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::int_range::IntRange;
-use super::super::core::layout_model::Cluster;
+use super::super::core::layout_model::{Cluster, EmergencyTrackingReason};
 use super::super::core::text_model::{
     InlineObjectPreferredStretch, InlineObjectPreferredStretchKind,
 };
@@ -42,8 +42,64 @@ pub struct JustificationRequest<'a> {
     pub preferred_inline_object_boundary_after_clusters:
         &'a HashMap<i32, InlineObjectPreferredStretch>,
     pub technical_boundary_after_clusters: &'a HashMap<i32, ProgressiveBreakTier>,
-    pub emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
-    pub preferred_emergency_tracking_boundary_after_clusters: &'a HashMap<i32, String>,
+    pub emergency_tracking_boundary_after_clusters: &'a HashMap<i32, EmergencyTrackingReason>,
+    pub preferred_emergency_tracking_boundary_after_clusters:
+        &'a HashMap<i32, EmergencyTrackingReason>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JustificationReason {
+    /// attached inline 虚拟自动间距边界。
+    AttachedInlineVirtualAutoSpace,
+    /// 西文括号与 CJK 之间的 inter-char 边界。
+    WesternBracketCjkInterChar,
+    /// attached inline 虚拟边界两侧的 inter-char 伸展。
+    AttachedInlineVirtualInterChar,
+    /// 行内对象 preferred stretch 的子类，与阶段对应。
+    InlineObjectPreferredStretch(InlineObjectPreferredStretchKind),
+    /// 当前行已选 emergency technical break 时的首选 tracking 边界。
+    TerminalTechnicalEmergencyTracking(EmergencyTrackingReason),
+    /// 普通的 emergency grapheme tracking 边界。
+    EmergencyGraphemeTracking(EmergencyTrackingReason),
+}
+
+impl JustificationReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> String {
+        match self {
+            Self::AttachedInlineVirtualAutoSpace => {
+                "AttachedInlineVirtualAutoSpace".to_owned()
+            }
+            Self::WesternBracketCjkInterChar => "WesternBracketCjkInterChar".to_owned(),
+            Self::AttachedInlineVirtualInterChar => {
+                "AttachedInlineVirtualInterChar".to_owned()
+            }
+            Self::InlineObjectPreferredStretch(kind) => preferred_reason(kind).to_owned(),
+            Self::TerminalTechnicalEmergencyTracking(reason) => {
+                format!("TerminalTechnicalEmergencyTracking:{}", reason.name())
+            }
+            Self::EmergencyGraphemeTracking(reason) => {
+                format!("EmergencyGraphemeTracking:{}", reason.name())
+            }
+        }
+    }
+}
+
+/// 最终 allocation 的原因：调用点显式给出的修饰，或整阶段默认。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JustificationAllocationReason {
+    Stage(JustificationStage),
+    Opportunity(JustificationReason),
+}
+
+impl JustificationAllocationReason {
+    /// dump 使用的原有文本。
+    pub fn name(self) -> String {
+        match self {
+            Self::Stage(stage) => stage.name().to_owned(),
+            Self::Opportunity(reason) => reason.name(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,7 +108,7 @@ pub struct JustificationOpportunity {
     pub kind: GlueKind,
     pub priority: i32,
     pub capacity: f32,
-    pub reason: Option<String>,
+    pub reason: Option<JustificationReason>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct JustificationAllocation {
@@ -60,8 +116,49 @@ pub struct JustificationAllocation {
     pub kind: GlueKind,
     pub priority: i32,
     pub delta: f32,
-    pub reason: String,
+    pub reason: JustificationAllocationReason,
 }
+/// justifier 的阶段身份。
+///
+/// 阶段既用于 debug 说明，也决定哪些阶段容量视为无穷（`TerminalTechnicalEmergencyTracking`、
+/// `CjkInterChar`、`EmergencyGraphemeTracking`），因此必须是可匹配的类型而不是文本。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JustificationStage {
+    ProgressiveTechnicalWhitespaceStretch,
+    WordSpace,
+    CjkLatinSpace,
+    /// 行内对象 preferred stretch 的三个子阶段。
+    InlineObjectPreferredStretch(InlineObjectPreferredStretchKind),
+    TerminalTechnicalEmergencyTracking,
+    CjkInterChar,
+    EmergencyGraphemeTracking,
+}
+
+impl JustificationStage {
+    /// 该阶段的容量是否视为无穷。
+    pub fn has_unbounded_capacity(self) -> bool {
+        matches!(
+            self,
+            Self::TerminalTechnicalEmergencyTracking
+                | Self::CjkInterChar
+                | Self::EmergencyGraphemeTracking
+        )
+    }
+
+    /// debug 输出使用的固定名称。
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ProgressiveTechnicalWhitespaceStretch => "ProgressiveTechnicalWhitespaceStretch",
+            Self::WordSpace => "WordSpace",
+            Self::CjkLatinSpace => "CjkLatinSpace",
+            Self::InlineObjectPreferredStretch(kind) => preferred_reason(kind),
+            Self::TerminalTechnicalEmergencyTracking => "TerminalTechnicalEmergencyTracking",
+            Self::CjkInterChar => "CjkInterChar",
+            Self::EmergencyGraphemeTracking => "EmergencyGraphemeTracking",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct JustificationPlan {
     pub line_cluster_range: IntRange,
@@ -75,7 +172,7 @@ pub struct JustificationStages {
     pub line_cluster_range: IntRange,
     pub deficit_before: f32,
     pub fallback_reason: Option<String>,
-    stages: Vec<(Vec<JustificationOpportunity>, String)>,
+    stages: Vec<(Vec<JustificationOpportunity>, JustificationStage)>,
 }
 
 impl JustificationStages {
@@ -133,7 +230,7 @@ impl JustificationStages {
     pub fn plan(&self, budget: f32) -> JustificationPlan {
         let mut remaining = budget.max(0.0);
         let mut allocations = Vec::new();
-        for (opportunities, stage_reason) in &self.stages {
+        for (opportunities, stage) in &self.stages {
             if remaining <= 0.0 {
                 break;
             }
@@ -150,7 +247,10 @@ impl JustificationStages {
                             kind: opportunity.kind,
                             priority: opportunity.priority,
                             delta: share,
-                            reason: opportunity.reason.clone().unwrap_or_else(|| stage_reason.clone()),
+                            reason: opportunity
+                                .reason
+                                .map(JustificationAllocationReason::Opportunity)
+                                .unwrap_or(JustificationAllocationReason::Stage(*stage)),
                         });
                     }
                 }
@@ -174,7 +274,10 @@ impl JustificationStages {
                         kind: opportunity.kind,
                         priority: opportunity.priority,
                         delta,
-                        reason: opportunity.reason.clone().unwrap_or_else(|| stage_reason.clone()),
+                        reason: opportunity
+                            .reason
+                            .map(JustificationAllocationReason::Opportunity)
+                            .unwrap_or(JustificationAllocationReason::Stage(*stage)),
                     });
                 }
             }
@@ -233,18 +336,13 @@ impl Justifier {
         let mut stages = Vec::new();
         let plan = self.justify_with_allocator(
             request,
-            |remaining, mut opportunities, reason, _| {
-                if matches!(
-                    reason,
-                    "TerminalTechnicalEmergencyTracking"
-                        | "CjkInterChar"
-                        | "EmergencyGraphemeTracking"
-                ) {
+            |remaining, mut opportunities, stage, _| {
+                if stage.has_unbounded_capacity() {
                     for opportunity in &mut opportunities {
                         opportunity.capacity = f32::INFINITY;
                     }
                 }
-                stages.push((opportunities, reason.to_owned()));
+                stages.push((opportunities, stage));
                 remaining
             },
         );
@@ -262,7 +360,7 @@ impl Justifier {
         mut allocate: impl FnMut(
             f32,
             Vec<JustificationOpportunity>,
-            &str,
+            JustificationStage,
             &mut Vec<JustificationAllocation>,
         ) -> f32,
     ) -> JustificationPlan {
@@ -319,7 +417,7 @@ impl Justifier {
         remaining = allocate(
             remaining,
             technical,
-            "ProgressiveTechnicalWhitespaceStretch",
+            JustificationStage::ProgressiveTechnicalWhitespaceStretch,
             &mut allocations,
         );
         if remaining <= 0.0 {
@@ -354,7 +452,12 @@ impl Justifier {
                 });
             }
         }
-        remaining = allocate(remaining, word_spaces, "WordSpace", &mut allocations);
+        remaining = allocate(
+            remaining,
+            word_spaces,
+            JustificationStage::WordSpace,
+            &mut allocations,
+        );
         if remaining <= 0.0 {
             return self.finalize(
                 request.line_cluster_range,
@@ -416,7 +519,7 @@ impl Justifier {
                     kind: GlueKind::CjkLatinSpace,
                     priority: 1,
                     capacity: cap,
-                    reason: Some("AttachedInlineVirtualAutoSpace".to_owned()),
+                    reason: Some(JustificationReason::AttachedInlineVirtualAutoSpace),
                 });
             }
             for index in request.line_cluster_range {
@@ -441,7 +544,12 @@ impl Justifier {
                     });
                 }
             }
-            remaining = allocate(remaining, sino, "CjkLatinSpace", &mut allocations);
+            remaining = allocate(
+                remaining,
+                sino,
+                JustificationStage::CjkLatinSpace,
+                &mut allocations,
+            );
             if remaining <= 0.0 {
                 return self.finalize(
                     request.line_cluster_range,
@@ -481,7 +589,7 @@ impl Justifier {
             remaining = allocate(
                 remaining,
                 opportunities,
-                preferred_reason(kind),
+                JustificationStage::InlineObjectPreferredStretch(kind),
                 &mut allocations,
             );
             if remaining <= 0.0 {
@@ -514,8 +622,9 @@ impl Justifier {
                     .preferred_emergency_tracking_boundary_after_clusters
                     .get(&opportunity.target_cluster_index)
                 {
-                    opportunity.reason =
-                        Some(format!("TerminalTechnicalEmergencyTracking:{reason}"));
+                    opportunity.reason = Some(
+                        JustificationReason::TerminalTechnicalEmergencyTracking(*reason),
+                    );
                 }
                 opportunity
             })
@@ -523,7 +632,7 @@ impl Justifier {
         remaining = allocate(
             remaining,
             terminal,
-            "TerminalTechnicalEmergencyTracking",
+            JustificationStage::TerminalTechnicalEmergencyTracking,
             &mut allocations,
         );
         if remaining <= 0.0 {
@@ -601,7 +710,7 @@ impl Justifier {
             GlueKind::CjkInterChar,
             3,
             remaining,
-            Some("WesternBracketCjkInterChar"),
+            Some(JustificationReason::WesternBracketCjkInterChar),
             |left, right| {
                 request
                     .western_bracket_cjk_inter_char_boundary_after_clusters
@@ -620,7 +729,7 @@ impl Justifier {
             GlueKind::CjkInterChar,
             3,
             remaining,
-            Some("AttachedInlineVirtualInterChar"),
+            Some(JustificationReason::AttachedInlineVirtualInterChar),
             |left, right| {
                 let Some(previous) = request
                     .attached_inline_virtual_boundary_after_clusters
@@ -684,7 +793,7 @@ impl Justifier {
         remaining = allocate(
             remaining,
             [uniform_text, bracket, attached, object, spaces].concat(),
-            "CjkInterChar",
+            JustificationStage::CjkInterChar,
             &mut allocations,
         );
         if remaining <= 0.0 {
@@ -719,7 +828,8 @@ impl Justifier {
                     .emergency_tracking_boundary_after_clusters
                     .get(&opportunity.target_cluster_index)
                 {
-                    opportunity.reason = Some(format!("EmergencyGraphemeTracking:{reason}"));
+                    opportunity.reason =
+                        Some(JustificationReason::EmergencyGraphemeTracking(*reason));
                 }
                 opportunity
             })
@@ -727,7 +837,7 @@ impl Justifier {
         remaining = allocate(
             remaining,
             emergency,
-            "EmergencyGraphemeTracking",
+            JustificationStage::EmergencyGraphemeTracking,
             &mut allocations,
         );
         self.finalize(
@@ -813,7 +923,7 @@ impl Justifier {
         kind: GlueKind,
         priority: i32,
         capacity: f32,
-        reason: Option<&str>,
+        reason: Option<JustificationReason>,
         predicate: impl Fn(i32, i32) -> bool,
     ) -> Vec<JustificationOpportunity> {
         if capacity <= 0.0 || request.line_cluster_range.is_empty() {
@@ -826,7 +936,7 @@ impl Justifier {
                 kind,
                 priority,
                 capacity,
-                reason: reason.map(str::to_owned),
+                reason,
             })
             .collect()
     }
@@ -835,7 +945,7 @@ impl Justifier {
         &self,
         deficit: f32,
         opportunities: Vec<JustificationOpportunity>,
-        reason: &str,
+        stage: JustificationStage,
         allocations: &mut Vec<JustificationAllocation>,
     ) -> f32 {
         if deficit <= 0.0 || opportunities.is_empty() {
@@ -858,7 +968,10 @@ impl Justifier {
                         kind: opportunity.kind,
                         priority: opportunity.priority,
                         delta,
-                        reason: opportunity.reason.unwrap_or_else(|| reason.to_owned()),
+                        reason: opportunity
+                            .reason
+                            .map(JustificationAllocationReason::Opportunity)
+                            .unwrap_or(JustificationAllocationReason::Stage(stage)),
                     });
                 }
             }
@@ -871,7 +984,10 @@ impl Justifier {
                         kind: opportunity.kind,
                         priority: opportunity.priority,
                         delta: opportunity.capacity,
-                        reason: opportunity.reason.unwrap_or_else(|| reason.to_owned()),
+                        reason: opportunity
+                            .reason
+                            .map(JustificationAllocationReason::Opportunity)
+                            .unwrap_or(JustificationAllocationReason::Stage(stage)),
                     });
                 }
             }

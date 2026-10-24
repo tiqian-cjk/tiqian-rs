@@ -13,8 +13,8 @@ use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
-    EmergencyTrackingEligibilityDecisionInfo, Glyph, MandatoryBreakDecisionInfo, RoleOverrideInfo,
-    ShapingDecisionInfo, ZeroWidthBreakDecisionInfo,
+    EmergencyTrackingEligibilityDecisionInfo, EmergencyTrackingReason, Glyph,
+    MandatoryBreakDecisionInfo, RoleOverrideInfo, ShapingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -145,7 +145,7 @@ pub struct LineBreakPlanningStageResult {
     pub no_stretch_boundary_clusters: HashSet<i32>,
     pub no_stretch_boundary_after_clusters: HashSet<i32>,
     pub technical_boundary_after_clusters: HashMap<i32, ProgressiveBreakTier>,
-    pub emergency_tracking_boundary_after_clusters: HashMap<i32, String>,
+    pub emergency_tracking_boundary_after_clusters: HashMap<i32, EmergencyTrackingReason>,
     pub progressive_break_opportunities: HashMap<i32, ProgressiveBreakOpportunity>,
     pub line_solution: super::line_optimization::LineSolution,
 }
@@ -319,8 +319,8 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         };
     let kinsoku_decision = super::super::core::layout_model::KinsokuDecisionInfo {
         measure_em: prep.measure_em,
-        level: format!("{:?}", prep.resolved_kinsoku.level),
-        hanging: format!("{:?}", prep.resolved_kinsoku.hanging),
+        level: prep.resolved_kinsoku.level,
+        hanging: prep.resolved_kinsoku.hanging,
         reason: prep.resolved_kinsoku.reason.clone(),
     };
     let hangable_clusters: HashSet<_> = match prep.resolved_kinsoku.hanging {

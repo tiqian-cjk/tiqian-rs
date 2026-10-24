@@ -5,8 +5,9 @@ use super::super::clreq::clreq_profile::{
 };
 use super::super::core::geometry::{ScalarOffset, TextRange, text_range};
 use super::super::core::layout_model::{
-    BreakOpportunityDecisionInfo, Cluster, EmergencyTrackingEligibilityDecisionInfo, Glyph,
-    ShapingDecisionInfo, SyntheticClusterKind,
+    BreakOpportunityDecisionInfo, Cluster, EmergencyTrackingEligibilityDecisionInfo,
+    EmergencyTrackingReason, Glyph, RejectedTierSet, ShapingDecisionInfo, StrongNonLexicalReason,
+    SyntheticClusterKind,
 };
 use super::super::core::source_interaction_boundaries::source_grapheme_boundaries;
 use super::super::core::text::Text;
@@ -320,11 +321,11 @@ pub fn shape_paragraph(
                                     .get(&span.range)
                                     .is_some_and(|s| !s.is_empty())
                             {
-                                "CurrentLineTechnicalEmergencyBreak".to_owned()
+                                "CurrentLineTechnicalEmergencyBreak"
                             } else {
-                                "ProgressiveTechnicalBreak".to_owned()
+                                "ProgressiveTechnicalBreak"
                             },
-                            Some(format!("{:?}", tier)),
+                            Some(tier),
                         ));
                     }
                     for offset in offsets {
@@ -364,59 +365,35 @@ pub fn shape_paragraph(
                         word.clone(),
                         vec![segment.start()],
                         if tier == ProgressiveBreakTier::Whitespace {
-                            "ProgressiveTechnicalWhitespaceBreak".to_owned()
+                            "ProgressiveTechnicalWhitespaceBreak"
                         } else {
-                            "ProgressiveTechnicalWholeTokenWrap".to_owned()
+                            "ProgressiveTechnicalWholeTokenWrap"
                         },
-                        Some(format!("{:?}", tier)),
+                        Some(tier),
                     ));
                 }
-                if !technical_emergency.is_empty()
-                    && !emergency.iter().any(
+                if !technical_emergency.is_empty() {
+                    // 一次构造原因，同时用于去重比较与 decision 记录；按结构比较而非文本。
+                    let reason = match rejected_set_for_span(
+                        rejected_technical_tiers_by_span,
+                        span.range,
+                    ) {
+                        Some(tiers) => {
+                            EmergencyTrackingReason::CurrentLineTechnicalTierRejection(tiers)
+                        }
+                        None => EmergencyTrackingReason::ProgressiveTechnicalSpan,
+                    };
+                    if !emergency.iter().any(
                         |decision: &EmergencyTrackingEligibilityDecisionInfo| {
-                            decision.range == span.range
-                                && decision.reason
-                                    == if let Some(rejected) = rejected_technical_tiers_by_span
-                                        .get(&span.range)
-                                        .filter(|it| !it.is_empty())
-                                    {
-                                        let mut names: Vec<_> = rejected.iter().copied().collect();
-                                        names.sort_by_key(|tier| tier.priority());
-                                        format!(
-                                            "CurrentLineTechnicalTierRejection:{}",
-                                            names
-                                                .iter()
-                                                .map(|tier| format!("{:?}", tier))
-                                                .collect::<Vec<_>>()
-                                                .join("+")
-                                        )
-                                    } else {
-                                        "ProgressiveTechnicalSpan".to_owned()
-                                    }
+                            decision.range == span.range && decision.reason == reason
                         },
-                    )
-                {
-                    emergency.push(EmergencyTrackingEligibilityDecisionInfo {
-                        range: span.range,
-                        source_text: text.slice_text(span.range),
-                        reason: if let Some(rejected) = rejected_technical_tiers_by_span
-                            .get(&span.range)
-                            .filter(|it| !it.is_empty())
-                        {
-                            let mut names: Vec<_> = rejected.iter().copied().collect();
-                            names.sort_by_key(|tier| tier.priority());
-                            format!(
-                                "CurrentLineTechnicalTierRejection:{}",
-                                names
-                                    .iter()
-                                    .map(|tier| format!("{:?}", tier))
-                                    .collect::<Vec<_>>()
-                                    .join("+")
-                            )
-                        } else {
-                            "ProgressiveTechnicalSpan".to_owned()
-                        },
-                    })
+                    ) {
+                        emergency.push(EmergencyTrackingEligibilityDecisionInfo {
+                            range: span.range,
+                            source_text: text.slice_text(span.range),
+                            reason,
+                        })
+                    }
                 }
             }
             let clean = if progressive_span.is_some() {
@@ -452,7 +429,7 @@ pub fn shape_paragraph(
                             .into_iter()
                             .map(|offset| segment.start() + offset)
                             .collect(),
-                        "BibliographicNumericLocatorBreak".to_owned(),
+                        "BibliographicNumericLocatorBreak",
                     ));
                 }
             }
@@ -499,6 +476,7 @@ pub fn shape_paragraph(
                         let piece = text.slice_text(TextRange::new(pair[0], pair[1]));
                         if let Some(reason) = strong_non_lexical_reason(&piece) {
                             let range = TextRange::new(pair[0], pair[1]);
+                            let reason = EmergencyTrackingReason::StrongNonLexical(reason);
                             if !emergency.iter().any(
                                 |decision: &EmergencyTrackingEligibilityDecisionInfo| {
                                     decision.range == range && decision.reason == reason
@@ -507,7 +485,7 @@ pub fn shape_paragraph(
                                 emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                                     range,
                                     source_text: piece,
-                                    reason: reason.to_owned(),
+                                    reason,
                                 });
                             }
                         }
@@ -987,7 +965,7 @@ fn bibliographic_numeric_locator_break_offsets(text: &Text) -> Vec<i32> {
     }
     vec![open as i32, (colon + 1) as i32]
 }
-fn strong_non_lexical_reason(text: &Text) -> Option<&'static str> {
+fn strong_non_lexical_reason(text: &Text) -> Option<StrongNonLexicalReason> {
     let chars: Vec<_> = text.chars().collect();
     if (text.scalar_len().value() as usize) < EMERGENCY_TRACKING_TOKEN_MIN_LENGTH {
         return None;
@@ -997,13 +975,13 @@ fn strong_non_lexical_reason(text: &Text) -> Option<&'static str> {
             .iter()
             .all(|c| c.to_lowercase().eq(chars[0].to_lowercase()))
     {
-        Some("LongRepeatedLetterRun")
+        Some(StrongNonLexicalReason::LongRepeatedLetterRun)
     } else if chars.iter().any(|c| c.is_alphabetic())
         && chars
             .iter()
             .all(|c| is_decimal_digit(*c) || matches!(c.to_ascii_lowercase(), 'a'..='f'))
     {
-        Some("LongHexIdentityRun")
+        Some(StrongNonLexicalReason::LongHexIdentityRun)
     } else {
         let transitions = chars
             .windows(2)
@@ -1012,8 +990,16 @@ fn strong_non_lexical_reason(text: &Text) -> Option<&'static str> {
                     || (is_decimal_digit(p[0]) && p[1].is_alphabetic())
             })
             .count();
-        (transitions >= 2).then_some("LongMixedAlphaNumericIdentifier")
+        (transitions >= 2).then_some(StrongNonLexicalReason::LongMixedAlphaNumericIdentifier)
     }
+}
+
+/// 取出某个 span 被拒绝的 tier 集合；为空或缺失时返回 `None`。
+fn rejected_set_for_span(
+    rejected: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
+    span: TextRange,
+) -> Option<RejectedTierSet> {
+    RejectedTierSet::from_tiers(rejected.get(&span)?.iter().copied())
 }
 fn is_decimal_digit(character: char) -> bool {
     CodePointMapData::<GeneralCategory>::new().get(character) == GeneralCategory::DecimalNumber

@@ -7,7 +7,8 @@ use super::super::clreq::clreq_profile::{
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::geometry::{Rect, TextRange};
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, Cluster, ContextualKinsokuDecisionInfo, Glyph, InlineBoxDecisionInfo,
+    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
+    ContextualKinsokuDecisionInfo, Glyph, InlineBoxDecisionInfo,
 };
 use super::super::core::text_model::{InlineAttachment, InlineBoxSpan};
 use super::super::font::font_policy::FontRole;
@@ -442,13 +443,13 @@ pub fn apply_auto_space_policy(
                 let reduction = c.advance - gap;
                 decisions.push(AutoSpaceDecisionInfo {
                     cluster_range: c.range,
-                    side: "gap".to_owned(),
-                    boundary_role: "EastAsianSpacing.Wide".to_owned(),
-                    mode: "Replace".to_owned(),
+                    side: AutoSpaceSide::Gap,
+                    boundary_role: AutoSpaceBoundaryRole::EastAsianSpacingWide,
+                    mode: AutoSpaceMode::Replace,
                     characters_affected: 1,
                     reduction_per_char: reduction,
                     total_reduction: reduction,
-                    reason: "TextAutoSpaceReplace:east-asian-spacing-W-space-N".to_owned(),
+                    reason: "TextAutoSpaceReplace:east-asian-spacing-W-space-N",
                 });
                 let mut x = c.clone();
                 x.advance = gap;
@@ -464,11 +465,11 @@ pub fn apply_auto_space_policy(
                     add += gap;
                     decisions.push(auto_decision(
                         c,
-                        "leading",
+                        AutoSpaceSide::Leading,
                         if narrow_leading.contains(&(i as i32)) {
-                            "InlineBox.Narrow"
+                            AutoSpaceBoundaryRole::InlineBoxNarrow
                         } else {
-                            "EastAsianSpacing.Wide"
+                            AutoSpaceBoundaryRole::EastAsianSpacingWide
                         },
                         if narrow_leading.contains(&(i as i32)) {
                             "InlineBoxOuterAutoSpace:leading-W-N"
@@ -487,13 +488,13 @@ pub fn apply_auto_space_policy(
                     add += gap;
                     decisions.push(auto_decision(
                         c,
-                        "trailing",
+                        AutoSpaceSide::Trailing,
                         if narrow_trailing.contains(&(i as i32)) {
-                            "InlineBox.Narrow"
+                            AutoSpaceBoundaryRole::InlineBoxNarrow
                         } else if virtual_gap[i] {
-                            "InlineAttachment.Previous"
+                            AutoSpaceBoundaryRole::InlineAttachmentPrevious
                         } else {
-                            "EastAsianSpacing.Wide"
+                            AutoSpaceBoundaryRole::EastAsianSpacingWide
                         },
                         if narrow_trailing.contains(&(i as i32)) {
                             "InlineBoxOuterAutoSpace:trailing-N-W"
@@ -614,7 +615,7 @@ pub fn apply_inline_box_spans(
             range: s.range,
             inline_start,
             inline_end,
-            outer_spacing: format!("{:?}", s.outer_spacing),
+            outer_spacing: s.outer_spacing,
             first_cluster_index: f,
             last_cluster_index: l,
             reason: "InlineBoxBoundaryAdvance",
@@ -699,20 +700,20 @@ fn spacing_edges_at(edges: &[EastAsianSpacingEdges], index: usize) -> EastAsianS
 }
 fn auto_decision(
     c: &Cluster,
-    side: &str,
-    role: &str,
-    reason: &str,
+    side: AutoSpaceSide,
+    role: AutoSpaceBoundaryRole,
+    reason: &'static str,
     total: f32,
 ) -> AutoSpaceDecisionInfo {
     AutoSpaceDecisionInfo {
         cluster_range: c.range,
-        side: side.to_owned(),
-        boundary_role: role.to_owned(),
-        mode: "Insert".to_owned(),
+        side,
+        boundary_role: role,
+        mode: AutoSpaceMode::Insert,
         characters_affected: 0,
         reduction_per_char: 0.,
         total_reduction: total,
-        reason: reason.to_owned(),
+        reason,
     }
 }
 

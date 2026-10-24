@@ -18,8 +18,7 @@ use super::super::core::layout_model::{
     SpacingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
-use super::super::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
-use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
+use super::super::font::font_policy::{FontRoleClassifier, FontRoleContext};
 use super::super::shaping::font_backend::FontResolution;
 use super::justifier::JustificationPlan;
 use super::line_geometry_stage::ClusterMetricDecision;
@@ -101,10 +100,10 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 } else {
                     substitution.display_text
                 },
-                role: font_role_name(resolution.role).to_owned(),
+                role: resolution.role,
                 candidate_key: selected_attempt.candidate_key.clone(),
                 resolved_face: Some(resolution.face.clone()),
-                reason: "FontBackendCompleteShapingSelection".to_owned(),
+                reason: "FontBackendCompleteShapingSelection",
                 substitution_reason: if let Some(cause) = rollback_cause {
                     format!("{}:{cause}", substitution.reason)
                 } else {
@@ -119,30 +118,17 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
         .map(|decision| MetricDecisionInfo {
             range: decision.range,
             source_text: decision.source_text.clone(),
-            role: font_role_name(decision.request.role).to_owned(),
+            role: decision.request.role,
             font_face: decision.request.face.clone(),
             raw_ascent: decision.raw_metrics.ascent,
             raw_descent: decision.raw_metrics.descent,
             raw_leading: decision.raw_metrics.leading,
-            raw_source: font_metric_source_name(decision.raw_metrics.source).to_owned(),
+            raw_source: decision.raw_metrics.source,
             layout_ascent: decision.layout_metrics.ascent,
             layout_descent: decision.layout_metrics.descent,
-            baseline_class: match decision.layout_metrics.baseline_class {
-                BaselineClass::Roman => "Roman",
-                BaselineClass::IdeographicCentered => "IdeographicCentered",
-                BaselineClass::IdeographicLow => "IdeographicLow",
-                BaselineClass::Math => "Math",
-                BaselineClass::Hanging => "Hanging",
-            }
-            .to_owned(),
-            metric_box: match decision.layout_metrics.metric_box {
-                MetricBox::RawFontBox => "RawFontBox",
-                MetricBox::IdeographicEmBox => "IdeographicEmBox",
-                MetricBox::IdeographicCharacterFace => "IdeographicCharacterFace",
-                MetricBox::SampledInkBox => "SampledInkBox",
-            }
-            .to_owned(),
-            layout_source: font_metric_source_name(decision.layout_metrics.source).to_owned(),
+            baseline_class: decision.layout_metrics.baseline_class,
+            metric_box: decision.layout_metrics.metric_box,
+            layout_source: decision.layout_metrics.source,
             reason: decision.layout_metrics.reason.clone(),
         })
         .collect();
@@ -153,12 +139,12 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
             PunctuationDecisionInfo::builder(
                 atom.range,
                 atom.character,
-                format!("{:?}", atom.punctuation_class),
+                atom.punctuation_class,
                 atom.advance,
                 atom.body_width,
                 atom.leading_glue.natural,
                 atom.trailing_glue.natural,
-                format!("{:?}", atom.anchor),
+                atom.anchor,
             )
             .ink_bounds(atom.ink_bounds)
             .geometry_source(atom.geometry_source.clone())
@@ -271,10 +257,10 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                         .map(|allocation| JustificationAllocationInfo {
                             cluster_range: stage.clusters[allocation.target_cluster_index as usize]
                                 .range,
-                            kind: format!("{:?}", allocation.kind),
+                            kind: allocation.kind,
                             priority: allocation.priority,
                             delta: allocation.delta,
-                            reason: allocation.reason.clone(),
+                            reason: allocation.reason.name(),
                         })
                         .collect(),
                 })
@@ -337,8 +323,8 @@ pub fn quote_role_decisions_to_role_override_infos(
             RoleOverrideInfo {
                 range,
                 source_text,
-                original_role: font_role_name(original_role).to_owned(),
-                overridden_role: font_role_name(decision.role).to_owned(),
+                original_role,
+                overridden_role: decision.role,
                 source: decision.source,
                 reason: decision.reason,
             }
@@ -458,25 +444,4 @@ fn repair_name(repair: &RepairOption) -> String {
 
 fn is_inside(inner: TextRange, outer: TextRange) -> bool {
     inner.start() >= outer.start() && inner.end() <= outer.end()
-}
-
-fn font_role_name(role: FontRole) -> &'static str {
-    match role {
-        FontRole::CjkText => "CjkText",
-        FontRole::CjkPunctuation => "CjkPunctuation",
-        FontRole::LatinText => "LatinText",
-        FontRole::Symbol => "Symbol",
-        FontRole::Emoji => "Emoji",
-        FontRole::Unknown => "Unknown",
-    }
-}
-
-fn font_metric_source_name(source: FontMetricSource) -> &'static str {
-    match source {
-        FontMetricSource::RawTables => "RawTables",
-        FontMetricSource::OpenTypeBase => "OpenTypeBase",
-        FontMetricSource::GlyphSampling => "GlyphSampling",
-        FontMetricSource::ManualOverride => "ManualOverride",
-        FontMetricSource::SynthesizedIdeographicBox => "SynthesizedIdeographicBox",
-    }
 }

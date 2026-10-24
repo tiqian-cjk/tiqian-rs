@@ -7,7 +7,8 @@ use super::super::clreq::clreq_profile::ClreqProfile;
 use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, BopomofoDecisionInfo, BopomofoGlyphPlacement, BopomofoGlyphRole,
+    AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoDecisionInfo, BopomofoGlyphPlacement,
+    BopomofoGlyphRole,
     Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentInfo, Glyph,
     InlineObjectDecisionInfo, LineBox, RubyDecisionInfo,
 };
@@ -158,13 +159,13 @@ pub fn resolve_annotation_geometry(
     let leading_gap_ranges: Vec<_> = request
         .auto_space_decisions
         .iter()
-        .filter(|decision| decision.side == "leading")
+        .filter(|decision| decision.side == AutoSpaceSide::Leading)
         .map(|decision| decision.cluster_range)
         .collect();
     let trailing_gap_ranges: Vec<_> = request
         .auto_space_decisions
         .iter()
-        .filter(|decision| decision.side == "trailing")
+        .filter(|decision| decision.side == AutoSpaceSide::Trailing)
         .map(|decision| decision.cluster_range)
         .collect();
     let decoration_decisions = compute_decoration_decisions(

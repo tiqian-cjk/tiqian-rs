@@ -8,6 +8,7 @@ use super::layout_queries::{
     nearest_line_for_position, offset_for_x, positioned_clusters, x_for_offset,
 };
 use super::source_interaction_boundaries::SourceBoundaryBias;
+use crate::font::font_policy::FontRole;
 
 /// Immutable lookup data derived exclusively from one [`LayoutResult`].
 #[derive(Clone, Debug)]
@@ -21,7 +22,7 @@ pub struct LayoutResultReplayIndex {
     pub decoration_cluster_segments: Vec<DecorationClusterSegment>,
     pub glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>>,
     pub open_type_features_by_cluster_range: HashMap<TextRange, Vec<String>>,
-    pub font_role_by_cluster_range: HashMap<TextRange, Option<String>>,
+    pub font_role_by_cluster_range: HashMap<TextRange, Option<FontRole>>,
 }
 
 /// Builds immutable replay lookup data from one final layout result.
@@ -89,7 +90,7 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
             .filter(|decision| {
                 range.start() >= decision.range.start() && range.end() <= decision.range.end()
             })
-            .map(|decision| decision.role.clone());
+            .map(|decision| decision.role);
         font_role_by_cluster_range.insert(range, role);
     }
     LayoutResultReplayIndex {

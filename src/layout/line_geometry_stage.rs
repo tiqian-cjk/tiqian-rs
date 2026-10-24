@@ -265,7 +265,7 @@ pub fn resolve_line_vertical_geometry(
     };
     let ruby_line_height_decision =
         (!pinyin_spans.is_empty()).then(|| RubyLineHeightDecisionInfo {
-            mode: format!("{:?}", input.paragraph_style.ruby_line_height_mode),
+            mode: input.paragraph_style.ruby_line_height_mode,
             base_line_height: base_line_metrics.height,
             base_face_height,
             ruby_extent,
