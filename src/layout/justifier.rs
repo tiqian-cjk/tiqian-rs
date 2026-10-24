@@ -70,6 +70,125 @@ pub struct JustificationPlan {
     pub unfilled_deficit: f32,
     pub fallback_reason: Option<String>,
 }
+/// 含 Tab 的最终行只收集一次机会，数值试算复用阶段与容量。
+pub struct JustificationStages {
+    pub line_cluster_range: IntRange,
+    pub deficit_before: f32,
+    pub fallback_reason: Option<String>,
+    stages: Vec<(Vec<JustificationOpportunity>, String)>,
+}
+
+impl JustificationStages {
+    /// 按既有阶段顺序填充分配缓冲，试算不分配机会或原因字符串。
+    pub fn fill_deltas(&self, budget: f32, deltas: &mut [f32]) -> f32 {
+        deltas.fill(0.0);
+        let mut remaining = budget.max(0.0);
+        for (opportunities, _) in &self.stages {
+            if remaining <= 0.0 {
+                break;
+            }
+            let infinite_count = opportunities
+                .iter()
+                .filter(|opportunity| opportunity.capacity == f32::INFINITY)
+                .count();
+            if infinite_count > 0 {
+                let share = remaining / infinite_count as f32;
+                for opportunity in opportunities {
+                    if opportunity.capacity == f32::INFINITY {
+                        let index = (opportunity.target_cluster_index
+                            - self.line_cluster_range.first()) as usize;
+                        if let Some(delta) = deltas.get_mut(index) {
+                            *delta += share;
+                        }
+                    }
+                }
+                remaining = 0.0;
+                continue;
+            }
+            let total: f32 = opportunities
+                .iter()
+                .map(|opportunity| opportunity.capacity.max(0.0))
+                .sum();
+            if total <= 0.0 {
+                continue;
+            }
+            let allocated = remaining.min(total);
+            let factor = allocated / total;
+            for opportunity in opportunities {
+                let delta = opportunity.capacity.max(0.0) * factor;
+                if delta > 0.0 {
+                    let index = (opportunity.target_cluster_index
+                        - self.line_cluster_range.first()) as usize;
+                    if let Some(value) = deltas.get_mut(index) {
+                        *value += delta;
+                    }
+                }
+            }
+            remaining -= allocated;
+        }
+        remaining
+    }
+
+    /// 预算确定后一次性生成可解释的最终分配。
+    pub fn plan(&self, budget: f32) -> JustificationPlan {
+        let mut remaining = budget.max(0.0);
+        let mut allocations = Vec::new();
+        for (opportunities, stage_reason) in &self.stages {
+            if remaining <= 0.0 {
+                break;
+            }
+            let infinite_count = opportunities
+                .iter()
+                .filter(|opportunity| opportunity.capacity == f32::INFINITY)
+                .count();
+            if infinite_count > 0 {
+                let share = remaining / infinite_count as f32;
+                for opportunity in opportunities {
+                    if opportunity.capacity == f32::INFINITY && share > 0.0 {
+                        allocations.push(JustificationAllocation {
+                            target_cluster_index: opportunity.target_cluster_index,
+                            kind: opportunity.kind,
+                            priority: opportunity.priority,
+                            delta: share,
+                            reason: opportunity.reason.clone().unwrap_or_else(|| stage_reason.clone()),
+                        });
+                    }
+                }
+                remaining = 0.0;
+                continue;
+            }
+            let total: f32 = opportunities
+                .iter()
+                .map(|opportunity| opportunity.capacity.max(0.0))
+                .sum();
+            if total <= 0.0 {
+                continue;
+            }
+            let allocated = remaining.min(total);
+            let factor = allocated / total;
+            for opportunity in opportunities {
+                let delta = opportunity.capacity.max(0.0) * factor;
+                if delta > 0.0 {
+                    allocations.push(JustificationAllocation {
+                        target_cluster_index: opportunity.target_cluster_index,
+                        kind: opportunity.kind,
+                        priority: opportunity.priority,
+                        delta,
+                        reason: opportunity.reason.clone().unwrap_or_else(|| stage_reason.clone()),
+                    });
+                }
+            }
+            remaining -= allocated;
+        }
+        JustificationPlan {
+            line_cluster_range: self.line_cluster_range,
+            allocations,
+            deficit_before: self.deficit_before,
+            unfilled_deficit: remaining.max(0.0),
+            fallback_reason: if remaining > 0.0 { self.fallback_reason.clone() } else { None },
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompressionPlan {
     pub allocations: Vec<PushInAllocation>,
@@ -104,6 +223,49 @@ impl Justifier {
     }
 
     pub fn justify(&self, request: JustificationRequest<'_>) -> JustificationPlan {
+        self.justify_with_allocator(request, |remaining, opportunities, reason, out| {
+            self.allocate(remaining, opportunities, reason, out)
+        })
+    }
+
+    /// 复用同一机会收集路径，完整记录每阶段，保持内部顺序与容量上限。
+    pub fn prepare_stages(&self, request: JustificationRequest<'_>) -> JustificationStages {
+        let mut stages = Vec::new();
+        let plan = self.justify_with_allocator(
+            request,
+            |remaining, mut opportunities, reason, _| {
+                if matches!(
+                    reason,
+                    "TerminalTechnicalEmergencyTracking"
+                        | "CjkInterChar"
+                        | "EmergencyGraphemeTracking"
+                ) {
+                    for opportunity in &mut opportunities {
+                        opportunity.capacity = f32::INFINITY;
+                    }
+                }
+                stages.push((opportunities, reason.to_owned()));
+                remaining
+            },
+        );
+        JustificationStages {
+            line_cluster_range: plan.line_cluster_range,
+            deficit_before: plan.deficit_before,
+            fallback_reason: plan.fallback_reason,
+            stages,
+        }
+    }
+
+    fn justify_with_allocator(
+        &self,
+        request: JustificationRequest<'_>,
+        mut allocate: impl FnMut(
+            f32,
+            Vec<JustificationOpportunity>,
+            &str,
+            &mut Vec<JustificationAllocation>,
+        ) -> f32,
+    ) -> JustificationPlan {
         let adjusted_width: f32 = request
             .line_cluster_range
             .into_iter()
@@ -154,7 +316,7 @@ impl Justifier {
                         .all(char::is_whitespace)
             },
         );
-        remaining = self.allocate(
+        remaining = allocate(
             remaining,
             technical,
             "ProgressiveTechnicalWhitespaceStretch",
@@ -192,7 +354,7 @@ impl Justifier {
                 });
             }
         }
-        remaining = self.allocate(remaining, word_spaces, "WordSpace", &mut allocations);
+        remaining = allocate(remaining, word_spaces, "WordSpace", &mut allocations);
         if remaining <= 0.0 {
             return self.finalize(
                 request.line_cluster_range,
@@ -279,7 +441,7 @@ impl Justifier {
                     });
                 }
             }
-            remaining = self.allocate(remaining, sino, "CjkLatinSpace", &mut allocations);
+            remaining = allocate(remaining, sino, "CjkLatinSpace", &mut allocations);
             if remaining <= 0.0 {
                 return self.finalize(
                     request.line_cluster_range,
@@ -316,7 +478,7 @@ impl Justifier {
                     reason: None,
                 });
             }
-            remaining = self.allocate(
+            remaining = allocate(
                 remaining,
                 opportunities,
                 preferred_reason(kind),
@@ -358,7 +520,7 @@ impl Justifier {
                 opportunity
             })
             .collect();
-        remaining = self.allocate(
+        remaining = allocate(
             remaining,
             terminal,
             "TerminalTechnicalEmergencyTracking",
@@ -519,7 +681,7 @@ impl Justifier {
                 });
             }
         }
-        remaining = self.allocate(
+        remaining = allocate(
             remaining,
             [uniform_text, bracket, attached, object, spaces].concat(),
             "CjkInterChar",
@@ -562,7 +724,7 @@ impl Justifier {
                 opportunity
             })
             .collect();
-        remaining = self.allocate(
+        remaining = allocate(
             remaining,
             emergency,
             "EmergencyGraphemeTracking",

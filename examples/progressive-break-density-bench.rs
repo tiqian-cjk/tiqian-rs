@@ -134,6 +134,7 @@ impl Fixture {
             8.0,
             &self.sino_western_boundaries,
             1.0,
+            None,
         )
     }
 }

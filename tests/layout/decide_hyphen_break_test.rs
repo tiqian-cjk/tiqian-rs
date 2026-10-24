@@ -39,6 +39,7 @@ fn charges_all_deficit_to_cjk_when_no_sino_western_capacity_is_known() {
             8.0,
             &HashSet::new(),
             0.0,
+            None,
         ),
     );
 }
@@ -57,6 +58,7 @@ fn discounts_sino_western_capacity_before_charging_cjk_looseness() {
             8.0,
             &HashSet::from([2]),
             4.0,
+            None,
         ),
     );
 }

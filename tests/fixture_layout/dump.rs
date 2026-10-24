@@ -222,6 +222,21 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
             .unwrap_or_else(|| "-".to_owned());
         output.push_str(&format!("line[{index}] {}-{} {}{}natural={} adjusted={} visual={} repair={} candidates={} justify={}\n", line.range.start(), line.range.end(), if line.indent > 0.0 { format!("indent={} ", fmt(line.indent)) } else { String::new() }, if line.hyphen_advance > 0.0 { format!("hyphen={} ", fmt(line.hyphen_advance)) } else { String::new() }, fmt(line.natural_width), fmt(line.adjusted_width), fmt(line.visual_width), repair, candidates, justify));
     }
+    for unit in &result.debug.white_space_units {
+        output.push_str(&format!("whitespace {}-{} kind={:?} action={:?}\n",
+            unit.range.start(), unit.range.end(), unit.kind, unit.action));
+    }
+    for decision in &result.debug.line_white_space_adjustments {
+        let adjustment = &decision.adjustment;
+        output.push_str(&format!("line-whitespace line={} cluster={} action={:?} occupied={} hanging={}\n",
+            decision.line_index, adjustment.cluster_index, adjustment.action,
+            fmt(adjustment.occupied_advance), fmt(adjustment.hanging_advance)));
+    }
+    for (index, line) in result.lines.iter().enumerate() {
+        let bounds = tiqian::core::layout_queries::line_occupied_bounds(line);
+        output.push_str(&format!("line-geometry[{index}] alignment={} occupied={},{},{},{}\n",
+            fmt(line.alignment_width), fmt(bounds.left), fmt(bounds.top), fmt(bounds.right), fmt(bounds.bottom)));
+    }
     for cluster in &result.clusters {
         output.push_str(&format!(
             "cluster {}-{} '{}' adv={}{}\n",

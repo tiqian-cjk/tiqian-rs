@@ -9,12 +9,12 @@ use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
 use super::line_breaker::{
     LineBreaker, LineBreakerConfig, adjust_break_for_line_end, aligned_adjusted_clusters,
-    close_filled_line, empty_line_candidate, find_greedy_end, rebuild_line,
+    empty_line_candidate,
 };
-use super::line_optimization::{LineCandidate, LineSolution};
-use super::line_repair::{apply_kinsoku_repairs, try_push_in};
+use super::line_optimization::{LineCandidate, LineSolution, PushInAllocation, RepairOption};
+use super::line_repair::{apply_kinsoku_repairs, distribute_push_in_shrink};
 use super::progressive_break_decisions::{
-    ProgressiveBreakOpportunity, ShrinkOpportunity, UnbreakableRanges,
+    ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
     adjust_break_for_unbreakables, decide_hyphen_break, decide_progressive_break, line_limit,
     progressive_candidate_allowed,
 };
@@ -23,7 +23,7 @@ const HYPHEN_RUN_STATE_CAP: i32 = 3;
 const STRETCH_RUN_STATE_CAP: i32 = 3;
 const VISIBLE_STRETCH_FLOOR_PX: f32 = 0.5;
 
-/// Paragraph-global DP line breaker over the ADR 0038 amortized-adjustment model.
+/// 基于摊销行调整成本的段落动态规划断行器。
 pub struct ParagraphDpLineBreaker {
     pub candidate_window: i32,
     pub raggedness_weight: f32,
@@ -55,6 +55,7 @@ impl Default for ParagraphDpLineBreaker {
 }
 
 struct DpContext<'a> {
+    config: &'a LineBreakerConfig,
     natural_clusters: &'a [Cluster],
     adjusted_clusters: &'a [Cluster],
     max_width: f32,
@@ -69,7 +70,6 @@ struct DpContext<'a> {
     sino_western_boundaries: &'a HashSet<i32>,
     sino_western_stretch_cap: f32,
     non_rendering_control_clusters: &'a HashSet<i32>,
-    gap_boundaries: HashSet<i32>,
     candidate_window: i32,
     d_ref: f32,
     allow_compression_edges: bool,
@@ -91,7 +91,8 @@ impl<'a> DpContext<'a> {
         config: &'a LineBreakerConfig,
         candidate_window: i32,
     ) -> Self {
-        let count = adjusted_clusters.len();
+        // 共享测量已保存宽度与间隙前缀；这些索引仅供未接入共享测量的独立调用使用。
+        let count = if config.measurement.is_some() { 0 } else { adjusted_clusters.len() };
         let mut gap_boundaries = config.cjk_inter_char_boundaries.clone();
         gap_boundaries.extend(&config.sino_western_boundaries);
         let mut gap_prefix = vec![0; count + 1];
@@ -140,6 +141,7 @@ impl<'a> DpContext<'a> {
             shrink_prefix[index + 1] += shrink_prefix[index];
         }
         Self {
+            config,
             natural_clusters,
             adjusted_clusters,
             max_width,
@@ -154,7 +156,6 @@ impl<'a> DpContext<'a> {
             sino_western_boundaries: &config.sino_western_boundaries,
             sino_western_stretch_cap: config.sino_western_stretch_cap,
             non_rendering_control_clusters: &config.non_rendering_control_clusters,
-            gap_boundaries,
             candidate_window,
             d_ref: config.max_cjk_stretch_per_gap,
             allow_compression_edges: config.line_adjustment_push_in,
@@ -170,6 +171,19 @@ impl<'a> DpContext<'a> {
     }
 
     fn build_line(&self, cluster_range: IntRange, end_reason: LineEndReason) -> LineCandidate {
+        self.config.build_line(
+            cluster_range,
+            self.natural_clusters,
+            self.adjusted_clusters,
+            end_reason,
+            self.max_width,
+        )
+    }
+
+    fn candidate_line(&self, cluster_range: IntRange, end_reason: LineEndReason) -> LineCandidate {
+        if self.config.measurement.is_some() {
+            return self.build_line(cluster_range, end_reason);
+        }
         let first = cluster_range.first() as usize;
         let last = cluster_range.last() as usize;
         let mut line = LineCandidate::new(
@@ -182,10 +196,69 @@ impl<'a> DpContext<'a> {
             self.adjusted_prefix[last + 1] - self.adjusted_prefix[first],
         );
         line.end_reason = end_reason;
+        line.measurement = self.config.measurement.clone();
+        line.measurement_limit = line_limit(self.max_width, self.first_line_indent, first as i32);
+        if let Some(measurement) = &line.measurement {
+            let measured = measurement.measure(cluster_range, end_reason, line.measurement_limit, &[]);
+            line.natural_width = measured.natural;
+            line.adjusted_width = measured.adjusted;
+        }
         line
     }
 
+    fn compression_opportunities(
+        &self,
+        range: IntRange,
+        reason: LineEndReason,
+    ) -> Vec<ShrinkOpportunity> {
+        let mut opportunities: Vec<_> = self.shrink_opportunities.iter().filter(|opp| {
+            range.contains(opp.cluster_index)
+                && opp.capacity > 0.0
+                && (!opp.line_end_only || opp.cluster_index == range.last())
+                && self.config.measurement.as_ref().is_none_or(|measurement| {
+                    measurement.shrink_is_effective(range, reason, opp.cluster_index)
+                })
+        }).copied().collect();
+        for opp in &mut opportunities {
+            if opp.cluster_index == range.last()
+                && matches!(opp.channel, ShrinkChannel::TrailingGlue | ShrinkChannel::LeadingAndTrailingGlue)
+            {
+                opp.tier = 1;
+            }
+        }
+        opportunities
+    }
+
+    fn compressed_width(
+        &self,
+        range: IntRange,
+        reason: LineEndReason,
+        limit: f32,
+    ) -> Option<(f32, Vec<PushInAllocation>)> {
+        let opportunities = self.compression_opportunities(range, reason);
+        let mut allocations = if let Some(measurement) = &self.config.measurement {
+            measurement.compression(range, reason, limit, &opportunities)?
+        } else {
+            let total_shrink = self.adjusted_prefix[range.last() as usize + 1]
+                - self.adjusted_prefix[range.first() as usize]
+                - limit;
+            if total_shrink > opportunities.iter().map(|opp| opp.capacity).sum() {
+                return None;
+            }
+            distribute_push_in_shrink(&opportunities, total_shrink.max(0.0))
+        };
+        allocations.sort_by_key(|allocation| allocation.cluster_index);
+        let width = self.config.measurement.as_ref().map_or_else(|| self.adjusted_prefix[range.last() as usize + 1]
+            - self.adjusted_prefix[range.first() as usize]
+            - allocations.iter().map(|allocation| allocation.shrink).sum::<f32>(),
+            |measurement| measurement.measure(range, reason, limit, &allocations).adjusted);
+        (width <= limit).then_some((width, allocations))
+    }
+
     fn gap_count(&self, range: IntRange) -> i32 {
+        if let Some(measurement) = &self.config.measurement {
+            return measurement.effective_gap_count(range);
+        }
         if range.is_empty() {
             0
         } else {
@@ -194,6 +267,9 @@ impl<'a> DpContext<'a> {
     }
 
     fn sino_gap_count(&self, range: IntRange) -> i32 {
+        if let Some(measurement) = &self.config.measurement {
+            return measurement.progressive_stats(range, None).1;
+        }
         if range.is_empty() {
             0
         } else {
@@ -202,6 +278,9 @@ impl<'a> DpContext<'a> {
     }
 
     fn cjk_gap_count(&self, range: IntRange) -> i32 {
+        if let Some(measurement) = &self.config.measurement {
+            return measurement.progressive_stats(range, None).2;
+        }
         if range.is_empty() {
             0
         } else {
@@ -238,12 +317,11 @@ impl ParagraphDpLineBreaker {
         ends_with_mandatory: bool,
     ) -> Vec<i32> {
         let limit = line_limit(context.max_width, context.first_line_indent, start);
-        let raw_greedy = find_greedy_end(
+        let raw_greedy = context.config.greedy_end(
             context.adjusted_clusters,
             start,
             limit,
             segment_end_exclusive,
-            context.non_rendering_control_clusters,
         );
         if raw_greedy >= segment_end_exclusive {
             return vec![segment_end_exclusive];
@@ -258,6 +336,7 @@ impl ParagraphDpLineBreaker {
             context.max_cjk_stretch_per_gap,
             context.sino_western_boundaries,
             context.sino_western_stretch_cap,
+            context.config.measurement.as_deref(),
         );
         let baseline = adjust_break_for_unbreakables(
             decide_hyphen_break(
@@ -270,25 +349,31 @@ impl ParagraphDpLineBreaker {
                 context.max_cjk_stretch_per_gap,
                 context.sino_western_boundaries,
                 context.sino_western_stretch_cap,
+                context.config.measurement.as_deref(),
             ),
             start,
             context.unbreakable_ranges,
         );
         let mut compressed = Vec::new();
         if context.allow_compression_edges {
-            let mut width: f32 = (start..raw_greedy)
-                .map(|index| context.adjusted_clusters[index as usize].advance)
-                .sum();
-            let mut end = raw_greedy + 1;
-            while end <= segment_end_exclusive
-                && compressed.len() < context.candidate_window as usize
-            {
-                width += context.adjusted_clusters[end as usize - 1].advance;
-                if width - limit > context.shrink_capacity(IntRange::new(start, end - 1)) {
-                    break;
+            let first_end = raw_greedy + 1;
+            let last_end = (first_end + context.candidate_window).min(segment_end_exclusive);
+            for end in first_end..=last_end {
+                if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+                    continue;
                 }
-                compressed.push(end);
-                end += 1;
+                let reason = if end == segment_end_exclusive {
+                    if ends_with_mandatory { LineEndReason::MandatoryBreak } else { LineEndReason::ParagraphEnd }
+                } else { LineEndReason::AutoWrap };
+                let range = IntRange::new(start, end - 1);
+                let line = context.candidate_line(range, reason);
+                let feasible = if context.config.measurement.is_some() {
+                    line.adjusted_width <= limit
+                        || context.compressed_width(range, reason, limit).is_some()
+                } else {
+                    line.adjusted_width - limit <= context.shrink_capacity(range)
+                };
+                if feasible { compressed.push(end); }
             }
         }
         let is_compressed_promotion = |candidate_end: i32| {
@@ -319,6 +404,9 @@ impl ParagraphDpLineBreaker {
             if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
+            if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+                continue;
+            }
             if !is_compressed_promotion(end)
                 && !progressive_candidate_allowed(
                     start,
@@ -331,6 +419,7 @@ impl ParagraphDpLineBreaker {
                     context.max_cjk_stretch_per_gap,
                     context.sino_western_boundaries,
                     context.sino_western_stretch_cap,
+                    context.config.measurement.as_deref(),
                 )
             {
                 continue;
@@ -353,6 +442,9 @@ impl ParagraphDpLineBreaker {
             if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
+            if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+                continue;
+            }
             if !is_compressed_promotion(end)
                 && !progressive_candidate_allowed(
                     start,
@@ -365,6 +457,7 @@ impl ParagraphDpLineBreaker {
                     context.max_cjk_stretch_per_gap,
                     context.sino_western_boundaries,
                     context.sino_western_stretch_cap,
+                    context.config.measurement.as_deref(),
                 )
             {
                 continue;
@@ -431,7 +524,12 @@ impl ParagraphDpLineBreaker {
             }
         };
         let mut candidates = tier_preferred_pool;
-        if baseline > start && baseline <= segment_end_exclusive && promotions.is_empty() {
+        let baseline = context.config.measurement.as_ref().map_or(baseline, |measurement| {
+            measurement.next_boundary(baseline, segment_end_exclusive)
+        });
+        if baseline > start && baseline <= segment_end_exclusive && promotions.is_empty()
+            && context.config.measurement.as_ref().is_none_or(|measurement| measurement.boundary_allowed(baseline))
+        {
             candidates.push(baseline);
         }
         let mut result = Vec::new();
@@ -441,7 +539,10 @@ impl ParagraphDpLineBreaker {
             }
         }
         if result.is_empty() {
-            vec![baseline.max(start + 1)]
+            let fallback = baseline.max(start + 1);
+            vec![context.config.measurement.as_ref().map_or(fallback, |measurement| {
+                measurement.next_boundary(fallback, segment_end_exclusive)
+            })]
         } else {
             result
         }
@@ -472,8 +573,12 @@ impl ParagraphDpLineBreaker {
             0.0
         };
         let reference = context.d_ref.max(1.0);
-        if overflow > 0.0 {
-            let density = overflow / context.gap_count(in_measure).max(1) as f32
+        if overflow > 0.0 || matches!(&line.repair, Some(RepairOption::PushIn { .. })) {
+            let shrink = match &line.repair {
+                Some(RepairOption::PushIn { total_shrink, .. }) => *total_shrink,
+                _ => overflow,
+            };
+            let density = shrink / context.gap_count(in_measure).max(1) as f32
                 * self.compression_visibility;
             return EdgeGeometry {
                 base_cost: orphan
@@ -550,10 +655,36 @@ impl ParagraphDpLineBreaker {
                 } else {
                     LineEndReason::ParagraphEnd
                 };
-                let line = context.build_line(
-                    IntRange::new(start, (end - 1).min(segment_end_exclusive - 1)),
-                    reason,
+                let range = IntRange::new(start, (end - 1).min(segment_end_exclusive - 1));
+                let mut line = context.candidate_line(range, reason);
+                let limit = line_limit(context.max_width, context.first_line_indent, start);
+                let greedy_end = context.config.greedy_end(
+                    context.adjusted_clusters,
+                    start,
+                    limit,
+                    segment_end_exclusive,
                 );
+                let forced_natural_overflow = context.config.measurement.as_ref().is_some_and(|measurement| {
+                    measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
+                }) || greedy_end == end || (greedy_end == segment_end_exclusive && end == segment_end_exclusive);
+                if line.adjusted_width > limit
+                    && context.allow_compression_edges
+                    && !forced_natural_overflow
+                {
+                    if let Some((width, allocations)) = context.compressed_width(range, reason, limit) {
+                        line.adjusted_width = width;
+                        line.repair = Some(RepairOption::PushIn {
+                            penalty: self.push_in_penalty,
+                            reason: "LineAdjustmentPushIn:DPFeasibility".to_owned(),
+                            offender_cluster_index: range.last(),
+                            total_shrink: allocations.iter().map(|allocation| allocation.shrink).sum(),
+                            total_available_capacity: context.compression_opportunities(range, reason).iter().map(|opp| opp.capacity).sum(),
+                            allocations,
+                        });
+                    } else {
+                        continue;
+                    }
+                }
                 let hyphen_end = !is_segment_last && context.hyphen_break_clusters.contains(&end);
                 let geometry = self.edge_geometry(context, &line, is_segment_last, hyphen_end);
                 for previous in &incoming {
@@ -644,12 +775,11 @@ impl ParagraphDpLineBreaker {
         let mut start = segment_start;
         while start < segment_end_exclusive {
             let limit = line_limit(context.max_width, context.first_line_indent, start);
-            let raw_greedy = find_greedy_end(
+            let raw_greedy = context.config.greedy_end(
                 context.adjusted_clusters,
                 start,
                 limit,
                 segment_end_exclusive,
-                context.non_rendering_control_clusters,
             );
             let end = if raw_greedy >= segment_end_exclusive {
                 segment_end_exclusive
@@ -667,6 +797,7 @@ impl ParagraphDpLineBreaker {
                             context.max_cjk_stretch_per_gap,
                             context.sino_western_boundaries,
                             context.sino_western_stretch_cap,
+                            context.config.measurement.as_deref(),
                         ),
                         context.adjusted_clusters,
                         limit,
@@ -675,12 +806,16 @@ impl ParagraphDpLineBreaker {
                         context.max_cjk_stretch_per_gap,
                         context.sino_western_boundaries,
                         context.sino_western_stretch_cap,
+                        context.config.measurement.as_deref(),
                     ),
                     start,
                     context.unbreakable_ranges,
                 )
                 .max(start + 1)
             };
+            let end = context.config.measurement.as_ref().map_or(end, |measurement| {
+                measurement.next_boundary(end, segment_end_exclusive)
+            });
             ends.push(end);
             start = end;
         }
@@ -718,84 +853,119 @@ impl ParagraphDpLineBreaker {
                 chosen_end - 1
             };
             let limit = line_limit(context.max_width, context.first_line_indent, line_start);
-            let natural_line = rebuild_line(
-                IntRange::new(line_start, last_index),
-                context.natural_clusters,
-                context.adjusted_clusters,
-                end_reason,
-                None,
-                Vec::new(),
+            let segment_end_exclusive = mandatory_end.map_or(
+                context.adjusted_clusters.len() as i32,
+                |end| end + 1,
             );
-            let compressed_line = if natural_line.adjusted_width > limit && last_index > line_start
-            {
-                let resulting_break = context.progressive_break_opportunities.get(chosen_end);
-                let raw_greedy = find_greedy_end(
+            let range = IntRange::new(line_start, last_index);
+            let mut line = context.build_line(range, end_reason);
+            line.remeasure();
+            let mut compression_failed = false;
+            let raw_greedy = context.config.greedy_end(
                     context.adjusted_clusters,
                     line_start,
                     limit,
-                    last_end,
-                    context.non_rendering_control_clusters,
+                    segment_end_exclusive,
                 );
-                let original_break =
-                    context
-                        .progressive_break_opportunities
-                        .get(&decide_progressive_break(
-                            line_start,
-                            raw_greedy,
-                            context.progressive_break_opportunities,
-                            Some(context.adjusted_clusters),
-                            limit,
-                            context.cjk_inter_char_boundaries,
-                            context.max_cjk_stretch_per_gap,
-                            context.sino_western_boundaries,
-                            context.sino_western_stretch_cap,
-                        ));
-                let promotes_tier =
-                    original_break
-                        .zip(resulting_break)
-                        .is_some_and(|(original, resulting)| {
-                            original.span_range == resulting.span_range
-                                && resulting.tier.priority() < original.tier.priority()
-                        });
-                let result = try_push_in(
-                    &rebuild_line(
-                        IntRange::new(line_start, line_start),
-                        context.natural_clusters,
-                        context.adjusted_clusters,
-                        LineEndReason::AutoWrap,
-                        None,
-                        Vec::new(),
+            let forced_natural_overflow = context.config.measurement.as_ref().is_some_and(|measurement| {
+                measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
+            }) || raw_greedy == *chosen_end
+                || (raw_greedy == last_end && *chosen_end == last_end);
+            if line.adjusted_width > limit
+                && context.allow_compression_edges
+                && !forced_natural_overflow
+            {
+                let original_break = context.progressive_break_opportunities.get(
+                    &decide_progressive_break(
+                        line_start,
+                        raw_greedy,
+                        context.progressive_break_opportunities,
+                        Some(context.adjusted_clusters),
+                        limit,
+                        context.cjk_inter_char_boundaries,
+                        context.max_cjk_stretch_per_gap,
+                        context.sino_western_boundaries,
+                        context.sino_western_stretch_cap,
+                        context.config.measurement.as_deref(),
                     ),
-                    &rebuild_line(
-                        IntRange::new(line_start + 1, last_index),
-                        context.natural_clusters,
-                        context.adjusted_clusters,
-                        end_reason,
-                        None,
-                        Vec::new(),
-                    ),
-                    context.natural_clusters,
-                    context.adjusted_clusters,
-                    limit,
-                    context.shrink_opportunities,
-                    self.push_in_penalty,
-                    Some(last_index),
-                    if promotes_tier {
-                        "ProgressiveTechnicalTierPromotion"
-                    } else {
-                        "LineAdjustmentPushIn"
-                    },
                 );
-                if result.candidate.accepted && result.current.is_none() {
-                    Some(result.previous)
+                let promotes_tier = original_break
+                    .zip(context.progressive_break_opportunities.get(chosen_end))
+                    .is_some_and(|(original, resulting)| {
+                        original.span_range == resulting.span_range
+                            && resulting.tier.priority() < original.tier.priority()
+                    });
+                let opportunities = context.compression_opportunities(range, end_reason);
+                let compressed = if let Some(measurement) = &context.config.measurement {
+                    measurement.compression(range, end_reason, limit, &opportunities)
                 } else {
-                    None
+                    let overflow = line.adjusted_width - limit;
+                    let capacity: f32 = opportunities.iter().map(|opp| opp.capacity).sum();
+                    if overflow <= capacity {
+                        Some(distribute_push_in_shrink(&opportunities, overflow.max(0.0)))
+                    } else {
+                        None
+                    }
+                };
+                if let Some(mut allocations) = compressed {
+                    allocations.sort_by_key(|allocation| allocation.cluster_index);
+                    let total_shrink = allocations.iter().map(|allocation| allocation.shrink).sum();
+                    let width = context.config.measurement.as_ref().map_or(
+                        line.adjusted_width - total_shrink,
+                        |measurement| measurement.measure(range, end_reason, limit, &allocations).adjusted,
+                    );
+                    if width <= limit {
+                        line.adjusted_width = width;
+                        line.repair = Some(RepairOption::PushIn {
+                            penalty: self.push_in_penalty,
+                            reason: if promotes_tier {
+                                "ProgressiveTechnicalTierPromotion".to_owned()
+                            } else {
+                                "LineAdjustmentPushIn".to_owned()
+                            },
+                            offender_cluster_index: range.last(),
+                            allocations,
+                            total_shrink,
+                            total_available_capacity: opportunities.iter().map(|opp| opp.capacity).sum(),
+                        });
+                        line.remeasure();
+                    } else {
+                        compression_failed = true;
+                    }
+                } else {
+                    compression_failed = true;
                 }
-            } else {
-                None
-            };
+            }
+            if compression_failed {
+                log::warn!("warn");
+                let fallback = self.greedy_fallback_ends(context, line_start, last_end);
+                let mut fallback_start = line_start;
+                for fallback_end in fallback {
+                    let is_final_fallback = fallback_end == last_end;
+                    let fallback_reason = if is_final_fallback && mandatory_end.is_some() {
+                        LineEndReason::MandatoryBreak
+                    } else if is_final_fallback {
+                        LineEndReason::ParagraphEnd
+                    } else {
+                        LineEndReason::AutoWrap
+                    };
+                    let fallback_last = if is_final_fallback {
+                        mandatory_end.unwrap_or(fallback_end - 1)
+                    } else {
+                        fallback_end - 1
+                    };
+                    let mut fallback_line = context.build_line(
+                        IntRange::new(fallback_start, fallback_last),
+                        fallback_reason,
+                    );
+                    fallback_line.remeasure();
+                    committed.push(fallback_line);
+                    fallback_start = fallback_end;
+                }
+                return;
+            }
             if is_final && let Some(mandatory_end) = mandatory_end {
-                committed.push(compressed_line.unwrap_or(natural_line));
+                committed.push(line);
                 line_start = mandatory_end + 1;
                 if line_start == context.adjusted_clusters.len() as i32 {
                     if let Some(last) = context.adjusted_clusters.last() {
@@ -808,11 +978,11 @@ impl ParagraphDpLineBreaker {
                 continue;
             }
             if is_final {
-                committed.push(compressed_line.unwrap_or(natural_line));
+                committed.push(line);
                 line_start = *chosen_end;
                 continue;
             }
-            if let Some(line) = compressed_line {
+            if line.repair.is_some() {
                 committed.push(line);
                 line_start = *chosen_end;
                 continue;
@@ -823,23 +993,21 @@ impl ParagraphDpLineBreaker {
                 context.forbidden_line_end_clusters,
             );
             if hard_break_after_clusters.contains(&committed_end) && line_start < committed_end {
-                committed.push(rebuild_line(
+                let mut hard_line = context.build_line(
                     IntRange::new(line_start, committed_end),
-                    context.natural_clusters,
-                    context.adjusted_clusters,
                     LineEndReason::MandatoryBreak,
-                    None,
-                    Vec::new(),
-                ));
+                );
+                hard_line.remeasure();
+                committed.push(hard_line);
                 line_start = committed_end + 1;
                 continue;
             }
-            committed.push(close_filled_line(
-                IntRange::new(line_start, committed_end - 1),
-                *chosen_end,
-                context.natural_clusters,
-                context.adjusted_clusters,
-            ));
+            let committed_end = context.config.measurement.as_ref().map_or(committed_end,
+                |measurement| measurement.next_boundary(committed_end, last_end));
+            if committed_end != *chosen_end {
+                line = context.build_line(IntRange::new(line_start, committed_end - 1), end_reason);
+            }
+            committed.push(line);
             line_start = committed_end;
         }
     }
@@ -918,6 +1086,6 @@ impl LineBreaker for ParagraphDpLineBreaker {
             &config.extendable_hang_ranges,
             5,
             config.forbidden_line_start_clusters.as_ref(),
-        )
+        ).resolve_white_space()
     }
 }

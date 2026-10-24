@@ -204,12 +204,10 @@ pub enum GlueSide {
  * 参见 [ADR 0009](docs/adr/0009-autospace-policy.md)。
  *
  * 逐边界 [`AutoSpaceMode`] 决定：
- * - `Disabled`：引擎不插入间距；输入的 U+0020 按名义 1em advance 绘制，亦即经典 stub 行为。
- * - `Replace`（默认）：Wide↔Narrow 边界上输入的 U+0020 被吸收到 autospace gap 中。
- *   空格 cluster 的 advance 从 1em 缩至 `gap_em`，可见结果只有一个可配置 gap，
- *   而不是 1em 与 autospace 的重复累加。
- * - `Insert`：输入的 U+0020 保持完整 1em，同时额外加入 autospace gap。它供需要让 U+0020
- *   经过复制/粘贴往返的编辑流程使用；当前 slice 预留但尚未实现，因为需要注入虚拟 cluster。
+ * - `Disabled`：继续执行空白处理，不添加自动间距。
+ * - `Replace`：将 Wide↔Narrow 边界上的一个有效 U+0020 替换为 `gap_em`，保留多个
+ *   有效空格；无空格时插入间距。
+ * - `Insert`（默认）：保留作者输入的空格，仅在没有有效空格的适用边界插入间距。
  *
  * `gap_em` 与 `stretch_max_em` 是同一对值：gap 的基础宽度与 justify 拉伸后的最终上限。
  * 两者均以 em 为单位（ADR 0009 修订）。CLREQ 要求 1/4–1/2；主流实践（iOS、Chrome
@@ -598,15 +596,9 @@ pub enum HangingPunctuationStyle {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AutoSpaceMode {
     Disabled,
-    /**
-     * 仅将边界上输入的空格规范为 [`AutoSpacePolicy::gap_em`]（`TextAutoSpaceReplace`）；
-     * 无输入空格的边界不添加内容。这是 Insert 之前的保守行为，供将缺少空格视为作者意图的样式保留。
-     */
+    /// 替换一个有效 U+0020，无空格时插入间距，保留多个有效空格。
     Replace,
-    /**
-     * 完整 CLREQ 行为，是 Replace 的超集：无输入空格的边界也增加
-     * [`AutoSpacePolicy::gap_em`]（`TextAutoSpaceInsert`）。默认。
-     */
+    /// 保留作者空白，仅在无空格时插入间距。默认模式。
     Insert,
 }
 

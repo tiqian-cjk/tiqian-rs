@@ -117,6 +117,7 @@ pub enum SyntheticClusterKind {
     MandatoryBreak,
     ZeroWidthSoftBreak,
     InlineObject,
+    WhiteSpace,
 }
 
 pub struct ClusterBuilder {
@@ -266,6 +267,8 @@ pub struct LineBox {
     pub natural_width: f32,
     pub adjusted_width: f32,
     pub visual_width: f32,
+    /// 最终对齐宽度：justify 与 Tab 之后排除行尾悬挂部分的宽度。
+    pub alignment_width: f32,
     /// 由 `LineEndHangingPunctuation`（CLREQ 行尾点号悬挂）选中的一个或多个 trailing mark 的总 advance。
     /// 它是 emitted line paint 的一部分而非 overflow text：当此值非零时，裁切 `TextOverflow.Clip` 的 frontend
     /// 必须允许最终 `visual_width`。ordinary profile path 悬挂一个 mark；只有具名 impossible-measure contextual run
@@ -306,6 +309,7 @@ impl LineBox {
                 natural_width,
                 adjusted_width,
                 visual_width,
+                alignment_width: visual_width,
                 hanging_punctuation_advance: 0.0,
                 indent: 0.0,
                 end_reason: LineEndReason::ParagraphEnd,
@@ -320,6 +324,10 @@ pub struct LineBoxBuilder {
     line: LineBox,
 }
 impl LineBoxBuilder {
+    pub fn alignment_width(mut self, value: f32) -> Self {
+        self.line.alignment_width = value;
+        self
+    }
     pub fn hanging_punctuation_advance(mut self, value: f32) -> Self {
         self.line.hanging_punctuation_advance = value;
         self
@@ -423,6 +431,8 @@ impl LayoutResult {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LayoutDebugInfo {
+    pub white_space_units: Vec<crate::layout::white_space::WhiteSpaceUnit>,
+    pub line_white_space_adjustments: Vec<LineWhiteSpaceDecisionInfo>,
     pub font_decisions: Vec<FontDecisionInfo>,
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
     pub metric_decisions: Vec<MetricDecisionInfo>,
@@ -1452,6 +1462,14 @@ pub struct LineEdgeTrimDecisionInfo {
     pub consumed_before: f32,
     pub natural_glue: f32,
     pub reason: String,
+}
+
+/// 逐行最终空白几何，源记录与行调整保持独立。
+#[derive(Clone, Debug, PartialEq)]
+pub struct LineWhiteSpaceDecisionInfo {
+    pub line_index: i32,
+    pub line_range: TextRange,
+    pub adjustment: crate::layout::white_space::LineWhiteSpaceAdjustment,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -36,6 +36,7 @@ fn decide(
         max_cjk_stretch_per_gap,
         &HashSet::new(),
         0.0,
+        None,
     )
 }
 
@@ -57,6 +58,7 @@ fn allowed(
         f32::INFINITY,
         &HashSet::new(),
         0.0,
+        None,
     )
 }
 
@@ -379,7 +381,8 @@ fn hyphen_break_returns_overflow_at_plain_word_boundaries() {
             &HashSet::new(),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
 }
@@ -399,7 +402,8 @@ fn over_long_words_must_hyphenate_from_the_line_start() {
             &HashSet::new(),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
 }
@@ -419,7 +423,8 @@ fn a_fitting_whole_word_breaks_there() {
             &HashSet::new(),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
 }
@@ -439,7 +444,8 @@ fn sino_western_gaps_absorbing_the_deficit_keep_the_whole_word() {
             &HashSet::from([1]),
             8.0,
             &HashSet::from([1]),
-            8.0
+            8.0,
+            None,
         )
     );
 }
@@ -458,7 +464,8 @@ fn gapless_or_too_loose_lines_hyphenate_instead() {
             &HashSet::from([2]),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
     assert_eq!(
@@ -472,7 +479,8 @@ fn gapless_or_too_loose_lines_hyphenate_instead() {
             &HashSet::from([1]),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
     assert_eq!(
@@ -486,7 +494,8 @@ fn gapless_or_too_loose_lines_hyphenate_instead() {
             &HashSet::from([1]),
             8.0,
             &HashSet::new(),
-            0.0
+            0.0,
+            None,
         )
     );
 }

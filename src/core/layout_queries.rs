@@ -395,6 +395,31 @@ pub fn positioned_clusters_for_line_box(
     positioned_clusters_for_line(result, line_index as i32, line)
 }
 
+/// 返回单行包含缩进与行尾悬挂内容的占用边界。
+pub fn line_occupied_bounds(line: &LineBox) -> Rect {
+    Rect {
+        left: line.indent,
+        top: line.top,
+        right: line.indent + line.visual_width + line.hyphen_advance,
+        bottom: line.bottom,
+    }
+}
+
+/// 返回所有行占用边界的并集；没有行时返回 `None`。
+pub fn occupied_bounds(result: &LayoutResult) -> Option<Rect> {
+    let mut lines = result.lines.iter();
+    let first = lines.next()?;
+    let mut bounds = line_occupied_bounds(first);
+    for line in lines {
+        let line_bounds = line_occupied_bounds(line);
+        bounds.left = bounds.left.min(line_bounds.left);
+        bounds.top = bounds.top.min(line_bounds.top);
+        bounds.right = bounds.right.max(line_bounds.right);
+        bounds.bottom = bounds.bottom.max(line_bounds.bottom);
+    }
+    Some(bounds)
+}
+
 /// Returns the visible glyph-ink bounds of the laid-out lines, in layout coordinates.
 ///
 /// This is intentionally separate from `positioned_clusters`: ink overhang (notably italic
@@ -1675,6 +1700,12 @@ impl<'a> PositionedClusterLookup<'a> {
                 leading_gap
                     .entry(decision.cluster_range)
                     .or_insert(-decision.total_reduction);
+            }
+        }
+        for decision in &result.debug.line_white_space_adjustments {
+            if decision.adjustment.action == crate::layout::white_space::LineWhiteSpaceAction::RemoveAutoSpaceStart {
+                let cluster = &result.clusters[decision.adjustment.cluster_index as usize];
+                leading_gap.remove(&cluster.range);
             }
         }
         Self {

@@ -119,10 +119,11 @@ pub fn cluster_role_ranges_with_options(
             .code_point_at_or_none(index)
             .expect("scalar offset 必须位于文本范围内");
         let start = index;
-        if is_mandatory_break_code_point_at(code_point, text, index) {
+        if is_mandatory_break_code_point(code_point) {
             let end = if code_point == 0x000D
                 && index + 1 < text_length
                 && text.code_point_at_or_none(index + 1) == Some(0x000A)
+            && !options.inline_objects_by_start.contains_key(&(index + 1))
             {
                 index + 2
             } else {
@@ -359,11 +360,6 @@ impl ResolvedClusterRange {
             role_override: None,
         }
     }
-}
-
-fn is_mandatory_break_code_point_at(code_point: i32, text: &Text, index: ScalarOffset) -> bool {
-    is_mandatory_break_code_point(code_point)
-        && !(code_point == 0x000A && text.code_point_before(index) == Some(0x000D))
 }
 
 fn is_variation_selector_code_point(code_point: i32) -> bool {

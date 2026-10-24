@@ -205,7 +205,11 @@ pub fn cursor_rect(
             bottom: 0.0,
         };
     }
-    let clamped = offset.min(result.input.content.text.scalar_len());
+    let clamped = coerce_selection_offset(
+        result,
+        offset.min(result.input.content.text.scalar_len()),
+        SourceBoundaryBias::Nearest,
+    );
     let line_index = get_line_for_offset(result, clamped).max(0) as usize;
     let line = &result.lines[line_index];
     let positioned = index

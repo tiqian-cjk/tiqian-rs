@@ -2,7 +2,7 @@ use tiqian::core::geometry::{LayoutConstraints, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, LayoutInput, LineBreakPolicy, LineBreakSpan, LineLengthGrid,
-    ParagraphStyle, RubyKind, RubySpan, TiqianTextContent,
+    ParagraphStyle, RubyKind, RubySpan, TabSize, TextWrapMode, TiqianTextContent, WhiteSpaceMode,
 };
 use tiqian::core::units::Ic;
 
@@ -127,6 +127,10 @@ pub fn fixtures() -> Vec<Fixture> {
             None,
         ),
         fixture("mandatory-single-newline", "第一行\n第二行", 160.0),
+        white_space_fixture("white-space-collapse", WhiteSpaceMode::Collapse),
+        white_space_fixture("white-space-preserve-breaks", WhiteSpaceMode::PreserveBreaks),
+        white_space_fixture("white-space-preserve", WhiteSpaceMode::Preserve),
+        white_space_fixture("white-space-break-spaces", WhiteSpaceMode::BreakSpaces),
         fixture("mandatory-blank-lines", "甲\n\n乙\n", 160.0),
         fixture(
             "mandatory-leading-trailing-newline",
@@ -178,6 +182,20 @@ fn fixture(id: &'static str, text: &str, width: f32) -> Fixture {
         use_english_hyphenation: false,
         pin_basic_no_hang: false,
     }
+}
+
+fn white_space_fixture(id: &'static str, mode: WhiteSpaceMode) -> Fixture {
+    let mut fixture = fixture(
+        id,
+        "01 基础组件  A\tB   \r\n02 Input 输入框   \n",
+        96.0,
+    );
+    fixture.input.paragraph_style.white_space = mode;
+    fixture.input.paragraph_style.text_wrap = TextWrapMode::Wrap;
+    fixture.input.paragraph_style.tab_size = TabSize::LayoutUnits(32.0);
+    fixture.input.paragraph_style.line_length_grid = LineLengthGrid::with_enabled(false);
+    fixture.input.paragraph_style.first_line_indent = Some(Ic::ZERO);
+    fixture
 }
 
 fn input(text: &str, width: f32) -> LayoutInput {

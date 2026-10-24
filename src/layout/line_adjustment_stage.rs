@@ -20,6 +20,7 @@ use super::line_geometry_stage::{
 use super::line_optimization::RepairOption;
 use super::paragraph_shaping_stage::map_to_cluster_range;
 use super::progressive_break_decisions::{ProgressiveBreakTier, ShrinkChannel};
+use super::white_space::LineWhiteSpaceAction;
 
 /// Kotlin `finishParagraphLayout` 的 Rust stage outcome。
 ///
@@ -266,11 +267,26 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         add_amount(&mut raw_trims, index, amount);
     }
     let trimmed_geometry = edge_trim_result.geometry.with_raw_edge_trims(&raw_trims);
-    let trimmed_clusters = trimmed_geometry.resolve_clusters();
+    let mut trimmed_clusters = trimmed_geometry.resolve_clusters();
+    for line in &line_solution.lines {
+        for adjustment in &line.white_space_adjustments {
+            match adjustment.action {
+                LineWhiteSpaceAction::ResolveTab
+                | LineWhiteSpaceAction::RemoveStart
+                | LineWhiteSpaceAction::RemoveEnd => {
+                    trimmed_clusters[adjustment.cluster_index as usize].advance = adjustment.occupied_advance;
+                }
+                _ => {}
+            }
+        }
+        if let Some(measurement) = &line.measurement {
+            measurement.resolve_final_tabs(line.cluster_range, &mut trimmed_clusters);
+        }
+    }
     let mut edge_trim_decisions = edge_trim_result.decisions;
     edge_trim_decisions.extend(auto_space_edge_decisions);
 
-    let justification_plans: Vec<_> = line_solution
+    let mut justification_plans: Vec<_> = line_solution
         .lines
         .iter()
         .enumerate()
@@ -301,11 +317,14 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                         })
                         .collect()
                 });
+            let range = line.measurement.as_ref().map_or(line.in_measure_cluster_range(), |measurement| {
+                measurement.alignment_range(line.in_measure_cluster_range())
+            });
             let justification = JustificationRequest {
                 adjusted_clusters: &trimmed_clusters,
                 cluster_roles: &prep.cluster_roles,
                 east_asian_spacing_edges: &prep.east_asian_spacing_edges,
-                line_cluster_range: line.in_measure_cluster_range(),
+                line_cluster_range: range,
                 max_width: (if line.cluster_range.first() == 0 {
                     prep.measure - plan.first_line_indent
                 } else {
@@ -339,7 +358,59 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                 preferred_emergency_tracking_boundary_after_clusters:
                     &preferred_emergency_tracking_boundaries,
             };
-            Some(request.justifier.justify(justification))
+            let mut result = request.justifier.justify(justification.clone());
+            if let Some(measurement) = &line.measurement
+                && measurement.has_tabs(line.cluster_range)
+                && !result.allocations.is_empty()
+            {
+                // Tab 会吸收其前方拉伸；只在含 Tab 的最终行上求解预算，不改机会或容量。
+                let target = justification.max_width;
+                let original_deficit = result.deficit_before;
+                let stages = request.justifier.prepare_stages(justification.clone());
+                let mut low = 0.0;
+                let mut high = original_deficit + measurement.justification_tab_budget(line.cluster_range);
+                let mut best_budget = 0.0;
+                let mut deltas = vec![0.0; (range.last() - range.first() + 1).max(0) as usize];
+                let mut final_width = |budget| {
+                    stages.fill_deltas(budget, &mut deltas);
+                    measurement.justified_width(range, &trimmed_clusters, &deltas)
+                };
+                let mut best_width = final_width(low);
+                let upper_width = final_width(high);
+                if upper_width <= target {
+                    best_width = upper_width;
+                    low = high;
+                    best_budget = low;
+                } else {
+                    // 固定次数限制浮点求解成本；无 Tab 的常见路径不进入此循环。
+                    for _ in 0..32 {
+                        let middle = (low + high) * 0.5;
+                        if middle == low || middle == high { break; }
+                        let width = final_width(middle);
+                        if width <= target {
+                            low = middle;
+                            best_budget = middle;
+                            best_width = width;
+                        } else { high = middle; }
+                    }
+                }
+                // 在 Tab 吸收形成的平台上取首次达到最佳宽度的预算，避免无效耗尽容量。
+                let mut left = 0.0;
+                let mut right = low;
+                for _ in 0..32 {
+                    let middle = (left + right) * 0.5;
+                    if middle == left || middle == right { break; }
+                    let width = final_width(middle);
+                    if width >= best_width && width <= target {
+                        right = middle;
+                        best_budget = middle;
+                    } else { left = middle; }
+                }
+                result = stages.plan(best_budget);
+                result.deficit_before = original_deficit;
+                result.unfilled_deficit = (target - best_width).max(0.0);
+            }
+            Some(result)
         })
         .collect();
 
@@ -405,10 +476,13 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         );
     }
     let final_geometry = trimmed_geometry.add_justification_deltas(&justify_delta_by_cluster);
-    let final_clusters: Vec<_> = final_geometry
+    let mut final_clusters: Vec<_> = final_geometry
         .resolve_clusters()
         .into_iter()
-        .map(|mut cluster| {
+        .enumerate()
+        .map(|(cluster_index, mut cluster)| {
+            cluster.advance = (trimmed_clusters[cluster_index].advance
+                + justify_delta_by_cluster.get(&(cluster_index as i32)).copied().unwrap_or(0.0)).max(0.0);
             if let Some(&index) = plan.metric_decision_index_by_range.get(&cluster.range) {
                 let metric = &plan.metric_decisions[index];
                 let metric_shift = if metric.layout_metrics.baseline_class == BaselineClass::Roman {
@@ -426,7 +500,32 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
             cluster
         })
         .collect();
-    let geometry_decisions = final_geometry.to_decision_info();
+    // 两端对齐后 Tab 仍使用正文块原点和相同跳站阈值。
+    for line in &line_solution.lines {
+        if let Some(measurement) = &line.measurement {
+            measurement.resolve_final_tabs(line.cluster_range, &mut final_clusters);
+        }
+    }
+    let mut geometry_decisions = final_geometry.to_decision_info();
+    let mut geometry_cursor = 0;
+    for cluster in &final_clusters {
+        if let Some(decision) = geometry_decisions.get_mut(geometry_cursor)
+            && decision.range == cluster.range {
+            decision.resolved_advance = cluster.advance;
+            geometry_cursor += 1;
+        }
+    }
+    for (index, (line, justification)) in line_solution.lines.iter().zip(&mut justification_plans).enumerate() {
+        if let Some(justification) = justification {
+            let occupied: f32 = line.cluster_range.into_iter().filter(|index| !line.hanging_cluster_indices.contains(index))
+                .map(|index| final_clusters[index as usize].advance).sum();
+            let hanging = line.measurement.as_ref().map_or(0.0, |measurement| measurement.final_hanging_advance(
+                line.cluster_range, line.end_reason, line.measurement_limit, &final_clusters));
+            let target = prep.measure - if line.cluster_range.first() == 0 { plan.first_line_indent } else { plan.block_indent }
+                - line_hyphen_advance_at(index);
+            justification.unfilled_deficit = (target - (occupied - hanging)).max(0.0);
+        }
+    }
     let glyph_runs = build_glyph_runs(prep, &final_clusters);
     let vertical_geometry = resolve_line_vertical_geometry(
         &prep.input,
@@ -502,7 +601,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         height: total_height,
     };
     let prep = request.prep;
-    let debug = build_layout_debug_info(LayoutDebugStageInput {
+    let mut debug = build_layout_debug_info(LayoutDebugStageInput {
         text: &prep.text,
         font_resolutions: &prep.font_resolutions,
         punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
@@ -543,6 +642,30 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         emergency_tracking_eligibility_decisions: &prep.emergency_tracking_eligibility_decisions,
         progressive_break_opportunities: &plan.progressive_break_opportunities,
     });
+    debug.white_space_units = prep.natural_clusters.iter()
+        .filter_map(|cluster| prep.white_space_units.get(&cluster.range).copied()).collect();
+    for (index, line) in line_solution.lines.iter().enumerate() {
+        for adjustment in &line.white_space_adjustments {
+            let mut adjustment = *adjustment;
+            if adjustment.action == LineWhiteSpaceAction::ResolveTab {
+                adjustment.occupied_advance = final_clusters[adjustment.cluster_index as usize].advance;
+            }
+            if matches!(adjustment.action, LineWhiteSpaceAction::HangEnd | LineWhiteSpaceAction::ConditionallyHangEnd) {
+                continue;
+            }
+            debug.line_white_space_adjustments.push(crate::core::layout_model::LineWhiteSpaceDecisionInfo {
+                line_index: index as i32, line_range: line.source_range, adjustment,
+            });
+        }
+        if let Some(measurement) = &line.measurement {
+            for adjustment in measurement.final_hanging_adjustments(line.cluster_range, line.end_reason,
+                line.measurement_limit, &final_clusters) {
+                debug.line_white_space_adjustments.push(crate::core::layout_model::LineWhiteSpaceDecisionInfo {
+                    line_index: index as i32, line_range: line.source_range, adjustment,
+                });
+            }
+        }
+    }
     LineAdjustmentStageOutcome::Finished(Box::new(LayoutResult::with_debug(
         prep.input,
         size,
@@ -565,41 +688,20 @@ fn resolve_auto_space_edge_trims(
         if line.cluster_range.is_empty() {
             continue;
         }
-        for (cluster_index, side) in [
-            (line.cluster_range.last(), "trailing"),
-            (line.cluster_range.first(), "leading"),
-        ] {
-            if let Some(decision) = prep.auto_space_decisions.iter().find(|decision| {
-                decision.cluster_range == prep.natural_clusters[cluster_index as usize].range
-                    && decision.side == side
-            }) {
-                add_amount(&mut trims, cluster_index, auto_space_gap);
+        for adjustment in line.white_space_adjustments.iter().rev() {
+            if matches!(adjustment.action, LineWhiteSpaceAction::RemoveAutoSpaceStart
+                | LineWhiteSpaceAction::RemoveAutoSpaceEnd) {
+                let cluster_index = adjustment.cluster_index;
+                let side = if adjustment.action == LineWhiteSpaceAction::RemoveAutoSpaceStart { "leading" } else { "trailing" };
+                add_amount(&mut trims, cluster_index, adjustment.occupied_advance);
                 decisions.push(LineEdgeTrimDecisionInfo {
                     line_range: line.source_range,
-                    cluster_range: decision.cluster_range,
+                    cluster_range: prep.natural_clusters[cluster_index as usize].range,
                     side: side.to_owned(),
-                    trim_amount: auto_space_gap,
+                    trim_amount: adjustment.occupied_advance,
                     consumed_before: 0.0,
                     natural_glue: auto_space_gap,
                     reason: "TextAutoSpaceLineEdgeTrim".to_owned(),
-                });
-            }
-            let cluster = &prep.natural_clusters[cluster_index as usize];
-            if is_space_run(cluster)
-                && !prep
-                    .inline_object_separator_space_trims
-                    .contains_key(&cluster_index)
-                && cluster.advance > 0.0
-            {
-                add_amount(&mut trims, cluster_index, cluster.advance);
-                decisions.push(LineEdgeTrimDecisionInfo {
-                    line_range: line.source_range,
-                    cluster_range: cluster.range,
-                    side: side.to_owned(),
-                    trim_amount: cluster.advance,
-                    consumed_before: 0.0,
-                    natural_glue: cluster.advance,
-                    reason: "LineEdgeWordSpaceCollapse".to_owned(),
                 });
             }
         }
@@ -730,9 +832,5 @@ fn center_dash_ink(
 fn add_amount(target: &mut HashMap<i32, f32>, index: i32, amount: f32) {
     *target.entry(index).or_insert(0.0) += amount;
 }
-fn is_space_run(cluster: &Cluster) -> bool {
-    !cluster.text.is_empty() && cluster.text.chars().all(|character| character == ' ')
-}
-
 const CURRENT_LINE_TECHNICAL_BODY_STRETCH_LIMIT_EM: f32 = 0.0;
 const TECHNICAL_STRETCH_EPSILON_PX: f32 = 0.001;

@@ -63,7 +63,9 @@ pub fn inline_object_attached_marks(
         let mut previous = mark as i32 - 1;
         let mut separators = Vec::new();
         while previous >= 0
-            && is_space_run(&clusters[previous as usize])
+            && (is_space_run(&clusters[previous as usize])
+                || (clusters[previous as usize].synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+                    && clusters[previous as usize].display_text.is_empty()))
             && clusters[previous as usize].range.end()
                 == clusters[previous as usize + 1].range.start()
         {
@@ -398,31 +400,41 @@ pub fn apply_auto_space_policy(
                     None
                 };
                 virtual_gap[b.attached_cluster_range.1 as usize] =
-                    mode_for_narrow(narrow, policy) == Some(AutoSpaceMode::Insert);
+                    mode_for_narrow(narrow, policy).is_some_and(|mode| mode != AutoSpaceMode::Disabled);
             }
         }
     }
+    // 有效邻居随源顺序单调前进；跳过隐藏空白，不分配逐 cluster 邻接表。
+    let mut effective = clusters.iter().enumerate().filter(|(_, cluster)| {
+        !(cluster.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+            && cluster.display_text.is_empty())
+    }).map(|(index, _)| index).peekable();
+    let mut previous = None;
     let updated = clusters
         .iter()
         .enumerate()
         .map(|(i, c)| {
-            let prev = i
-                .checked_sub(1)
-                .map(|x| spacing_edges_at(edges, x).trailing);
-            let next = (i + 1 < clusters.len()).then(|| spacing_edges_at(edges, i + 1).leading);
+            if c.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+                && c.display_text.is_empty() { return c.clone(); }
+            effective.next();
+            let next_index = effective.peek().copied();
+            let previous_index = previous.replace(i);
+            let prev = previous_index.map(|x| spacing_edges_at(edges, x).trailing);
+            let next = next_index.map(|x| spacing_edges_at(edges, x).leading);
             if is_space_run(c) {
                 let narrow = if prev == Some(EastAsianSpacingValue::Wide)
                     && next == Some(EastAsianSpacingValue::Narrow)
                 {
-                    clusters.get(i + 1).and_then(|x| x.text.chars().next())
+                    next_index.and_then(|index| clusters[index].text.chars().next())
                 } else if prev == Some(EastAsianSpacingValue::Narrow)
                     && next == Some(EastAsianSpacingValue::Wide)
                 {
-                    clusters.get(i - 1).and_then(|x| x.text.chars().next_back())
+                    previous_index.and_then(|index| clusters[index].text.chars().next_back())
                 } else {
                     None
                 };
-                if mode_for_narrow(narrow, policy).is_none_or(|m| m == AutoSpaceMode::Disabled)
+                if c.display_text != " "
+                    || mode_for_narrow(narrow, policy) != Some(AutoSpaceMode::Replace)
                     || c.advance == gap
                 {
                     return c.clone();
@@ -433,8 +445,8 @@ pub fn apply_auto_space_policy(
                     side: "gap".to_owned(),
                     boundary_role: "EastAsianSpacing.Wide".to_owned(),
                     mode: "Replace".to_owned(),
-                    characters_affected: c.text.scalar_len().value(),
-                    reduction_per_char: reduction / c.text.scalar_len().value() as f32,
+                    characters_affected: 1,
+                    reduction_per_char: reduction,
                     total_reduction: reduction,
                     reason: "TextAutoSpaceReplace:east-asian-spacing-W-space-N".to_owned(),
                 });
@@ -446,8 +458,8 @@ pub fn apply_auto_space_policy(
                 let leading = prev == Some(EastAsianSpacingValue::Wide)
                     && spacing_edges_at(edges, i).leading == EastAsianSpacingValue::Narrow
                     && mode_for_narrow(c.text.chars().next(), policy)
-                        == Some(AutoSpaceMode::Insert)
-                    && !suppressed.contains(&(i as i32 - 1));
+                        .is_some_and(|mode| mode != AutoSpaceMode::Disabled)
+                    && !previous_index.is_some_and(|index| suppressed.contains(&(index as i32)));
                 if leading {
                     add += gap;
                     decisions.push(auto_decision(
@@ -469,7 +481,7 @@ pub fn apply_auto_space_policy(
                 let normal = next == Some(EastAsianSpacingValue::Wide)
                     && spacing_edges_at(edges, i).trailing == EastAsianSpacingValue::Narrow
                     && mode_for_narrow(c.text.chars().next_back(), policy)
-                        == Some(AutoSpaceMode::Insert)
+                        .is_some_and(|mode| mode != AutoSpaceMode::Disabled)
                     && !suppressed.contains(&(i as i32));
                 if normal || virtual_gap[i] {
                     add += gap;
@@ -645,7 +657,7 @@ fn empty_contextual() -> ContextualKinsoku {
     }
 }
 fn is_space_run(c: &Cluster) -> bool {
-    !c.text.is_empty() && c.text.chars().all(|x| x == ' ')
+    !c.text.is_empty() && !c.display_text.is_empty() && c.display_text.chars().all(|x| x == ' ')
 }
 fn is_inline_object_cluster(c: &Cluster) -> bool {
     c.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::InlineObject)

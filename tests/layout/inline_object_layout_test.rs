@@ -578,6 +578,59 @@ fn relation_stretch_moves_both_formula_sides_by_the_same_final_geometry() {
 }
 
 #[test]
+fn phase_two_object_separator_attachment_respects_white_space_mode() {
+    use tiqian::core::text_model::WhiteSpaceMode;
+    for mode in [WhiteSpaceMode::Collapse, WhiteSpaceMode::PreserveBreaks,
+        WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
+        for separator in ["", " ", "  ", "\t", "\u{00A0}", "\u{3000}"] {
+            let text = format!("前x{separator}，后");
+            let mut paragraph_style = style();
+            paragraph_style.white_space = mode;
+            let result = fixed_basic_engine(breaker(0)).layout(LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text.as_str())), LayoutConstraints::with_defaults(320.))
+                .paragraph_style(paragraph_style)
+                .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 24., 16., 4.)])
+                .build());
+            let collapse = matches!(mode, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks);
+            let attached = separator.is_empty() || (collapse && matches!(separator, " " | "  " | "\t"));
+            assert_eq!(attached, result.debug.contextual_kinsoku_decisions.iter()
+                .any(|decision| decision.reason.starts_with("InlineObjectAttachedKinsoku")),
+                "{mode:?}, {separator:?}");
+            if !separator.is_empty() && separator.chars().all(|c| c == ' ') && !collapse {
+                assert_eq!(separator.len() as f32 * 8., result.clusters.iter()
+                    .filter(|cluster| cluster.range.start() >= scalar_offset(2)
+                        && cluster.range.end() <= scalar_offset(2 + separator.len() as i32))
+                    .map(|cluster| cluster.advance).sum::<f32>());
+            }
+        }
+    }
+}
+
+#[test]
+fn phase_two_objects_interrupt_crlf_and_hide_covered_whitespace() {
+    use tiqian::core::text_model::WhiteSpaceMode;
+    for object_range in [text_range(1, 2), text_range(2, 3), text_range(1, 3)] {
+        let mut paragraph_style = style();
+        paragraph_style.white_space = WhiteSpaceMode::Collapse;
+        let result = fixed_basic_engine(breaker(0)).layout(LayoutInput::builder(
+            TiqianTextContent::new(Text::from("中\r\nA")), LayoutConstraints::with_defaults(320.))
+            .paragraph_style(paragraph_style)
+            .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(object_range, 24., 16., 4.)])
+            .build());
+        assert!(result.clusters.iter().any(|cluster| cluster.range == object_range
+            && cluster.synthetic_kind == Some(tiqian::core::layout_model::SyntheticClusterKind::InlineObject)));
+        assert_eq!(1, result.lines.len());
+        assert!(result.debug.mandatory_break_decisions.is_empty());
+        for cluster in &result.clusters {
+            if cluster.range != object_range && matches!(cluster.text.as_str(), "\r" | "\n") {
+                assert_eq!(" ", cluster.display_text.as_str());
+                assert_eq!(8., cluster.advance);
+            }
+        }
+    }
+}
+
+#[test]
 fn formula_break_keeps_baseline_operator_on_previous_line() {
     let text = "a+b";
     let operator = InlineObjectSpan::new(

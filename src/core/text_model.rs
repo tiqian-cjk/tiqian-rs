@@ -915,8 +915,43 @@ pub const DEFAULT_EMPHASIS_DOT_GAP_EM: f32 = 0.1;
 /// InlineObjectMinimumClearance：超大行内墨迹保持的行间净空，单位 em。
 pub const DEFAULT_INLINE_OBJECT_MINIMUM_CLEARANCE_EM: f32 = 0.1;
 
+/// 源空白转换策略，与自动间距独立配置。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum WhiteSpaceMode {
+    Collapse,
+    #[default]
+    PreserveBreaks,
+    Preserve,
+    BreakSpaces,
+}
+
+/// 软换行策略，保留的硬换行始终生效。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TextWrapMode {
+    #[default]
+    Wrap,
+    NoWrap,
+}
+
+/// Tab stop 的重复间距，倍数单位使用段落默认字体的空格宽度。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TabSize {
+    SpaceAdvanceMultiple(f32),
+    LayoutUnits(f32),
+}
+
+impl Default for TabSize {
+    fn default() -> Self {
+        Self::SpaceAdvanceMultiple(8.0)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphStyle {
+    pub white_space: WhiteSpaceMode,
+    pub text_wrap: TextWrapMode,
+    /// 间距要求非负；零间距使保留的 Tab 为零宽。
+    pub tab_size: TabSize,
     /// 段落仅最后一行的 alignment。CLREQ：“与西文排版不同，中文排版特别是书籍正文排版极少使用
     /// 左齐右不齐，原则上应该进行两端对齐”——justification 是基线行为而非 option：每个 non-last line
     /// 始终 justified（挤压/拉伸已使行长一致）。唯一自由度是 last line：start（默认）、centered 或
@@ -968,6 +1003,9 @@ pub struct ParagraphStyle {
 impl Default for ParagraphStyle {
     fn default() -> Self {
         Self {
+            white_space: WhiteSpaceMode::PreserveBreaks,
+            text_wrap: TextWrapMode::Wrap,
+            tab_size: TabSize::default(),
             last_line_alignment: LastLineAlignment::Start,
             writing_mode: WritingMode::HorizontalTb,
             line_height: None,
@@ -995,6 +1033,18 @@ pub struct ParagraphStyleBuilder {
 }
 
 impl ParagraphStyleBuilder {
+    pub fn white_space(mut self, value: WhiteSpaceMode) -> Self {
+        self.style.white_space = value;
+        self
+    }
+    pub fn text_wrap(mut self, value: TextWrapMode) -> Self {
+        self.style.text_wrap = value;
+        self
+    }
+    pub fn tab_size(mut self, value: TabSize) -> Self {
+        self.style.tab_size = value;
+        self
+    }
     pub fn last_line_alignment(mut self, value: LastLineAlignment) -> Self {
         self.style.last_line_alignment = value;
         self

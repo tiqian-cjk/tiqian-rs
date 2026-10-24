@@ -45,6 +45,7 @@ fn infinite_line_limit_with_clusters_admits_the_cleanest_tier() {
             8.0,
             &Default::default(),
             0.0,
+            None,
         )
     );
 }
@@ -64,6 +65,7 @@ fn infinite_stretch_ceiling_with_finite_line_limit_admits_the_cleanest_tier() {
             f32::INFINITY,
             &Default::default(),
             0.0,
+            None,
         )
     );
 }

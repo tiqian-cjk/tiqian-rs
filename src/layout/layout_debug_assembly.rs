@@ -211,6 +211,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 format!("end:{:?}", line.end_reason),
                 format!("natural:{}", line.natural_width),
                 format!("adjusted:{}", line.adjusted_width),
+                format!("alignment:{}", line.alignment_width),
                 format!("visual:{}", line.visual_width),
             ];
             if let Some(opportunity) = stage

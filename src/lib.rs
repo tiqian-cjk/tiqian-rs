@@ -64,6 +64,7 @@ pub mod layout {
     pub mod line_break_planning_stage;
     pub mod line_breaker;
     pub mod line_geometry_stage;
+    pub mod line_measurement;
     pub mod line_optimization;
     pub mod line_repair;
     pub mod paragraph_dp_line_breaker;
@@ -75,5 +76,6 @@ pub mod layout {
     pub mod punctuation_model;
     pub mod quote_pair_analyzer;
     pub mod unicode_punctuation_boundary_resolver;
+    pub mod white_space;
     pub mod width_independent_annotation_cache;
 }

@@ -74,16 +74,18 @@ pub fn build_line_boxes(
         .iter()
         .enumerate()
         .map(|(line_index, candidate)| {
-            // Kotlin's sumOf starts from +0f. Rust's f32::sum yields -0.0
-            // for an empty iterator, so add +0.0 to retain the same
-            // observable width for empty mandatory-break lines.
-            let adjusted_width: f32 = candidate
+            // 空行归一为正零；悬挂仅从测量扣除，最终 advance 保留。
+            let white_space_hang: f32 = candidate.measurement.as_ref().map_or_else(
+                || candidate.white_space_adjustments.iter().map(|record| record.hanging_advance).sum(),
+                |measurement| measurement.final_hanging_advance(candidate.cluster_range, candidate.end_reason,
+                    candidate.measurement_limit, trimmed_clusters));
+            let adjusted_width: f32 = (candidate
                 .cluster_range
                 .into_iter()
                 .filter(|index| !candidate.hanging_cluster_indices.contains(index))
                 .map(|index| trimmed_clusters[index as usize].advance)
                 .sum::<f32>()
-                + 0.0;
+                + 0.0 - white_space_hang).max(0.0);
             let visual_width: f32 = candidate
                 .cluster_range
                 .into_iter()
@@ -96,6 +98,11 @@ pub fn build_line_boxes(
                 .map(|index| final_clusters[*index as usize].advance)
                 .sum::<f32>()
                 + 0.0;
+            let final_white_space_hang = candidate.measurement.as_ref().map_or(white_space_hang, |measurement| {
+                measurement.final_hanging_advance(candidate.cluster_range, candidate.end_reason,
+                    candidate.measurement_limit, final_clusters)
+            });
+            let alignment_width = (visual_width - hanging_punctuation_advance - final_white_space_hang).max(0.0);
             let drawable = !candidate.cluster_range.is_empty()
                 && candidate
                     .cluster_range
@@ -115,8 +122,8 @@ pub fn build_line_boxes(
             } else {
                 match input.paragraph_style.last_line_alignment {
                     LastLineAlignment::Start => 0.0,
-                    LastLineAlignment::Center => ((limit - visual_width) / 2.0).max(0.0),
-                    LastLineAlignment::End => (limit - visual_width).max(0.0),
+                    LastLineAlignment::Center => ((limit - alignment_width) / 2.0).max(0.0),
+                    LastLineAlignment::End => (limit - alignment_width).max(0.0),
                 }
             };
             let repair = candidate.repair.as_ref().map(|repair| {
@@ -163,6 +170,7 @@ pub fn build_line_boxes(
                 adjusted_width,
                 visual_width,
             )
+            .alignment_width(alignment_width)
             .hanging_punctuation_advance(hanging_punctuation_advance)
             .indent(grid_body_offset + base_indent + alignment_inset)
             .end_reason(candidate.end_reason)

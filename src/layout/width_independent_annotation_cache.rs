@@ -53,6 +53,7 @@ use super::punctuation_model::{
     PunctuationAtomBuilder, PunctuationSpacingCompressionResult, PunctuationSpacingCompressor,
 };
 use super::quote_pair_analyzer::{QuotePair, QuotePairAnalyzer, QuotePairAwareFontRoleClassifier};
+use super::white_space::{WhiteSpaceUnit, scan_white_space};
 
 /// 宽度无关 annotation cache 的完整输入身份；被拒绝的 technical tier 也属于 key，防止重用错误的 emergency candidate 集。
 #[derive(Clone, Debug, PartialEq)]
@@ -67,6 +68,7 @@ pub struct WidthIndependentAnnotationKey {
     pub inline_boxes: Vec<InlineBoxSpan>,
     pub inline_objects: Vec<InlineObjectSpan>,
     pub profile_id: LayoutProfileId,
+    pub white_space: super::super::core::text_model::WhiteSpaceMode,
     pub emphasis_dot_gap_em: f32,
     pub rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
 }
@@ -86,6 +88,7 @@ pub fn to_width_independent_annotation_key(
         inline_boxes: input.inline_boxes.clone(),
         inline_objects: input.inline_objects.clone(),
         profile_id: input.profile_id.clone(),
+        white_space: input.paragraph_style.white_space,
         emphasis_dot_gap_em: input.paragraph_style.emphasis_dot_gap_em,
         rejected_technical_tiers_by_span: rejected,
     }
@@ -106,6 +109,7 @@ pub struct WidthIndependentParagraphAnnotation {
     pub quote_pairs: Vec<QuotePair>,
     pub role_override_infos: Vec<RoleOverrideInfo>,
     pub cluster_ranges: Vec<ResolvedClusterRange>,
+    pub white_space_units: HashMap<TextRange, WhiteSpaceUnit>,
     pub inline_object_by_range: HashMap<TextRange, InlineObjectSpan>,
     pub segment_shaping_cache: HashMap<TextRange, ShapingResult>,
     pub segment_font_resolutions: HashMap<TextRange, FontResolution>,
@@ -405,12 +409,17 @@ pub fn prepare_width_independent_annotation(
             }
         })
         .collect();
+    let white_space_units = scan_white_space(&text, input.paragraph_style.white_space, &inline_by_start);
+    for unit in &white_space_units {
+        boundaries.insert(unit.range.start());
+        boundaries.insert(unit.range.end());
+    }
     let options = ClusterRoleRangeOptions::builder()
         .span_boundaries(boundaries)
         .emoji_shaping_boundaries(emoji_shaping_boundaries)
         .inline_objects_by_start(inline_by_start)
         .build();
-    let cluster_ranges = if overrides.is_empty() && dash_ellipsis_role_decisions.is_empty() {
+    let mut cluster_ranges = if overrides.is_empty() && dash_ellipsis_role_decisions.is_empty() {
         cluster_role_ranges_with_options(&text, font_role_classifier, &context, &profile, &options)
     } else if dash_ellipsis_role_decisions.is_empty() {
         let aware = QuotePairAwareFontRoleClassifier::new(font_role_classifier, &overrides);
@@ -429,6 +438,18 @@ pub fn prepare_width_independent_annotation(
         );
         cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
     };
+    let white_space_units: HashMap<_, _> = white_space_units.into_iter()
+        .map(|unit| (unit.range, unit)).collect();
+    for resolved in &mut cluster_ranges {
+        if let Some(unit) = white_space_units.get(&resolved.range) {
+            resolved.mandatory_break = unit.kind == super::white_space::WhiteSpaceKind::MandatoryBreak
+                || (unit.kind == super::white_space::WhiteSpaceKind::SegmentBreak
+                    && input.paragraph_style.white_space != super::super::core::text_model::WhiteSpaceMode::Collapse);
+            if !resolved.mandatory_break {
+                resolved.role = FontRole::LatinText;
+            }
+        }
+    }
     let inline_object_by_range: HashMap<_, _> = cluster_ranges
         .iter()
         .filter_map(|range| {
@@ -456,6 +477,7 @@ pub fn prepare_width_independent_annotation(
         font_size,
         f32::INFINITY,
         &cluster_ranges,
+        &white_space_units,
         &inline_object_by_range,
         &substitutor,
         &*style_at,
@@ -543,6 +565,7 @@ pub fn prepare_width_independent_annotation(
         quote_pairs: pairs,
         role_override_infos,
         cluster_ranges,
+        white_space_units,
         inline_object_by_range,
         segment_shaping_cache: base.segment_shaping_cache.clone(),
         segment_font_resolutions: base.segment_font_resolutions.clone(),
@@ -647,6 +670,7 @@ pub fn build_paragraph_layout_prep(
             font_size,
             measure,
             &annotation.cluster_ranges,
+            &annotation.white_space_units,
             &annotation.inline_object_by_range,
             &annotation.punctuation_glyph_substitutor,
             &*annotation.style_at,
@@ -748,7 +772,7 @@ pub fn build_paragraph_layout_prep(
                 }
             } else {
                 let mut edge = unicode_east_asian_spacing::resolved_edges(
-                    &cluster.text,
+                    &cluster.display_text,
                     &input.text_style.locale,
                 );
                 if narrow_leading.contains(&(index as i32)) {
@@ -985,12 +1009,17 @@ pub fn build_paragraph_layout_prep(
                 })
             })
             .collect();
-    let attached_marks = inline_object_attached_marks(
+    let mut attached_marks = inline_object_attached_marks(
         &natural,
         &cluster_roles,
         resolved_kinsoku.level,
         &kinsoku_rule,
     );
+    if matches!(input.paragraph_style.white_space,
+        super::super::core::text_model::WhiteSpaceMode::Preserve
+        | super::super::core::text_model::WhiteSpaceMode::BreakSpaces) {
+        attached_marks.retain(|attachment| attachment.separator_cluster_indices.is_empty());
+    }
     let separator_trims: HashMap<i32, f32> = attached_marks
         .iter()
         .flat_map(|attachment| {
@@ -1219,8 +1248,8 @@ pub fn build_paragraph_layout_prep(
                     ))
                 }
             }
-        } else if !cluster.text.is_empty()
-            && cluster.text.chars().all(|character| character == ' ')
+        } else if !cluster.display_text.is_empty()
+            && cluster.display_text.chars().all(|character| character == ' ')
             && !separator_trims.contains_key(&index)
         {
             if gap_ranges.contains(&cluster.range) {
@@ -1257,6 +1286,7 @@ pub fn build_paragraph_layout_prep(
         }
     }
     ParagraphLayoutPrep {
+        white_space_units: annotation.white_space_units.clone(),
         input: input.clone(),
         rejected_technical_tiers_by_span: rejected.clone(),
         text: text.clone(),

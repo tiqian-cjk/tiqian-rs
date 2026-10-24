@@ -60,6 +60,7 @@ fn source_whitespace_capacity_keeps_structural_tier_ahead_of_syllable() {
             8.0,
             &HashSet::new(),
             8.0,
+            None,
         ),
     );
 }
@@ -90,6 +91,7 @@ fn lookahead_cannot_replace_selected_emergency_boundary_with_earlier_same_tier_c
             8.0,
             &HashSet::new(),
             8.0,
+            None,
         )
     };
 

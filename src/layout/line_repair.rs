@@ -96,6 +96,9 @@ pub fn apply_kinsoku_repairs(
         if hangable.contains(&offender) && (previous.hanging_cluster_indices.is_empty() || extends)
         {
             let end = mandatory_break_tail_end(&curr, offender, adjusted);
+            let end = previous.measurement.as_ref().map_or(end, |measurement| {
+                measurement.next_boundary(end + 1, curr.cluster_range.last() + 1) - 1
+            });
             let candidate = RepairCandidate::new(
                 "Hang".to_owned(),
                 "ForbiddenAtLineStart".to_owned(),
@@ -134,13 +137,42 @@ pub fn apply_kinsoku_repairs(
                 ]
                 .concat(),
                 hanging_cluster_indices: hanging,
+                white_space_adjustments: previous.white_space_adjustments.clone(),
+                measurement: previous.measurement.clone(),
+                measurement_limit: previous.measurement_limit,
             };
+            let mut repaired = repaired;
+            repaired.end_reason = if end == curr.cluster_range.last() {
+                curr.end_reason
+            } else {
+                previous.end_reason
+            };
+            repaired.remeasure();
+            if !repaired.hanging_cluster_indices.is_empty()
+                && let Some(measurement) = &repaired.measurement
+            {
+                let in_measure = repaired.in_measure_cluster_range();
+                let natural_width = measurement.measure(
+                    repaired.cluster_range,
+                    repaired.end_reason,
+                    repaired.measurement_limit,
+                    &[],
+                ).natural;
+                let adjusted_width = measurement.measure(
+                    in_measure,
+                    repaired.end_reason,
+                    repaired.measurement_limit,
+                    &[],
+                ).adjusted;
+                repaired.natural_width = natural_width;
+                repaired.adjusted_width = adjusted_width;
+            }
             repaired.validate_hanging_suffix();
             lines[i - 1] = repaired;
             if end == curr.cluster_range.last() {
                 lines.remove(i);
             } else {
-                lines[i] = rebuild_line(
+                let mut remainder = rebuild_line(
                     IntRange::new(end + 1, curr.cluster_range.last()),
                     natural,
                     adjusted,
@@ -148,6 +180,14 @@ pub fn apply_kinsoku_repairs(
                     None,
                     Vec::new(),
                 );
+                remainder.measurement = curr.measurement.clone();
+                remainder.measurement_limit = line_limit(
+                    max_width,
+                    first_line_indent,
+                    remainder.cluster_range.first(),
+                );
+                remainder.remeasure();
+                lines[i] = remainder;
             }
             continue;
         }
@@ -165,7 +205,9 @@ pub fn apply_kinsoku_repairs(
             continue;
         }
         let carried = previous.cluster_range.last();
-        if unbreakable.contains_boundary(carried) {
+        if unbreakable.contains_boundary(carried)
+            || previous.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(carried))
+        {
             lines[i] = leave_ragged(
                 curr,
                 first_cluster,
@@ -178,7 +220,7 @@ pub fn apply_kinsoku_repairs(
             i += 1;
             continue;
         }
-        let next = rebuild_line(
+        let mut next = rebuild_line(
             IntRange::new(carried, curr.cluster_range.last()),
             natural,
             adjusted,
@@ -186,6 +228,9 @@ pub fn apply_kinsoku_repairs(
             None,
             Vec::new(),
         );
+        next.measurement = curr.measurement.clone();
+        next.measurement_limit = line_limit(max_width, first_line_indent, next.cluster_range.first());
+        next.remeasure();
         if next.adjusted_width > max_width {
             lines[i] = leave_ragged(
                 curr,
@@ -212,7 +257,7 @@ pub fn apply_kinsoku_repairs(
             required_shrink: 0.,
             available_capacity: 0.,
         });
-        lines[i - 1] = rebuild_line(
+        let mut shortened_previous = rebuild_line(
             IntRange::new(previous.cluster_range.first(), carried - 1),
             natural,
             adjusted,
@@ -220,6 +265,14 @@ pub fn apply_kinsoku_repairs(
             None,
             Vec::new(),
         );
+        shortened_previous.measurement = previous.measurement.clone();
+        shortened_previous.measurement_limit = line_limit(
+            max_width,
+            first_line_indent,
+            shortened_previous.cluster_range.first(),
+        );
+        shortened_previous.remeasure();
+        lines[i - 1] = shortened_previous;
         let mut next = next;
         next.repair = Some(RepairOption::CarryPrevious {
             penalty: carry_previous_penalty,
@@ -258,14 +311,18 @@ pub fn try_push_in(
         "PushIn merge-through cluster must belong to the current line."
     );
     let end = mandatory_break_tail_end(current, offender, adjusted);
-    let expanded = rebuild_line(
-        IntRange::new(previous.cluster_range.first(), end),
-        natural,
-        adjusted,
-        LineEndReason::AutoWrap,
-        None,
-        Vec::new(),
-    );
+    let end = previous.measurement.as_ref().map_or(end, |measurement| {
+        measurement.next_boundary(end + 1, current.cluster_range.last() + 1) - 1
+    });
+    let range = IntRange::new(previous.cluster_range.first(), end);
+    let mut expanded = if previous.measurement.is_some() {
+        LineCandidate::new(range, TextRange::new(adjusted[range.first() as usize].range.start(),
+            adjusted[end as usize].range.end()), 0.0, 0.0)
+    } else { rebuild_line(range, natural, adjusted, LineEndReason::AutoWrap, None, Vec::new()) };
+    expanded.measurement = previous.measurement.clone();
+    expanded.measurement_limit = max_width;
+    expanded.end_reason = if end == current.cluster_range.last() { current.end_reason } else { previous.end_reason };
+    expanded.remeasure();
     let overflow = expanded.adjusted_width - max_width;
     let mut in_line: Vec<_> = opportunities
         .iter()
@@ -273,6 +330,9 @@ pub fn try_push_in(
             expanded.cluster_range.contains(opp.cluster_index)
                 && opp.capacity > 0.
                 && (!opp.line_end_only || opp.cluster_index == offender)
+                && expanded.measurement.as_ref().is_none_or(|measurement| {
+                    measurement.shrink_is_effective(expanded.cluster_range, expanded.end_reason, opp.cluster_index)
+                })
         })
         .copied()
         .collect();
@@ -287,7 +347,12 @@ pub fn try_push_in(
         }
     }
     let capacity: f32 = in_line.iter().map(|opp| opp.capacity).sum();
-    if overflow > capacity {
+    let resolved_allocations = if let Some(measurement) = &expanded.measurement {
+        measurement.compression(expanded.cluster_range, expanded.end_reason, max_width, &in_line)
+    } else if overflow <= capacity {
+        Some(distribute_push_in_shrink(&in_line, overflow.max(0.0)))
+    } else { None };
+    if resolved_allocations.is_none() {
         return PushInResult {
             previous: previous.clone(),
             current: Some(current.clone()),
@@ -306,8 +371,9 @@ pub fn try_push_in(
             },
         };
     }
-    let shrink = overflow.max(0.);
-    let allocations = distribute_push_in_shrink(&in_line, shrink);
+    let mut allocations = resolved_allocations.unwrap();
+    if expanded.measurement.is_some() { allocations.sort_by_key(|allocation| allocation.cluster_index); }
+    let shrink: f32 = allocations.iter().map(|allocation| allocation.shrink).sum();
     let mut repaired = expanded.clone();
     repaired.adjusted_width -= shrink;
     repaired.end_reason = if end == current.cluster_range.last() {
@@ -336,6 +402,7 @@ pub fn try_push_in(
         total_shrink: shrink,
         total_available_capacity: capacity,
     });
+    repaired.remeasure();
     repaired.repair_candidates = [
         previous.repair_candidates.clone(),
         vec![RepairCandidate {
@@ -354,14 +421,18 @@ pub fn try_push_in(
     ]
     .concat();
     let following = (end < current.cluster_range.last()).then(|| {
-        rebuild_line(
+        let mut line = rebuild_line(
             IntRange::new(end + 1, current.cluster_range.last()),
             natural,
             adjusted,
             current.end_reason,
             None,
             Vec::new(),
-        )
+        );
+        line.measurement = current.measurement.clone();
+        line.measurement_limit = current.measurement_limit;
+        line.remeasure();
+        line
     });
     PushInResult {
         previous: repaired,
@@ -426,11 +497,36 @@ pub fn apply_fill_push_in(
             i += 1;
             continue;
         };
+        let measure_added = |end: i32| {
+            let range = IntRange::new(previous.cluster_range.first(), end);
+            let reason = if end == current.cluster_range.last() {
+                current.end_reason
+            } else {
+                previous.end_reason
+            };
+            previous.measurement.as_ref().map_or_else(
+                || {
+                    (current.cluster_range.first()..=end)
+                        .map(|index| adjusted[index as usize].advance)
+                        .sum::<f32>()
+                },
+                |measurement| {
+                    measurement.measure(range, reason, limit, &[]).adjusted
+                        - previous.adjusted_width
+                },
+            )
+        };
+        if let Some(measurement) = &previous.measurement {
+            let boundary = measurement.next_boundary(end + 1, current.cluster_range.last() + 1);
+            if boundary > current.cluster_range.last() + 1 {
+                i += 1;
+                continue;
+            }
+            end = boundary - 1;
+        }
+        let mut added = measure_added(end);
         let current_break = progressive.get(&(previous.cluster_range.last() + 1));
         let mut next_break = progressive.get(&(end + 1));
-        let mut added: f32 = (current.cluster_range.first()..=end)
-            .map(|index| adjusted[index as usize].advance)
-            .sum();
         let mut promotes = current_break
             .zip(next_break)
             .is_some_and(|(before, after)| {
@@ -449,9 +545,15 @@ pub fn apply_fill_push_in(
         {
             end = boundary - 1;
             next_break = progressive.get(&boundary);
-            added = (current.cluster_range.first()..=end)
-                .map(|index| adjusted[index as usize].advance)
-                .sum();
+            if let Some(measurement) = &previous.measurement {
+                let boundary = measurement.next_boundary(end + 1, current.cluster_range.last() + 1);
+                if boundary > current.cluster_range.last() + 1 {
+                    i += 1;
+                    continue;
+                }
+                end = boundary - 1;
+            }
+            added = measure_added(end);
             promotes = false
         }
         if current_break
@@ -469,27 +571,6 @@ pub fn apply_fill_push_in(
             i += 1;
             continue;
         }
-        if overflow >= deficit * compress_bias {
-            i += 1;
-            continue;
-        }
-        if overflow > 0. && !promotes {
-            let stretch = line_gap_count(previous.cluster_range, gap_boundaries);
-            let compression = line_gap_count(
-                IntRange::new(previous.cluster_range.first(), end),
-                gap_boundaries,
-            );
-            if overflow / (compression.max(1) as f32)
-                > if stretch == 0 {
-                    0.
-                } else {
-                    deficit / stretch as f32
-                }
-            {
-                i += 1;
-                continue;
-            }
-        }
         let result = try_push_in(
             &previous,
             &current,
@@ -505,6 +586,36 @@ pub fn apply_fill_push_in(
                 "LineAdjustmentPushIn"
             },
         );
+        if !result.candidate.accepted {
+            i += 1;
+            continue;
+        }
+        let cost = if previous
+            .measurement
+            .as_ref()
+            .is_some_and(|measurement| measurement.has_tabs(IntRange::new(previous.cluster_range.first(), end)))
+        {
+            result.candidate.shrink
+        } else {
+            overflow
+        };
+        if !promotes && cost >= deficit * compress_bias {
+            i += 1;
+            continue;
+        }
+        if cost > 0. && !promotes {
+            let stretch = line_gap_count(previous.cluster_range, gap_boundaries);
+            let compression = line_gap_count(
+                IntRange::new(previous.cluster_range.first(), end),
+                gap_boundaries,
+            );
+            if cost / (compression.max(1) as f32)
+                > if stretch == 0 { 0. } else { deficit / stretch as f32 }
+            {
+                i += 1;
+                continue;
+            }
+        }
         if result.candidate.accepted {
             let continues = matches!(&result.previous.repair,Some(RepairOption::PushIn{total_shrink,reason,..})if *total_shrink<=0.001&&reason.starts_with("LineAdjustmentPushIn:"));
             out[i] = result.previous;
@@ -647,7 +758,7 @@ fn fill_push_in_group_end(
     }
     None
 }
-fn distribute_push_in_shrink(
+pub(crate) fn distribute_push_in_shrink(
     opportunities: &[ShrinkOpportunity],
     total: f32,
 ) -> Vec<PushInAllocation> {

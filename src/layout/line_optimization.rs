@@ -100,6 +100,9 @@ pub struct LineCandidate {
     pub repair: Option<RepairOption>,
     pub repair_candidates: Vec<RepairCandidate>,
     pub hanging_cluster_indices: HashSet<i32>,
+    pub white_space_adjustments: Vec<super::white_space::LineWhiteSpaceAdjustment>,
+    pub measurement: Option<std::sync::Arc<super::line_measurement::LineMeasurement>>,
+    pub measurement_limit: f32,
 }
 impl LineCandidate {
     pub fn new(
@@ -117,9 +120,26 @@ impl LineCandidate {
             repair: None,
             repair_candidates: Vec::new(),
             hanging_cluster_indices: HashSet::new(),
+            white_space_adjustments: Vec::new(),
+            measurement: None,
+            measurement_limit: f32::INFINITY,
         };
         candidate.validate_hanging_suffix();
         candidate
+    }
+
+    /// 改变行范围或 repair 分配后，使用相同索引重解析 Tab 与行边宽度。
+    pub fn remeasure(&mut self) {
+        if self.cluster_range.is_empty() { return; }
+        if let Some(measurement) = &self.measurement {
+            let allocations = match &self.repair {
+                Some(RepairOption::PushIn { allocations, .. }) => allocations.as_slice(),
+                _ => &[],
+            };
+            let width = measurement.measure(self.cluster_range, self.end_reason, self.measurement_limit, allocations);
+            self.natural_width = width.natural;
+            self.adjusted_width = width.adjusted;
+        }
     }
     pub fn validate_hanging_suffix(&self) {
         if let Some(first) = self.hanging_cluster_indices.iter().min().copied() {
@@ -225,6 +245,22 @@ impl LineSolution {
             lines,
             total_badness,
         }
+    }
+
+    /// 行解确定后才分配逐空白记录，候选计宽只保留索引与标量宽度。
+    pub(crate) fn resolve_white_space(mut self) -> Self {
+        for line in &mut self.lines {
+            if line.cluster_range.is_empty() { continue; }
+            if let Some(measurement) = &line.measurement {
+                let allocations = match &line.repair {
+                    Some(RepairOption::PushIn { allocations, .. }) => allocations.as_slice(),
+                    _ => &[],
+                };
+                line.white_space_adjustments = measurement.adjustments(line.cluster_range,
+                    line.end_reason, line.measurement_limit, allocations);
+            }
+        }
+        self
     }
 }
 

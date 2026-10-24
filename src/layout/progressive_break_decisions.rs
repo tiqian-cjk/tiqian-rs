@@ -4,7 +4,8 @@ use crate::common::{HashMap, HashSet};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
-use super::super::core::layout_model::Cluster;
+use super::super::core::layout_model::{Cluster, LineEndReason};
+use super::line_measurement::LineMeasurement;
 
 /// 一个 progressive technical span 内的有序 fallback tier。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -67,6 +68,7 @@ pub fn decide_progressive_break(
     max_cjk_stretch_per_gap: f32,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
+    measurement: Option<&LineMeasurement>,
 ) -> i32 {
     let Some(active) = opportunities.get(&overflow_at) else {
         return overflow_at;
@@ -82,6 +84,7 @@ pub fn decide_progressive_break(
         max_cjk_stretch_per_gap,
         sino_western_boundaries,
         sino_western_stretch_cap,
+        measurement,
     )
     .1
 }
@@ -99,6 +102,7 @@ pub fn progressive_candidate_allowed(
     max_cjk_stretch_per_gap: f32,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
+    measurement: Option<&LineMeasurement>,
 ) -> bool {
     let Some(active) = opportunities.get(&raw_greedy) else {
         return true;
@@ -132,6 +136,7 @@ pub fn progressive_candidate_allowed(
             max_cjk_stretch_per_gap,
             sino_western_boundaries,
             sino_western_stretch_cap,
+            measurement,
         )
 }
 
@@ -146,11 +151,13 @@ fn progressive_break_selection_for_line(
     max_cjk_stretch_per_gap: f32,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
+    measurement: Option<&LineMeasurement>,
 ) -> (i32, i32) {
     let mut rightmost_boundaries = [None; 5];
     for index in (line_start + 1)..=overflow_at {
         if let Some(opportunity) = opportunities.get(&index)
             && opportunity.span_range == active.span_range
+            && measurement.is_none_or(|measurement| measurement.boundary_allowed(index))
         {
             rightmost_boundaries[opportunity.tier.priority() as usize] = Some(index);
         }
@@ -172,10 +179,33 @@ fn progressive_break_selection_for_line(
     }
     let progressive_stretch_limit =
         max_cjk_stretch_per_gap * PROGRESSIVE_TECHNICAL_VISIBLE_STRETCH_FRACTION;
+    let mut fitting_boundaries = rightmost_boundaries;
+    if let Some(measurement) = measurement {
+        for boundary in &mut fitting_boundaries {
+            if let Some(index) = *boundary
+                && measurement
+                    .measure(
+                        IntRange::new(line_start, index - 1),
+                        LineEndReason::AutoWrap,
+                        line_limit,
+                        &[],
+                    )
+                    .adjusted
+                    > line_limit
+            {
+                *boundary = None;
+            }
+        }
+    }
+    if fitting_boundaries.iter().all(Option::is_none) {
+        fitting_boundaries = rightmost_boundaries;
+    }
     let mut least_loose_priority = first_priority as i32;
     let mut least_loose_density = f32::INFINITY;
-    let mut least_loose_boundary = rightmost_boundaries[first_priority].unwrap();
-    for (priority, boundary) in rightmost_boundaries.iter().copied().enumerate() {
+    let mut least_loose_boundary = fitting_boundaries[first_priority]
+        .or_else(|| fitting_boundaries.iter().flatten().next().copied())
+        .unwrap_or_else(|| rightmost_boundaries[first_priority].unwrap());
+    for (priority, boundary) in fitting_boundaries.iter().copied().enumerate() {
         let Some(boundary) = boundary else {
             continue;
         };
@@ -188,6 +218,7 @@ fn progressive_break_selection_for_line(
             cjk_inter_char_boundaries,
             sino_western_boundaries,
             sino_western_stretch_cap,
+            measurement,
         );
         if density < least_loose_density {
             least_loose_density = density;
@@ -198,12 +229,12 @@ fn progressive_break_selection_for_line(
             return (priority as i32, boundary);
         }
     }
-    if rightmost_boundaries[ProgressiveBreakTier::Emergency.priority() as usize]
+    if fitting_boundaries[ProgressiveBreakTier::Emergency.priority() as usize]
         .is_some_and(|boundary| boundary >= least_loose_boundary)
     {
         (
             ProgressiveBreakTier::Emergency.priority(),
-            rightmost_boundaries[ProgressiveBreakTier::Emergency.priority() as usize].unwrap(),
+            fitting_boundaries[ProgressiveBreakTier::Emergency.priority() as usize].unwrap(),
         )
     } else {
         (least_loose_priority, least_loose_boundary)
@@ -219,37 +250,54 @@ fn progressive_candidate_stretch_density(
     cjk_inter_char_boundaries: &HashSet<i32>,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
+    measurement: Option<&LineMeasurement>,
 ) -> f32 {
     let active_span = opportunities
         .get(&boundary)
         .map(|opportunity| opportunity.span_range);
-    // `ProgressiveTechnicalWhitespaceBreakPricing`：k boundary 处的 Whitespace opportunity 拥有真实的
-    // source space cluster k-1；行若在 k 结束，该 space 作为 trailing line-edge whitespace 被折叠。
-    let mut width = 0.0;
-    let mut technical_whitespace_capacity = 0.0;
-    let mut sino_western_gap_count = 0.0;
-    let mut terminal_technical_source_units = 0;
-    for index in line_start..boundary {
-        let cluster = &adjusted_clusters[index as usize];
-        width += cluster.advance;
-        if index > line_start {
-            if let Some(opportunity) = opportunities.get(&index)
-                && opportunity.tier == ProgressiveBreakTier::Whitespace
-            {
-                technical_whitespace_capacity += opportunity.preceding_whitespace_stretch_capacity;
+    // 按候选行的空白策略计价；不可生效的空白与对应间隙不参与容量估算。
+    let (width, technical_whitespace_capacity, sino_western_gap_count, terminal_technical_source_units) =
+        if let Some(measurement) = measurement {
+            let range = IntRange::new(line_start, boundary - 1);
+            let width = measurement
+                .measure(range, LineEndReason::AutoWrap, line_limit, &[])
+                .adjusted;
+            let (capacity, sino, _, units) = measurement.progressive_stats(range, active_span);
+            (width, capacity, sino as f32, units)
+        } else {
+            let mut width = 0.0;
+            let mut technical_whitespace_capacity = 0.0;
+            let mut sino_western_gap_count = 0.0;
+            let mut terminal_technical_source_units = 0;
+            for index in line_start..boundary {
+                let cluster = &adjusted_clusters[index as usize];
+                width += cluster.advance;
+                if index > line_start {
+                    if let Some(opportunity) = opportunities.get(&index)
+                        && opportunity.tier == ProgressiveBreakTier::Whitespace
+                    {
+                        technical_whitespace_capacity +=
+                            opportunity.preceding_whitespace_stretch_capacity;
+                    }
+                    if sino_western_boundaries.contains(&index) {
+                        sino_western_gap_count += 1.0;
+                    }
+                }
+                if active_span.is_some_and(|span| {
+                    cluster.range.start() >= span.start()
+                        && cluster.range.end() <= span.end()
+                        && !cluster.text.chars().any(char::is_whitespace)
+                }) {
+                    terminal_technical_source_units += cluster.text.scalar_len().value();
+                }
             }
-            if sino_western_boundaries.contains(&index) {
-                sino_western_gap_count += 1.0;
-            }
-        }
-        if active_span.is_some_and(|span| {
-            cluster.range.start() >= span.start()
-                && cluster.range.end() <= span.end()
-                && !cluster.text.chars().any(char::is_whitespace)
-        }) {
-            terminal_technical_source_units += cluster.text.scalar_len().value();
-        }
-    }
+            (
+                width,
+                technical_whitespace_capacity,
+                sino_western_gap_count,
+                terminal_technical_source_units,
+            )
+        };
     let deficit = (line_limit - width).max(0.0);
     let cjk_deficit = (deficit
         - technical_whitespace_capacity
@@ -261,9 +309,29 @@ fn progressive_candidate_stretch_density(
     if terminal_technical_gap_count > 0 {
         return cjk_deficit / terminal_technical_gap_count as f32;
     }
-    let cjk_gap_count = ((line_start + 1)..boundary)
-        .filter(|candidate| cjk_inter_char_boundaries.contains(candidate))
-        .count();
+    let cjk_gap_count = if measurement.is_some() {
+        measurement
+            .unwrap()
+            .progressive_stats(IntRange::new(line_start, boundary - 1), active_span)
+            .2 as usize
+    } else {
+        ((line_start + 1)..boundary)
+            .filter(|candidate| {
+                cjk_inter_char_boundaries.contains(candidate)
+                    && measurement.is_none_or(|measurement| {
+                        measurement.shrink_is_effective(
+                            IntRange::new(line_start, boundary - 1),
+                            LineEndReason::AutoWrap,
+                            *candidate - 1,
+                        ) && measurement.shrink_is_effective(
+                            IntRange::new(line_start, boundary - 1),
+                            LineEndReason::AutoWrap,
+                            *candidate,
+                        )
+                    })
+            })
+            .count()
+    };
     if cjk_gap_count == 0 {
         cjk_deficit
     } else {
@@ -281,6 +349,7 @@ pub fn decide_hyphen_break(
     max_cjk_stretch_per_gap: f32,
     sino_western_boundaries: &HashSet<i32>,
     sino_western_stretch_cap: f32,
+    measurement: Option<&LineMeasurement>,
 ) -> i32 {
     if !hyphen_break_clusters.contains(&overflow_at) {
         return overflow_at;
@@ -292,14 +361,24 @@ pub fn decide_hyphen_break(
     if whole_word_end <= line_start {
         return overflow_at;
     }
-    let mut width = 0.0;
-    let mut sino_western = 0.0;
-    for index in line_start..whole_word_end {
-        width += adjusted_clusters[index as usize].advance;
-        if index > line_start && sino_western_boundaries.contains(&index) {
-            sino_western += 1.0;
+    let range = IntRange::new(line_start, whole_word_end - 1);
+    let (width, sino_western) = if let Some(measurement) = measurement {
+        let width = measurement
+            .measure(range, LineEndReason::AutoWrap, line_limit, &[])
+            .adjusted;
+        let (_, sino, _, _) = measurement.progressive_stats(range, None);
+        (width, sino as f32)
+    } else {
+        let mut width = 0.0;
+        let mut sino_western = 0.0;
+        for index in line_start..whole_word_end {
+            width += adjusted_clusters[index as usize].advance;
+            if index > line_start && sino_western_boundaries.contains(&index) {
+                sino_western += 1.0;
+            }
         }
-    }
+        (width, sino_western)
+    };
     let deficit = line_limit - width;
     if deficit <= 0.0 {
         return whole_word_end;
@@ -308,9 +387,13 @@ pub fn decide_hyphen_break(
     if cjk_deficit <= 0.0 {
         return whole_word_end;
     }
-    let gaps = ((line_start + 1)..whole_word_end)
-        .filter(|index| cjk_inter_char_boundaries.contains(index))
-        .count();
+    let gaps = if let Some(measurement) = measurement {
+        measurement.progressive_stats(range, None).2 as usize
+    } else {
+        ((line_start + 1)..whole_word_end)
+            .filter(|index| cjk_inter_char_boundaries.contains(index))
+            .count()
+    };
     if gaps == 0 || cjk_deficit / gaps as f32 > max_cjk_stretch_per_gap {
         overflow_at
     } else {

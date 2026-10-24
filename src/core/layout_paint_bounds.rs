@@ -12,9 +12,9 @@ pub struct LayoutPaintOverhang {
     pub bottom: f32,
 }
 
-/// Returns the right clip edge authorized by an engine-selected punctuation hang.
+/// 返回核心已授权的标点或空白悬挂裁切边界。
 pub fn legal_hanging_punctuation_clip_edge(line: &LineBox, viewport_width: f32) -> f32 {
-    if line.hanging_punctuation_advance > 0.0 {
+    if line.hanging_punctuation_advance > 0.0 || line.visual_width > line.alignment_width {
         line.indent + line.visual_width
     } else {
         viewport_width

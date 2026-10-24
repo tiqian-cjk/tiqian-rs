@@ -54,6 +54,7 @@ use super::width_independent_annotation_cache::containing_items;
 
 /// cluster preparation 产生、line planning 与 finish stage 原样消费的 paragraph 级共享状态。
 pub struct ParagraphLayoutPrep {
+    pub white_space_units: HashMap<TextRange, super::white_space::WhiteSpaceUnit>,
     pub input: LayoutInput,
     pub rejected_technical_tiers_by_span: HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     pub text: Text,
@@ -696,6 +697,36 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         config.hard_break_after_clusters = prep.mandatory_break_clusters.clone();
         config.non_rendering_control_clusters = prep.zero_width_break_clusters.clone();
         config.progressive_break_opportunities = progressive_break_opportunities.clone();
+        let tab_indices: Vec<_> = prep.clusters.iter().enumerate().filter(|(_, cluster)| {
+            prep.white_space_units.get(&cluster.range).is_some_and(|unit| {
+                unit.kind == super::white_space::WhiteSpaceKind::Tab
+                    && unit.action == super::white_space::WhiteSpaceAction::Preserve
+            })
+        }).map(|(index, _)| index).collect();
+        let mut tab_minimums = HashMap::new();
+        let interval = if tab_indices.is_empty() { 0.0 } else {
+            let measure_character = |character: &str, style: TextStyle| {
+                let text = Text::from(character);
+                request.font_backend.shape(&super::super::shaping::font_backend::FontBackendRequest::new(
+                    text, super::super::core::geometry::text_range(0, 1), style, FontRole::LatinText,
+                )).shaping.clusters.iter().map(|cluster| cluster.advance).sum::<f32>()
+            };
+            for &index in &tab_indices {
+                tab_minimums.insert(index as i32, measure_character("0", (prep.style_at)(prep.clusters[index].range.start())) * 0.5);
+            }
+            match prep.input.paragraph_style.tab_size {
+                super::super::core::text_model::TabSize::LayoutUnits(value) => value,
+                super::super::core::text_model::TabSize::SpaceAdvanceMultiple(value) => {
+                    value * measure_character(" ", prep.input.text_style.clone())
+                }
+            }
+        };
+        config.measurement = Some(Arc::new(super::line_measurement::LineMeasurement::new(
+            &prep.natural_clusters, &prep.clusters, &prep.white_space_units, &prep.auto_space_decisions,
+            prep.input.paragraph_style.white_space, prep.input.paragraph_style.text_wrap,
+            interval, &tab_minimums, block_indent, config.first_line_indent,
+        ).with_progressive(&prep.clusters, &config.progressive_break_opportunities,
+            &config.cjk_inter_char_boundaries, &config.sino_western_boundaries)));
         request.line_breaker.break_lines(
             &prep.natural_clusters,
             &prep.clusters,
