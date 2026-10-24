@@ -5,7 +5,8 @@ use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;
 use super::text::Text;
 use super::text_model::{
-    DecorationKind, InlineBoxOuterSpacing, LastLineAlignment, LayoutInput, RubyLineHeightMode,
+    DecorationKind, InlineBoxOuterSpacing, InlineObjectPreferredStretchKind, LastLineAlignment,
+    LayoutInput, RubyLineHeightMode,
 };
 use crate::clreq::clreq_profile::{HangingPunctuationStyle, KinsokuLevel, PunctuationClass};
 use crate::clreq::clreq_profile::AutoSpaceMode;
@@ -799,7 +800,7 @@ pub struct InlineObjectDecisionInfo {
     pub cluster_index: i32,
     pub line_index: i32,
     pub leading_uniform_stretch: bool,
-    pub leading_preferred_stretch_kind: Option<String>,
+    pub leading_preferred_stretch_kind: Option<InlineObjectPreferredStretchKind>,
     pub leading_preferred_stretch_natural_width: f32,
     pub leading_preferred_stretch_target_width: f32,
     pub leading_preferred_stretch_capacity: f32,
@@ -807,7 +808,7 @@ pub struct InlineObjectDecisionInfo {
     pub leading_shrink_capacity: f32,
     pub leading_line_end_discardable_advance: f32,
     pub trailing_uniform_stretch: bool,
-    pub trailing_preferred_stretch_kind: Option<String>,
+    pub trailing_preferred_stretch_kind: Option<InlineObjectPreferredStretchKind>,
     pub trailing_preferred_stretch_natural_width: f32,
     pub trailing_preferred_stretch_target_width: f32,
     pub trailing_preferred_stretch_capacity: f32,
@@ -863,7 +864,10 @@ impl InlineObjectDecisionInfoBuilder {
         self.decision.leading_uniform_stretch = value;
         self
     }
-    pub fn leading_preferred_stretch_kind(mut self, value: Option<String>) -> Self {
+    pub fn leading_preferred_stretch_kind(
+        mut self,
+        value: Option<InlineObjectPreferredStretchKind>,
+    ) -> Self {
         self.decision.leading_preferred_stretch_kind = value;
         self
     }
@@ -895,7 +899,10 @@ impl InlineObjectDecisionInfoBuilder {
         self.decision.trailing_uniform_stretch = value;
         self
     }
-    pub fn trailing_preferred_stretch_kind(mut self, value: Option<String>) -> Self {
+    pub fn trailing_preferred_stretch_kind(
+        mut self,
+        value: Option<InlineObjectPreferredStretchKind>,
+    ) -> Self {
         self.decision.trailing_preferred_stretch_kind = value;
         self
     }

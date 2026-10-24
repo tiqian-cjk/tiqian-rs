@@ -92,11 +92,7 @@ pub fn resolve_annotation_geometry(
                     .map_or(-1, |index| index as i32),
             )
             .leading_uniform_stretch(leading.participates_in_uniform_stretch)
-            .leading_preferred_stretch_kind(
-                leading
-                    .preferred_stretch
-                    .map(|stretch| format!("{:?}", stretch.kind)),
-            )
+            .leading_preferred_stretch_kind(leading.preferred_stretch.map(|stretch| stretch.kind))
             .leading_preferred_stretch_natural_width(
                 leading
                     .preferred_stretch
@@ -117,9 +113,7 @@ pub fn resolve_annotation_geometry(
             .leading_line_end_discardable_advance(leading.line_end_discardable_advance)
             .trailing_uniform_stretch(trailing.participates_in_uniform_stretch)
             .trailing_preferred_stretch_kind(
-                trailing
-                    .preferred_stretch
-                    .map(|stretch| format!("{:?}", stretch.kind)),
+                trailing.preferred_stretch.map(|stretch| stretch.kind),
             )
             .trailing_preferred_stretch_natural_width(
                 trailing
