@@ -8,7 +8,9 @@ use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
 pub use super::line_optimization::LineCandidate;
-use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
+use super::line_optimization::{
+    LineSolution, RepairCandidate, RepairDetail, RepairOption, RepairReasonCode,
+};
 use super::line_repair::{apply_kinsoku_repairs, with_fill_push_in};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkOpportunity, UnbreakableRanges,
@@ -231,9 +233,14 @@ impl GreedyLineBreaker {
                     max_width,
                 );
                 if break_at != after_unbreak {
-                    line.repair = Some(RepairOption::CarryNext { penalty: 0,
-                        reason: format!("ForbiddenAtLineEnd:{}:moved-to-next-line", adjusted_clusters[break_at as usize].text),
-                        moved_cluster_index: break_at });
+                    line.repair = Some(RepairOption::CarryNext {
+                        penalty: 0,
+                        reason_code: RepairReasonCode::ForbiddenAtLineEnd,
+                        detail: RepairDetail::MovedToNextLine {
+                            moved_cluster_index: break_at,
+                        },
+                        moved_cluster_index: break_at,
+                    });
                 }
                 lines.push(line);
                 line_start = break_at;
@@ -336,10 +343,10 @@ pub fn close_filled_line(
     let moved = range.last() + 1;
     line.repair = Some(RepairOption::CarryNext {
         penalty: 0,
-        reason: format!(
-            "ForbiddenAtLineEnd:{}:moved-to-next-line",
-            adjusted_clusters[moved as usize].text
-        ),
+        reason_code: RepairReasonCode::ForbiddenAtLineEnd,
+        detail: RepairDetail::MovedToNextLine {
+            moved_cluster_index: moved,
+        },
         moved_cluster_index: moved,
     });
     line
@@ -1000,10 +1007,10 @@ impl LineBreaker for LookaheadLineBreaker {
                 let moved = committed_end;
                 line.repair = Some(RepairOption::CarryNext {
                     penalty: 0,
-                    reason: format!(
-                        "ForbiddenAtLineEnd:{}:moved-to-next-line",
-                        adjusted[moved as usize].text
-                    ),
+                    reason_code: RepairReasonCode::ForbiddenAtLineEnd,
+                    detail: RepairDetail::MovedToNextLine {
+                        moved_cluster_index: moved,
+                    },
                     moved_cluster_index: moved,
                 });
             }

@@ -19,11 +19,98 @@ pub struct BreakCandidate {
     pub repair_options: Vec<RepairOption>,
 }
 
+/// repair 的种类。与 `RepairOption` 的变体一一对应。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairKind {
+    PushIn,
+    Hang,
+    CarryPrevious,
+    CarryNext,
+    LeaveRagged,
+}
+
+impl RepairKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::PushIn => "PushIn",
+            Self::Hang => "Hang",
+            Self::CarryPrevious => "CarryPrevious",
+            Self::CarryNext => "CarryNext",
+            Self::LeaveRagged => "LeaveRagged",
+        }
+    }
+}
+
+/// repair 的原因码。决定 repair 的方向，是算法用来区分分支的依据。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairReasonCode {
+    /// 行调整阶段的推入。
+    LineAdjustmentPushIn,
+    /// DP 可行性检查阶段的推入。
+    LineAdjustmentPushInDpFeasibility,
+    /// progressive technical tier 提升带来的推入。
+    ProgressiveTechnicalTierPromotion,
+    /// 行首出现禁则字符。
+    ForbiddenAtLineStart,
+    /// 行尾出现禁则字符。
+    ForbiddenAtLineEnd,
+}
+
+impl RepairReasonCode {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::LineAdjustmentPushIn => "LineAdjustmentPushIn",
+            Self::LineAdjustmentPushInDpFeasibility => "LineAdjustmentPushIn:DPFeasibility",
+            Self::ProgressiveTechnicalTierPromotion => "ProgressiveTechnicalTierPromotion",
+            Self::ForbiddenAtLineStart => "ForbiddenAtLineStart",
+            Self::ForbiddenAtLineEnd => "ForbiddenAtLineEnd",
+        }
+    }
+}
+
+/// 某个 repair 未采用时的具名原因。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairRejection {
+    InsufficientCapacity,
+    NoRoomToCarry,
+    CarryWouldSplitMourningSpan,
+    CarryOverflows,
+}
+
+impl RepairRejection {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::InsufficientCapacity => "insufficient-capacity",
+            Self::NoRoomToCarry => "no-room-to-carry",
+            Self::CarryWouldSplitMourningSpan => "carry-would-split-mourning-span",
+            Self::CarryOverflows => "carry-overflows",
+        }
+    }
+}
+
+/// repair 采用的附加说明。数值由结构体字段提供，这里只记录需要额外表达的分支。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairDetail {
+    /// 目标行已容纳内容，只需悬挂禁则字符。
+    Hang,
+    /// 承载的前一 cluster。
+    Carried { carried_cluster_index: i32 },
+    /// 转移到下一行的 cluster。
+    MovedToNextLine { moved_cluster_index: i32 },
+    /// 推入后仍无需收缩。
+    FitsNoShrink,
+    /// 推入并收缩。
+    PushedIn,
+    /// 推入被拒绝时记录的具体原因。
+    Rejected(RepairRejection),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum RepairOption {
     PushIn {
         penalty: i32,
-        reason: String,
+        reason_code: RepairReasonCode,
+        detail: RepairDetail,
         offender_cluster_index: i32,
         allocations: Vec<PushInAllocation>,
         total_shrink: f32,
@@ -31,23 +118,27 @@ pub enum RepairOption {
     },
     Hang {
         penalty: i32,
-        reason: String,
+        reason_code: RepairReasonCode,
+        detail: RepairDetail,
         offender_cluster_index: i32,
     },
     CarryPrevious {
         penalty: i32,
-        reason: String,
+        reason_code: RepairReasonCode,
+        detail: RepairDetail,
         offender_cluster_index: i32,
         carried_cluster_index: i32,
     },
     CarryNext {
         penalty: i32,
-        reason: String,
+        reason_code: RepairReasonCode,
+        detail: RepairDetail,
         moved_cluster_index: i32,
     },
     LeaveRagged {
         penalty: i32,
-        reason: String,
+        reason_code: RepairReasonCode,
+        detail: RepairDetail,
         offender_cluster_index: i32,
     },
 }
@@ -61,14 +152,42 @@ impl RepairOption {
             | Self::LeaveRagged { penalty, .. } => *penalty,
         }
     }
-    pub fn reason(&self) -> &str {
+    pub fn reason_code(&self) -> RepairReasonCode {
         match self {
-            Self::PushIn { reason, .. }
-            | Self::Hang { reason, .. }
-            | Self::CarryPrevious { reason, .. }
-            | Self::CarryNext { reason, .. }
-            | Self::LeaveRagged { reason, .. } => reason,
+            Self::PushIn { reason_code, .. }
+            | Self::Hang { reason_code, .. }
+            | Self::CarryPrevious { reason_code, .. }
+            | Self::CarryNext { reason_code, .. }
+            | Self::LeaveRagged { reason_code, .. } => *reason_code,
         }
+    }
+    pub fn kind(&self) -> RepairKind {
+        match self {
+            Self::PushIn { .. } => RepairKind::PushIn,
+            Self::Hang { .. } => RepairKind::Hang,
+            Self::CarryPrevious { .. } => RepairKind::CarryPrevious,
+            Self::CarryNext { .. } => RepairKind::CarryNext,
+            Self::LeaveRagged { .. } => RepairKind::LeaveRagged,
+        }
+    }
+    pub fn detail(&self) -> RepairDetail {
+        match self {
+            Self::PushIn { detail, .. }
+            | Self::Hang { detail, .. }
+            | Self::CarryPrevious { detail, .. }
+            | Self::CarryNext { detail, .. }
+            | Self::LeaveRagged { detail, .. } => *detail,
+        }
+    }
+    /// 该推入是否来自行调整阶段。算法用它决定是否继续推进。
+    pub fn is_line_adjustment_push_in(&self) -> bool {
+        matches!(
+            self,
+            Self::PushIn {
+                reason_code: RepairReasonCode::LineAdjustmentPushIn,
+                ..
+            }
+        )
     }
 }
 
@@ -192,12 +311,12 @@ impl LineCandidate {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepairCandidate {
-    pub kind: String,
-    pub reason_code: String,
+    pub kind: RepairKind,
+    pub reason_code: RepairReasonCode,
     pub offender_cluster_index: i32,
     pub penalty: i32,
     pub accepted: bool,
-    pub rejection_reason: Option<String>,
+    pub rejection_reason: Option<RepairRejection>,
     pub target_cluster_index: Option<i32>,
     pub carried_cluster_index: Option<i32>,
     pub shrink: f32,
@@ -206,8 +325,8 @@ pub struct RepairCandidate {
 }
 impl RepairCandidate {
     pub fn new(
-        kind: String,
-        reason_code: String,
+        kind: RepairKind,
+        reason_code: RepairReasonCode,
         offender_cluster_index: i32,
         penalty: i32,
         accepted: bool,

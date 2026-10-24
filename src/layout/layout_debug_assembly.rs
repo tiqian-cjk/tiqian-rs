@@ -24,7 +24,7 @@ use super::super::font::font_policy::{FontRoleClassifier, FontRoleContext};
 use super::super::shaping::font_backend::FontResolution;
 use super::justifier::JustificationPlan;
 use super::line_geometry_stage::ClusterMetricDecision;
-use super::line_optimization::{LineSolution, RepairCandidate, RepairOption};
+use super::line_optimization::{LineSolution, RepairCandidate, RepairKind, RepairOption};
 use super::progressive_break_decisions::ProgressiveBreakOpportunity;
 use super::punctuation_geometry_ledger::AttachedInlinePunctuationBoundaryResult;
 use super::punctuation_model::{PunctuationAtom, PunctuationSpacingCompressionResult};
@@ -229,7 +229,7 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 line.range,
                 stage.line_breaker_strategy_name,
             )
-            .repair(candidate.repair.as_ref().map(repair_name))
+            .repair(candidate.repair.as_ref().map(|repair| repair.kind().name().to_owned()))
             .repair_penalty(candidate.repair.as_ref().map_or(0, RepairOption::penalty))
             .repair_decision(
                 candidate
@@ -346,13 +346,13 @@ fn repair_candidate_to_decision_info(
     clusters: &[Cluster],
 ) -> LineRepairCandidateInfo {
     LineRepairCandidateInfo::builder(
-        candidate.kind.clone(),
-        candidate.reason_code.clone(),
+        candidate.kind,
+        candidate.reason_code,
         clusters[candidate.offender_cluster_index as usize].range,
         candidate.penalty,
         candidate.accepted,
     )
-    .rejection_reason(candidate.rejection_reason.clone())
+    .rejection_reason(candidate.rejection_reason)
     .target_cluster_index(candidate.target_cluster_index)
     .carried_cluster_index(candidate.carried_cluster_index)
     .shrink(candidate.shrink)
@@ -365,14 +365,15 @@ fn repair_to_decision_info(repair: &RepairOption, clusters: &[Cluster]) -> LineR
     match repair {
         RepairOption::PushIn {
             penalty,
-            reason,
+            reason_code,
             offender_cluster_index,
             allocations,
             total_shrink,
             total_available_capacity,
+            ..
         } => LineRepairDecisionInfo::builder(
-            "PushIn".to_owned(),
-            reason.split(':').next().unwrap_or(reason).to_owned(),
+            RepairKind::PushIn,
+            *reason_code,
             clusters[*offender_cluster_index as usize].range,
             *penalty,
         )
@@ -392,12 +393,13 @@ fn repair_to_decision_info(repair: &RepairOption, clusters: &[Cluster]) -> LineR
         .build(),
         RepairOption::CarryPrevious {
             penalty,
+            reason_code,
             offender_cluster_index,
             carried_cluster_index,
             ..
         } => LineRepairDecisionInfo::builder(
-            "CarryPrevious".to_owned(),
-            "ForbiddenAtLineStart".to_owned(),
+            RepairKind::CarryPrevious,
+            *reason_code,
             clusters[*offender_cluster_index as usize].range,
             *penalty,
         )
@@ -405,50 +407,42 @@ fn repair_to_decision_info(repair: &RepairOption, clusters: &[Cluster]) -> LineR
         .build(),
         RepairOption::LeaveRagged {
             penalty,
+            reason_code,
             offender_cluster_index,
             ..
         } => LineRepairDecisionInfo::builder(
-            "LeaveRagged".to_owned(),
-            "ForbiddenAtLineStart".to_owned(),
+            RepairKind::LeaveRagged,
+            *reason_code,
             clusters[*offender_cluster_index as usize].range,
             *penalty,
         )
         .build(),
         RepairOption::Hang {
             penalty,
+            reason_code,
             offender_cluster_index,
             ..
         } => LineRepairDecisionInfo::builder(
-            "Hang".to_owned(),
-            "ForbiddenAtLineStart".to_owned(),
+            RepairKind::Hang,
+            *reason_code,
             clusters[*offender_cluster_index as usize].range,
             *penalty,
         )
         .build(),
         RepairOption::CarryNext {
             penalty,
+            reason_code,
             moved_cluster_index,
             ..
         } => LineRepairDecisionInfo::builder(
-            "CarryNext".to_owned(),
-            "ForbiddenAtLineEnd".to_owned(),
+            RepairKind::CarryNext,
+            *reason_code,
             clusters[*moved_cluster_index as usize].range,
             *penalty,
         )
         .carried_cluster_index(Some(*moved_cluster_index))
         .build(),
     }
-}
-
-fn repair_name(repair: &RepairOption) -> String {
-    match repair {
-        RepairOption::PushIn { .. } => "PushIn",
-        RepairOption::Hang { .. } => "Hang",
-        RepairOption::CarryPrevious { .. } => "CarryPrevious",
-        RepairOption::CarryNext { .. } => "CarryNext",
-        RepairOption::LeaveRagged { .. } => "LeaveRagged",
-    }
-    .to_owned()
 }
 
 fn is_inside(inner: TextRange, outer: TextRange) -> bool {

@@ -6,7 +6,8 @@ use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::KinsokuRule;
 use super::line_breaker::{line_gap_count, rebuild_line};
 use super::line_optimization::{
-    LineCandidate, LineSolution, PushInAllocation, RepairCandidate, RepairOption,
+    LineCandidate, LineSolution, PushInAllocation, RepairCandidate, RepairDetail, RepairKind,
+    RepairOption, RepairReasonCode, RepairRejection,
 };
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges, line_limit,
@@ -70,7 +71,7 @@ pub fn apply_kinsoku_repairs(
             opportunities,
             push_in_penalty,
             None,
-            "ForbiddenAtLineStart",
+            RepairReasonCode::ForbiddenAtLineStart,
         );
         candidates.push(pushed.candidate.clone());
         if pushed.candidate.accepted {
@@ -100,8 +101,8 @@ pub fn apply_kinsoku_repairs(
                 measurement.next_boundary(end + 1, curr.cluster_range.last() + 1) - 1
             });
             let candidate = RepairCandidate::new(
-                "Hang".to_owned(),
-                "ForbiddenAtLineStart".to_owned(),
+                RepairKind::Hang,
+                RepairReasonCode::ForbiddenAtLineStart,
                 offender,
                 hang_penalty,
                 true,
@@ -128,7 +129,8 @@ pub fn apply_kinsoku_repairs(
                 },
                 repair: Some(RepairOption::Hang {
                     penalty: hang_penalty,
-                    reason: format!("ForbiddenAtLineStart:{}:hang", first_cluster.text),
+                    reason_code: RepairReasonCode::ForbiddenAtLineStart,
+                    detail: RepairDetail::Hang,
                     offender_cluster_index: offender,
                 }),
                 repair_candidates: [
@@ -194,10 +196,9 @@ pub fn apply_kinsoku_repairs(
         if previous.cluster_range.first() >= previous.cluster_range.last() {
             lines[i] = leave_ragged(
                 curr,
-                first_cluster,
                 leave_ragged_penalty,
                 carry_previous_penalty,
-                "no-room-to-carry",
+                RepairRejection::NoRoomToCarry,
                 None,
                 candidates,
             );
@@ -210,10 +211,9 @@ pub fn apply_kinsoku_repairs(
         {
             lines[i] = leave_ragged(
                 curr,
-                first_cluster,
                 leave_ragged_penalty,
                 carry_previous_penalty,
-                "carry-would-split-mourning-span",
+                RepairRejection::CarryWouldSplitMourningSpan,
                 Some(carried),
                 candidates,
             );
@@ -234,10 +234,9 @@ pub fn apply_kinsoku_repairs(
         if next.adjusted_width > max_width {
             lines[i] = leave_ragged(
                 curr,
-                first_cluster,
                 leave_ragged_penalty,
                 carry_previous_penalty,
-                "carry-overflows",
+                RepairRejection::CarryOverflows,
                 Some(carried),
                 candidates,
             );
@@ -245,8 +244,8 @@ pub fn apply_kinsoku_repairs(
             continue;
         }
         candidates.push(RepairCandidate {
-            kind: "CarryPrevious".to_owned(),
-            reason_code: "ForbiddenAtLineStart".to_owned(),
+            kind: RepairKind::CarryPrevious,
+            reason_code: RepairReasonCode::ForbiddenAtLineStart,
             offender_cluster_index: first,
             penalty: carry_previous_penalty,
             accepted: true,
@@ -276,10 +275,10 @@ pub fn apply_kinsoku_repairs(
         let mut next = next;
         next.repair = Some(RepairOption::CarryPrevious {
             penalty: carry_previous_penalty,
-            reason: format!(
-                "ForbiddenAtLineStart:{}:carried={}",
-                first_cluster.text, adjusted[carried as usize].text
-            ),
+            reason_code: RepairReasonCode::ForbiddenAtLineStart,
+            detail: RepairDetail::Carried {
+                carried_cluster_index: carried,
+            },
             offender_cluster_index: first,
             carried_cluster_index: carried,
         });
@@ -303,7 +302,7 @@ pub fn try_push_in(
     opportunities: &[ShrinkOpportunity],
     penalty: i32,
     merge_through: Option<i32>,
-    reason: &str,
+    reason_code: RepairReasonCode,
 ) -> PushInResult {
     let offender = merge_through.unwrap_or(current.cluster_range.first());
     assert!(
@@ -357,12 +356,12 @@ pub fn try_push_in(
             previous: previous.clone(),
             current: Some(current.clone()),
             candidate: RepairCandidate {
-                kind: "PushIn".to_owned(),
-                reason_code: reason.to_owned(),
+                kind: RepairKind::PushIn,
+                reason_code,
                 offender_cluster_index: offender,
                 penalty,
                 accepted: false,
-                rejection_reason: Some("insufficient-capacity".to_owned()),
+                rejection_reason: Some(RepairRejection::InsufficientCapacity),
                 target_cluster_index: Some(offender),
                 carried_cluster_index: None,
                 shrink: 0.,
@@ -383,19 +382,11 @@ pub fn try_push_in(
     };
     repaired.repair = Some(RepairOption::PushIn {
         penalty,
-        reason: if shrink > 0. {
-            format!(
-                "{}:{}:pushed-in={}/{}",
-                reason,
-                adjusted[offender as usize].text,
-                portable(shrink),
-                portable(capacity)
-            )
+        reason_code,
+        detail: if shrink > 0. {
+            RepairDetail::PushedIn
         } else {
-            format!(
-                "{}:{}:fits-no-shrink",
-                reason, adjusted[offender as usize].text
-            )
+            RepairDetail::FitsNoShrink
         },
         offender_cluster_index: offender,
         allocations,
@@ -406,8 +397,8 @@ pub fn try_push_in(
     repaired.repair_candidates = [
         previous.repair_candidates.clone(),
         vec![RepairCandidate {
-            kind: "PushIn".to_owned(),
-            reason_code: reason.to_owned(),
+            kind: RepairKind::PushIn,
+            reason_code,
             offender_cluster_index: offender,
             penalty,
             accepted: true,
@@ -438,8 +429,8 @@ pub fn try_push_in(
         previous: repaired,
         current: following,
         candidate: RepairCandidate {
-            kind: "PushIn".to_owned(),
-            reason_code: reason.to_owned(),
+            kind: RepairKind::PushIn,
+            reason_code,
             offender_cluster_index: offender,
             penalty,
             accepted: true,
@@ -477,7 +468,7 @@ pub fn apply_fill_push_in(
     while i + 1 < out.len() {
         let previous = out[i].clone();
         let current = out[i + 1].clone();
-        let zero = matches!(&previous.repair,Some(RepairOption::PushIn{total_shrink,reason,..})if *total_shrink<=0.001&&reason.starts_with("LineAdjustmentPushIn:"));
+        let zero = matches!(&previous.repair, Some(RepairOption::PushIn { total_shrink, reason_code, .. }) if *total_shrink <= 0.001 && *reason_code == RepairReasonCode::LineAdjustmentPushIn);
         if (previous.repair.is_some() && !zero)
             || previous.hanging_cluster_index().is_some()
             || previous.end_reason != LineEndReason::AutoWrap
@@ -581,9 +572,9 @@ pub fn apply_fill_push_in(
             penalty,
             Some(end),
             if promotes {
-                "ProgressiveTechnicalTierPromotion"
+                RepairReasonCode::ProgressiveTechnicalTierPromotion
             } else {
-                "LineAdjustmentPushIn"
+                RepairReasonCode::LineAdjustmentPushIn
             },
         );
         if !result.candidate.accepted {
@@ -617,7 +608,7 @@ pub fn apply_fill_push_in(
             }
         }
         if result.candidate.accepted {
-            let continues = matches!(&result.previous.repair,Some(RepairOption::PushIn{total_shrink,reason,..})if *total_shrink<=0.001&&reason.starts_with("LineAdjustmentPushIn:"));
+            let continues = matches!(&result.previous.repair, Some(RepairOption::PushIn { total_shrink, reason_code, .. }) if *total_shrink <= 0.001 && *reason_code == RepairReasonCode::LineAdjustmentPushIn);
             out[i] = result.previous;
             if let Some(current) = result.current {
                 out[i + 1] = current;
@@ -673,20 +664,19 @@ pub fn with_fill_push_in(
 }
 fn leave_ragged(
     mut line: LineCandidate,
-    cluster: &Cluster,
     penalty: i32,
     carry_penalty: i32,
-    cause: &str,
+    cause: RepairRejection,
     carried: Option<i32>,
     mut candidates: Vec<RepairCandidate>,
 ) -> LineCandidate {
     candidates.push(RepairCandidate {
-        kind: "CarryPrevious".to_owned(),
-        reason_code: "ForbiddenAtLineStart".to_owned(),
+        kind: RepairKind::CarryPrevious,
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
         offender_cluster_index: line.cluster_range.first(),
         penalty: carry_penalty,
         accepted: false,
-        rejection_reason: Some(cause.to_owned()),
+        rejection_reason: Some(cause),
         target_cluster_index: None,
         carried_cluster_index: carried,
         shrink: 0.,
@@ -694,8 +684,8 @@ fn leave_ragged(
         available_capacity: 0.,
     });
     candidates.push(RepairCandidate {
-        kind: "LeaveRagged".to_owned(),
-        reason_code: "ForbiddenAtLineStart".to_owned(),
+        kind: RepairKind::LeaveRagged,
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
         offender_cluster_index: line.cluster_range.first(),
         penalty,
         accepted: true,
@@ -708,7 +698,8 @@ fn leave_ragged(
     });
     line.repair = Some(RepairOption::LeaveRagged {
         penalty,
-        reason: format!("ForbiddenAtLineStart:{}:{}", cluster.text, cause),
+        reason_code: RepairReasonCode::ForbiddenAtLineStart,
+        detail: RepairDetail::Rejected(cause),
         offender_cluster_index: line.cluster_range.first(),
     });
     line.repair_candidates = candidates;
@@ -809,19 +800,5 @@ pub(crate) fn distribute_push_in_shrink(
         remaining -= target - left.max(0.)
     }
     result
-}
-fn portable(value: f32) -> String {
-    if value == f32::INFINITY {
-        return "Infinity.0".to_owned();
-    }
-    if value == f32::NEG_INFINITY {
-        return "-Infinity.0".to_owned();
-    }
-    let out = value.to_string();
-    if !out.contains('.') && !out.contains('e') && !out.contains('E') {
-        format!("{out}.0")
-    } else {
-        out
-    }
 }
 const PROGRESSIVE_TIER_PROMOTION_FILL_EPSILON: f32 = 0.001;

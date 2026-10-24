@@ -13,6 +13,7 @@ use crate::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
 use crate::font::font_policy::FontRole;
 use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
 use crate::layout::punctuation_model::PunctuationGeometrySource;
+use crate::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
 use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2008,8 +2009,8 @@ impl LineDecisionInfoBuilder {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineRepairDecisionInfo {
-    pub kind: String,
-    pub reason_code: String,
+    pub kind: RepairKind,
+    pub reason_code: RepairReasonCode,
     pub offender_range: TextRange,
     pub penalty: i32,
     pub target_cluster_index: Option<i32>,
@@ -2023,7 +2024,12 @@ pub struct LineRepairDecisionInfo {
     pub push_in_allocations: Vec<LineRepairAllocationInfo>,
 }
 impl LineRepairDecisionInfo {
-    pub fn new(kind: String, reason_code: String, offender_range: TextRange, penalty: i32) -> Self {
+    pub fn new(
+        kind: RepairKind,
+        reason_code: RepairReasonCode,
+        offender_range: TextRange,
+        penalty: i32,
+    ) -> Self {
         Self {
             kind,
             reason_code,
@@ -2037,8 +2043,8 @@ impl LineRepairDecisionInfo {
         }
     }
     pub fn builder(
-        kind: String,
-        reason_code: String,
+        kind: RepairKind,
+        reason_code: RepairReasonCode,
         offender_range: TextRange,
         penalty: i32,
     ) -> LineRepairDecisionInfoBuilder {
@@ -2085,12 +2091,12 @@ pub struct LineRepairAllocationInfo {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineRepairCandidateInfo {
-    pub kind: String,
-    pub reason_code: String,
+    pub kind: RepairKind,
+    pub reason_code: RepairReasonCode,
     pub offender_range: TextRange,
     pub penalty: i32,
     pub accepted: bool,
-    pub rejection_reason: Option<String>,
+    pub rejection_reason: Option<RepairRejection>,
     pub target_cluster_index: Option<i32>,
     pub carried_cluster_index: Option<i32>,
     pub shrink: f32,
@@ -2099,8 +2105,8 @@ pub struct LineRepairCandidateInfo {
 }
 impl LineRepairCandidateInfo {
     pub fn new(
-        kind: String,
-        reason_code: String,
+        kind: RepairKind,
+        reason_code: RepairReasonCode,
         offender_range: TextRange,
         penalty: i32,
         accepted: bool,
@@ -2120,8 +2126,8 @@ impl LineRepairCandidateInfo {
         }
     }
     pub fn builder(
-        kind: String,
-        reason_code: String,
+        kind: RepairKind,
+        reason_code: RepairReasonCode,
         offender_range: TextRange,
         penalty: i32,
         accepted: bool,
@@ -2135,7 +2141,7 @@ pub struct LineRepairCandidateInfoBuilder {
     candidate: LineRepairCandidateInfo,
 }
 impl LineRepairCandidateInfoBuilder {
-    pub fn rejection_reason(mut self, value: Option<String>) -> Self {
+    pub fn rejection_reason(mut self, value: Option<RepairRejection>) -> Self {
         self.candidate.rejection_reason = value;
         self
     }

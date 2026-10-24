@@ -11,7 +11,9 @@ use super::line_breaker::{
     LineBreaker, LineBreakerConfig, adjust_break_for_line_end, aligned_adjusted_clusters,
     empty_line_candidate,
 };
-use super::line_optimization::{LineCandidate, LineSolution, PushInAllocation, RepairOption};
+use super::line_optimization::{
+    LineCandidate, LineSolution, PushInAllocation, RepairDetail, RepairOption, RepairReasonCode,
+};
 use super::line_repair::{apply_kinsoku_repairs, distribute_push_in_shrink};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
@@ -675,7 +677,8 @@ impl ParagraphDpLineBreaker {
                         line.adjusted_width = width;
                         line.repair = Some(RepairOption::PushIn {
                             penalty: self.push_in_penalty,
-                            reason: "LineAdjustmentPushIn:DPFeasibility".to_owned(),
+                            reason_code: RepairReasonCode::LineAdjustmentPushInDpFeasibility,
+                            detail: RepairDetail::PushedIn,
                             offender_cluster_index: range.last(),
                             total_shrink: allocations.iter().map(|allocation| allocation.shrink).sum(),
                             total_available_capacity: context.compression_opportunities(range, reason).iter().map(|opp| opp.capacity).sum(),
@@ -918,11 +921,12 @@ impl ParagraphDpLineBreaker {
                         line.adjusted_width = width;
                         line.repair = Some(RepairOption::PushIn {
                             penalty: self.push_in_penalty,
-                            reason: if promotes_tier {
-                                "ProgressiveTechnicalTierPromotion".to_owned()
+                            reason_code: if promotes_tier {
+                                RepairReasonCode::ProgressiveTechnicalTierPromotion
                             } else {
-                                "LineAdjustmentPushIn".to_owned()
+                                RepairReasonCode::LineAdjustmentPushIn
                             },
+                            detail: RepairDetail::PushedIn,
                             offender_cluster_index: range.last(),
                             allocations,
                             total_shrink,
