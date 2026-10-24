@@ -106,7 +106,9 @@ pub fn shape_paragraph(
             }
         }
         let source = text.slice_text(range);
-        let substitution = punctuation_glyph_substitutor.substitute_for_role(&source, role);
+        // shaping 只消费显示文本；替换原因由 debug 汇编按需生成，见
+        // `ClreqPunctuationGlyphSubstitutor::substitute_for_role`。
+        let display_text = punctuation_glyph_substitutor.display_text_for_role(&source, role);
         let base = style_at(range.start());
         let mut style = base.clone();
         if role == FontRole::LatinText && emphasis_italic_at(range.start()) {
@@ -114,14 +116,11 @@ pub fn shape_paragraph(
         }
         let shaped = font_backend.shape(
             &FontBackendRequest::builder(text.clone(), range, style.clone(), role)
-                .display_text(substitution.display_text.clone())
-                .open_type_features(cjk_punctuation_full_width_features(
-                    role,
-                    &substitution.display_text,
-                ))
+                .display_text(display_text.clone())
+                .open_type_features(cjk_punctuation_full_width_features(role, &display_text))
                 .build(),
         );
-        let rollback = if substitution.display_text == source {
+        let rollback = if display_text == source {
             None
         } else if shaped.shaping.decisions.iter().any(|it| {
             it.capability_issue.as_deref() == Some(UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE)
@@ -134,11 +133,7 @@ pub fn shape_paragraph(
             .any(|it| it.missing_glyphs > 0)
         {
             Some("SubstitutionRollbackOnMissingGlyph")
-        } else if dash_ink_coverage_deficient(
-            &shaped.shaping,
-            &substitution.display_text,
-            style.font_size,
-        ) {
+        } else if dash_ink_coverage_deficient(&shaped.shaping, &display_text, style.font_size) {
             Some("DashSubstitutionInkCoverageRollback")
         } else {
             None

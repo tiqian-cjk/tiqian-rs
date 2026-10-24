@@ -142,9 +142,9 @@ pub fn resolve_annotation_geometry(
                 if *leading != InlineObjectBoundaryAdjustment::FIXED
                     || *trailing != InlineObjectBoundaryAdjustment::FIXED
                 {
-                    "AdjustableInlineObject".to_owned()
+                    "AdjustableInlineObject"
                 } else {
-                    "MeasurableOpaqueInlineObject".to_owned()
+                    "MeasurableOpaqueInlineObject"
                 },
             )
             .build()

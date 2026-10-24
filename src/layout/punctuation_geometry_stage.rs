@@ -617,7 +617,7 @@ pub fn apply_inline_box_spans(
             outer_spacing: format!("{:?}", s.outer_spacing),
             first_cluster_index: f,
             last_cluster_index: l,
-            reason: "InlineBoxBoundaryAdvance".to_owned(),
+            reason: "InlineBoxBoundaryAdvance",
         });
     }
     let mut advances = HashMap::new();

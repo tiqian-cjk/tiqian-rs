@@ -866,14 +866,30 @@ impl ClreqPunctuationGlyphSubstitutor {
         Self { policy }
     }
 
-    pub fn substitute(&self, source_text: &Text) -> CjkPunctuationGlyphSubstitution {
-        let display_text = match self.policy {
+    /// 仅按 policy 解析显示文本，不生成任何原因文本。
+    fn policy_display_text(&self, source_text: &Text) -> Text {
+        match self.policy {
             CjkPunctuationGlyphPolicy::PreserveInput => source_text.clone(),
             CjkPunctuationGlyphPolicy::PreferClreqRecommendedCodepoints
             | CjkPunctuationGlyphPolicy::ForceClreqRecommendedCodepoints => {
                 to_clreq_recommended_display_text(source_text)
             }
-        };
+        }
+    }
+
+    /// shaping 热路径入口：只返回 role 门控后的显示文本。
+    ///
+    /// 非 `CjkPunctuation` 角色经 role 门控后显示文本恒等于 source，
+    /// 因此不需要构造候选文本。需要原因文本时使用 [`Self::substitute_for_role`]。
+    pub fn display_text_for_role(&self, source_text: &Text, role: FontRole) -> Text {
+        if role != FontRole::CjkPunctuation {
+            return source_text.clone();
+        }
+        self.policy_display_text(source_text)
+    }
+
+    pub fn substitute(&self, source_text: &Text) -> CjkPunctuationGlyphSubstitution {
+        let display_text = self.policy_display_text(source_text);
         let reason = if display_text == *source_text {
             format!("CjkPunctuationGlyphPolicy:{:?}:preserve", self.policy)
         } else {

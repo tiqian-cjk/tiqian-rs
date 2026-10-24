@@ -679,7 +679,8 @@ pub struct InlineBoxDecisionInfo {
     pub outer_spacing: String,
     pub first_cluster_index: i32,
     pub last_cluster_index: i32,
-    pub reason: String,
+    /// 内置常量标签，不随输入变化。
+    pub reason: &'static str,
 }
 impl InlineBoxDecisionInfo {
     pub fn new(
@@ -697,26 +698,7 @@ impl InlineBoxDecisionInfo {
             outer_spacing,
             first_cluster_index,
             last_cluster_index,
-            reason: "InlineBoxBoundaryAdvance".to_owned(),
-        }
-    }
-    pub fn with_reason(
-        range: TextRange,
-        inline_start: f32,
-        inline_end: f32,
-        outer_spacing: String,
-        first_cluster_index: i32,
-        last_cluster_index: i32,
-        reason: String,
-    ) -> Self {
-        Self {
-            range,
-            inline_start,
-            inline_end,
-            outer_spacing,
-            first_cluster_index,
-            last_cluster_index,
-            reason,
+            reason: "InlineBoxBoundaryAdvance",
         }
     }
 }
@@ -745,7 +727,8 @@ pub struct InlineObjectDecisionInfo {
     pub trailing_prevents_line_break: bool,
     pub trailing_shrink_capacity: f32,
     pub trailing_line_end_discardable_advance: f32,
-    pub reason: String,
+    /// 内置常量标签：`MeasurableOpaqueInlineObject` 或 `AdjustableInlineObject`。
+    pub reason: &'static str,
 }
 impl InlineObjectDecisionInfo {
     pub fn builder(
@@ -780,7 +763,7 @@ impl InlineObjectDecisionInfo {
                 trailing_prevents_line_break: false,
                 trailing_shrink_capacity: 0.0,
                 trailing_line_end_discardable_advance: 0.0,
-                reason: "MeasurableOpaqueInlineObject".to_owned(),
+                reason: "MeasurableOpaqueInlineObject",
             },
         }
     }
@@ -853,7 +836,7 @@ impl InlineObjectDecisionInfoBuilder {
         self.decision.trailing_line_end_discardable_advance = value;
         self
     }
-    pub fn reason(mut self, value: String) -> Self {
+    pub fn reason(mut self, value: &'static str) -> Self {
         self.decision.reason = value;
         self
     }
@@ -867,7 +850,8 @@ pub struct ZeroWidthBreakDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub cluster_index: i32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 impl ZeroWidthBreakDecisionInfo {
     pub fn new(range: TextRange, source_text: Text, cluster_index: i32) -> Self {
@@ -875,20 +859,7 @@ impl ZeroWidthBreakDecisionInfo {
             range,
             source_text,
             cluster_index,
-            reason: "ZeroWidthSpaceSoftBreakNoShape".to_owned(),
-        }
-    }
-    pub fn with_reason(
-        range: TextRange,
-        source_text: Text,
-        cluster_index: i32,
-        reason: String,
-    ) -> Self {
-        Self {
-            range,
-            source_text,
-            cluster_index,
-            reason,
+            reason: "ZeroWidthSpaceSoftBreakNoShape",
         }
     }
 }
@@ -898,7 +869,8 @@ pub struct MandatoryBreakDecisionInfo {
     pub range: TextRange,
     pub source_text: Text,
     pub break_after_cluster_index: i32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 
 /// `MaxLinesLineTruncation`：layout 在完整文本上运行（`laid_out_lines` 个 committed line，仍可见于
@@ -907,21 +879,15 @@ pub struct MandatoryBreakDecisionInfo {
 pub struct MaxLinesDecisionInfo {
     pub laid_out_lines: i32,
     pub visible_lines: i32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 impl MaxLinesDecisionInfo {
     pub fn new(laid_out_lines: i32, visible_lines: i32) -> Self {
         Self {
             laid_out_lines,
             visible_lines,
-            reason: "MaxLinesLineTruncation".to_owned(),
-        }
-    }
-    pub fn with_reason(laid_out_lines: i32, visible_lines: i32, reason: String) -> Self {
-        Self {
-            laid_out_lines,
-            visible_lines,
-            reason,
+            reason: "MaxLinesLineTruncation",
         }
     }
 }
@@ -1024,7 +990,8 @@ pub struct InlineObjectPunctuationAttachmentDecisionInfo {
     pub punctuation_text: Text,
     pub protected_range: TextRange,
     pub collapsed_advance: f32,
-    pub reason: String,
+    /// 内置常量标签。
+    pub reason: &'static str,
 }
 impl InlineObjectPunctuationAttachmentDecisionInfo {
     pub fn new(
@@ -1042,26 +1009,7 @@ impl InlineObjectPunctuationAttachmentDecisionInfo {
             punctuation_text,
             protected_range,
             collapsed_advance,
-            reason: "InlineObjectPunctuationSeparatorSpaceCollapse".to_owned(),
-        }
-    }
-    pub fn with_reason(
-        object_range: TextRange,
-        separator_range: TextRange,
-        punctuation_range: TextRange,
-        punctuation_text: Text,
-        protected_range: TextRange,
-        collapsed_advance: f32,
-        reason: String,
-    ) -> Self {
-        Self {
-            object_range,
-            separator_range,
-            punctuation_range,
-            punctuation_text,
-            protected_range,
-            collapsed_advance,
-            reason,
+            reason: "InlineObjectPunctuationSeparatorSpaceCollapse",
         }
     }
 }

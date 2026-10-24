@@ -68,7 +68,7 @@ fn geometry_constructors_normalize_invalid_values() {
 
 #[test]
 fn max_lines_decision_info_records_truncation_details() {
-    let info = MaxLinesDecisionInfo::with_reason(5, 3, "MaxLinesLineTruncation".to_owned());
+    let info = MaxLinesDecisionInfo::new(5, 3);
     assert_eq!(5, info.laid_out_lines);
     assert_eq!(3, info.visible_lines);
     assert_eq!("MaxLinesLineTruncation", info.reason);

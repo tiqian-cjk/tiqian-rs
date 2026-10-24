@@ -1079,7 +1079,7 @@ pub fn build_paragraph_layout_prep(
             range: cluster.range,
             source_text: cluster.text.clone(),
             break_after_cluster_index: index as i32,
-            reason: "MandatoryBreakNoShape".to_owned(),
+            reason: "MandatoryBreakNoShape",
         })
         .collect();
     let mut zero_indexes: Vec<_> = zero_width.iter().copied().collect();
