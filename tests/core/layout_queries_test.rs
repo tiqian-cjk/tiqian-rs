@@ -1,7 +1,7 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoDecisionInfo, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyDecisionInfo};
+use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyGeometry};
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
@@ -63,7 +63,7 @@ fn underline_span(range: TextRange) -> RichTextSpan {
 fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
     let debug = LayoutDebugInfo::builder()
         .ruby_decisions(vec![
-            RubyDecisionInfo::builder(
+            RubyGeometry::builder(
                 text_range(0, 2),
                 Text::from("tíqiàn"),
                 0,
@@ -74,14 +74,14 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
             )
             .build(),
         ])
-        .bopomofo_decisions(vec![BopomofoDecisionInfo::new(
+        .bopomofo_decisions(vec![BopomofoGeometry::new(
             text_range(3, 4),
             Text::from("ㄋㄧㄣˊ"),
             0,
             Vec::new(),
         )])
         .build();
-    let result = LayoutResult::with_debug(
+    let result = LayoutResult::with_layout_and_debug(
         layout_input("提椠与您", 200.0),
         Size {
             width: 0.0,
@@ -90,6 +90,7 @@ fn clipboard_projection_restores_source_and_adds_fully_selected_annotations() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        super::layout_queries_test_support::layout_from_debug(&debug),
         debug,
     );
 
@@ -122,7 +123,7 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
             reason: "TextAutoSpaceInsert:ideograph-alpha:quarter-em",
         }])
         .build();
-    let result = LayoutResult::with_debug(
+    let result = LayoutResult::with_layout_and_debug(
         layout_input("中Hi", 40.0),
         Size {
             width: 32.5,
@@ -151,6 +152,7 @@ fn positioned_clusters_separate_occupied_box_from_draw_origin() {
             20.0,
             32.5,
         )],
+        super::layout_queries_test_support::layout_from_debug(&debug),
         debug,
     );
 
@@ -374,7 +376,7 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
             punctuation_geometry(text_range(3, 4), "）", 0.0, 5.0),
         ])
         .build();
-    let result = LayoutResult::with_debug(
+    let result = LayoutResult::with_layout_and_debug(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("（，中）")),
             LayoutConstraints::with_defaults(40.0),
@@ -421,6 +423,7 @@ fn rich_text_decoration_trims_only_outer_punctuation_glue() {
             20.0,
             40.0,
         )],
+        super::layout_queries_test_support::layout_from_debug(&debug),
         debug,
     );
     let occupied = result.positioned_rich_text_segments();

@@ -110,7 +110,7 @@ fn layout_paint_overhang(
         right = right.max(cluster.draw_x + glyph.x + bounds.right - width);
         bottom = bottom.max(cluster.baseline + glyph.y + bounds.bottom - layout.size.height);
     }
-    for ruby in &layout.debug.ruby_decisions {
+    for ruby in &layout.layout.annotations.ruby {
         let origin_x = ruby.center_x - ruby.width / 2.0;
         let mut cluster_pen_x = 0.0;
         let mut cluster_advance = 0.0;
@@ -134,7 +134,7 @@ fn layout_paint_overhang(
         right = right.max(origin_x + ruby.width - width);
         bottom = bottom.max(ruby.baseline_y + ruby.descent - layout.size.height);
     }
-    for bopomofo in &layout.debug.bopomofo_decisions {
+    for bopomofo in &layout.layout.annotations.bopomofo {
         for placement in &bopomofo.placements {
             for glyph in &placement.glyphs {
                 let Some(bounds) = glyph.bounds else {
@@ -152,7 +152,7 @@ fn layout_paint_overhang(
             bottom = bottom.max(placement.top + placement.height - layout.size.height);
         }
     }
-    for decoration in &layout.debug.decoration_decisions {
+    for decoration in &layout.layout.decorations.emphasis_dots {
         if decoration.applied && decoration.dot_diameter > 0.0 {
             let radius = decoration.dot_diameter / 2.0;
             left = left.max(-(decoration.anchor_x - radius));
@@ -161,7 +161,7 @@ fn layout_paint_overhang(
             bottom = bottom.max(decoration.anchor_y + radius - layout.size.height);
         }
     }
-    for segment in &layout.debug.decoration_segments {
+    for segment in &layout.layout.decorations.segments {
         left = left.max(-segment.left);
         top = top.max(-segment.top);
         right = right.max(segment.right - width);

@@ -2,10 +2,12 @@
 
 use crate::common::HashMap;
 
+use super::super::clreq::clreq_profile::PunctuationClass;
+use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    Cluster, Glyph, InlineObjectLineHeightDecisionInfo, InlineObjectLineHeightReason, LineBox,
-    LineEndReason, MaxLinesDecisionInfo, RubyLineHeightDecisionInfo, RubyLineHeightReason,
+    Cluster, Glyph, GlyphRun, InlineObjectLineHeightDecisionInfo, InlineObjectLineHeightReason,
+    LineBox, LineEndReason, MaxLinesDecisionInfo, RubyLineHeightDecisionInfo, RubyLineHeightReason,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -14,9 +16,10 @@ use super::super::core::text_model::{
 };
 use super::super::font::font_metrics::{FontMetricsRequest, MetricBox};
 use super::super::font::font_policy::{LayoutFontMetrics, RawFontMetrics};
+use super::super::shaping::font_backend::FontResolution;
 use super::annotation_geometry_stage::RubyFontGeometry;
 use super::line_optimization::LineSolution;
-use super::paragraph_shaping_stage::is_inline_object_cluster;
+use super::paragraph_shaping_stage::{is_inline_object_cluster, map_to_cluster_range};
 use super::punctuation_geometry_ledger::cluster_index_range_for;
 
 const EMPTY_PARAGRAPH_BASELINE_RATIO: f32 = 0.75;
@@ -466,4 +469,90 @@ pub fn resolve_inline_object_line_boundary_extent(
         current_content_bottom_extent,
         current_content_bottom_extent.max(baseline_distance - next_content_top_extent),
     )
+}
+
+/// 把最终 cluster 组装成可绘制的 glyph run。
+///
+/// 数据全部来自已解析的 cluster 与 shaping 结果，不读取布局阶段状态，
+/// 因此放在行几何阶段而不是行调整阶段。
+pub fn build_glyph_runs(
+    final_clusters: &[Cluster],
+    open_type_features_by_cluster_range: &HashMap<TextRange, Vec<String>>,
+    shaped_glyphs_by_cluster_range: &HashMap<TextRange, Vec<Glyph>>,
+    atom_class_by_range: &HashMap<TextRange, PunctuationClass>,
+    font_resolutions: &HashMap<TextRange, FontResolution>,
+) -> Vec<GlyphRun> {
+    renderable_glyph_run_clusters(final_clusters, open_type_features_by_cluster_range)
+        .into_iter()
+        .filter_map(|clusters| {
+            let face = clusters[0].font_face.clone().or_else(|| {
+                font_resolutions
+                    .values()
+                    .find(|resolution| {
+                        resolution.range.start() <= clusters[0].range.start()
+                            && resolution.range.end() >= clusters[clusters.len() - 1].range.end()
+                    })
+                    .map(|resolution| resolution.face.clone())
+            });
+            let Some(face) = face else {
+                log::warn!("renderable glyph run lacks font face; skipping glyph run");
+                return None;
+            };
+            let open_type_features = open_type_features_by_cluster_range
+                .get(&clusters[0].range)
+                .cloned()
+                .unwrap_or_default();
+            let glyphs = clusters
+                .iter()
+                .enumerate()
+                .flat_map(|(fallback_id, cluster)| {
+                    shaped_glyphs_by_cluster_range
+                        .get(&cluster.range)
+                        .map(|glyphs| {
+                            center_dash_ink(
+                                map_to_cluster_range(glyphs, cluster),
+                                cluster,
+                                atom_class_by_range.get(&cluster.range),
+                            )
+                        })
+                        .unwrap_or_else(|| {
+                            vec![
+                                Glyph::builder(fallback_id as u32, cluster.range, cluster.advance)
+                                    .build(),
+                            ]
+                        })
+                })
+                .collect();
+            Some(GlyphRun::with_open_type_features(
+                TextRange::new(
+                    clusters.first().unwrap().range.start(),
+                    clusters.last().unwrap().range.end(),
+                ),
+                face,
+                glyphs,
+                clusters.iter().map(|cluster| cluster.advance).sum(),
+                open_type_features,
+            ))
+        })
+        .collect()
+}
+
+/// 破折号只有一个字形时，把墨迹居中到 cluster 的 advance 内。
+fn center_dash_ink(
+    glyphs: Vec<Glyph>,
+    cluster: &Cluster,
+    punctuation_class: Option<&PunctuationClass>,
+) -> Vec<Glyph> {
+    if punctuation_class != Some(&PunctuationClass::Dash) || glyphs.len() != 1 {
+        return glyphs;
+    }
+    let mut glyph = glyphs.into_iter().next().unwrap();
+    let Some(ink) = glyph.bounds else {
+        return vec![glyph];
+    };
+    let inset = (cluster.advance - (ink.right - ink.left)) / 2.0 - ink.left;
+    if inset > 0.5 {
+        glyph.x += inset;
+    }
+    vec![glyph]
 }

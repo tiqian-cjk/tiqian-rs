@@ -438,6 +438,13 @@ struct DebugRecordCounts {
 }
 
 impl DebugRecordCounts {
+    /// 诊断记录关闭时没有可统计的对象，返回全零。
+    #[cfg(not(feature = "debug-info"))]
+    fn of(_result: &LayoutResult) -> Self {
+        Self::default()
+    }
+
+    #[cfg(feature = "debug-info")]
     fn of(result: &LayoutResult) -> Self {
         let debug = &result.debug;
         let justification_allocations = debug

@@ -87,16 +87,16 @@ pub fn to_replay_index(result: &LayoutResult) -> LayoutResultReplayIndex {
     for positioned in &positioned_clusters {
         let range = result.clusters[positioned.cluster_index as usize].range;
         while result
-            .debug
-            .font_decisions
+            .layout
+            .font_roles
             .get(decision_index)
             .is_some_and(|decision| decision.range.end() <= range.start())
         {
             decision_index += 1;
         }
         let role = result
-            .debug
-            .font_decisions
+            .layout
+            .font_roles
             .get(decision_index)
             .filter(|decision| {
                 range.start() >= decision.range.start() && range.end() <= decision.range.end()

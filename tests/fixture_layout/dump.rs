@@ -568,8 +568,8 @@ fn preferred_stretch_kind_name(
     }
 }
 
-/// `DecorationSegmentInfo` 的 dump 文本：基础原因，且相邻行间线相向缩短时追加后缀。
-fn segment_reason_text(segment: &tiqian::core::layout_model::DecorationSegmentInfo) -> String {
+/// `DecorationSegmentGeometry` 的 dump 文本：基础原因，且相邻行间线相向缩短时追加后缀。
+fn segment_reason_text(segment: &tiqian::core::layout_model::DecorationSegmentGeometry) -> String {
     if segment.adjacent_shortened {
         format!(
             "{};AdjacentInterlinearLineShortening",

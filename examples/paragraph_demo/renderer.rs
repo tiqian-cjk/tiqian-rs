@@ -118,7 +118,7 @@ impl<'a> DemoRenderer<'a> {
         scene: &mut Scene,
         result: &LayoutResult,
     ) -> Result<(), String> {
-        for ruby in &result.debug.ruby_decisions {
+        for ruby in &result.layout.annotations.ruby {
             let origin_x = ruby.center_x - ruby.width / 2.0;
             let mut cluster_pen_x = 0.0;
             let mut cluster_advance = 0.0;
@@ -142,7 +142,7 @@ impl<'a> DemoRenderer<'a> {
                 previous_range = Some(glyph.cluster_range);
             }
         }
-        for bopomofo in &result.debug.bopomofo_decisions {
+        for bopomofo in &result.layout.annotations.bopomofo {
             for placement in &bopomofo.placements {
                 for glyph in &placement.glyphs {
                     for color in
@@ -198,8 +198,9 @@ impl<'a> DemoRenderer<'a> {
     ) -> Result<(), String> {
         let stroke_width = (result.input.text_style.font_size / 16.0).max(1.0);
         for decision in result
-            .debug
-            .decoration_decisions
+            .layout
+            .decorations
+            .emphasis_dots
             .iter()
             .filter(|decision| decision.applied)
         {
@@ -217,7 +218,7 @@ impl<'a> DemoRenderer<'a> {
                 );
             }
         }
-        for segment in &result.debug.decoration_segments {
+        for segment in &result.layout.decorations.segments {
             for color in decoration_fill_colors(result, segment.source_range, segment.kind) {
                 match segment.kind {
                     DecorationKind::Mourning => {
@@ -402,7 +403,7 @@ impl<'a> DemoRenderer<'a> {
         &self,
         scene: &mut Scene,
         replay_index: &LayoutResultReplayIndex,
-        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentGeometry,
         color: AlphaColor<Srgb>,
         font_size: f32,
         stroke_width: f32,
@@ -479,7 +480,7 @@ impl<'a> DemoRenderer<'a> {
         scene: &mut Scene,
         result: &LayoutResult,
         replay_index: &LayoutResultReplayIndex,
-        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentGeometry,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -566,7 +567,7 @@ impl<'a> DemoRenderer<'a> {
     fn stroke_mourning_segment(
         &self,
         scene: &mut Scene,
-        segment: &tiqian::core::layout_model::DecorationSegmentInfo,
+        segment: &tiqian::core::layout_model::DecorationSegmentGeometry,
         color: AlphaColor<Srgb>,
         stroke_width: f32,
     ) -> Result<(), String> {
@@ -949,26 +950,28 @@ mod tests {
             ])
             .build(),
         );
-        assert!(!result.debug.ruby_decisions.is_empty());
-        assert!(!result.debug.bopomofo_decisions.is_empty());
+        assert!(!result.layout.annotations.ruby.is_empty());
+        assert!(!result.layout.annotations.bopomofo.is_empty());
         assert!(
             result
-                .debug
-                .ruby_decisions
+                .layout
+                .annotations
+                .ruby
                 .iter()
                 .flat_map(|decision| &decision.glyphs)
                 .all(|glyph| glyph.render_font_face.is_some())
         );
         assert!(
             result
-                .debug
-                .bopomofo_decisions
+                .layout
+                .annotations
+                .bopomofo
                 .iter()
                 .flat_map(|decision| &decision.placements)
                 .flat_map(|placement| &placement.glyphs)
                 .all(|glyph| glyph.render_font_face.is_some())
         );
-        let ruby = result.debug.ruby_decisions.first().unwrap();
+        let ruby = result.layout.annotations.ruby.first().unwrap();
         let mut cluster_pen_x = 0.0;
         let mut cluster_advance = 0.0;
         let mut previous_range = None;
@@ -1009,14 +1012,16 @@ mod tests {
         assert_eq!(
             scene.encoding().resources.glyphs.len(),
             result
-                .debug
-                .ruby_decisions
+                .layout
+                .annotations
+                .ruby
                 .iter()
                 .flat_map(|decision| &decision.glyphs)
                 .count()
                 + result
-                    .debug
-                    .bopomofo_decisions
+                    .layout
+                    .annotations
+                    .bopomofo
                     .iter()
                     .flat_map(|decision| &decision.placements)
                     .flat_map(|placement| &placement.glyphs)
@@ -1197,29 +1202,33 @@ mod tests {
         );
         assert!(
             result
-                .debug
-                .decoration_decisions
+                .layout
+                .decorations
+                .emphasis_dots
                 .iter()
                 .any(|decision| decision.kind == DecorationKind::Emphasis && decision.applied)
         );
         assert!(
             result
-                .debug
-                .decoration_segments
+                .layout
+                .decorations
+                .segments
                 .iter()
                 .any(|segment| segment.kind == DecorationKind::Mourning)
         );
         assert!(
             result
-                .debug
-                .decoration_segments
+                .layout
+                .decorations
+                .segments
                 .iter()
                 .any(|segment| segment.kind == DecorationKind::ProperNoun)
         );
         assert!(
             result
-                .debug
-                .decoration_segments
+                .layout
+                .decorations
+                .segments
                 .iter()
                 .any(|segment| segment.kind == DecorationKind::BookTitle)
         );
@@ -1241,8 +1250,9 @@ mod tests {
         assert!(!scene.encoding().is_empty());
 
         let mourning = result
-            .debug
-            .decoration_segments
+            .layout
+            .decorations
+            .segments
             .iter()
             .find(|segment| segment.kind == DecorationKind::Mourning)
             .unwrap();

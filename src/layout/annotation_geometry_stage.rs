@@ -7,11 +7,11 @@ use super::super::clreq::clreq_profile::ClreqProfile;
 use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoDecisionInfo, BopomofoGlyphPlacement,
+    AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, BopomofoGlyphPlacement,
     BopomofoGlyphRole,
-    Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentInfo,
+    Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentGeometry,
     DecorationSegmentReason, EmphasisDotReason, Glyph, InlineObjectDecisionInfo, LineBox,
-    RubyDecisionInfo,
+    RubyGeometry,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -37,9 +37,9 @@ pub struct RubyFontGeometry {
 pub struct AnnotationGeometryStageResult {
     pub inline_object_decisions: Vec<InlineObjectDecisionInfo>,
     pub decoration_decisions: Vec<DecorationDecisionInfo>,
-    pub decoration_segments: Vec<DecorationSegmentInfo>,
-    pub ruby_decisions: Vec<RubyDecisionInfo>,
-    pub bopomofo_decisions: Vec<BopomofoDecisionInfo>,
+    pub decoration_segments: Vec<DecorationSegmentGeometry>,
+    pub ruby_decisions: Vec<RubyGeometry>,
+    pub bopomofo_decisions: Vec<BopomofoGeometry>,
 }
 
 pub struct AnnotationGeometryRequest<'a> {
@@ -317,7 +317,7 @@ fn compute_decoration_segments(
     trailing_gap_ranges: &[TextRange],
     auto_space_gap_px: f32,
     font_size: f32,
-) -> Vec<DecorationSegmentInfo> {
+) -> Vec<DecorationSegmentGeometry> {
     let mut segments = Vec::new();
     for span in decorations.iter().filter(|span| {
         matches!(
@@ -380,7 +380,7 @@ fn compute_decoration_segments(
                     } else {
                         INTERLINEAR_LINE_Y_EM
                     };
-            span_segments.push(DecorationSegmentInfo {
+            span_segments.push(DecorationSegmentGeometry {
                 source_range: TextRange::new(segment_start, segment_end),
                 kind: span.kind,
                 id: span.id,
@@ -419,9 +419,9 @@ fn compute_decoration_segments(
 }
 
 fn shorten_adjacent_interlinear_lines(
-    mut segments: Vec<DecorationSegmentInfo>,
+    mut segments: Vec<DecorationSegmentGeometry>,
     font_size: f32,
-) -> Vec<DecorationSegmentInfo> {
+) -> Vec<DecorationSegmentGeometry> {
     let mut indices_by_line: HashMap<i32, Vec<usize>> = HashMap::new();
     for (index, segment) in segments.iter().enumerate() {
         if matches!(
@@ -466,7 +466,7 @@ fn compute_ruby_decisions(
     ruby_font_size: f32,
     ruby_font_weight: i32,
     base_locale: &str,
-) -> Vec<RubyDecisionInfo> {
+) -> Vec<RubyGeometry> {
     let mut decisions = Vec::new();
     for ruby in ruby_spans {
         let Some(geometry) = ruby_font_geometry_by_span.get(ruby) else {
@@ -494,7 +494,7 @@ fn compute_ruby_decisions(
             }
             if let Some(base_left) = base_left {
                 decisions.push(
-                    RubyDecisionInfo::builder(
+                    RubyGeometry::builder(
                         ruby.base_range,
                         ruby.text.clone(),
                         line_index as i32,
@@ -535,7 +535,7 @@ fn compute_bopomofo_decisions(
     bopomofo_font_weight_at: &dyn Fn(ScalarOffset) -> i32,
     base_text_style: &TextStyle,
     font_backend: &dyn FontBackend,
-) -> Vec<BopomofoDecisionInfo> {
+) -> Vec<BopomofoGeometry> {
     let h_unit = font_size / 30.0;
     let v_unit = (base_ascent + base_descent) / 30.0;
     let mut decisions = Vec::new();
@@ -650,7 +650,7 @@ fn compute_bopomofo_decisions(
                 })
                 .collect();
             decisions.push(
-                BopomofoDecisionInfo::builder(
+                BopomofoGeometry::builder(
                     ruby.base_range,
                     ruby.text.clone(),
                     line_index as i32,

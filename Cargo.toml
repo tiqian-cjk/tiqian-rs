@@ -13,6 +13,9 @@ include = ["src/**/*", "resources/hyphenation/**/*", "Cargo.toml", "./README.md"
 [features]
 collections-hashbrown = ["dep:hashbrown"]
 collections-std = []
+# 装配 `LayoutResult.debug` 的诊断记录。默认关闭：功能路径读取 `LayoutResult.layout`，
+# 诊断记录只在需要解释布局决策时开启。
+debug-info = []
 default = ["collections-hashbrown"]
 
 [dependencies]
@@ -28,6 +31,8 @@ read-fonts = "0.43"
 skrifa = "0.46"
 vello = "0.10.0"
 winit = "0.30"
-
+# 测试与示例需要检查诊断记录，因此测试构建启用该 feature；生产构建默认不启用。
+# 测量生产路径时临时注释掉本行。
+tiqian = { path = ".", features = ["debug-info"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 mimalloc = "0.1.47"

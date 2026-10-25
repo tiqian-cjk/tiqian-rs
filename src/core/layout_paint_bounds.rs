@@ -76,8 +76,9 @@ pub fn visible_paint_overhang(
         );
     }
     for dot in result
-        .debug
-        .decoration_decisions
+        .layout
+        .decorations
+        .emphasis_dots
         .iter()
         .filter(|dot| dot.applied && dot.dot_diameter > 0.0)
     {
@@ -93,7 +94,7 @@ pub fn visible_paint_overhang(
             dot.anchor_y + radius,
         );
     }
-    for ruby in &result.debug.ruby_decisions {
+    for ruby in &result.layout.annotations.ruby {
         let base: Vec<_> = positioned
             .iter()
             .filter(|cluster| {

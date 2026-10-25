@@ -1,7 +1,7 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, MetricDecisionInfo, RubyDecisionInfo};
+use tiqian::core::layout_model::{AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph, GlyphRun, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox, MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole, RubyGeometry, WhiteSpaceGeometry};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::clreq::clreq_profile::AutoSpaceMode;
@@ -76,7 +76,8 @@ pub fn result_with_rich_text(
     let content = TiqianTextContent::builder(Text::from(text))
         .spans(spans)
         .build();
-    LayoutResult::with_debug(
+    let layout = layout_from_debug(&debug);
+    LayoutResult::with_layout_and_debug(
         LayoutInput::builder(content, LayoutConstraints::with_defaults(100.0))
             .text_style(TextStyle::builder().font_size(10.0).build())
             .rich_text(rich_text)
@@ -88,8 +89,91 @@ pub fn result_with_rich_text(
         clusters,
         glyph_runs,
         lines,
+        layout,
         debug,
     )
+}
+
+/// 测试辅助：从 `LayoutDebugInfo` 投影出 `LayoutOutput`。
+///
+/// 生产路径两者各自从上游值产生；测试里只构造一份，避免每个用例写两遍。
+pub fn layout_from_debug(debug: &LayoutDebugInfo) -> LayoutOutput {
+    LayoutOutput {
+        font_roles: debug
+            .font_decisions
+            .iter()
+            .map(|decision| ResolvedFontRole {
+                range: decision.range,
+                role: decision.role,
+                face: decision
+                    .resolved_face
+                    .clone()
+                    .unwrap_or_else(|| FontFaceId::with_resource_id("test")),
+            })
+            .collect(),
+        font_metrics: debug
+            .metric_decisions
+            .iter()
+            .map(|decision| ResolvedFontMetrics {
+                range: decision.range,
+                face: decision.font_face.clone(),
+                role: decision.role,
+                ascent: decision.layout_ascent,
+                descent: decision.layout_descent,
+                baseline_class: decision.baseline_class,
+                metric_box: decision.metric_box,
+                source: decision.layout_source,
+            })
+            .collect(),
+        clusters: debug
+            .geometry_decisions
+            .iter()
+            .map(|decision| ResolvedClusterGeometry {
+                range: decision.range,
+                base_advance: decision.base_advance,
+                body_width: decision.body_width,
+                leading_glue: GlueSpan {
+                    natural: decision.leading_glue_natural,
+                    consumed: decision.leading_glue_consumed,
+                },
+                trailing_glue: GlueSpan {
+                    natural: decision.trailing_glue_natural,
+                    consumed: decision.trailing_glue_consumed,
+                },
+                justification_delta: decision.justification_delta,
+                ruby_spread: decision.ruby_spread,
+                glyph_inline_shift: decision.glyph_inline_shift,
+                resolved_advance: decision.resolved_advance,
+            })
+            .collect(),
+        punctuation: Vec::new(),
+        spacing: Vec::new(),
+        line_edge_trims: debug.line_edge_trim_decisions.clone(),
+        annotations: AnnotationGeometry {
+            ruby: debug.ruby_decisions.clone(),
+            bopomofo: debug.bopomofo_decisions.clone(),
+        },
+        decorations: DecorationGeometry {
+            emphasis_dots: debug
+                .decoration_decisions
+                .iter()
+                .map(|decision| EmphasisDotGeometry {
+                    cluster_range: decision.cluster_range,
+                    kind: decision.kind,
+                    applied: decision.applied,
+                    anchor_x: decision.anchor_x,
+                    anchor_y: decision.anchor_y,
+                    dot_diameter: decision.dot_diameter,
+                })
+                .collect(),
+            segments: debug.decoration_segments.clone(),
+        },
+        white_space: WhiteSpaceGeometry {
+            units: Vec::new(),
+            line_adjustments: debug.line_white_space_adjustments.clone(),
+            auto_space: debug.auto_space_decisions.clone(),
+        },
+    }
 }
 
 pub fn metric(range: TextRange, ascent: f32, descent: f32, metric_box: &str) -> MetricDecisionInfo {
@@ -400,7 +484,7 @@ pub fn ruby_selection_result() -> LayoutResult {
                 .build(),
             ])
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(
+                RubyGeometry::builder(
                     text_range(0, 1),
                     Text::from("zhuāng"),
                     0,
@@ -411,7 +495,7 @@ pub fn ruby_selection_result() -> LayoutResult {
                 )
                 .width(32.0)
                 .build(),
-                RubyDecisionInfo::builder(
+                RubyGeometry::builder(
                     text_range(1, 2),
                     Text::from("chuáng"),
                     0,
@@ -422,7 +506,7 @@ pub fn ruby_selection_result() -> LayoutResult {
                 )
                 .width(32.0)
                 .build(),
-                RubyDecisionInfo::builder(
+                RubyGeometry::builder(
                     text_range(2, 3),
                     Text::from("shuāng"),
                     0,

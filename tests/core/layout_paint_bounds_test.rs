@@ -2,7 +2,7 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{Rect, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    DecorationDecisionInfo, EmphasisDotReason, Glyph, GlyphRun, LayoutDebugInfo, RubyDecisionInfo,
+    DecorationDecisionInfo, EmphasisDotReason, Glyph, GlyphRun, LayoutDebugInfo, RubyGeometry,
 };
 use tiqian::core::layout_paint_bounds::{
     LayoutPaintOverhang, legal_hanging_punctuation_clip_edge, visible_paint_overhang,
@@ -57,7 +57,7 @@ fn visible_paint_overhang_includes_visible_glyph_dot_and_ruby_paint() {
                 .build(),
             ])
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(
+                RubyGeometry::builder(
                     text_range(0, 1),
                     Text::from("jiǎ"),
                     0,

@@ -6,7 +6,9 @@ use std::sync::Arc;
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
-use super::layout_model::{AutoSpaceSide, Glyph, LayoutResult, LineBox, MetricDecisionInfo};
+use super::layout_model::{
+    AutoSpaceSide, Glyph, LayoutResult, LineBox, ResolvedFontMetrics,
+};
 use crate::font::font_metrics::MetricBox;
 use super::source_interaction_boundaries::{
     SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
@@ -346,10 +348,10 @@ pub fn get_text_for_copy(result: &LayoutResult, range: TextRange) -> Text {
             annotations_by_end.push((base_range.end(), vec![annotation]));
         }
     };
-    for decision in &result.debug.ruby_decisions {
+    for decision in &result.layout.annotations.ruby {
         add_annotation(decision.base_range, &decision.text);
     }
-    for decision in &result.debug.bopomofo_decisions {
+    for decision in &result.layout.annotations.bopomofo {
         add_annotation(decision.base_range, &decision.text);
     }
     annotations_by_end.sort_by_key(|(annotation_end, _)| *annotation_end);
@@ -815,19 +817,19 @@ impl LayoutResult {
 
         let (face_top, face_bottom) = match background.metric_policy {
             RichTextBackgroundMetricPolicy::MarkedFaces => {
-                marked_face_vertical_bounds(self, covered, &self.debug.metric_decisions)
+                marked_face_vertical_bounds(self, covered, &self.layout.font_metrics)
             }
             RichTextBackgroundMetricPolicy::UniformTextStyle => uniform_text_style_vertical_bounds(
                 self,
                 &segment,
-                &self.debug.metric_decisions,
+                &self.layout.font_metrics,
                 &resolved_text_style_at(self, segment.range.start()),
             ),
             RichTextBackgroundMetricPolicy::UniformParagraphStyle => {
                 uniform_text_style_vertical_bounds(
                     self,
                     &segment,
-                    &self.debug.metric_decisions,
+                    &self.layout.font_metrics,
                     &self.input.text_style,
                 )
             }
@@ -966,7 +968,7 @@ impl LayoutResult {
     /// 输出按 `input.decorations` 顺序排列，元素携带产生它的范围身份与开口信息。着重号不进入本查询，
     /// 它已由 `decoration_decisions` 逐 cluster 给出锚点与直径。
     pub fn decoration_cluster_segments(&self) -> Vec<DecorationClusterSegment> {
-        if self.debug.decoration_segments.is_empty() || self.lines.is_empty() {
+        if self.layout.decorations.segments.is_empty() || self.lines.is_empty() {
             return Vec::new();
         }
         let positioned = positioned_clusters(self);
@@ -979,7 +981,7 @@ impl LayoutResult {
     ) -> Vec<DecorationClusterSegment> {
         let mut out = Vec::new();
         let mut fragments = Vec::new();
-        for segment in &self.debug.decoration_segments {
+        for segment in &self.layout.decorations.segments {
             fragments.clear();
             collect_cluster_fragments(
                 covered_clusters(positioned, segment.line_index, segment.source_range),
@@ -1185,7 +1187,7 @@ fn layer_clearance(segment: &RichTextLineSegment) -> f32 {
 fn marked_face_vertical_bounds(
     result: &LayoutResult,
     covered: &[PositionedCluster],
-    metrics: &[MetricDecisionInfo],
+    metrics: &[ResolvedFontMetrics],
 ) -> (f32, f32) {
     let mut top = f32::INFINITY;
     let mut bottom = f32::NEG_INFINITY;
@@ -1195,8 +1197,8 @@ fn marked_face_vertical_bounds(
                 && cluster.range.end() <= decision.range.end()
         });
         if let Some(metric) = metric {
-            top = top.min(cluster.baseline - metric.layout_ascent);
-            bottom = bottom.max(cluster.baseline + metric.layout_descent);
+            top = top.min(cluster.baseline - metric.ascent);
+            bottom = bottom.max(cluster.baseline + metric.descent);
         } else {
             let style = resolved_text_style_at(result, cluster.range.start());
             top = top.min(cluster.baseline - style.font_size * BACKGROUND_FALLBACK_ASCENT_EM);
@@ -1213,7 +1215,7 @@ fn marked_face_vertical_bounds(
 fn uniform_text_style_vertical_bounds(
     result: &LayoutResult,
     segment: &RichTextLineSegment,
-    metrics: &[MetricDecisionInfo],
+    metrics: &[ResolvedFontMetrics],
     style: &TextStyle,
 ) -> (f32, f32) {
     let matching_style: Vec<_> = metrics
@@ -1231,10 +1233,10 @@ fn uniform_text_style_vertical_bounds(
         .copied()
         .or_else(|| matching_style.first().copied());
     let ascent = reference
-        .map(|decision| decision.layout_ascent)
+        .map(|decision| decision.ascent)
         .unwrap_or(style.font_size * BACKGROUND_FALLBACK_ASCENT_EM);
     let descent = reference
-        .map(|decision| decision.layout_descent)
+        .map(|decision| decision.descent)
         .unwrap_or(style.font_size * BACKGROUND_FALLBACK_DESCENT_EM);
     (segment.baseline - ascent, segment.baseline + descent)
 }
@@ -1290,27 +1292,23 @@ fn trim_outer_punctuation_glue(
                 .filter(|cluster| segment.range.start() == cluster.range.start())
                 .and_then(|cluster| {
                     result
-                        .debug
-                        .geometry_decisions
+                        .layout
+                        .clusters
                         .iter()
                         .find(|decision| decision.range == cluster.range)
                 })
-                .map(|decision| {
-                    (decision.leading_glue_natural - decision.leading_glue_consumed).max(0.0)
-                })
+                .map(|decision| decision.leading_glue.remaining())
                 .unwrap_or(0.0);
             let trailing_glue = last_cluster
                 .filter(|cluster| segment.range.end() == cluster.range.end())
                 .and_then(|cluster| {
                     result
-                        .debug
-                        .geometry_decisions
+                        .layout
+                        .clusters
                         .iter()
                         .find(|decision| decision.range == cluster.range)
                 })
-                .map(|decision| {
-                    (decision.trailing_glue_natural - decision.trailing_glue_consumed).max(0.0)
-                })
+                .map(|decision| decision.trailing_glue.remaining())
                 .unwrap_or(0.0);
             let left = (segment.left + leading_glue).min(segment.right);
             RichTextLineSegment {
@@ -1357,7 +1355,7 @@ impl LayoutResult {
             let (face_top, face_bottom) = uniform_text_style_vertical_bounds(
                 self,
                 segment,
-                &self.debug.metric_decisions,
+                &self.layout.font_metrics,
                 &style,
             );
             (face_top + face_bottom) / 2.0
@@ -1687,22 +1685,22 @@ impl<'a> PositionedClusterLookup<'a> {
             }
         }
         let mut leading_consumed = HashMap::new();
-        for decision in &result.debug.geometry_decisions {
-            if decision.leading_glue_consumed > 0.0 {
+        for decision in &result.layout.clusters {
+            if decision.leading_glue.consumed > 0.0 {
                 leading_consumed
                     .entry(decision.range)
-                    .or_insert(decision.leading_glue_consumed);
+                    .or_insert(decision.leading_glue.consumed);
             }
         }
         let mut leading_gap = HashMap::new();
-        for decision in &result.debug.auto_space_decisions {
+        for decision in &result.layout.white_space.auto_space {
             if decision.side == AutoSpaceSide::Leading {
                 leading_gap
                     .entry(decision.cluster_range)
                     .or_insert(-decision.total_reduction);
             }
         }
-        for decision in &result.debug.line_white_space_adjustments {
+        for decision in &result.layout.white_space.line_adjustments {
             if decision.adjustment.action == crate::layout::white_space::LineWhiteSpaceAction::RemoveAutoSpaceStart {
                 let cluster = &result.clusters[decision.adjustment.cluster_index as usize];
                 leading_gap.remove(&cluster.range);
@@ -1905,8 +1903,8 @@ fn natural_advance_by_range(result: &LayoutResult) -> Vec<(TextRange, f32)> {
 
 fn ruby_spread_by_range(result: &LayoutResult) -> Vec<(TextRange, f32)> {
     result
-        .debug
-        .geometry_decisions
+        .layout
+        .clusters
         .iter()
         .filter(|decision| decision.ruby_spread != 0.0)
         .map(|decision| (decision.range, decision.ruby_spread))
@@ -1925,8 +1923,9 @@ fn with_ruby_selection_geometry(
     line_index: i32,
 ) -> Vec<PositionedCluster> {
     let rubies: Vec<_> = result
-        .debug
-        .ruby_decisions
+        .layout
+        .annotations
+        .ruby
         .iter()
         .filter(|ruby| ruby.line_index == line_index && ruby.width > 0.0)
         .collect();

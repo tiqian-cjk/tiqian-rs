@@ -16,7 +16,9 @@ use crate::layout::justifier::JustificationAllocationReason;
 use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
 use crate::layout::punctuation_model::PunctuationGeometrySource;
 use crate::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
-use crate::layout::punctuation_model::{GlueKind, PunctuationAnchor, SpacingReason};
+use crate::layout::punctuation_model::{
+    GlueKind, PunctuationAnchor, PunctuationAtom, PunctuationSpacingAdjustment, SpacingReason,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cluster {
@@ -370,6 +372,119 @@ pub enum LineEndReason {
     ParagraphEnd,
 }
 
+/// 排版产出的运行时数据。
+///
+/// 这些数据由查询、绘制与几何计算消费，与 `debug` 里的诊断记录同源但用途不同。
+/// 放在 `LayoutResult` 的平级字段，使功能路径不依赖诊断记录。
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct LayoutOutput {
+    /// 每个 font resolution 范围解析出的字体角色。
+    pub font_roles: Vec<ResolvedFontRole>,
+    /// 每个 font resolution 范围解析出的行内度量。
+    pub font_metrics: Vec<ResolvedFontMetrics>,
+    /// 每个 cluster 解析后的行内几何。
+    pub clusters: Vec<ResolvedClusterGeometry>,
+    /// 标点几何：advance、body、ink bounds 与两侧 glue 预算。
+    pub punctuation: Vec<PunctuationAtom>,
+    /// 标点间距压缩结果。
+    pub spacing: Vec<PunctuationSpacingAdjustment>,
+    /// 行边缘 trim。
+    pub line_edge_trims: Vec<LineEdgeTrimDecisionInfo>,
+    /// 注音几何。
+    pub annotations: AnnotationGeometry,
+    /// 装饰几何。
+    pub decorations: DecorationGeometry,
+    /// 空白几何。
+    pub white_space: WhiteSpaceGeometry,
+}
+
+/// 一个 font resolution 范围解析出的字体角色。
+///
+/// `range` 是 resolution 范围，不保证与最终 cluster 一一对应。
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedFontRole {
+    pub range: TextRange,
+    pub role: FontRole,
+    pub face: FontFaceId,
+}
+
+/// 一个 font resolution 范围解析出的行内度量。
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedFontMetrics {
+    pub range: TextRange,
+    pub face: FontFaceId,
+    pub role: FontRole,
+    pub ascent: f32,
+    pub descent: f32,
+    pub baseline_class: BaselineClass,
+    pub metric_box: MetricBox,
+    pub source: FontMetricSource,
+}
+
+/// 一个 cluster 解析后的行内几何。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResolvedClusterGeometry {
+    pub range: TextRange,
+    pub base_advance: f32,
+    pub body_width: f32,
+    pub leading_glue: GlueSpan,
+    pub trailing_glue: GlueSpan,
+    pub justification_delta: f32,
+    pub ruby_spread: f32,
+    pub glyph_inline_shift: f32,
+    pub resolved_advance: f32,
+}
+
+/// 一侧 glue 的自然量与已消耗量。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GlueSpan {
+    pub natural: f32,
+    pub consumed: f32,
+}
+
+impl GlueSpan {
+    /// 尚未被消耗的剩余量。
+    pub fn remaining(self) -> f32 {
+        (self.natural - self.consumed).max(0.0)
+    }
+}
+
+/// 注音几何。
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AnnotationGeometry {
+    pub ruby: Vec<RubyGeometry>,
+    pub bopomofo: Vec<BopomofoGeometry>,
+}
+
+/// 装饰几何。
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DecorationGeometry {
+    /// 着重号的逐 cluster 绘制锚点。
+    pub emphasis_dots: Vec<EmphasisDotGeometry>,
+    /// 示亡号、专名号、书名号的逐行几何。
+    pub segments: Vec<DecorationSegmentGeometry>,
+}
+
+/// 着重号的逐 cluster 绘制锚点。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EmphasisDotGeometry {
+    pub cluster_range: TextRange,
+    pub kind: DecorationKind,
+    pub applied: bool,
+    pub anchor_x: f32,
+    pub anchor_y: f32,
+    pub dot_diameter: f32,
+}
+
+/// 空白几何。
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct WhiteSpaceGeometry {
+    pub units: Vec<crate::layout::white_space::WhiteSpaceUnit>,
+    pub line_adjustments: Vec<LineWhiteSpaceDecisionInfo>,
+    /// autospace 作用于 cluster 的记录。
+    pub auto_space: Vec<AutoSpaceDecisionInfo>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LayoutResult {
     pub input: LayoutInput,
@@ -377,6 +492,10 @@ pub struct LayoutResult {
     pub clusters: Vec<Cluster>,
     pub glyph_runs: Vec<GlyphRun>,
     pub lines: Vec<LineBox>,
+    /// 排版产出的运行时数据：查询、绘制与几何计算消费。
+    pub layout: LayoutOutput,
+    /// 诊断记录。仅 `debug-info` feature 开启时存在。
+    #[cfg(feature = "debug-info")]
     pub debug: LayoutDebugInfo,
 }
 impl LayoutResult {
@@ -393,9 +512,12 @@ impl LayoutResult {
             clusters,
             glyph_runs,
             lines,
+            layout: LayoutOutput::default(),
+            #[cfg(feature = "debug-info")]
             debug: LayoutDebugInfo::default(),
         }
     }
+    #[cfg(feature = "debug-info")]
     pub fn with_debug(
         input: LayoutInput,
         size: Size,
@@ -410,7 +532,48 @@ impl LayoutResult {
             clusters,
             glyph_runs,
             lines,
+            layout: LayoutOutput::default(),
             debug,
+        }
+    }
+    /// 提供运行时数据；诊断记录只在 `debug-info` 开启时同时提供。
+    #[cfg(feature = "debug-info")]
+    pub fn with_layout_and_debug(
+        input: LayoutInput,
+        size: Size,
+        clusters: Vec<Cluster>,
+        glyph_runs: Vec<GlyphRun>,
+        lines: Vec<LineBox>,
+        layout: LayoutOutput,
+        debug: LayoutDebugInfo,
+    ) -> Self {
+        Self {
+            input,
+            size,
+            clusters,
+            glyph_runs,
+            lines,
+            layout,
+            debug,
+        }
+    }
+    /// 只提供运行时数据。
+    #[cfg(not(feature = "debug-info"))]
+    pub fn with_layout(
+        input: LayoutInput,
+        size: Size,
+        clusters: Vec<Cluster>,
+        glyph_runs: Vec<GlyphRun>,
+        lines: Vec<LineBox>,
+        layout: LayoutOutput,
+    ) -> Self {
+        Self {
+            input,
+            size,
+            clusters,
+            glyph_runs,
+            lines,
+            layout,
         }
     }
 }
@@ -431,9 +594,9 @@ pub struct LayoutDebugInfo {
     pub auto_space_decisions: Vec<AutoSpaceDecisionInfo>,
     pub line_edge_trim_decisions: Vec<LineEdgeTrimDecisionInfo>,
     pub decoration_decisions: Vec<DecorationDecisionInfo>,
-    pub decoration_segments: Vec<DecorationSegmentInfo>,
-    pub ruby_decisions: Vec<RubyDecisionInfo>,
-    pub bopomofo_decisions: Vec<BopomofoDecisionInfo>,
+    pub decoration_segments: Vec<DecorationSegmentGeometry>,
+    pub ruby_decisions: Vec<RubyGeometry>,
+    pub bopomofo_decisions: Vec<BopomofoGeometry>,
     pub mandatory_break_decisions: Vec<MandatoryBreakDecisionInfo>,
     pub max_lines_decision: Option<MaxLinesDecisionInfo>,
     pub line_spacing_decision: Option<LineSpacingDecisionInfo>,
@@ -513,15 +676,15 @@ impl LayoutDebugInfoBuilder {
         self.debug.decoration_decisions = value;
         self
     }
-    pub fn decoration_segments(mut self, value: Vec<DecorationSegmentInfo>) -> Self {
+    pub fn decoration_segments(mut self, value: Vec<DecorationSegmentGeometry>) -> Self {
         self.debug.decoration_segments = value;
         self
     }
-    pub fn ruby_decisions(mut self, value: Vec<RubyDecisionInfo>) -> Self {
+    pub fn ruby_decisions(mut self, value: Vec<RubyGeometry>) -> Self {
         self.debug.ruby_decisions = value;
         self
     }
-    pub fn bopomofo_decisions(mut self, value: Vec<BopomofoDecisionInfo>) -> Self {
+    pub fn bopomofo_decisions(mut self, value: Vec<BopomofoGeometry>) -> Self {
         self.debug.bopomofo_decisions = value;
         self
     }
@@ -1365,7 +1528,7 @@ pub struct InlineObjectLineHeightDecisionInfo {
 /// `width` 是其自身 font 中测量的注文宽度。`overhang` > 0 表示注文宽于 base content，在应用 minimum-gap
 /// avoidance 前向两侧悬出。
 #[derive(Clone, Debug, PartialEq)]
-pub struct RubyDecisionInfo {
+pub struct RubyGeometry {
     pub base_range: TextRange,
     pub text: Text,
     pub line_index: i32,
@@ -1387,7 +1550,7 @@ pub struct RubyDecisionInfo {
     /// 在 `center_x - width/2, baseline_y` 绘制的 shape-once annotation glyph。
     pub glyphs: Vec<Glyph>,
 }
-impl RubyDecisionInfo {
+impl RubyGeometry {
     pub fn builder(
         base_range: TextRange,
         text: Text,
@@ -1418,7 +1581,7 @@ impl RubyDecisionInfo {
     }
 }
 pub struct RubyDecisionInfoBuilder {
-    decision: RubyDecisionInfo,
+    decision: RubyGeometry,
 }
 impl RubyDecisionInfoBuilder {
     pub fn ascent(mut self, value: f32) -> Self {
@@ -1449,7 +1612,7 @@ impl RubyDecisionInfoBuilder {
         self.decision.glyphs = value;
         self
     }
-    pub fn build(self) -> RubyDecisionInfo {
+    pub fn build(self) -> RubyGeometry {
         self.decision
     }
 }
@@ -1458,7 +1621,7 @@ impl RubyDecisionInfoBuilder {
 /// 每个 `placement` 是一个 glyph + box（absolute px）+ role。symbol 使用 9×9 slot size；普通 tone mark
 /// 使用 5×5 slot size，不按 glyph ink 重新缩放。
 #[derive(Clone, Debug, PartialEq)]
-pub struct BopomofoDecisionInfo {
+pub struct BopomofoGeometry {
     pub base_range: TextRange,
     pub text: Text,
     pub line_index: i32,
@@ -1470,7 +1633,7 @@ pub struct BopomofoDecisionInfo {
     /// 本次注音 shaping 实际使用的 BCP-47 language。
     pub locale: String,
 }
-impl BopomofoDecisionInfo {
+impl BopomofoGeometry {
     pub fn new(
         base_range: TextRange,
         text: Text,
@@ -1499,7 +1662,7 @@ impl BopomofoDecisionInfo {
     }
 }
 pub struct BopomofoDecisionInfoBuilder {
-    decision: BopomofoDecisionInfo,
+    decision: BopomofoGeometry,
 }
 impl BopomofoDecisionInfoBuilder {
     pub fn font_families(mut self, value: Vec<String>) -> Self {
@@ -1514,7 +1677,7 @@ impl BopomofoDecisionInfoBuilder {
         self.decision.locale = value;
         self
     }
-    pub fn build(self) -> BopomofoDecisionInfo {
+    pub fn build(self) -> BopomofoGeometry {
         self.decision
     }
 }
@@ -1630,7 +1793,7 @@ impl DecorationSegmentReason {
 /// character face（字面）——即 line metric 使用的相同 font-declared box（ADR 0002 amendment）。
 /// `open_start`/`open_end` 标记从/向另一行延续的 segment，renderer 不绘制该 frame edge。
 #[derive(Clone, Debug, PartialEq)]
-pub struct DecorationSegmentInfo {
+pub struct DecorationSegmentGeometry {
     pub source_range: TextRange,
     pub kind: DecorationKind,
     /// 生成该几何的 `DecorationSpan` 声明的范围身份；`None` 表示未声明。

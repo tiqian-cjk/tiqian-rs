@@ -2,7 +2,7 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{Rect, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyDecisionInfo,
+    ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyGeometry,
 };
 use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::core::layout_queries::{
@@ -359,7 +359,7 @@ fn nearest_line_falls_back_to_the_only_line_at_its_end_offset() {
 fn ruby_geometry_redistributes_selection_boxes_and_drops_source_stops() {
     let debug = LayoutDebugInfo::builder()
         .ruby_decisions(vec![
-            RubyDecisionInfo::builder(text_range(0, 3), Text::from("zhù"), 0, 15.0, 4.0, 6.0, 0.0)
+            RubyGeometry::builder(text_range(0, 3), Text::from("zhù"), 0, 15.0, 4.0, 6.0, 0.0)
                 .width(30.0)
                 .build(),
         ])
@@ -641,10 +641,10 @@ fn ruby_spread_shifts_selection_boxes_and_zero_width_rubies_are_ignored() {
             geometry(text_range(2, 3), "c", 2.0, 10.0),
         ])
         .ruby_decisions(vec![
-            RubyDecisionInfo::builder(text_range(0, 3), Text::from("zhù"), 0, 15.0, 4.0, 6.0, 0.0)
+            RubyGeometry::builder(text_range(0, 3), Text::from("zhù"), 0, 15.0, 4.0, 6.0, 0.0)
                 .width(30.0)
                 .build(),
-            RubyDecisionInfo::builder(text_range(2, 3), Text::from("x"), 0, 25.0, 4.0, 6.0, 0.0)
+            RubyGeometry::builder(text_range(2, 3), Text::from("x"), 0, 25.0, 4.0, 6.0, 0.0)
                 .width(0.0)
                 .build(),
         ])
@@ -812,7 +812,7 @@ fn rubies_on_other_lines_do_not_affect_this_line_geometry() {
         Vec::new(),
         LayoutDebugInfo::builder()
             .ruby_decisions(vec![
-                RubyDecisionInfo::builder(
+                RubyGeometry::builder(
                     text_range(0, 2),
                     Text::from("zhù"),
                     1,

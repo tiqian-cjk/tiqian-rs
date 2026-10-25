@@ -59,6 +59,7 @@ pub mod layout {
     pub mod default_hyphenator;
     pub mod justifier;
     pub mod kinsoku_rule;
+    pub mod layout_assembly_stage;
     pub mod layout_debug_assembly;
     pub mod line_adjustment_stage;
     pub mod line_break_planning_stage;

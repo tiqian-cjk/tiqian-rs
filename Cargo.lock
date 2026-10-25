@@ -2063,6 +2063,7 @@ dependencies = [
  "pollster",
  "read-fonts 0.43.3",
  "skrifa 0.46.2",
+ "tiqian",
  "vello",
  "winit",
 ]

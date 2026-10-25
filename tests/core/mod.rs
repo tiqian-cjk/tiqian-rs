@@ -11,6 +11,7 @@ mod layout_queries_residual_rich_text_test;
 mod layout_queries_residual_selection_test;
 mod layout_queries_t2_coverage_test;
 mod layout_queries_test;
+mod layout_output_independence_test;
 mod layout_queries_test_support;
 mod layout_result_replay_index_test;
 mod link_address_display_test;

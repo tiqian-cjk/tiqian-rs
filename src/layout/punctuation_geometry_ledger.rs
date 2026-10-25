@@ -3,8 +3,8 @@
 use super::super::clreq::clreq_profile::PunctuationClass;
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
-    Cluster, ClusterGeometryDecisionInfo, LineEdgeTrimDecisionInfo, LineEdgeTrimReason,
-    LineEdgeTrimSide, SpacingDecisionInfo,
+    Cluster, ClusterGeometryDecisionInfo, GlueSpan, LineEdgeTrimDecisionInfo, LineEdgeTrimReason,
+    LineEdgeTrimSide, ResolvedClusterGeometry, SpacingDecisionInfo,
 };
 use super::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
 use super::super::core::text_model::InlineAttachment;
@@ -409,6 +409,42 @@ impl PunctuationGeometryLedger {
                     resolved_advance: self.resolved_advance(i, cluster),
                     source: "PunctuationGeometryLedger",
                     reason: g.reason,
+                })
+            })
+            .collect()
+    }
+    /// 产出运行时消费的 cluster 几何。
+    ///
+    /// 与 `to_decision_info()` 各自独立：后者带 `source_text`、`display_text`、
+    /// `glyph_placement_reason`、`reason` 等诊断字段，这里只保留几何数值。
+    pub fn to_resolved_geometry(&self) -> Vec<ResolvedClusterGeometry> {
+        self.natural_clusters
+            .iter()
+            .enumerate()
+            .filter_map(|(index, cluster)| {
+                let i = index as i32;
+                let g = self.geometries.get(&i)?;
+                let b = self.budgets[&i];
+                Some(ResolvedClusterGeometry {
+                    range: g.range,
+                    base_advance: g.base_advance,
+                    body_width: g.body_width,
+                    leading_glue: GlueSpan {
+                        natural: b.leading_natural,
+                        consumed: b.leading_consumed,
+                    },
+                    trailing_glue: GlueSpan {
+                        natural: b.trailing_natural,
+                        consumed: b.trailing_consumed,
+                    },
+                    justification_delta: self
+                        .justification_delta_by_cluster
+                        .get(&i)
+                        .copied()
+                        .unwrap_or(0.),
+                    ruby_spread: self.ruby_spread_by_cluster.get(&i).copied().unwrap_or(0.),
+                    glyph_inline_shift: g.glyph_inline_shift,
+                    resolved_advance: self.resolved_advance(i, cluster),
                 })
             })
             .collect()

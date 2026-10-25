@@ -2,23 +2,23 @@
 
 use crate::common::{HashMap, HashSet};
 
-use super::super::clreq::clreq_profile::{LineEndPunctuationStyle, PunctuationClass};
-use super::super::core::geometry::{Size, TextRange};
+use super::super::clreq::clreq_profile::LineEndPunctuationStyle;
+use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
-    Cluster, ContextualKinsokuDecisionInfo, Glyph, GlyphRun, ImpossibleMeasureFallback,
     LayoutResult, LineEdgeTrimDecisionInfo, LineEdgeTrimReason, LineEdgeTrimSide, LineEndReason,
 };
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::{ContextualKinsokuDecisionInfo, ImpossibleMeasureFallback};
 use super::super::font::font_metrics::BaselineClass;
 use super::super::shaping::font_backend::FontBackend;
-use super::annotation_geometry_stage::{AnnotationGeometryRequest, resolve_annotation_geometry};
 use super::justifier::{JustificationRequest, Justifier};
-use super::layout_debug_assembly::{LayoutDebugStageInput, build_layout_debug_info};
-use super::line_break_planning_stage::{LineBreakPlanningStageResult, ParagraphLayoutPrep};
-use super::line_geometry_stage::{
-    build_line_boxes, renderable_glyph_run_clusters, resolve_line_vertical_geometry,
+use super::layout_assembly_stage::{
+    LayoutAssemblyInput, LayoutAssemblyRequest, assemble_paragraph_layout,
 };
+#[cfg(feature = "debug-info")]
+use super::layout_debug_assembly::LayoutDebugStageInput;
+use super::line_break_planning_stage::{LineBreakPlanningStageResult, ParagraphLayoutPrep};
 use super::line_optimization::RepairOption;
-use super::paragraph_shaping_stage::map_to_cluster_range;
 use super::progressive_break_decisions::{ProgressiveBreakTier, ShrinkChannel};
 use super::white_space::LineWhiteSpaceAction;
 
@@ -47,11 +47,13 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
     let prep = &request.prep;
     let plan = request.plan;
     let line_solution = &plan.line_solution;
+    #[cfg(feature = "debug-info")]
     let applied_hanging_clusters: HashSet<_> = line_solution
         .lines
         .iter()
         .flat_map(|line| line.hanging_cluster_indices.iter().copied())
         .collect();
+    #[cfg(feature = "debug-info")]
     let impossible_measure_contextual_hang_clusters: HashSet<_> = plan
         .ascii_point_mark_kinsoku
         .impossible_measure_hang_eligible_clusters
@@ -63,6 +65,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         )
         .copied()
         .collect();
+    #[cfg(feature = "debug-info")]
     let contextual_kinsoku_decisions = plan
         .ascii_point_mark_kinsoku
         .decisions
@@ -504,11 +507,15 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
         }
     }
     let mut geometry_decisions = final_geometry.to_decision_info();
+    let mut resolved_clusters = final_geometry.to_resolved_geometry();
     let mut geometry_cursor = 0;
     for cluster in &final_clusters {
         if let Some(decision) = geometry_decisions.get_mut(geometry_cursor)
             && decision.range == cluster.range {
             decision.resolved_advance = cluster.advance;
+            if let Some(resolved) = resolved_clusters.get_mut(geometry_cursor) {
+                resolved.resolved_advance = cluster.advance;
+            }
             geometry_cursor += 1;
         }
     }
@@ -523,153 +530,66 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
             justification.unfilled_deficit = (target - (occupied - hanging)).max(0.0);
         }
     }
-    let glyph_runs = build_glyph_runs(prep, &final_clusters);
-    let vertical_geometry = resolve_line_vertical_geometry(
-        &prep.input,
-        prep.font_size,
-        &prep.pinyin_spans,
-        &prep.natural_clusters,
-        line_solution,
-        &prep.ruby_font_geometry_by_span,
-        plan.existing_interline_space,
-        plan.base_line_metrics,
-        plan.base_face_height,
-        plan.ruby_extent,
-        &prep.inline_object_by_cluster_index,
-        plan.base_ascent,
-        plan.base_descent,
-    );
-    let line_boxes = build_line_boxes(
-        &prep.input,
-        line_solution,
-        &trimmed_clusters,
-        &final_clusters,
-        plan.first_line_indent,
-        plan.block_indent,
-        prep.measure,
-        prep.grid_body_offset,
-        &vertical_geometry.line_baseline,
-        &vertical_geometry.line_top,
-        &vertical_geometry.line_bottom,
-        &|index| line_hyphen_advance_at(index as usize),
-        &prep.hyphen_glyphs,
-    );
-    let annotation = resolve_annotation_geometry(AnnotationGeometryRequest {
-        input: &prep.input,
-        font_size: prep.font_size,
-        inline_object_by_cluster_index: &prep.inline_object_by_cluster_index,
-        line_solution,
-        clreq_profile: &prep.clreq_profile,
-        geometry_decisions: &geometry_decisions,
-        auto_space_decisions: &prep.auto_space_decisions,
-        visible_line_ranges: &line_boxes.visible_line_ranges,
-        lines: &line_boxes.visible_lines,
-        final_clusters: &final_clusters,
-        cluster_roles: &prep.cluster_roles,
-        justify_delta_by_cluster: &justify_delta_by_cluster,
-        ruby_and_bopomofo_spread: &prep.ruby_and_bopomofo_spread,
-        metric_decisions: &plan.metric_decisions,
-        pinyin_spans: &prep.pinyin_spans,
-        natural_clusters: &prep.natural_clusters,
-        ruby_font_geometry_by_span: &prep.ruby_font_geometry_by_span,
-        ruby_stack_gap: prep.ruby_stack_gap,
-        base_ascent: plan.base_ascent,
-        ruby_font_size: prep.ruby_font_size,
-        ruby_font_weight: prep.ruby_font_weight,
-        base_descent: plan.base_descent,
-        bopomofo_font_weight_at: prep.bopomofo_font_weight_at.as_ref(),
-        font_backend: request.font_backend,
-    });
-    let lines = line_boxes.visible_lines;
-    let widest_line = lines
-        .iter()
-        .map(|line| line.indent + line.visual_width + line.hyphen_advance)
-        .fold(0.0, f32::max);
-    let total_height = lines.last().map(|line| line.bottom).unwrap_or_else(|| {
-        if prep.text.is_empty() {
-            0.0
-        } else {
-            plan.base_line_metrics.height
-        }
-    });
-    let size = Size {
-        width: widest_line.min(prep.input.constraints.max_width()),
-        height: total_height,
-    };
-    let prep = request.prep;
-    let mut debug = build_layout_debug_info(LayoutDebugStageInput {
-        text: &prep.text,
-        font_resolutions: &prep.font_resolutions,
-        substitution_rollbacks: &prep.substitution_rollbacks,
-        punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
-        substitutions: &prep.substitutions,
-        shaping_decisions: prep.shaping_decisions,
-        metric_decisions: &plan.metric_decisions,
-        punctuation_atoms: &prep.punctuation_atoms,
-        geometry_decisions,
-        spacing_plan: &prep.spacing_plan,
-        attached_punctuation_boundary: &prep.attached_punctuation_boundary,
-        role_override_infos: &prep.role_override_infos,
-        line_breaker_strategy_name: request.line_breaker_strategy_name,
-        laid_out_lines: &line_boxes.laid_out_lines,
-        line_solution,
-        clusters: &prep.clusters,
-        justification_plans: &justification_plans,
-        auto_space_decisions: &prep.auto_space_decisions,
-        edge_trim_decisions,
-        decoration_decisions: annotation.decoration_decisions,
-        decoration_segments: annotation.decoration_segments,
-        ruby_decisions: annotation.ruby_decisions,
-        bopomofo_decisions: annotation.bopomofo_decisions,
-        mandatory_break_decisions: &prep.mandatory_break_decisions,
-        max_lines_decision: line_boxes.max_lines_decision,
-        line_spacing_decision: plan.line_spacing_decision.clone(),
-        ruby_line_height_decision: vertical_geometry.ruby_line_height_decision,
-        inline_object_line_height_decision: vertical_geometry.inline_object_line_height_decision,
-        kinsoku_decision: plan.kinsoku_decision.clone(),
-        contextual_kinsoku_decisions,
-        line_length_grid_decision: prep.line_length_grid_decision.clone(),
-        first_line_indent_decision: plan.first_line_indent_decision.clone(),
-        inline_box_decisions: &prep.inline_box_result.decisions,
-        inline_object_decisions: &annotation.inline_object_decisions,
-        inline_object_punctuation_attachment_decisions: &prep
-            .inline_object_punctuation_attachment_decisions,
-        zero_width_break_decisions: &prep.zero_width_break_decisions,
-        break_opportunity_decisions: &prep.break_opportunity_decisions,
-        emergency_tracking_eligibility_decisions: &prep.emergency_tracking_eligibility_decisions,
-        progressive_break_opportunities: &plan.progressive_break_opportunities,
-    });
-    debug.white_space_units = prep.natural_clusters.iter()
-        .filter_map(|cluster| prep.white_space_units.get(&cluster.range).copied()).collect();
-    for (index, line) in line_solution.lines.iter().enumerate() {
-        for adjustment in &line.white_space_adjustments {
-            let mut adjustment = *adjustment;
-            if adjustment.action == LineWhiteSpaceAction::ResolveTab {
-                adjustment.occupied_advance = final_clusters[adjustment.cluster_index as usize].advance;
-            }
-            if matches!(adjustment.action, LineWhiteSpaceAction::HangEnd | LineWhiteSpaceAction::ConditionallyHangEnd) {
-                continue;
-            }
-            debug.line_white_space_adjustments.push(crate::core::layout_model::LineWhiteSpaceDecisionInfo {
-                line_index: index as i32, line_range: line.source_range, adjustment,
-            });
-        }
-        if let Some(measurement) = &line.measurement {
-            for adjustment in measurement.final_hanging_adjustments(line.cluster_range, line.end_reason,
-                line.measurement_limit, &final_clusters) {
-                debug.line_white_space_adjustments.push(crate::core::layout_model::LineWhiteSpaceDecisionInfo {
-                    line_index: index as i32, line_range: line.source_range, adjustment,
-                });
-            }
-        }
-    }
-    LineAdjustmentStageOutcome::Finished(Box::new(LayoutResult::with_debug(
-        prep.input,
-        size,
-        final_clusters,
-        glyph_runs,
-        lines,
-        debug,
+    LineAdjustmentStageOutcome::Finished(Box::new(assemble_paragraph_layout(
+        LayoutAssemblyRequest {
+            prep,
+            plan,
+            line_solution,
+            input: LayoutAssemblyInput {
+                trimmed_clusters,
+                final_clusters,
+                justify_delta_by_cluster,
+                edge_trim_decisions,
+                resolved_clusters,
+                geometry_decisions,
+            },
+            line_hyphen_advance_at: &line_hyphen_advance_at,
+            font_backend: request.font_backend,
+            #[cfg(feature = "debug-info")]
+            debug_stage: LayoutDebugStageInput {
+                text: &prep.text,
+                font_resolutions: &prep.font_resolutions,
+                substitution_rollbacks: &prep.substitution_rollbacks,
+                punctuation_glyph_substitutor: &prep.punctuation_glyph_substitutor,
+                substitutions: &prep.substitutions,
+                shaping_decisions: prep.shaping_decisions.clone(),
+                metric_decisions: &plan.metric_decisions,
+                punctuation_atoms: &prep.punctuation_atoms,
+                geometry_decisions: Vec::new(),
+                spacing_plan: &prep.spacing_plan,
+                attached_punctuation_boundary: &prep.attached_punctuation_boundary,
+                role_override_infos: &prep.role_override_infos,
+                line_breaker_strategy_name: request.line_breaker_strategy_name,
+                laid_out_lines: &[],
+                line_solution,
+                clusters: &prep.clusters,
+                justification_plans: &justification_plans,
+                auto_space_decisions: &prep.auto_space_decisions,
+                edge_trim_decisions: Vec::new(),
+                decoration_decisions: Vec::new(),
+                decoration_segments: Vec::new(),
+                ruby_decisions: Vec::new(),
+                bopomofo_decisions: Vec::new(),
+                mandatory_break_decisions: &prep.mandatory_break_decisions,
+                max_lines_decision: None,
+                line_spacing_decision: plan.line_spacing_decision.clone(),
+                ruby_line_height_decision: None,
+                inline_object_line_height_decision: None,
+                kinsoku_decision: plan.kinsoku_decision.clone(),
+                contextual_kinsoku_decisions,
+                line_length_grid_decision: prep.line_length_grid_decision.clone(),
+                first_line_indent_decision: plan.first_line_indent_decision.clone(),
+                inline_box_decisions: &prep.inline_box_result.decisions,
+                inline_object_decisions: &[],
+                inline_object_punctuation_attachment_decisions: &prep
+                    .inline_object_punctuation_attachment_decisions,
+                zero_width_break_decisions: &prep.zero_width_break_decisions,
+                break_opportunity_decisions: &prep.break_opportunity_decisions,
+                emergency_tracking_eligibility_decisions: &prep
+                    .emergency_tracking_eligibility_decisions,
+                progressive_break_opportunities: &plan.progressive_break_opportunities,
+            },
+        },
     )))
 }
 
@@ -748,82 +668,6 @@ fn resolve_auto_space_edge_trims(
         }
     }
     (trims, decisions)
-}
-
-fn build_glyph_runs(prep: &ParagraphLayoutPrep, final_clusters: &[Cluster]) -> Vec<GlyphRun> {
-    renderable_glyph_run_clusters(final_clusters, &prep.open_type_features_by_cluster_range)
-        .into_iter()
-        .filter_map(|clusters| {
-            let face = clusters[0].font_face.clone().or_else(|| {
-                prep.font_resolutions
-                    .values()
-                    .find(|resolution| {
-                        resolution.range.start() <= clusters[0].range.start()
-                            && resolution.range.end() >= clusters[clusters.len() - 1].range.end()
-                    })
-                    .map(|resolution| resolution.face.clone())
-            });
-            let Some(face) = face else {
-                log::warn!("renderable glyph run lacks font face; skipping glyph run");
-                return None;
-            };
-            let open_type_features = prep
-                .open_type_features_by_cluster_range
-                .get(&clusters[0].range)
-                .cloned()
-                .unwrap_or_default();
-            let glyphs = clusters
-                .iter()
-                .enumerate()
-                .flat_map(|(fallback_id, cluster)| {
-                    prep.shaped_glyphs_by_cluster_range
-                        .get(&cluster.range)
-                        .map(|glyphs| {
-                            center_dash_ink(
-                                map_to_cluster_range(glyphs, cluster),
-                                cluster,
-                                prep.atom_class_by_range.get(&cluster.range),
-                            )
-                        })
-                        .unwrap_or_else(|| {
-                            vec![
-                                Glyph::builder(fallback_id as u32, cluster.range, cluster.advance)
-                                    .build(),
-                            ]
-                        })
-                })
-                .collect();
-            Some(GlyphRun::with_open_type_features(
-                TextRange::new(
-                    clusters.first().unwrap().range.start(),
-                    clusters.last().unwrap().range.end(),
-                ),
-                face,
-                glyphs,
-                clusters.iter().map(|cluster| cluster.advance).sum(),
-                open_type_features,
-            ))
-        })
-        .collect()
-}
-
-fn center_dash_ink(
-    glyphs: Vec<Glyph>,
-    cluster: &Cluster,
-    punctuation_class: Option<&PunctuationClass>,
-) -> Vec<Glyph> {
-    if punctuation_class != Some(&PunctuationClass::Dash) || glyphs.len() != 1 {
-        return glyphs;
-    }
-    let mut glyph = glyphs.into_iter().next().unwrap();
-    let Some(ink) = glyph.bounds else {
-        return vec![glyph];
-    };
-    let inset = (cluster.advance - (ink.right - ink.left)) / 2.0 - ink.left;
-    if inset > 0.5 {
-        glyph.x += inset;
-    }
-    vec![glyph]
 }
 
 fn add_amount(target: &mut HashMap<i32, f32>, index: i32, amount: f32) {

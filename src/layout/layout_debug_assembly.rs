@@ -7,16 +7,16 @@ use super::super::clreq::clreq_profile::{
 };
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, BopomofoDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
+    AutoSpaceDecisionInfo, BopomofoGeometry, BreakOpportunityDecisionInfo, Cluster,
     ClusterGeometryDecisionInfo, ContextualKinsokuDecisionInfo, DecorationDecisionInfo,
-    DecorationSegmentInfo, EmergencyTrackingEligibilityDecisionInfo, FontDecisionInfo,
+    DecorationSegmentGeometry, EmergencyTrackingEligibilityDecisionInfo, FontDecisionInfo,
     InlineBoxDecisionInfo, InlineObjectDecisionInfo, InlineObjectLineHeightDecisionInfo,
     InlineObjectPunctuationAttachmentDecisionInfo, JustificationAllocationInfo,
     JustificationDecisionInfo, KinsokuDecisionInfo, LayoutDebugInfo, LineBox,
     LineEdgeTrimDecisionInfo, LineLengthGridDecisionInfo, LineRepairAllocationInfo,
     LineRepairCandidateInfo, LineRepairDecisionInfo, LineSpacingDecisionInfo,
     MandatoryBreakDecisionInfo, MaxLinesDecisionInfo, MetricDecisionInfo, PunctuationDecisionInfo,
-    RoleOverrideInfo, RubyDecisionInfo, RubyLineHeightDecisionInfo, ShapingDecisionInfo,
+    RoleOverrideInfo, RubyGeometry, RubyLineHeightDecisionInfo, ShapingDecisionInfo,
     SpacingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
@@ -53,9 +53,9 @@ pub struct LayoutDebugStageInput<'a> {
     pub auto_space_decisions: &'a [AutoSpaceDecisionInfo],
     pub edge_trim_decisions: Vec<LineEdgeTrimDecisionInfo>,
     pub decoration_decisions: Vec<DecorationDecisionInfo>,
-    pub decoration_segments: Vec<DecorationSegmentInfo>,
-    pub ruby_decisions: Vec<RubyDecisionInfo>,
-    pub bopomofo_decisions: Vec<BopomofoDecisionInfo>,
+    pub decoration_segments: Vec<DecorationSegmentGeometry>,
+    pub ruby_decisions: Vec<RubyGeometry>,
+    pub bopomofo_decisions: Vec<BopomofoGeometry>,
     pub mandatory_break_decisions: &'a [MandatoryBreakDecisionInfo],
     pub max_lines_decision: Option<MaxLinesDecisionInfo>,
     pub line_spacing_decision: Option<LineSpacingDecisionInfo>,
