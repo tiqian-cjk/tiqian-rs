@@ -3,13 +3,9 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[path = "paragraph_demo/app.rs"]
 mod app;
-#[path = "paragraph_demo/font_backend.rs"]
 mod font_backend;
-#[path = "paragraph_demo/renderer.rs"]
 mod renderer;
-#[path = "paragraph_demo/sample.rs"]
 mod sample;
 
 fn main() -> Result<(), String> {

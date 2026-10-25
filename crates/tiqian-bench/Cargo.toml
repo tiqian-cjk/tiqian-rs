@@ -1,0 +1,50 @@
+[package]
+name = "tiqian-bench"
+description = "tiqian 的基准与探针程序"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+publish = false
+
+# 透传 `tiqian` 的诊断记录开关。默认关闭，用于测量生产路径；
+# 需要统计各 decision 集合规模时开启。
+[features]
+debug-info = ["tiqian/debug-info"]
+
+[dependencies]
+tiqian = { path = "../tiqian" }
+# 部分探针复用 demo 的字体目录与样张，避免重复定义输入语料。
+tiqian-demo = { path = "../tiqian-demo" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mimalloc = "0.1.47"
+
+[[bin]]
+name = "boundary-prefix-index-bench"
+path = "src/boundary-prefix-index-bench.rs"
+
+[[bin]]
+name = "hyphen-break-bench"
+path = "src/hyphen-break-bench.rs"
+
+[[bin]]
+name = "lookahead-boundary-index-bench"
+path = "src/lookahead-boundary-index-bench.rs"
+
+[[bin]]
+name = "paragraph-layout-bench"
+path = "src/paragraph-layout-bench.rs"
+
+[[bin]]
+name = "progressive-break-density-bench"
+path = "src/progressive-break-density-bench.rs"
+
+[[bin]]
+name = "progressive-tier-lookup-bench"
+path = "src/progressive-tier-lookup-bench.rs"
+
+[[bin]]
+name = "white-space-bench"
+path = "src/white-space-bench.rs"

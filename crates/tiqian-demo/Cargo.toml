@@ -1,0 +1,21 @@
+[package]
+name = "tiqian-demo"
+description = "tiqian 的桌面演示程序"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+# demo 不开 `debug-info`：渲染只消费 `LayoutResult.layout` 的运行时数据。
+tiqian = { path = "../tiqian" }
+harfrust = "0.13"
+pollster = "1.0"
+skrifa = "0.46"
+vello = "0.10.0"
+winit = "0.30"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mimalloc = "0.1.47"

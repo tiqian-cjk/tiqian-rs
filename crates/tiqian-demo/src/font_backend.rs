@@ -28,14 +28,14 @@ const SERIF_FONT_KEY: &str = "demo-serif";
 const MONOSPACE_FONT_KEY: &str = "demo-monospace";
 const GARAMOND_FONT_KEY: &str = "demo-garamond";
 const EMOJI_FONT_KEY: &str = "demo-emoji";
-const CJK_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf");
-const LATIN_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/InterVariable.ttf");
-const SERIF_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/SourceHanSerifCN-VF.otf");
+const CJK_FONT_BYTES: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
+const LATIN_FONT_BYTES: &[u8] = include_bytes!("../resources/fonts/InterVariable.ttf");
+const SERIF_FONT_BYTES: &[u8] = include_bytes!("../resources/fonts/SourceHanSerifCN-VF.otf");
 const MONOSPACE_FONT_BYTES: &[u8] =
-    include_bytes!("../../resources/fonts/FiraCodeNerdFont-Regular.ttf");
+    include_bytes!("../resources/fonts/FiraCodeNerdFont-Regular.ttf");
 const GARAMOND_FONT_BYTES: &[u8] =
-    include_bytes!("../../resources/fonts/EBGaramond-VariableFont_wght.ttf");
-const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../../resources/fonts/NotoColorEmoji-Regular.ttf");
+    include_bytes!("../resources/fonts/EBGaramond-VariableFont_wght.ttf");
+const EMOJI_FONT_BYTES: &[u8] = include_bytes!("../resources/fonts/NotoColorEmoji-Regular.ttf");
 
 #[derive(Clone)]
 pub struct DemoFontCatalog {
@@ -905,10 +905,10 @@ mod tests {
         );
         assert!(
             result
-                .debug
-                .metric_decisions
+                .layout
+                .font_metrics
                 .iter()
-                .all(|decision| { decision.raw_source == FontMetricSource::RawTables })
+                .all(|metrics| metrics.source == FontMetricSource::RawTables)
         );
     }
 
@@ -1069,14 +1069,6 @@ mod tests {
             cluster.range.end() <= emoji_range.start()
                 || cluster.range.start() >= emoji_range.end()
                 || cluster.range == emoji_range
-        }));
-        assert!(result.debug.shaping_decisions.iter().any(|decision| {
-            decision.range == emoji_range
-                && decision.source_text == "👩🏽‍💻"
-                && decision
-                    .font_face
-                    .as_ref()
-                    .is_some_and(|face| face.resource_id() == EMOJI_FONT_KEY)
         }));
         assert!(
             result

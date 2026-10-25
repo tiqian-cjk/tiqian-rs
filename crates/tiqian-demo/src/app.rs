@@ -817,18 +817,18 @@ mod tests {
                         .scalar_offset_at(byte_start)
                         .expect("match start must be a Unicode scalar boundary");
                     let range_end = range_start + text.chars().count() as i32;
-                    let decisions: Vec<_> = layout
-                        .debug
-                        .shaping_decisions
+                    // cluster 的字体面就是绘制时实际使用的面，与 shaping 决策同源。
+                    let clusters: Vec<_> = layout
+                        .clusters
                         .iter()
-                        .filter(|decision| {
-                            decision.range.start() >= range_start
-                                && decision.range.end() <= range_end
+                        .filter(|cluster| {
+                            cluster.range.start() >= range_start
+                                && cluster.range.end() <= range_end
                         })
                         .collect();
-                    let matches_expected_face = !decisions.is_empty()
-                        && decisions.iter().all(|decision| {
-                            decision
+                    let matches_expected_face = !clusters.is_empty()
+                        && clusters.iter().all(|cluster| {
+                            cluster
                                 .font_face
                                 .as_ref()
                                 .is_some_and(|face| face.resource_id() == *expected_face)

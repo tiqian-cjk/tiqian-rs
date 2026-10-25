@@ -147,12 +147,8 @@ impl AllocSnapshot {
     }
 }
 
-#[allow(dead_code)]
-#[path = "paragraph_demo/font_backend.rs"]
-mod font_backend;
-#[allow(dead_code)]
-#[path = "paragraph_demo/sample.rs"]
-mod sample;
+use tiqian_demo::font_backend;
+use tiqian_demo::sample;
 
 struct Options {
     replay: bool,

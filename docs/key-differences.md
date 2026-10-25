@@ -176,8 +176,8 @@ tiqian-rs 当前没有对应的 Web 或 FFI 消费者，也没有外部调用者
 
 ### Rust 本地 layout fixture 与 golden
 
-Rust 在 `tests/fixture_layout/` 维护 57 项 deterministic stub fixture 与完整 layout dump golden。
-它们由 `cargo test --test tiqian layout_fixture_golden_test` 执行，并作为 Rust 日常排版回归测试。
+Rust 在 `crates/tiqian-tests/tests/fixture_layout/` 维护 57 项 deterministic stub fixture 与完整 layout dump golden。
+它们由 `cargo test -p tiqian-tests --test tiqian layout_fixture_golden_test` 执行，并作为 Rust 日常排版回归测试。
 Kotlin fixture、golden、recorded shaping evidence 和相邻 checkout 不属于 Rust 测试依赖。
 
 ### Kotlin Paragraph-DP 实验与调优探针

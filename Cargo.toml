@@ -1,38 +1,15 @@
-[package]
+[workspace]
+members = [
+    "crates/tiqian",
+    "crates/tiqian-tests",
+    "crates/tiqian-demo",
+    "crates/tiqian-bench",
+]
+resolver = "3"
+
+[workspace.package]
 authors = ["123Duo3 <123duo3@gmail.com>", "Icemic <bingfeng.web@gmail.com>"]
-description = "Universal CJK Layouting Implementation in Rust"
 edition = "2024"
-exclude = ["examples"]
 license = "MPL-2.0"
-name = "tiqian"
 repository = "https://github.com/tiqian-cjk/tiqian-rs"
 version = "0.6.0"
-
-include = ["src/**/*", "resources/hyphenation/**/*", "Cargo.toml", "./README.md", "LICENSE"]
-
-[features]
-collections-hashbrown = ["dep:hashbrown"]
-collections-std = []
-# 装配 `LayoutResult.debug` 的诊断记录。默认关闭：功能路径读取 `LayoutResult.layout`，
-# 诊断记录只在需要解释布局决策时开启。
-debug-info = []
-default = ["collections-hashbrown"]
-
-[dependencies]
-icu_properties = {version = "2.3", features = ["compiled_data"]}
-log = "0.4"
-
-hashbrown = {version = "0.17", optional = true}
-
-[dev-dependencies]
-harfrust = "0.13"
-pollster = "1.0"
-read-fonts = "0.43"
-skrifa = "0.46"
-vello = "0.10.0"
-winit = "0.30"
-# 测试与示例需要检查诊断记录，因此测试构建启用该 feature；生产构建默认不启用。
-# 测量生产路径时临时注释掉本行。
-tiqian = { path = ".", features = ["debug-info"] }
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-mimalloc = "0.1.47"

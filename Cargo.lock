@@ -2055,17 +2055,39 @@ dependencies = [
 name = "tiqian"
 version = "0.6.0"
 dependencies = [
- "harfrust",
  "hashbrown 0.17.1",
  "icu_properties",
  "log",
+]
+
+[[package]]
+name = "tiqian-bench"
+version = "0.6.0"
+dependencies = [
+ "mimalloc",
+ "tiqian",
+ "tiqian-demo",
+]
+
+[[package]]
+name = "tiqian-demo"
+version = "0.6.0"
+dependencies = [
+ "harfrust",
  "mimalloc",
  "pollster",
- "read-fonts 0.43.3",
  "skrifa 0.46.2",
  "tiqian",
  "vello",
  "winit",
+]
+
+[[package]]
+name = "tiqian-tests"
+version = "0.6.0"
+dependencies = [
+ "tiqian",
+ "tiqian-demo",
 ]
 
 [[package]]

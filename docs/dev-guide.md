@@ -12,32 +12,51 @@
 在仓库根目录运行：
 
 ```shell
-cargo check
-cargo test
+cargo check --all-targets
+cargo test --all-targets
 ```
+
+仓库是多 crate workspace：
+
+| crate | 用途 |
+| --- | --- |
+| `crates/tiqian` | 排版核心库 |
+| `crates/tiqian-tests` | 集成测试与 fixture golden |
+| `crates/tiqian-demo` | 桌面演示程序 |
+| `crates/tiqian-bench` | 基准与探针程序 |
+
+`debug-info` feature 只在 `tiqian-tests` 默认开启；`tiqian` 自身的构建保持关闭，
+因此不再需要注释依赖行来测量生产路径：
+
+```shell
+cargo build -p tiqian --release
+```
+
+开启诊断记录时：`cargo test -p tiqian-tests`（默认已开启）或
+`cargo run -p tiqian-bench --features debug-info --bin paragraph-layout-bench`。
 
 运行桌面段落示例：
 
 ```shell
-cargo run --example paragraph-demo
+cargo run -p tiqian-demo --release
 ```
 
 示例使用 HarfRust、SkRifa 和 Vello 实现 `FontBackend` 并完成字体接入、字形 shaping 与绘制；生产引擎通过 `ParagraphLayoutEngineBuilder` 显式接收该 backend。
 
 ## Fixture 与 golden
 
-`tests/fixture_layout/` 保存 deterministic stub fixture 与完整 layout decision golden。日常回归测试使用 Rust 仓库内的 fixture，不依赖 Kotlin 仓库。
+`crates/tiqian-tests/tests/fixture_layout/` 保存 deterministic stub fixture 与完整 layout decision golden。日常回归测试使用 Rust 仓库内的 fixture，不依赖 Kotlin 仓库。
 
 运行 fixture golden 测试：
 
 ```shell
-cargo test --test tiqian layout_fixture_golden_test
+cargo test -p tiqian-tests --test tiqian layout_fixture_golden_test
 ```
 
 需要确认布局预期发生变化时，显式更新 golden：
 
 ```shell
-TIQIAN_UPDATE_LAYOUT_GOLDENS=1 cargo test --test tiqian layout_fixture_golden_test
+TIQIAN_UPDATE_LAYOUT_GOLDENS=1 cargo test -p tiqian-tests --test tiqian layout_fixture_golden_test
 ```
 
 更新后逐项检查文本 diff。更新模式会重新生成现有 fixture 的 golden，不会替代缺失的 fixture 或删除未知文件。
@@ -47,23 +66,23 @@ TIQIAN_UPDATE_LAYOUT_GOLDENS=1 cargo test --test tiqian layout_fixture_golden_te
 `paragraph-layout-bench` 使用桌面示例的段落和平台字体后端，在不打开窗口的情况下测量布局：
 
 ```shell
-cargo run --release --example paragraph-layout-bench
-cargo run --release --example paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
 ```
 
 比较实现时保持构建配置和参数一致，主要观察各宽度的 `layout` 指标。`--replay` 可以额外测量整页重放索引；`--cluster-queries` 会在每页布局后调用两个逐 cluster 查询并单独计时：
 
 ```shell
-cargo run --release --example paragraph-layout-bench -- --replay
-cargo run --release --example paragraph-layout-bench -- --cluster-queries
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --replay
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --cluster-queries
 ```
 
 分配统计需要单独运行，`--count-allocations` 开启后每次分配都有原子开销，该运行的时间不可用于比较：
 
 ```shell
-cargo run --release --example paragraph-layout-bench -- --count-allocations
-cargo run --release --example paragraph-layout-bench -- --annotation-cold --widths 672
-cargo run --release --example paragraph-layout-bench -- --fresh-engine --widths 672
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --count-allocations
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --annotation-cold --widths 672
+cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --fresh-engine --widths 672
 ```
 
 计数覆盖 `engine.layout()` 调用，转发自 mimalloc 的全局分配器计数；
@@ -77,9 +96,9 @@ cargo run --release --example paragraph-layout-bench -- --fresh-engine --widths 
 - 对比两个实现时，把两份构建产物放在同一时间窗口交替运行（A/B/A/B），不要用两次单独运行的结果比较；
 - 不要跨机器或跨时段比较绝对值，只比较同一轮交替运行中的相对差异。
 
-需要采样时使用 `cargo flamegraph --example paragraph-layout-bench -- --iterations 1000`。火焰图包含进程启动、预热、输入准备和析构；分析核心时筛选 `engine.layout` 调用树，不要把采样运行时间直接与普通 release 运行比较。
+需要采样时使用 `cargo flamegraph -p tiqian-bench --bin paragraph-layout-bench -- --iterations 1000`。火焰图包含进程启动、预热、输入准备和析构；分析核心时筛选 `engine.layout` 调用树，不要把采样运行时间直接与普通 release 运行比较。
 
-专项工具：`examples/white-space-bench.rs` 测量空白策略的耗时与累计分配；
+专项工具：`crates/tiqian-bench/src/white-space-bench.rs` 测量空白策略的耗时与累计分配；
 `tools/text-autospace-probe.html` 用于浏览器空白与自动间距对照。具体测量条件和结果保存在对应迭代记录中。
 
 ## 覆盖率

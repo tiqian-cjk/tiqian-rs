@@ -1,8 +1,7 @@
 mod support;
 
 #[allow(dead_code)]
-#[path = "../examples/paragraph_demo/font_backend.rs"]
-mod font_backend;
+use tiqian_demo::font_backend;
 
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{AutoSpaceMode, ClreqProfile, ClreqProfileResolver};

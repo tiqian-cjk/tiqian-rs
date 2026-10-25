@@ -9,9 +9,7 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 
-#[allow(dead_code)]
-#[path = "paragraph_demo/font_backend.rs"]
-mod font_backend;
+use tiqian_demo::font_backend;
 
 struct CountingAllocator;
 static ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);

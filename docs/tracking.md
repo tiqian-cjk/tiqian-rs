@@ -20,7 +20,7 @@ Kotlin 仓库的 ADR 是同步 Kotlin 算法与架构取舍的重要来源。Rus
 - `docs/` 中与 engine 取舍直接相关的 ADR、规则审计和路线记录；
 - `engine/src/` 中 `commonMain` 的排版核心与 `commonTest` 的行为测试；
 - Compose 平台相关变更与我们内置的 lowering 层（`src/api`）；
-- 对应的 Rust `src/`、`tests/fixture_layout/` 与 `tools/`。
+- 对应的 Rust `crates/tiqian-tests/tests/fixture_layout/` 与 `tools/`。
 
 默认不把前端、demo、平台 adapter、发布脚本和无关文档带入 Rust 核心同步。上游变动如果影响
 输入 wire、fixture、shaping 约定或 renderer 可重放证据，则在对应日期归档中记录扩大后的范围。
@@ -63,12 +63,12 @@ git -C <tiqian-kotlin-repository> diff --name-status <已审计终点> UPSTREAM_
 根据改动范围运行：
 
 ```shell
-cargo test
-cargo test --test tiqian layout_fixture_golden_test
+cargo test --all-targets
+cargo test -p tiqian-tests --test tiqian layout_fixture_golden_test
 git diff --check
 ```
 
-`tests/fixture_layout/` 保存 Rust 本地 52 项 deterministic stub fixture 与每项完整 dump golden。测试入口同时检查 fixture ID 与 golden 文件名集合，新增或移植 fixture 时必须同步更新两者，避免清单漂移。
+`crates/tiqian-tests/tests/fixture_layout/` 保存 Rust 本地 52 项 deterministic stub fixture 与每项完整 dump golden。测试入口同时检查 fixture ID 与 golden 文件名集合，新增或移植 fixture 时必须同步更新两者，避免清单漂移。
 
 涉及 Unicode 属性源时，标准 Unicode 属性固定使用 `icu_properties` 2.3.x 的编译期 Unicode 17
 数据；emoji style variation base 集合和 UTR #59 `East_Asian_Spacing` 仍是 Rust 本地数据。
