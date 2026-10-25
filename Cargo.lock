@@ -2062,7 +2062,7 @@ dependencies = [
 
 [[package]]
 name = "tiqian-bench"
-version = "0.6.0"
+version = "0.0.0"
 dependencies = [
  "mimalloc",
  "tiqian",
@@ -2071,7 +2071,7 @@ dependencies = [
 
 [[package]]
 name = "tiqian-demo"
-version = "0.6.0"
+version = "0.0.0"
 dependencies = [
  "harfrust",
  "mimalloc",
@@ -2084,7 +2084,7 @@ dependencies = [
 
 [[package]]
 name = "tiqian-tests"
-version = "0.6.0"
+version = "0.0.0"
 dependencies = [
  "tiqian",
  "tiqian-demo",

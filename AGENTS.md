@@ -6,11 +6,11 @@
 
 ## 项目速览
 
-本仓库是多 crate workspace，`crates/` 下按职责分工：
+本仓库是 Cargo workspace：核心 crate 位于仓库根，其余 crate 在 `crates/` 下按职责分工：
 
 | crate | 路径 | 用途 |
 | --- | --- | --- |
-| `tiqian` | `crates/tiqian` | 排版核心库，唯一发布的 crate |
+| `tiqian` | 仓库根 | 排版核心库，唯一发布的 crate |
 | `tiqian-tests` | `crates/tiqian-tests` | 集成测试与 fixture golden，`debug-info` 的唯一默认消费方 |
 | `tiqian-demo` | `crates/tiqian-demo` | 桌面演示程序，同时提供 lib 供 bench 与测试复用字体目录与样张 |
 | `tiqian-bench` | `crates/tiqian-bench` | 基准与探针程序，不依赖 `debug-info` |

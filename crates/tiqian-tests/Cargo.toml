@@ -5,11 +5,9 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-version.workspace = true
+version = "0.0.0"
 publish = false
 
-# 测试是 `debug-info` 的唯一消费方：这里显式开启，`tiqian` 自身的构建保持默认关闭。
 [dependencies]
-tiqian = { path = "../tiqian", features = ["debug-info"] }
-# 部分测试复用 demo 的字体目录，避免重复定义测试字体输入。
+tiqian = { path = "../..", features = ["debug-info"] }
 tiqian-demo = { path = "../tiqian-demo" }

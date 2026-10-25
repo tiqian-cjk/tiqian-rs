@@ -5,7 +5,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-version.workspace = true
+version = "0.0.0"
 publish = false
 
 # 透传 `tiqian` 的诊断记录开关。默认关闭，用于测量生产路径；
@@ -14,7 +14,7 @@ publish = false
 debug-info = ["tiqian/debug-info"]
 
 [dependencies]
-tiqian = { path = "../tiqian" }
+tiqian = { path = "../.." }
 # 部分探针复用 demo 的字体目录与样张，避免重复定义输入语料。
 tiqian-demo = { path = "../tiqian-demo" }
 

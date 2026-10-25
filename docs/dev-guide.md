@@ -16,14 +16,14 @@ cargo check --all-targets
 cargo test --all-targets
 ```
 
-仓库是多 crate workspace：
+仓库是 Cargo workspace，核心 crate 位于仓库根，其余在 `crates/` 下：
 
-| crate | 用途 |
-| --- | --- |
-| `crates/tiqian` | 排版核心库 |
-| `crates/tiqian-tests` | 集成测试与 fixture golden |
-| `crates/tiqian-demo` | 桌面演示程序 |
-| `crates/tiqian-bench` | 基准与探针程序 |
+| crate | 路径 | 用途 |
+| --- | --- | --- |
+| `tiqian` | 仓库根 | 排版核心库，唯一发布的 crate |
+| `tiqian-tests` | `crates/tiqian-tests` | 集成测试与 fixture golden |
+| `tiqian-demo` | `crates/tiqian-demo` | 桌面演示程序 |
+| `tiqian-bench` | `crates/tiqian-bench` | 基准与探针程序 |
 
 `debug-info` feature 只在 `tiqian-tests` 默认开启；`tiqian` 自身的构建保持关闭，
 因此不再需要注释依赖行来测量生产路径：

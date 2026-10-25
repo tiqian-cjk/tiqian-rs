@@ -1,10 +1,37 @@
-[workspace]
-members = [
-    "crates/tiqian",
-    "crates/tiqian-tests",
-    "crates/tiqian-demo",
-    "crates/tiqian-bench",
+[package]
+authors.workspace = true
+description = "Universal CJK Layouting Implementation in Rust"
+edition.workspace = true
+license.workspace = true
+name = "tiqian"
+repository.workspace = true
+version = "0.6.0"
+
+include = [
+    "/src/**/*",
+    "/resources/hyphenation/**/*",
+    "/Cargo.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
 ]
+
+[features]
+default = ["collections-hashbrown"]
+
+collections-hashbrown = ["dep:hashbrown"]
+collections-std = []
+debug-info = []
+
+[dependencies]
+icu_properties = {version = "2.3", features = ["compiled_data"]}
+log = "0.4"
+
+hashbrown = {version = "0.17", optional = true}
+
+[workspace]
+default-members = [".", "crates/tiqian-tests", "crates/tiqian-demo", "crates/tiqian-bench"]
+members = ["crates/tiqian-tests", "crates/tiqian-demo", "crates/tiqian-bench"]
 resolver = "3"
 
 [workspace.package]
@@ -12,4 +39,3 @@ authors = ["123Duo3 <123duo3@gmail.com>", "Icemic <bingfeng.web@gmail.com>"]
 edition = "2024"
 license = "MPL-2.0"
 repository = "https://github.com/tiqian-cjk/tiqian-rs"
-version = "0.6.0"
