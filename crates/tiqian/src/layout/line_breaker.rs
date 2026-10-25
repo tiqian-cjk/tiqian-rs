@@ -111,7 +111,6 @@ impl LineBreakerConfig {
         } else { rebuild_line(range, natural, adjusted, reason, None, Vec::new()) };
         line.measurement = self.measurement.clone();
         line.measurement_limit = line_limit(max_width, self.first_line_indent, range.first());
-        line.remeasure();
         line
     }
 
@@ -127,13 +126,13 @@ impl LineBreakerConfig {
         while end <= segment_end {
             end = measurement.next_boundary(end, segment_end);
             while content_cursor < end {
-                has_rendering_content |= !self.non_rendering_control_clusters.contains(&content_cursor);
+                has_rendering_content = has_rendering_content || !self.non_rendering_control_clusters.contains(&content_cursor);
                 content_cursor += 1;
             }
             let reason = if end < segment_end { LineEndReason::AutoWrap }
                 else if self.hard_break_after_clusters.contains(&(end - 1)) { LineEndReason::MandatoryBreak }
                 else { LineEndReason::ParagraphEnd };
-            let width = measurement.measure(IntRange::new(start, end - 1), reason, limit, &[]).adjusted;
+            let width = measurement.adjusted_width(IntRange::new(start, end - 1), reason, limit, &[]);
             if width > limit {
                 return fitting.unwrap_or(end);
             }

@@ -64,6 +64,7 @@ impl LineMeasurement {
             source_starts: adjusted.iter().map(|cluster| cluster.range.start()).collect(),
             source_ends: adjusted.iter().map(|cluster| cluster.range.end()).collect(),
         };
+        if !decisions.is_empty() {
         let by_range: HashMap<_, _> = adjusted.iter().enumerate().map(|(i, c)| (c.range, i)).collect();
         for decision in decisions {
             if let Some(&i) = by_range.get(&decision.cluster_range) {
@@ -76,6 +77,7 @@ impl LineMeasurement {
                     }
                 }
             }
+        }
         }
         for (i, cluster) in adjusted.iter().enumerate() {
             result.natural[i + 1] = result.natural[i] + natural[i].advance;
@@ -124,13 +126,32 @@ impl LineMeasurement {
 
     /// 技术断行成本与普通候选共用空白有效范围，前缀数据仅在规划入口构造一次。
     pub fn with_progressive(mut self, clusters: &[Cluster], opportunities: &HashMap<i32, ProgressiveBreakOpportunity>, cjk: &HashSet<i32>, sino: &HashSet<i32>) -> Self {
+        self.technical_capacity.fill(0.0);
+        self.sino_count.fill(0);
+        self.cjk_count.fill(0);
+        self.gap_count.fill(0);
+        for (&boundary, opportunity) in opportunities {
+            if boundary > 0 && boundary as usize <= clusters.len() && opportunity.tier == ProgressiveBreakTier::Whitespace {
+                self.technical_capacity[boundary as usize] = opportunity.preceding_whitespace_stretch_capacity;
+            }
+        }
+        for &index in sino {
+            if index >= 0 && (index as usize) < clusters.len() {
+                self.sino_count[index as usize + 1] = 1;
+                self.gap_count[index as usize + 1] = 1;
+            }
+        }
+        for &index in cjk {
+            if index >= 0 && (index as usize) < clusters.len() {
+                self.cjk_count[index as usize + 1] = 1;
+                self.gap_count[index as usize + 1] = 1;
+            }
+        }
         for (i, cluster) in clusters.iter().enumerate() {
-            self.technical_capacity[i + 1] = self.technical_capacity[i]
-                + opportunities.get(&(i as i32 + 1)).filter(|opp| opp.tier == ProgressiveBreakTier::Whitespace)
-                    .map_or(0.0, |opp| opp.preceding_whitespace_stretch_capacity);
-            self.sino_count[i + 1] = self.sino_count[i] + i32::from(sino.contains(&(i as i32)));
-            self.cjk_count[i + 1] = self.cjk_count[i] + i32::from(cjk.contains(&(i as i32)));
-            self.gap_count[i + 1] = self.gap_count[i] + i32::from(cjk.contains(&(i as i32)) || sino.contains(&(i as i32)));
+            self.technical_capacity[i + 1] = self.technical_capacity[i] + self.technical_capacity[i + 1];
+            self.sino_count[i + 1] += self.sino_count[i];
+            self.cjk_count[i + 1] += self.cjk_count[i];
+            self.gap_count[i + 1] += self.gap_count[i];
             self.source_units[i + 1] = self.source_units[i] + if cluster.text.chars().any(char::is_whitespace) { 0 } else { cluster.text.scalar_len().value() };
         }
         self
@@ -360,7 +381,7 @@ impl LineMeasurement {
 
     /// 跳站函数在阈值处不单调；依次访问事件区间，在区间内按线性斜率求解。
     pub fn compression(&self, range: IntRange, reason: LineEndReason, limit: f32, opportunities: &[ShrinkOpportunity]) -> Option<Vec<PushInAllocation>> {
-        if self.measure(range, reason, limit, &[]).adjusted <= limit { return Some(Vec::new()); }
+        if self.adjusted_width(range, reason, limit, &[]) <= limit { return Some(Vec::new()); }
         let start = range.first() as usize;
         let end = range.last() as usize + 1;
         let (head, tail) = self.edges(start, end);
@@ -376,10 +397,12 @@ impl LineMeasurement {
         tiers.sort_unstable();
         tiers.dedup();
         let mut fixed = vec![0.0; opportunities.len()];
+        let mut entries = Vec::with_capacity(opportunities.len());
         for tier in tiers {
-            let mut entries: Vec<_> = opportunities.iter().enumerate().map(|(i, opp)| {
+            entries.clear();
+            entries.extend(opportunities.iter().enumerate().map(|(i, opp)| {
                 (opp.cluster_index as usize, fixed[i], if opp.tier == tier { opp.capacity } else { 0.0 })
-            }).collect();
+            }));
             entries.sort_by_key(|entry| entry.0);
             let mut fixed_sum = 0.0;
             let mut slope_sum = 0.0;
@@ -395,7 +418,7 @@ impl LineMeasurement {
                             available_capacity: opp.capacity, channel: opp.channel })
                     }).collect();
                     allocations.sort_by_key(|allocation| allocation.cluster_index);
-                    if self.measure(range, reason, limit, &allocations).adjusted <= limit { return Some(allocations); }
+                    if self.adjusted_width(range, reason, limit, &allocations) <= limit { return Some(allocations); }
                 }
                 let next = event.min(1.0);
                 if slope < 0.0 {
@@ -419,6 +442,13 @@ impl LineMeasurement {
         let start = range.first() as usize;
         let end = range.last() as usize + 1;
         let natural = self.width(start, end, true, &[]);
+        MeasuredLine { natural, adjusted: self.adjusted_width(range, reason, limit, allocations) }
+    }
+
+    /// 候选探测只计算调整后宽度。
+    pub(crate) fn adjusted_width(&self, range: IntRange, reason: LineEndReason, limit: f32, allocations: &[PushInAllocation]) -> f32 {
+        let start = range.first() as usize;
+        let end = range.last() as usize + 1;
         let (head, tail) = self.edges(start, end);
         let collapse = matches!(self.mode, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks);
         let mut adjusted = if collapse {
@@ -432,7 +462,7 @@ impl LineMeasurement {
             let trailing = self.width(start, end, false, allocations) - self.width(start, tail, false, allocations);
             adjusted -= if reason == LineEndReason::AutoWrap { trailing } else { (adjusted - limit).max(0.0).min(trailing) };
         }
-        MeasuredLine { natural, adjusted: adjusted.max(0.0) }
+        adjusted.max(0.0)
     }
 
     /// 只在选定行上生成供下一阶段消费的逐空白记录。
@@ -466,7 +496,10 @@ impl LineMeasurement {
         } else { 0.0 };
         let mut tab_record = result.len();
         let mut allocation_record = allocations.len();
-        for i in (start..end).rev() {
+        // 只访问行边空白，纯空白行不重复遍历。
+        let head_end = if collapse { head } else { start };
+        let tail_start = tail.max(head_end);
+        for i in (start..head_end).chain(tail_start..end).rev() {
             if collapse && (i < head || i >= tail) && self.spaces[i] {
                 result.push(LineWhiteSpaceAdjustment { cluster_index: i as i32,
                     action: if i < head { LineWhiteSpaceAction::RemoveStart } else { LineWhiteSpaceAction::RemoveEnd },

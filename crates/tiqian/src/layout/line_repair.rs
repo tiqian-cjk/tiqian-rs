@@ -45,9 +45,9 @@ pub fn apply_kinsoku_repairs(
     let mut lines = initial.to_vec();
     let mut i = 1;
     while i < lines.len() {
-        let curr = lines[i].clone();
+        let curr = &lines[i];
         let first = curr.cluster_range.first();
-        let previous = lines[i - 1].clone();
+        let previous = &lines[i - 1];
         if previous.end_reason == LineEndReason::MandatoryBreak || curr.cluster_range.is_empty() {
             i += 1;
             continue;
@@ -61,6 +61,8 @@ pub fn apply_kinsoku_repairs(
             i += 1;
             continue;
         }
+        let curr = curr.clone();
+        let previous = previous.clone();
         let mut candidates = Vec::new();
         let pushed = try_push_in(
             &previous,
@@ -370,10 +372,9 @@ pub fn try_push_in(
             },
         };
     }
-    let mut allocations = resolved_allocations.unwrap();
-    if expanded.measurement.is_some() { allocations.sort_by_key(|allocation| allocation.cluster_index); }
+    let allocations = resolved_allocations.unwrap();
     let shrink: f32 = allocations.iter().map(|allocation| allocation.shrink).sum();
-    let mut repaired = expanded.clone();
+    let mut repaired = expanded;
     repaired.adjusted_width -= shrink;
     repaired.end_reason = if end == current.cluster_range.last() {
         current.end_reason
@@ -466,8 +467,8 @@ pub fn apply_fill_push_in(
     let mut out = lines.to_vec();
     let mut i = 0;
     while i + 1 < out.len() {
-        let previous = out[i].clone();
-        let current = out[i + 1].clone();
+        let previous = &out[i];
+        let current = &out[i + 1];
         let zero = matches!(&previous.repair, Some(RepairOption::PushIn { total_shrink, reason_code, .. }) if *total_shrink <= 0.001 && *reason_code == RepairReasonCode::LineAdjustmentPushIn);
         if (previous.repair.is_some() && !zero)
             || previous.hanging_cluster_index().is_some()
@@ -483,7 +484,7 @@ pub fn apply_fill_push_in(
             continue;
         }
         let Some(mut end) =
-            fill_push_in_group_end(&current, forbidden_start, forbidden_end, unbreakable)
+            fill_push_in_group_end(current, forbidden_start, forbidden_end, unbreakable)
         else {
             i += 1;
             continue;
@@ -502,7 +503,7 @@ pub fn apply_fill_push_in(
                         .sum::<f32>()
                 },
                 |measurement| {
-                    measurement.measure(range, reason, limit, &[]).adjusted
+                    measurement.adjusted_width(range, reason, limit, &[])
                         - previous.adjusted_width
                 },
             )
@@ -562,9 +563,30 @@ pub fn apply_fill_push_in(
             i += 1;
             continue;
         }
+        let has_tabs = previous.measurement.as_ref().is_some_and(|measurement| {
+            measurement.has_tabs(IntRange::new(previous.cluster_range.first(), end))
+        });
+        // 无 Tab 的成本已确定，先排除无需压缩求解的候选。
+        if !has_tabs && !promotes {
+            if overflow >= deficit * compress_bias {
+                i += 1;
+                continue;
+            }
+            if overflow > 0. {
+                let stretch = line_gap_count(previous.cluster_range, gap_boundaries);
+                let compression = line_gap_count(
+                    IntRange::new(previous.cluster_range.first(), end), gap_boundaries);
+                if overflow / (compression.max(1) as f32)
+                    > if stretch == 0 { 0. } else { deficit / stretch as f32 }
+                {
+                    i += 1;
+                    continue;
+                }
+            }
+        }
         let result = try_push_in(
-            &previous,
-            &current,
+            previous,
+            current,
             natural,
             adjusted,
             limit,
@@ -581,20 +603,12 @@ pub fn apply_fill_push_in(
             i += 1;
             continue;
         }
-        let cost = if previous
-            .measurement
-            .as_ref()
-            .is_some_and(|measurement| measurement.has_tabs(IntRange::new(previous.cluster_range.first(), end)))
-        {
-            result.candidate.shrink
-        } else {
-            overflow
-        };
-        if !promotes && cost >= deficit * compress_bias {
+        let cost = result.candidate.shrink;
+        if has_tabs && !promotes && cost >= deficit * compress_bias {
             i += 1;
             continue;
         }
-        if cost > 0. && !promotes {
+        if has_tabs && cost > 0. && !promotes {
             let stretch = line_gap_count(previous.cluster_range, gap_boundaries);
             let compression = line_gap_count(
                 IntRange::new(previous.cluster_range.first(), end),
