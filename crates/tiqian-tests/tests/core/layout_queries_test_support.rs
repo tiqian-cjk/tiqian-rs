@@ -1,7 +1,7 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph, GlyphRun, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox, MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole, RubyGeometry, WhiteSpaceGeometry};
+use tiqian::core::layout_model::{AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph, GlyphRun, InlineObjectGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox, MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole, RubyGeometry, WhiteSpaceGeometry};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent};
 use tiqian::clreq::clreq_profile::AutoSpaceMode;
@@ -160,6 +160,7 @@ pub fn layout_from_debug(debug: &LayoutDebugInfo) -> LayoutOutput {
                 .map(|decision| EmphasisDotGeometry {
                     cluster_range: decision.cluster_range,
                     kind: decision.kind,
+                    id: decision.id,
                     applied: decision.applied,
                     anchor_x: decision.anchor_x,
                     anchor_y: decision.anchor_y,
@@ -168,6 +169,18 @@ pub fn layout_from_debug(debug: &LayoutDebugInfo) -> LayoutOutput {
                 .collect(),
             segments: debug.decoration_segments.clone(),
         },
+        inline_objects: debug
+            .inline_object_decisions
+            .iter()
+            .map(|decision| InlineObjectGeometry {
+                range: decision.range,
+                cluster_index: decision.cluster_index,
+                line_index: decision.line_index,
+                advance: decision.advance,
+                ascent: decision.ascent,
+                descent: decision.descent,
+            })
+            .collect(),
         white_space: WhiteSpaceGeometry {
             units: Vec::new(),
             line_adjustments: debug.line_white_space_adjustments.clone(),

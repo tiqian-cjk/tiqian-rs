@@ -9,9 +9,9 @@ use crate::common::HashMap;
 use super::super::core::geometry::Size;
 use super::super::core::layout_model::{
     AnnotationGeometry, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry,
-    EmphasisDotGeometry, LineEdgeTrimDecisionInfo, LineWhiteSpaceDecisionInfo, LayoutOutput,
-    LayoutResult, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole,
-    WhiteSpaceGeometry,
+    EmphasisDotGeometry, InlineObjectGeometry, LineEdgeTrimDecisionInfo,
+    LineWhiteSpaceDecisionInfo, LayoutOutput, LayoutResult, ResolvedClusterGeometry,
+    ResolvedFontMetrics, ResolvedFontRole, WhiteSpaceGeometry,
 };
 #[cfg(feature = "debug-info")]
 use super::super::core::layout_model::LayoutDebugInfo;
@@ -253,6 +253,7 @@ fn build_layout_output(
                 .map(|decision| EmphasisDotGeometry {
                     cluster_range: decision.cluster_range,
                     kind: decision.kind,
+                    id: decision.id,
                     applied: decision.applied,
                     anchor_x: decision.anchor_x,
                     anchor_y: decision.anchor_y,
@@ -261,6 +262,18 @@ fn build_layout_output(
                 .collect(),
             segments: annotation.decoration_segments.clone(),
         },
+        inline_objects: annotation
+            .inline_object_decisions
+            .iter()
+            .map(|decision| InlineObjectGeometry {
+                range: decision.range,
+                cluster_index: decision.cluster_index,
+                line_index: decision.line_index,
+                advance: decision.advance,
+                ascent: decision.ascent,
+                descent: decision.descent,
+            })
+            .collect(),
         white_space: WhiteSpaceGeometry {
             units: prep
                 .natural_clusters

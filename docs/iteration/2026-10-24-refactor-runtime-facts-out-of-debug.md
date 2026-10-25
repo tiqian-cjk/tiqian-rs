@@ -228,6 +228,7 @@ pub struct LayoutResult {
 | `line_edge_trims` | `Vec<LineEdgeTrimDecisionInfo>` | 同名 | 42 |
 | `annotations` | `AnnotationGeometry` | 见下 | — |
 | `decorations` | `DecorationGeometry` | 见下 | — |
+| `inline_objects` | `Vec<InlineObjectGeometry>` | `inline_object_decisions` | 按内容 |
 | `white_space` | `WhiteSpaceGeometry` | 见下 | 188 |
 
 ### 各组类型
@@ -628,6 +629,17 @@ feature 开关完成时，`line_adjustment_stage.rs` 达到 1007 行，
 注音与装饰几何完全来自 `layout`、
 空 `layout` 时查询稳定、
 `Size` 与两者无关。
+
+### emphasis_dots 的 `id` 与行内对象分组
+
+迁移后由下游 crate 的绘制需求反馈了两处补充，都属于绘制必需的行内几何：
+
+1. `EmphasisDotGeometry` 增加 `id: Option<u32>`。`DecorationDecisionInfo` 本来就有该字段，
+   只是未进入运行时结构。绘制方按 `(kind, id)` 匹配样式声明，同一 `kind` 的多个声明
+   需要靠它区分颜色层，缺失会取错颜色。
+2. 新增 `LayoutOutput.inline_objects: Vec<InlineObjectGeometry>`，
+   字段为 `range`、`cluster_index`、`line_index`、`advance`、`ascent`、`descent`。
+   绘制方按 `range` 回查输入声明取对象身份，按 `cluster_index` 定位落位。
 
 ### feature 开关
 

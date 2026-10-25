@@ -394,8 +394,24 @@ pub struct LayoutOutput {
     pub annotations: AnnotationGeometry,
     /// 装饰几何。
     pub decorations: DecorationGeometry,
+    /// 行内对象几何。
+    pub inline_objects: Vec<InlineObjectGeometry>,
     /// 空白几何。
     pub white_space: WhiteSpaceGeometry,
+}
+
+/// 一个行内对象在布局结果中的位置。
+///
+/// 绘制方按 `range` 回查输入声明取对象身份，`cluster_index` 与 `line_index`
+/// 指向它在结果中的落位。
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineObjectGeometry {
+    pub range: TextRange,
+    pub cluster_index: i32,
+    pub line_index: i32,
+    pub advance: f32,
+    pub ascent: f32,
+    pub descent: f32,
 }
 
 /// 一个 font resolution 范围解析出的字体角色。
@@ -470,6 +486,10 @@ pub struct DecorationGeometry {
 pub struct EmphasisDotGeometry {
     pub cluster_range: TextRange,
     pub kind: DecorationKind,
+    /// 生成该锚点的 `DecorationSpan` 声明的范围身份；`None` 表示未声明。
+    ///
+    /// 绘制方按 `(kind, id)` 匹配样式声明，同一 `kind` 的多个声明需要靠它区分。
+    pub id: Option<u32>,
     pub applied: bool,
     pub anchor_x: f32,
     pub anchor_y: f32,

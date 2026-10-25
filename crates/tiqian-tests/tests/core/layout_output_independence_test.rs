@@ -56,6 +56,7 @@ fn annotation_layout() -> LayoutOutput {
             emphasis_dots: vec![EmphasisDotGeometry {
                 cluster_range: text_range(0, 1),
                 kind: DecorationKind::Emphasis,
+                id: Some(3),
                 applied: true,
                 anchor_x: 5.0,
                 anchor_y: 18.0,
