@@ -662,11 +662,11 @@ impl LayoutResult {
     }
 }
 
-fn matching_layers<'a>(
-    spans: &'a [RichTextSpan],
+fn matching_layers(
+    spans: &[RichTextSpan],
     range: TextRange,
     matches_kind: impl Fn(&RichTextLayerKind) -> bool,
-) -> Vec<&'a RichTextLayer> {
+) -> Vec<&RichTextLayer> {
     // Decoration 和 annotation 的 layer 可能只记录 push() 时的局部范围，因此按相交范围匹配。
     spans
         .iter()
@@ -1117,11 +1117,11 @@ fn segment_layer(segment: &RichTextLineSegment) -> Option<&RichTextLayer> {
 ///
 /// cluster 按 (line_index, range) 有序：先在行上二分、再在行内按范围二分，避免每个行段从头扫描
 /// 全部 cluster。
-fn covered_clusters<'a>(
-    positioned: &'a [PositionedCluster],
+fn covered_clusters(
+    positioned: &[PositionedCluster],
     line_index: i32,
     range: TextRange,
-) -> &'a [PositionedCluster] {
+) -> &[PositionedCluster] {
     let line_start = positioned.partition_point(|cluster| cluster.line_index < line_index);
     let line = &positioned[line_start..];
     let line_end = line.partition_point(|cluster| cluster.line_index == line_index);

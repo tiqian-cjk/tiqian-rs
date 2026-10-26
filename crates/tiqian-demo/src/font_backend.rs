@@ -400,8 +400,8 @@ impl DemoFontFace {
             Some(_) => font.axes().location([("wght", weight)]),
             None => font.axes().location(Vec::<(&str, f32)>::new()),
         };
-        if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id)) {
-            if let Some(bounds) =
+        if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id))
+            && let Some(bounds) =
                 color_glyph.bounding_box(LocationRef::new(location.coords()), Size::unscaled())
             {
                 return Some(Rect {
@@ -411,7 +411,6 @@ impl DemoFontFace {
                     bottom: -bounds.y_min * scale,
                 });
             }
-        }
         let glyph = font.outline_glyphs().get(GlyphId::new(glyph_id))?;
         let mut pen = ControlBoundsPen::new();
         glyph
@@ -458,7 +457,7 @@ impl DemoFontCatalog {
             .as_ref()
             .filter(|candidate| candidate.glyphs.len() == shaped.glyphs.len());
         let display_length = input.display_text.scalar_len();
-        let clusters = vec![clustered_glyph_group(
+        let clusters = [clustered_glyph_group(
             input.range,
             ScalarOffset::ZERO,
             display_length,

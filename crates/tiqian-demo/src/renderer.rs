@@ -254,7 +254,7 @@ impl<'a> DemoRenderer<'a> {
         replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
         for segment in &replay_index.rich_text_background_segments {
-            let radii = result.rich_text_background_corner_radii(&segment, 0.0);
+            let radii = result.rich_text_background_corner_radii(segment, 0.0);
             let path = rounded_rect_path(
                 segment.left,
                 segment.top,
@@ -267,7 +267,7 @@ impl<'a> DemoRenderer<'a> {
                     radii.bottom_left,
                 ],
             )?;
-            for color in segment_fill_colors(&segment) {
+            for color in segment_fill_colors(segment) {
                 scene.fill(Fill::NonZero, self.transform(), color, None, &path);
             }
         }
@@ -281,16 +281,16 @@ impl<'a> DemoRenderer<'a> {
         replay_index: &LayoutResultReplayIndex,
     ) -> Result<(), String> {
         for segment in &replay_index.rich_text_decoration_segments {
-            let Some(line) = segment_line_paint(&segment) else {
+            let Some(line) = segment_line_paint(segment) else {
                 continue;
             };
-            for color in segment_fill_colors(&segment) {
+            for color in segment_fill_colors(segment) {
                 match &line.pattern {
                     RichTextLinePattern::Solid => self.stroke_rich_line(
                         scene,
                         result,
                         replay_index,
-                        &segment,
+                        segment,
                         color,
                         line.thickness,
                     )?,
@@ -301,14 +301,14 @@ impl<'a> DemoRenderer<'a> {
                         scene,
                         result,
                         replay_index,
-                        &segment,
+                        segment,
                         color,
                         line.thickness,
                         *dash_length,
                         *gap_length,
                     )?,
                     RichTextLinePattern::Dotted { gap_length } => {
-                        let y = result.rich_text_decoration_line_y(&segment, line.thickness);
+                        let y = result.rich_text_decoration_line_y(segment, line.thickness);
                         for (left, right) in self.kept_intervals_for_rich_text_line(
                             result,
                             replay_index,
@@ -383,7 +383,7 @@ impl<'a> DemoRenderer<'a> {
         for (kept_left, kept_right) in
             self.kept_intervals_for_rich_text_line(result, replay_index, segment, y, stroke_width)
         {
-            for pair in dashes.chunks_exact(2) {
+            for pair in dashes.as_chunks::<2>().0 {
                 let left = pair[0].max(kept_left);
                 let right = pair[1].min(kept_right);
                 if right <= left {

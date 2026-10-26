@@ -98,8 +98,8 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                         decision.range,
                         decision.source_text.clone(),
                         decision.cluster_index,
-                        decision.forbidden_position.clone(),
-                        decision.reason.clone(),
+                        decision.forbidden_position,
+                        decision.reason,
                         fallback,
                     ),
                 );
@@ -315,7 +315,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                             let right = left + 1;
                             (prep.natural_clusters[*left as usize].range.start() >= span.start()
                                 && prep.natural_clusters[right as usize].range.end() <= span.end())
-                            .then(|| (*left, reason.clone()))
+                            .then_some((*left, *reason))
                         })
                         .collect()
                 });

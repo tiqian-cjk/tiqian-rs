@@ -319,14 +319,12 @@ impl GreedyLineBreaker {
         if config
             .hard_break_after_clusters
             .contains(&(adjusted_clusters.len() as i32 - 1))
-        {
-            if let Some(last) = adjusted_clusters.last() {
+            && let Some(last) = adjusted_clusters.last() {
                 lines.push(empty_line_candidate(
                     last.range.end(),
                     LineEndReason::ParagraphEnd,
                 ));
             }
-        }
         lines
     }
 }
@@ -929,14 +927,13 @@ impl LineBreaker for LookaheadLineBreaker {
                     committed_density = 0.0;
                     committed_synthetic_hyphen_run = 0;
                     line_start = mandatory_end + 1;
-                    if line_start == adjusted.len() as i32 {
-                        if let Some(last) = adjusted.last() {
+                    if line_start == adjusted.len() as i32
+                        && let Some(last) = adjusted.last() {
                             committed.push(empty_line_candidate(
                                 last.range.end(),
                                 LineEndReason::ParagraphEnd,
                             ));
                         }
-                    }
                     continue;
                 }
                 committed.push(config.build_line(
@@ -985,7 +982,7 @@ impl LineBreaker for LookaheadLineBreaker {
                     config
                         .measurement
                         .as_ref()
-                        .map_or(true, |measurement| measurement.boundary_allowed(*end))
+                        .is_none_or(|measurement| measurement.boundary_allowed(*end))
                 })
                 .filter(|end| {
                     progressive_candidate_allowed(
@@ -1062,14 +1059,13 @@ impl LineBreaker for LookaheadLineBreaker {
                 committed_density = 0.0;
                 committed_synthetic_hyphen_run = 0;
                 line_start = committed_end + 1;
-                if line_start == adjusted.len() as i32 {
-                    if let Some(last) = adjusted.last() {
+                if line_start == adjusted.len() as i32
+                    && let Some(last) = adjusted.last() {
                         committed.push(empty_line_candidate(
                             last.range.end(),
                             LineEndReason::ParagraphEnd,
                         ));
                     }
-                }
                 continue;
             }
             let mut line = config.build_line(

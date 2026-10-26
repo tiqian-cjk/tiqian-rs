@@ -309,7 +309,7 @@ pub fn selection_boxes(
     boxes
 }
 
-fn nearest_cluster_for_x<'a>(positioned: &'a [PositionedCluster], x: f32) -> &'a PositionedCluster {
+fn nearest_cluster_for_x(positioned: &[PositionedCluster], x: f32) -> &PositionedCluster {
     positioned
         .iter()
         .min_by(|left, right| {

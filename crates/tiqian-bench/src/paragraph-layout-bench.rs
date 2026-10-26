@@ -1004,7 +1004,7 @@ fn print_alloc_stats<'a>(label: &str, pages: impl Iterator<Item = &'a PageMeasur
 fn median_usize(values: &mut [usize]) -> usize {
     values.sort_unstable();
     let n = values.len();
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         (values[n / 2 - 1] + values[n / 2]) / 2
     } else {
         values[n / 2]
@@ -1014,7 +1014,7 @@ fn median_usize(values: &mut [usize]) -> usize {
 fn median_isize(values: &mut [isize]) -> isize {
     values.sort_unstable();
     let n = values.len();
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         (values[n / 2 - 1] + values[n / 2]) / 2
     } else {
         values[n / 2]

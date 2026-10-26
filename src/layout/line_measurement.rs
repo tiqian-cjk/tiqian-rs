@@ -224,8 +224,7 @@ impl LineMeasurement {
             }
         }
         for (i, cluster) in clusters.iter().enumerate() {
-            self.technical_capacity[i + 1] =
-                self.technical_capacity[i] + self.technical_capacity[i + 1];
+            self.technical_capacity[i + 1] += self.technical_capacity[i];
             self.sino_count[i + 1] += self.sino_count[i];
             self.cjk_count[i + 1] += self.cjk_count[i];
             self.gap_count[i + 1] += self.gap_count[i];

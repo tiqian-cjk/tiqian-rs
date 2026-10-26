@@ -87,12 +87,10 @@ pub mod number_symbol_cohesion {
             if scalars
                 .peek()
                 .is_some_and(|(_, character)| BACK_CURRENCY.contains(character))
-            {
-                if let Some((offset, character)) = scalars.next() {
+                && let Some((offset, character)) = scalars.next() {
                     end = offset + 1;
                     previous = Some((offset, character));
                 }
-            }
 
             result.push(TextRange::new(start, end));
         }

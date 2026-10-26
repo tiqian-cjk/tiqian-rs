@@ -325,7 +325,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
         measure_em: prep.measure_em,
         level: prep.resolved_kinsoku.level,
         hanging: prep.resolved_kinsoku.hanging,
-        source: prep.resolved_kinsoku.source.clone(),
+        source: prep.resolved_kinsoku.source,
         adaptive_measure_cells: prep.resolved_kinsoku.adaptive_measure_cells,
     };
     let hangable_clusters: HashSet<_> = match prep.resolved_kinsoku.hanging {
@@ -565,7 +565,7 @@ pub fn plan_paragraph_lines(request: LineBreakPlanningRequest<'_>) -> LineBreakP
             if boundary_eligible[left as usize] {
                 emergency_tracking_boundary_after_clusters
                     .entry(left)
-                    .or_insert_with(|| decision.reason.clone());
+                    .or_insert_with(|| decision.reason);
             }
         }
     }
