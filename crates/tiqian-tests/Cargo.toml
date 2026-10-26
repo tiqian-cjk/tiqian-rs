@@ -8,6 +8,16 @@ repository.workspace = true
 version = "0.0.0"
 publish = false
 
+[features]
+default = ["std"]
+std = ["tiqian/std"]
+no-std = ["tiqian/no-std"]
+collections-hashbrown = ["tiqian/collections-hashbrown"]
+collections-std = ["tiqian/collections-std"]
+math-std = ["tiqian/math-std"]
+math-libm = ["tiqian/math-libm"]
+shared-auto = ["tiqian/shared-auto"]
+shared-portable = ["tiqian/shared-portable"]
+
 [dependencies]
-tiqian = { path = "../..", features = ["debug-info"] }
-tiqian-demo = { path = "../tiqian-demo" }
+tiqian = { path = "../..", default-features = false, features = ["debug-info"] }

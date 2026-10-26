@@ -1,12 +1,9 @@
 mod support;
 
-#[allow(dead_code)]
-use tiqian_demo::font_backend;
-
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{AutoSpaceMode, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::geometry::{LayoutConstraints, ScalarOffset, text_range};
-use tiqian::core::layout_queries::{get_cursor_rect, get_text_for_copy, occupied_bounds};
+use tiqian::core::layout_queries::{get_cursor_rect, get_text_for_copy};
 use tiqian::core::layout_result_replay_index::{cursor_rect, to_replay_index};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LineLengthGrid, ParagraphStyle, TextSpan, TextStyle, TextWrapMode, TiqianTextContent, WhiteSpaceMode};
@@ -83,40 +80,6 @@ fn mandatory_character_matrix_keeps_source_and_atomic_crlf() {
                 }
             }
         }
-    }
-}
-
-#[test]
-fn controlled_fonts_keep_numbered_spaces_and_each_tail_caret() {
-    let catalog = font_backend::DemoFontCatalog::load().unwrap();
-    catalog.validate_demo_faces().unwrap();
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(catalog)).build();
-    for text in ["01 基础组件", "02 Input 输入框"] {
-        let result = engine.layout(LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(320.0))
-            .paragraph_style(style(WhiteSpaceMode::PreserveBreaks, TextWrapMode::Wrap)).build());
-        let range = text_range(2, 3);
-        let space = result.clusters.iter().find(|cluster| cluster.range == range).unwrap();
-        let natural: f32 = result.glyph_runs.iter().flat_map(|run| &run.glyphs)
-            .filter(|glyph| glyph.cluster_range == range).map(|glyph| glyph.advance).sum();
-        assert!(natural > 0.0);
-        assert!((space.advance - natural).abs() < 0.001);
-        assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range != range));
-        assert!(result.glyph_runs.iter().flat_map(|run| &run.glyphs).all(|glyph| glyph.id != 0 && glyph.render_font_face.is_some()));
-        println!("真实字体 {text:?}: face={:?}, space={natural:.6}px occupied={:?}", space.font_face, occupied_bounds(&result));
-    }
-    for mode in [WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
-        let result = engine.layout(LayoutInput::builder(TiqianTextContent::new(Text::from("Input   ")), LayoutConstraints::with_defaults(320.0))
-            .paragraph_style(style(mode, TextWrapMode::Wrap)).build());
-        let replay = to_replay_index(&result);
-        let mut previous = get_cursor_rect(&result, ScalarOffset::new(5)).left;
-        for offset in 6..=8 {
-            let caret = get_cursor_rect(&result, ScalarOffset::new(offset));
-            assert!(caret.left > previous);
-            assert_eq!(caret, cursor_rect(&replay, &result, ScalarOffset::new(offset)));
-            println!("真实字体 {mode:?} tail offset={offset} cursor={}px", caret.left);
-            previous = caret.left;
-        }
-        assert!((previous - occupied_bounds(&result).unwrap().right).abs() < 0.001);
     }
 }
 

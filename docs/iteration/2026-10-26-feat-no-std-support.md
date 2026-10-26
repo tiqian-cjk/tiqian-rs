@@ -2,7 +2,7 @@
 
 日期：2026-10-26
 分类：feat
-状态：Phase 1 至 Phase 3 已实施，Phase 4 本地测试及使用文档已完成；目标验证、远程 CI 与性能对比未完成。可移植 Arc 已按用户选择采用安全 Box 转换。
+状态：Phase 1 至 Phase 3 已实施；Phase 4 的本地验证及使用文档已完成，目标验证、远程 CI 与性能对比未完成。可移植 Arc 已按用户选择采用安全 Box 转换。
 
 ## 目标
 
@@ -102,7 +102,7 @@ once_cell 依赖关闭默认 feature 并启用 `alloc`；无指针宽度原子�
 `no-std` 表达无标准库约束，并提供推荐组件组合；无预设时也允许通过细粒度 feature 构建
 no-std 配置。
 
-Cargo feature 只能叠加，预设是固定组合，不是可被其他 feature 覆盖的默认值。
+Cargo feature 只能叠加。预设启用固定的组件组合；自定义时关闭预设并显式选择组件。
 例如 `std + math-libm` 会同时选择两个数学实现，必须报告冲突。需要自定义组合时，调用方
 关闭默认 feature，不选择预设，直接选择所需的底层能力和组件。
 
@@ -166,8 +166,7 @@ no-std，不为形式上的 feature 最小化删掉现有代码所需的默认 h
 断词表两处 `OnceLock` 统一替换为 `once_cell::race::OnceBox`，std 与 no-std 使用同一实现。
 保持现有惰性初始化和共享生命周期，初始化闭包通过 Box 返回数据；调用方继续取得共享引用。
 
-通常调用发生在单个线程，预计首次访问竞争较少。这是成本判断依据，不是安全前提：仍保留
-`Send + Sync` 和并发访问能力。竞争时允许多个执行者分别初始化，由原子发布操作保留一个
+预计首次访问通常由单线程触发，实现保持 `Send + Sync` 与并发安全。竞争时允许多个执行者分别初始化，由原子发布操作保留一个
 结果；发布失败的候选释放，成功返回的调用取得同一个已发布值。初始化函数必须允许重复
 执行，不引入要求恰好执行一次的外部副作用。
 
@@ -214,15 +213,16 @@ cell 额外提供临界区实现；无原子目标仍需 portable-atomic 的宿�
 3. 将两处 OnceLock 替换为 OnceBox，保留惰性索引、共享切片与内置英文断词。
 4. 将 8 处浮点取整接到统一数学入口，覆盖生产和 debug-info 路径，不改变布局算法。
 
-阶段产物：核心源码迁移完成。测试 crate、demo 消费方和 CI 的接线问题留给后续阶段处理，
+阶段产物：核心源码迁移完成。消费者和 CI 的接线问题留给后续阶段处理，
 不为保持它们在本阶段可运行而保留第二套核心实现。
 
 ### Phase 3：消费者、必要测试与 CI 接线
 
 状态：已实施。依赖：Phase 2 的公开类型与核心配置。
 
-1. 调整 tests 的 feature 转发与默认依赖，将 demo 依赖及其字体测试设为可选；demo、bench
-	保持 std，按需适配公共 Arc 导出等接口变化。
+1. `tiqian-tests` 集中验证核心布局，并将真实字体测试归入 demo crate；demo、bench
+	保持 std，按需适配公共 Arc 导出等接口变化。demo 的 `debug-info` 仅由 dev-dependencies
+	为测试启用，核心生产配置默认关闭诊断功能。
 2. 补数学边界测试，检查已有 Text 索引覆盖，仅在缺失时补共享视图首次访问顺序的回归。
 3. 复用现有集成测试与 golden，整理各合法配置的运行方式，不复制测试集、不重测 OnceBox 内部机制。
 4. 在现有 workflow 新增只选择主库和 tests 的 no-std 任务，保留原 std 任务并隔离 demo 依赖。
@@ -261,7 +261,7 @@ cell 额外提供临界区实现；无原子目标仍需 portable-atomic 的宿�
 | no-std，无原子 | 自动可移植 Arc，宿主提供同步回退；缺少回退配置时检查失败诊断 |
 | 非法组合 | 互斥预设、重复实现、缺少实现、`no-std` 与标准库能力冲突 |
 
-`wasm32-unknown-unknown` 下的 no-std check 已通过，但该目标不是裸机验证证据；它不能证明裸机目标或无原子回退已验证。
+`wasm32-unknown-unknown` 下的 no-std check 已通过；wasm 检查覆盖 WebAssembly 目标，裸机与无原子目标继续单独验证。
 目标验证计划覆盖至少一个不提供 std 的有原子目标和一个无原子目标，目前均未完成。
 用户暂不添加无原子验证目标，该项保留未验证，不据此将整个迭代标记为完成。
 `wasm32-unknown-unknown` 支持 std，不能单独作为无 std 依赖的证据。裸机库编译检查之外，
@@ -285,14 +285,14 @@ cell 额外提供临界区实现；无原子目标仍需 portable-atomic 的宿�
 新增任务仅选择主库 `tiqian` 与测试 crate `tiqian-tests`，不选择 demo 或 bench，也不使用
 workspace 全体构建。测试 harness 和 runner 可使用 std，被测试核心库不得启用 `runtime-std`。
 
-`tiqian-tests` 对 `tiqian-demo` 的依赖及使用其字体后端的 `tests/phase_five_white_space.rs`
-已由默认启用的 `demo-tests` feature 控制；该 feature 自动启用 `std`，仅用于 std 字体集成测试。
-no-std 任务关闭默认 feature，排除该路径，
-复用其余现有集成测试和 golden。demo 保持依赖 std，不要求迁移其字体后端或桌面运行代码。
-仅指定测试包不会自动排除其传递依赖，因此需要实际切断此依赖路径。
+`tiqian-tests` 集中验证核心布局，完整运行 stub 与 golden。`tests/phase_five_white_space.rs` 保留 3 个 stub 测试；
+`controlled_fonts_keep_numbered_spaces_and_each_tail_caret` 整体迁至
+`crates/tiqian-demo/tests/white_space_real_fonts.rs`，真实字体独有覆盖留在 demo 测试中。
+真实字体集成测试由 demo 负责。核心 crate 默认关闭 `debug-info`，demo 仅通过 dev-dependencies
+在测试时启用诊断功能；生产配置保持诊断关闭。
 
-测试 crate 对核心库关闭默认 feature，通过测试配置转发 std 或 no-std 选择并保留所需的
-`debug-info`。no-std CI 分别运行主库单元测试和不依赖 demo 的集成测试；检查最终依赖 feature，
+测试 crate 对核心库关闭默认 feature，通过测试配置转发 std 或 no-std 选择。no-std CI
+分别运行主库单元测试和完整核心集成测试；检查最终依赖 feature，
 确保没有通过其他路径重新启用核心库的 std 预设或 `runtime-std`。
 
 桌面上的 no-std 配置测试提供可执行的行为回归，裸机目标编译检查提供目标依赖证据；两者
@@ -328,7 +328,8 @@ no-std 不保证低内存、硬实时、无分配失败或无 panic；本迭代�
 ### 已实施与共识
 
 - manifest、alloc、数学封装、公共 Arc 与两处 OnceBox 迁移已完成。
-- 测试 feature 已隔离 demo，no-std CI 已接线；开发指南已补充使用说明。
+- 核心 `tiqian` 默认关闭 `debug-info`；demo 通过 dev-dependencies 在测试时启用诊断功能。no-std CI 集中验证主库和 tests。
+- 开发指南已补充使用说明。
 - portable Arc 的三处闭包已按用户选择采用安全 `Box<dyn Fn>` → `Arc::from` 转换；每次 annotation 构建增加 3 次临时分配。
 - 用户暂不添加无原子验证目标；该路径保留未验证，不标记整个迭代完成。
 
@@ -340,7 +341,7 @@ no-std 不保证低内存、硬实时、无分配失败或无 panic；本迭代�
 | 默认 std：最终重跑 `cargo test --all-targets` | 通过 |
 | `wasm32-unknown-unknown` no-std check | 通过；该目标不构成裸机验证证据 |
 | `no-std` 预设 | 主库 26 项、tests 主入口 1364 项测试通过 |
-| 独立 no-std 测试入口 1、17、20 | 全部通过 |
+| no-std tests 恢复执行（本次变更） | 主入口 1364 项及独立测试入口 1、3、17、20；相较既有配置多 3 项恢复执行，通过 |
 | 无预设：`collections-hashbrown,math-libm,shared-auto,debug-info` | 主库 check 通过 |
 | 默认 std 与 no-std 主库 check | 通过 |
 | 非法 feature 组合 | 按预期编译失败 |

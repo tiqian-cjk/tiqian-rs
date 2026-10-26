@@ -2104,7 +2104,6 @@ name = "tiqian-tests"
 version = "0.0.0"
 dependencies = [
  "tiqian",
- "tiqian-demo",
 ]
 
 [[package]]
