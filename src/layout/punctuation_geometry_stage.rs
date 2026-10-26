@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationGeometryStage.kt
 
+use alloc::{borrow::ToOwned, vec, vec::Vec};
 use super::super::clreq::clreq_profile::{
     AutoSpaceMode, AutoSpacePolicy, KinsokuLevel, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_policies,

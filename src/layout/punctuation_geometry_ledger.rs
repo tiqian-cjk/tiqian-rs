@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationGeometryLedger.kt
 
+use alloc::{string::String, vec::Vec};
 use super::super::clreq::clreq_profile::PunctuationClass;
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
@@ -13,8 +14,7 @@ use super::punctuation_model::{
     PunctuationSpacingCompressionResult,
 };
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
-use crate::common::HashMap;
-use std::sync::Arc;
+use crate::common::{Arc, HashMap};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationGeometryLedger {
@@ -675,7 +675,9 @@ fn consume_by_range(
 
 #[cfg(test)]
 mod tests {
+    use alloc::{vec, vec::Vec};
     use super::*;
+    use crate::common::Arc;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
     use crate::core::font_face::FontFaceId;
     use crate::core::geometry::text_range;

@@ -1,3 +1,4 @@
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use crate::core::text::Text;
 use crate::core::text_model::{
     FontSynthesis, InlineAttachment, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
@@ -270,6 +271,7 @@ impl InlineObjectMetricsBuilder {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{borrow::ToOwned, vec};
     use crate::api::{RubyAnnotation, TextStyleOverride};
     use crate::core::text_model::{FontSynthesis, TextStyle};
 

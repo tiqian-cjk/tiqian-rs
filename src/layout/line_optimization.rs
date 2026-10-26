@@ -1,6 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineOptimization.kt
 
-use crate::common::HashSet;
+use alloc::{collections::BTreeSet, string::String, vec::Vec};
+use crate::common::{Arc, HashSet};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
@@ -220,7 +221,7 @@ pub struct LineCandidate {
     pub repair_candidates: Vec<RepairCandidate>,
     pub hanging_cluster_indices: HashSet<i32>,
     pub white_space_adjustments: Vec<super::white_space::LineWhiteSpaceAdjustment>,
-    pub measurement: Option<std::sync::Arc<super::line_measurement::LineMeasurement>>,
+    pub measurement: Option<Arc<super::line_measurement::LineMeasurement>>,
     pub measurement_limit: f32,
 }
 impl LineCandidate {
@@ -272,7 +273,7 @@ impl LineCandidate {
                     self.hanging_cluster_indices
                         .iter()
                         .copied()
-                        .collect::<std::collections::BTreeSet<_>>()
+                        .collect::<BTreeSet<_>>()
                 }
             );
             assert_eq!(
@@ -284,7 +285,7 @@ impl LineCandidate {
                     self.hanging_cluster_indices
                         .iter()
                         .copied()
-                        .collect::<std::collections::BTreeSet<_>>()
+                        .collect::<BTreeSet<_>>()
                 }
             )
         }

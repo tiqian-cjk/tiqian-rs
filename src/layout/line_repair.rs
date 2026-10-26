@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineRepair.kt
 
+use alloc::{vec, vec::Vec};
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};

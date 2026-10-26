@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationModel.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use super::super::clreq::clreq_profile::{
     GlueSide, PunctuationClass, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_policies,

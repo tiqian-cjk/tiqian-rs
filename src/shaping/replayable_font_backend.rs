@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/shaping/ReplayableFontBackend.kt
 
+use alloc::{string::String, vec::Vec};
+
 use crate::common::HashSet;
 
 use super::super::core::font_face::FontFaceId;

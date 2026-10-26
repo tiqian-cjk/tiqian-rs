@@ -23,7 +23,7 @@ impl Ic {
     }
 }
 
-impl std::ops::Add for Ic {
+impl core::ops::Add for Ic {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
@@ -33,7 +33,7 @@ impl std::ops::Add for Ic {
     }
 }
 
-impl std::ops::Neg for Ic {
+impl core::ops::Neg for Ic {
     type Output = Self;
 
     fn neg(self) -> Self::Output {

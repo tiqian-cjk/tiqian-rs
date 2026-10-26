@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/UnicodePunctuationBoundaryResolver.kt
 
+use alloc::vec::Vec;
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::geometry::ScalarOffset;
 use super::super::core::layout_model::{

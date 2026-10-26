@@ -41,7 +41,7 @@ impl IntRange {
 
 impl IntoIterator for IntRange {
     type Item = i32;
-    type IntoIter = std::ops::RangeInclusive<i32>;
+    type IntoIter = core::ops::RangeInclusive<i32>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.start..=self.end_inclusive

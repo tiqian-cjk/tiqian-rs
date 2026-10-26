@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutQueries.kt
 
-use crate::common::HashMap;
-use std::sync::Arc;
+use alloc::{format, string::String, vec, vec::Vec};
+use crate::common::{Arc, HashMap, round};
 
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
@@ -1870,7 +1870,7 @@ pub(crate) fn offset_for_x(cluster: &PositionedCluster, x: f32) -> ScalarOffset 
         return cluster.range.start();
     }
     let ratio = ((x - cluster.left) / cluster.width()).clamp(0.0, 1.0);
-    (cluster.range.start() + (ratio * cluster.range.length() as f32).round() as i32)
+    (cluster.range.start() + round(ratio * cluster.range.length() as f32) as i32)
         .clamp(cluster.range.start(), cluster.range.end())
 }
 

@@ -11,12 +11,15 @@ publish = false
 # 透传 `tiqian` 的诊断记录开关。默认关闭，用于测量生产路径；
 # 需要统计各 decision 集合规模时开启。
 [features]
+default = ["std"]
+std = ["tiqian/std", "tiqian-demo/std"]
+no-std = ["tiqian/no-std", "tiqian-demo/no-std"]
 debug-info = ["tiqian/debug-info"]
 
 [dependencies]
-tiqian = { path = "../.." }
+tiqian = { path = "../..", default-features = false }
 # 部分探针复用 demo 的字体目录与样张，避免重复定义输入语料。
-tiqian-demo = { path = "../tiqian-demo" }
+tiqian-demo = { path = "../tiqian-demo", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mimalloc = "0.1.47"

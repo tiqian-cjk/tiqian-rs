@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ProgressiveBreakDecisions.kt
 
+use alloc::vec::Vec;
 use crate::common::{HashMap, HashSet};
 
 use super::super::core::geometry::TextRange;

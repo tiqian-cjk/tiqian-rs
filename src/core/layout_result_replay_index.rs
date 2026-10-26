@@ -1,4 +1,5 @@
-use crate::common::HashMap;
+use alloc::{string::String, vec, vec::Vec};
+use crate::common::{Arc, HashMap};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
 use super::layout_model::{Glyph, LayoutResult};
@@ -9,7 +10,6 @@ use super::layout_queries::{
 };
 use super::source_interaction_boundaries::SourceBoundaryBias;
 use crate::font::font_policy::FontRole;
-use std::sync::Arc;
 
 /// Immutable lookup data derived exclusively from one [`LayoutResult`].
 #[derive(Clone, Debug)]

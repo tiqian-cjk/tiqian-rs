@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use crate::common::HashMap;
 
 use super::layout_model::{LayoutResult, LineBox};

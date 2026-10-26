@@ -1,4 +1,6 @@
-use std::cmp::min;
+use alloc::{vec, vec::Vec};
+use core::cmp::min;
+use crate::common::{floor, round};
 
 /// Computes end-anchored dot centers for a dotted line.
 ///
@@ -31,8 +33,8 @@ pub fn fitted_dotted_line_centers(
     let radius = dot_diameter / 2.0;
     let span_width = span_right - span_left;
     let target_pitch = dot_diameter + gap_length;
-    let fitted_count = ((span_width + gap_length) / target_pitch).round().max(1.0) as i32;
-    let non_overlapping_count = (span_width / dot_diameter).floor().max(1.0) as i32;
+    let fitted_count = round((span_width + gap_length) / target_pitch).max(1.0) as i32;
+    let non_overlapping_count = floor(span_width / dot_diameter).max(1.0) as i32;
     let count = min(fitted_count, non_overlapping_count);
 
     if count == 1 {
@@ -88,10 +90,9 @@ pub fn fitted_dashed_line_segments(
         return vec![span_left, span_right];
     }
 
-    let fitted_count = ((span_width + gap_length) / (dash_length + gap_length))
-        .round()
+    let fitted_count = round((span_width + gap_length) / (dash_length + gap_length))
         .max(2.0) as i32;
-    let non_overlapping_count = (span_width / dash_length).floor().max(2.0) as i32;
+    let non_overlapping_count = floor(span_width / dash_length).max(2.0) as i32;
     let count = min(fitted_count, non_overlapping_count);
     let fitted_gap = (span_width - count as f32 * dash_length) / (count - 1) as f32;
 

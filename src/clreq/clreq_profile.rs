@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/clreq/ClreqProfile.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
+
 use crate::common::HashSet;
 
 use super::super::core::layout_model::KinsokuPolicySource;

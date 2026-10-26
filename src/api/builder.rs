@@ -1,3 +1,4 @@
+use alloc::{string::String, vec, vec::Vec};
 use crate::common::{HashMap, HashSet};
 use crate::core::geometry::{LayoutConstraints, ScalarOffset, TextRange};
 use crate::core::text::Text;

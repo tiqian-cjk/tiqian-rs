@@ -1,4 +1,5 @@
-use crate::common::HashMap;
+use alloc::{vec, vec::Vec};
+use crate::common::{HashMap, floor};
 use crate::core::geometry::TextRange;
 use crate::core::int_range::IntRange;
 use crate::core::layout_model::{AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, LineEndReason};
@@ -228,7 +229,7 @@ impl LineMeasurement {
     /// 按半个当前字体 0 字宽阈值最多额外跳一站。
     pub fn tab_advance(&self, pen: f32, minimum: f32) -> f32 {
         if self.interval <= 0.0 { return 0.0; }
-        let mut distance = ((pen / self.interval).floor() + 1.0) * self.interval - pen;
+        let mut distance = (floor(pen / self.interval) + 1.0) * self.interval - pen;
         if distance < minimum { distance += self.interval; }
         distance
     }
@@ -355,7 +356,7 @@ impl LineMeasurement {
             if self.interval > 0.0 {
                 let pen = self.indent(start) + width;
                 if slope < 0.0 {
-                    let floor = (pen / self.interval).floor() * self.interval;
+                    let floor = floor(pen / self.interval) * self.interval;
                     let minimum_threshold = floor + self.interval - minimum;
                     for threshold in [floor, if minimum_threshold >= floor { minimum_threshold } else { floor }] {
                         let distance = (pen - threshold) / -slope;

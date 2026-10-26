@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use crate::common::HashMap;
 use crate::core::geometry::{ScalarOffset, TextRange};
 use crate::core::text::Text;
@@ -141,6 +142,7 @@ pub struct LineWhiteSpaceAdjustment {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::core::geometry::text_range;
 

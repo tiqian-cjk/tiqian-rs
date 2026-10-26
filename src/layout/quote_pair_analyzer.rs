@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/QuotePairAnalyzer.kt
 
+use alloc::{string::String, vec::Vec};
 use crate::common::HashMap;
 use icu_properties::{CodePointMapData, props::EastAsianWidth};
 

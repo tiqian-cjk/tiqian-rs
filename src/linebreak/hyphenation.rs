@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/Hyphenation.kt
 
+use alloc::{format, string::String, vec, vec::Vec};
+
 use crate::common::HashMap;
 
 use super::super::core::text::Text;

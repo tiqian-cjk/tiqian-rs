@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineBreakPlanningStage.kt
 
-use crate::common::{HashMap, HashSet};
-use std::sync::Arc;
+use alloc::{string::String, vec::Vec};
+use crate::common::{Arc, HashMap, HashSet};
 
 use super::super::clreq::clreq_profile::{
     AdjustmentStylePolicy, ClreqProfile, ClreqPunctuationGlyphSubstitutor, PunctuationClass,

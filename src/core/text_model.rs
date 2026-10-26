@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/TextModel.kt
 
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
+
 use crate::common::HashSet;
 
 use super::geometry::{ScalarOffset, TextRange};
@@ -27,7 +29,7 @@ impl Default for FontSynthesis {
     }
 }
 
-impl std::ops::BitOr for FontSynthesis {
+impl core::ops::BitOr for FontSynthesis {
     type Output = Self;
 
     fn bitor(self, right: Self) -> Self::Output {
@@ -35,7 +37,7 @@ impl std::ops::BitOr for FontSynthesis {
     }
 }
 
-impl std::ops::BitOrAssign for FontSynthesis {
+impl core::ops::BitOrAssign for FontSynthesis {
     fn bitor_assign(&mut self, right: Self) {
         self.0 |= right.0;
     }
@@ -108,6 +110,7 @@ impl TiqianTextContentBuilder {
 /// 去掉 `https://` / `http://` / `mailto:` 前缀。只有这类链接使用
 /// `LineBreakPolicy::ProgressiveTechnical`；其他链接文字保留正文断行。
 pub mod link_address_display {
+    use alloc::format;
     use super::Text;
 
     pub fn displays_address(display: &Text, target: &str) -> bool {
@@ -893,9 +896,9 @@ pub enum DecorationKind {
     BookTitle,
 }
 
-impl std::fmt::Display for DecorationKind {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, formatter)
+impl core::fmt::Display for DecorationKind {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(self, formatter)
     }
 }
 
@@ -1201,6 +1204,7 @@ pub struct LayoutProfileId {
 }
 
 pub mod built_in_layout_profiles {
+    use alloc::borrow::ToOwned;
     use super::LayoutProfileId;
 
     pub fn clreq_horizontal() -> LayoutProfileId {

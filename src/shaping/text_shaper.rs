@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/shaping/TextShaper.kt
 
+use alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
+
 use super::super::core::font_face::{FontFaceId, FontVariationInstance};
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};

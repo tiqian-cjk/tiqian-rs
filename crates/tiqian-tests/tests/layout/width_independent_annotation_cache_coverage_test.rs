@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use tiqian::common::Arc;
 
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{

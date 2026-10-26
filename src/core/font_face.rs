@@ -1,5 +1,6 @@
-use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
+use core::fmt::{Display, Formatter};
+use crate::common::Arc;
 
 /// 由受控字体目录解析出的物理字体面的稳定标识。
 ///
@@ -61,7 +62,7 @@ impl FontFaceId {
 }
 
 impl Display for FontFaceId {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
             formatter,
             "{}#{}@{}+{}",
@@ -101,7 +102,7 @@ impl FontSynthesisInstance {
 }
 
 impl Display for FontSynthesisInstance {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         match (self.embolden_em(), self.oblique_degrees()) {
             (None, None) => formatter.write_str("none"),
             (Some(embolden_em), None) => write!(formatter, "embolden={embolden_em}em"),
@@ -149,7 +150,7 @@ impl FontVariationInstance {
 }
 
 impl Display for FontVariationInstance {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         if self.0.is_empty() {
             return formatter.write_str("default");
         }
@@ -189,6 +190,7 @@ impl FontVariationSetting {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{borrow::ToOwned, string::ToString};
     use super::{FontFaceId, FontSynthesisInstance, FontVariationInstance};
 
     #[test]

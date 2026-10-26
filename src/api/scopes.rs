@@ -1,3 +1,4 @@
+use alloc::{string::String, vec, vec::Vec};
 use crate::core::geometry::TextRange;
 use crate::core::text::Text;
 use crate::core::text_model::{

@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontMetrics.kt
 
+use alloc::{format, string::String};
+
 use super::super::core::font_face::FontFaceId;
 use super::font_policy::{
     BaselinePolicy, FontMetricsPolicy, FontRole, LayoutFontMetrics, RawFontMetrics,

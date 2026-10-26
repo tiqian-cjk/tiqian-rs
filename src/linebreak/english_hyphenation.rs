@@ -1,11 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/EnglishHyphenation.kt
 
-use std::sync::OnceLock;
-
-use super::hyphenation::{Hyphenator, LiangHyphenator, parse_tex_hyphenation_patterns};
-
 /**
- * 内置的美式英语 [`Hyphenator`]。它基于标准 TeX `hyph-en-us` pattern set（Gerard D.C. Kuiken，
+ * 内置的美式英语 [`Hyphenator`](super::hyphenation::Hyphenator)。它基于标准 TeX `hyph-en-us` pattern set（Gerard D.C. Kuiken，
  * hyph-utf8；宽松许可，其版权与许可头保留在随附资源中），`left_min`/`right_min` 遵循文件的
  * `hyphenmins`（2/3）。
  *
@@ -13,15 +9,19 @@ use super::hyphenation::{Hyphenator, LiangHyphenator, parse_tex_hyphenation_patt
  * hyphenator。
  */
 pub mod english_hyphenation {
-    use super::*;
+    use alloc::boxed::Box;
+    use once_cell::race::OnceBox;
 
-    static EN_US: OnceLock<LiangHyphenator> = OnceLock::new();
+    use super::super::hyphenation::{Hyphenator, LiangHyphenator, parse_tex_hyphenation_patterns};
+    use super::load_bundled_english_hyphenation_patterns;
+
+    static EN_US: OnceBox<LiangHyphenator> = OnceBox::new();
 
     pub fn en_us() -> &'static dyn Hyphenator {
         EN_US.get_or_init(|| {
             let (patterns, exceptions) =
                 parse_tex_hyphenation_patterns(load_bundled_english_hyphenation_patterns());
-            LiangHyphenator::with_options(patterns, exceptions, 2, 3)
+            Box::new(LiangHyphenator::with_options(patterns, exceptions, 2, 3))
         })
     }
 }

@@ -3,6 +3,10 @@
 //! Translation modules are added only after their corresponding Kotlin source
 //! files and direct dependencies have been mapped.
 
+#![cfg_attr(not(feature = "runtime-std"), no_std)]
+
+extern crate alloc;
+
 #[path = "api/mod.rs"]
 pub mod api;
 pub mod common;

@@ -19,7 +19,9 @@ use super::super::core::text::Text;
  * 此规则实际保护的是会拆成多个 cluster 的情形（如 `50%`、`¥100`、`+5`、`37℃`、`±2`）。
  */
 pub mod number_symbol_cohesion {
-    use super::*;
+    use alloc::vec::Vec;
+
+    use super::{CodePointMapData, GeneralCategory, Text, TextRange};
 
     pub fn unbreakable_ranges(text: &Text) -> Vec<TextRange> {
         let mut result = Vec::new();
@@ -108,7 +110,9 @@ pub mod number_symbol_cohesion {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
+        use alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
+
+        use super::{Text, unbreakable_ranges};
 
         fn groups(text: &str) -> Vec<String> {
             let text = Text::from(text);

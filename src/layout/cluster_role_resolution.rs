@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ClusterRoleResolution.kt
 
+use alloc::{borrow::ToOwned, vec::Vec};
 use crate::common::{HashMap, HashSet};
 
 use icu_properties::{
@@ -454,6 +455,7 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 
 #[cfg(test)]
 mod tests {
+    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::clreq::clreq_profile::ClreqProfile;
     use crate::core::geometry::text_range;

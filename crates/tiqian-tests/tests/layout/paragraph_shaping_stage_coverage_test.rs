@@ -29,7 +29,7 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
 use tiqian::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
-use std::sync::Arc;
+use tiqian::common::Arc;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;

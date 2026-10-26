@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/SourceInteractionBoundaries.kt
 
+use alloc::{vec, vec::Vec};
+
 use icu_properties::{
     CodePointMapData, CodePointSetData,
     props::{
@@ -235,6 +237,7 @@ const ZWJ: i32 = 0x200D;
 
 #[cfg(test)]
 mod tests {
+    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::core::geometry::scalar_offset;
 

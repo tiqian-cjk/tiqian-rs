@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineBreaker.kt
 
-use crate::common::{HashMap, HashSet};
-use std::borrow::Cow;
+use alloc::{borrow::Cow, boxed::Box, vec, vec::Vec};
+use crate::common::{Arc, HashMap, HashSet};
 
 use super::super::core::geometry::ScalarOffset;
 use super::super::core::int_range::IntRange;
@@ -55,7 +55,7 @@ pub(crate) fn aligned_adjusted_clusters<'a>(
 /// `LineBreaker.breakLines` 的全部策略参数，严格保留 Kotlin 默认值。
 #[derive(Clone, Debug)]
 pub struct LineBreakerConfig {
-    pub measurement: Option<std::sync::Arc<super::line_measurement::LineMeasurement>>,
+    pub measurement: Option<Arc<super::line_measurement::LineMeasurement>>,
     pub shrink_opportunities: Vec<ShrinkOpportunity>,
     pub unbreakable_ranges: UnbreakableRanges,
     pub first_line_indent: f32,

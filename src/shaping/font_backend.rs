@@ -1,3 +1,7 @@
+use alloc::{string::String, vec::Vec};
+
+use crate::common::Arc;
+
 use super::super::core::font_face::FontFaceId;
 use super::super::core::geometry::TextRange;
 use super::super::core::text::Text;
@@ -6,7 +10,6 @@ use super::super::font::font_metrics::FontMetricsRequest;
 use super::super::font::font_policy::{FontRole, RawFontMetrics};
 use super::replayable_font_backend::ReplayableFontCatalog;
 use super::text_shaper::ShapingResult;
-use std::sync::Arc;
 
 /// 一个段落 shaping 请求的字体选择与完整 shaping 原子范围。
 #[derive(Clone, Debug, PartialEq)]

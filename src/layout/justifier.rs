@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/Justifier.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use crate::common::{HashMap, HashSet};
 
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};

@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphLayoutEngine.kt
 
-use crate::common::{HashMap, HashSet};
-use std::sync::Arc;
+use alloc::boxed::Box;
+use crate::common::{Arc, HashMap, HashSet};
 
 use super::super::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqProfileResolver};
 use super::super::core::geometry::TextRange;

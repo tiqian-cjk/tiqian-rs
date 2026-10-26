@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ContextualDashEllipsisRoleResolver.kt
 
+use alloc::{format, string::String, vec, vec::Vec};
 use crate::common::HashMap;
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;

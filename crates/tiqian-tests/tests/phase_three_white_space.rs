@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use tiqian::common::Arc;
 mod support;
 use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;

@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LayoutDebugAssembly.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use crate::common::HashMap;
 
 use super::super::clreq::clreq_profile::{

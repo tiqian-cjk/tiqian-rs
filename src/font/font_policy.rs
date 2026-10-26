@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
+
 use icu_properties::{
     CodePointMapData, CodePointSetData,
     props::{EmojiPresentation, GeneralCategory},

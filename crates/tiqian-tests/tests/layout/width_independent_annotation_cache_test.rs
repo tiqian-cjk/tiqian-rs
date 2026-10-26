@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+use tiqian::common::Arc;
 use tiqian::common::HashMap;
 
 use crate::support::DeterministicStubFontBackend;

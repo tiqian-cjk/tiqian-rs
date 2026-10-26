@@ -8,8 +8,13 @@ repository.workspace = true
 version = "0.0.0"
 publish = false
 
+[features]
+default = ["std"]
+std = ["tiqian/std"]
+no-std = ["tiqian/no-std"]
+
 [dependencies]
-tiqian = { path = "../.." }
+tiqian = { path = "../..", default-features = false }
 harfrust = "0.13"
 pollster = "1.0"
 skrifa = "0.46"

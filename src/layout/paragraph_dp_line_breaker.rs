@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphDpLineBreaker.kt
 
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use crate::common::{HashMap, HashSet};
-use std::rc::Rc;
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;

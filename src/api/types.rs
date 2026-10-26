@@ -1,4 +1,5 @@
-use std::fmt;
+use alloc::vec::Vec;
+use core::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParagraphScopeKind {
@@ -64,4 +65,4 @@ impl fmt::Display for ParagraphBuildError {
     }
 }
 
-impl std::error::Error for ParagraphBuildError {}
+impl core::error::Error for ParagraphBuildError {}

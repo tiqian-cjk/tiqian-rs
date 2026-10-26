@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/LineBreak.kt
 
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
+
 use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::text::Text;
 

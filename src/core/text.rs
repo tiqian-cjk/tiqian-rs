@@ -1,7 +1,10 @@
-use std::borrow::Borrow;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::sync::{Arc, OnceLock};
+use alloc::{borrow::ToOwned, boxed::Box, string::String, vec::Vec};
+use core::borrow::Borrow;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use once_cell::race::OnceBox;
+
+use crate::common::Arc;
 
 use super::geometry::{ScalarOffset, TextRange};
 
@@ -19,7 +22,7 @@ pub struct Text {
 
 struct TextInner {
     utf8: String,
-    scalar_index: OnceLock<ScalarIndex>,
+    scalar_index: OnceBox<ScalarIndex>,
 }
 
 /// 每一项是全文对应 scalar boundary 的 UTF-8 byte offset。
@@ -47,7 +50,7 @@ impl Text {
 
     /// 按当前文本视图的 Unicode scalar 顺序遍历字符。
     #[inline]
-    pub fn chars(&self) -> std::str::Chars<'_> {
+    pub fn chars(&self) -> core::str::Chars<'_> {
         self.as_str().chars()
     }
 
@@ -191,7 +194,7 @@ impl Text {
             let mut byte_boundaries = Vec::with_capacity(utf8.chars().count() + 1);
             byte_boundaries.extend(utf8.char_indices().map(|(byte, _)| byte as u32));
             byte_boundaries.push(utf8.len() as u32);
-            ScalarIndex { byte_boundaries }
+            Box::new(ScalarIndex { byte_boundaries })
         })
     }
 }
@@ -223,7 +226,7 @@ impl From<String> for Text {
             scalar_end: None,
             inner: Arc::new(TextInner {
                 utf8,
-                scalar_index: OnceLock::new(),
+                scalar_index: OnceBox::new(),
             }),
         }
     }
@@ -329,6 +332,7 @@ impl Borrow<str> for Text {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{vec, vec::Vec};
     use super::Text;
     use crate::core::geometry::{scalar_offset, text_range};
 
@@ -374,5 +378,18 @@ mod tests {
             slice.scalar_indices().collect::<Vec<_>>(),
             vec![(scalar_offset(0), '中'), (scalar_offset(1), '😀')]
         );
+    }
+
+    #[test]
+    fn cloned_text_initializes_one_shared_index() {
+        let text = Text::from("A中😀");
+        let cloned = text.clone();
+        assert!(text.inner.scalar_index.get().is_none());
+        assert_eq!(cloned.scalar_len(), scalar_offset(3));
+        let index = cloned.index();
+        assert!(core::ptr::eq(index, text.index()));
+        let slice = text.slice_text(text_range(1, 3));
+        assert!(core::ptr::eq(index, slice.index()));
+        assert_eq!(slice.utf8_byte_index_at(scalar_offset(2)), Some(7));
     }
 }

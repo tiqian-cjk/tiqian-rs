@@ -17,17 +17,33 @@ include = [
 ]
 
 [features]
-default = ["collections-hashbrown"]
+default = ["std"]
 
+std = ["runtime-std", "collections-hashbrown", "math-std", "shared-auto"]
+no-std = ["collections-hashbrown", "math-libm", "shared-auto"]
+runtime-std = []
 collections-hashbrown = ["dep:hashbrown"]
-collections-std = []
+collections-std = ["runtime-std"]
+math-std = ["runtime-std"]
+math-libm = ["dep:libm"]
+shared-auto = []
+shared-portable = ["dep:portable-atomic-util"]
 debug-info = []
 
 [dependencies]
-icu_properties = {version = "2.4", features = ["compiled_data"]}
-log = "0.4"
+icu_properties = {version = "2.4", default-features = false, features = ["compiled_data"]}
+log = {version = "0.4", default-features = false}
+once_cell = {version = "1.21", default-features = false, features = ["alloc"]}
+libm = {version = "0.2", optional = true}
 
 hashbrown = {version = "0.17", optional = true}
+
+[target.'cfg(target_has_atomic = "ptr")'.dependencies]
+portable-atomic-util = {version = "0.2", default-features = false, features = ["alloc"], optional = true}
+
+[target.'cfg(not(target_has_atomic = "ptr"))'.dependencies]
+portable-atomic-util = {version = "0.2", default-features = false, features = ["alloc"]}
+once_cell = {version = "1.21", default-features = false, features = ["alloc", "portable-atomic"]}
 
 [workspace]
 default-members = [".", "crates/tiqian-tests", "crates/tiqian-demo", "crates/tiqian-bench"]

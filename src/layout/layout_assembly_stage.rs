@@ -4,6 +4,7 @@
 // 这里把它们整理进 `LayoutOutput`（运行时数据）与 `LayoutResult.debug`
 // （诊断记录，由 `debug-info` feature 控制是否编译）。
 
+use alloc::vec::Vec;
 use crate::common::HashMap;
 
 use super::super::core::geometry::Size;

@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/AnnotationGeometryStage.kt
 
+use alloc::{borrow::ToOwned, vec, vec::Vec};
 use crate::common::HashMap;
 
 use super::super::clreq::bopomofo_reading::{BopomofoTone, bopomofo_parser};

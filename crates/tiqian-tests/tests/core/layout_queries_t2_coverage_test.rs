@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use tiqian::common::Arc;
 
 use tiqian::core::geometry::{Rect, scalar_offset, text_range};
 use tiqian::core::layout_queries::{

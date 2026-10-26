@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphShapingStage.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec, vec::Vec};
 use super::super::clreq::clreq_profile::{
     CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
 };
@@ -21,9 +22,8 @@ use super::super::shaping::text_shaper::{
 use super::cluster_role_resolution::ResolvedClusterRange;
 use super::white_space::{WhiteSpaceAction, WhiteSpaceKind, WhiteSpaceUnit};
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
-use crate::common::{HashMap, HashSet};
+use crate::common::{Arc, HashMap, HashSet};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
-use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphShapingStageResult {

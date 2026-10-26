@@ -1,5 +1,6 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineAdjustmentStage.kt
 
+use alloc::{boxed::Box, vec, vec::Vec};
 use crate::common::{HashMap, HashSet};
 
 use super::super::clreq::clreq_profile::LineEndPunctuationStyle;

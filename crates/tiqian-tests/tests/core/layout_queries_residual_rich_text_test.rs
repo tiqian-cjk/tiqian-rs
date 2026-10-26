@@ -142,7 +142,7 @@ fn resolved_corner_radii_normalizes_invalid_insets_and_resolves_continuations() 
     );
     let segment = content.positioned_rich_text_segments().remove(0);
     let non_background_segment = tiqian::core::layout_queries::RichTextLineSegment {
-        span: std::sync::Arc::new(span(
+        span: tiqian::common::Arc::new(span(
             text_range(0, 3),
             underline(RichTextLinePaint::default()),
         )),

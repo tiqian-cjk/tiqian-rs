@@ -1,9 +1,10 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/WidthIndependentAnnotationCache.kt
 
-use std::collections::BTreeMap;
+#[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
+use alloc::boxed::Box;
+use alloc::{collections::BTreeMap, format, vec::Vec};
 
-use crate::common::{HashMap, HashSet};
-use std::sync::Arc;
+use crate::common::{Arc, HashMap, HashSet, floor};
 
 use super::super::clreq::clreq_profile::ClreqProfileResolver;
 use super::super::clreq::clreq_profile::{
@@ -257,24 +258,44 @@ pub fn prepare_width_independent_annotation(
         .collect();
     let style_spans = spans.clone();
     let input_style = input.text_style.clone();
-    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::new(move |offset| {
+    let style_at_closure = move |offset: ScalarOffset| {
         style_spans
             .iter()
             .rev()
             .find(|span| offset >= span.range.start() && offset < span.range.end())
             .map(|span| span.style.clone())
             .unwrap_or_else(|| input_style.clone())
-    });
-    let font_size_at = {
-        let style_at = style_at.clone();
-        Arc::new(move |offset| style_at(offset).font_size)
     };
-    let bopomofo_font_weight_at = {
+    #[cfg(not(any(feature = "shared-portable", not(target_has_atomic = "ptr"))))]
+    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::new(style_at_closure);
+    #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
+    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::from(
+        Box::new(style_at_closure) as Box<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync>,
+    );
+    let font_size_at_closure = {
         let style_at = style_at.clone();
-        Arc::new(move |offset| {
+        move |offset: ScalarOffset| style_at(offset).font_size
+    };
+    #[cfg(not(any(feature = "shared-portable", not(target_has_atomic = "ptr"))))]
+    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> = Arc::new(font_size_at_closure);
+    #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
+    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> = Arc::from(
+        Box::new(font_size_at_closure) as Box<dyn Fn(ScalarOffset) -> f32 + Send + Sync>,
+    );
+    let bopomofo_font_weight_at_closure = {
+        let style_at = style_at.clone();
+        move |offset: ScalarOffset| {
             (style_at(offset).font_weight + BOPOMOFO_FONT_WEIGHT_BOOST).clamp(1, 900)
-        })
+        }
     };
+    #[cfg(not(any(feature = "shared-portable", not(target_has_atomic = "ptr"))))]
+    let bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync> =
+        Arc::new(bopomofo_font_weight_at_closure);
+    #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
+    let bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync> = Arc::from(
+        Box::new(bopomofo_font_weight_at_closure)
+            as Box<dyn Fn(ScalarOffset) -> i32 + Send + Sync>,
+    );
     let emphasis_ranges: Vec<_> = input
         .decorations
         .iter()
@@ -581,7 +602,7 @@ pub fn build_paragraph_layout_prep(
     let font_size = input.text_style.font_size;
     let grid = input.paragraph_style.line_length_grid;
     let container_width = input.constraints.max_width();
-    let grid_cells = (container_width / font_size).floor() as i32;
+    let grid_cells = floor(container_width / font_size) as i32;
     let grid_cells = grid_cells.max(1);
     let measure = if grid.enabled {
         (grid_cells as f32 * font_size).min(container_width)

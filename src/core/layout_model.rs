@@ -1,5 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutModel.kt
 
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
+
 use super::font_face::FontFaceId;
 use super::geometry::{Rect, ScalarOffset, Size, TextRange};
 use super::int_range::IntRange;

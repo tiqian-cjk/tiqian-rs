@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+use tiqian::common::Arc;
 
 use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;

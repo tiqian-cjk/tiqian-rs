@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use super::super::core::text::Text;
 
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/clreq/BopomofoReading.kt
@@ -39,7 +41,9 @@ pub struct BopomofoReading {
  * v1 不解析入声（方音），因为普通话注音没有入声。
  */
 pub mod bopomofo_parser {
-    use super::*;
+    use alloc::{string::ToString, vec::Vec};
+
+    use super::{BopomofoReading, BopomofoTone, Text};
 
     pub fn parse(reading: &Text) -> BopomofoReading {
         if reading.is_empty() {
