@@ -25,15 +25,11 @@ cargo test --all-targets
 | `tiqian-demo` | `crates/tiqian-demo` | 桌面演示程序 |
 | `tiqian-bench` | `crates/tiqian-bench` | 基准与探针程序 |
 
-`debug-info` feature 只在 `tiqian-tests` 默认开启；`tiqian` 自身的构建保持关闭，
-因此不再需要注释依赖行来测量生产路径：
 
 ```shell
 cargo build -p tiqian --release
 ```
 
-开启诊断记录时：`cargo test -p tiqian-tests`（默认已开启）或
-`cargo run -p tiqian-bench --features debug-info --bin paragraph-layout-bench`。
 
 运行桌面段落示例：
 
@@ -68,9 +64,6 @@ cargo test -p tiqian --lib --no-default-features --features no-std
 cargo test -p tiqian-tests --no-default-features --features no-std
 ```
 
-no-std CI 仅选择主库和 tests，不引入 demo 或 bench；测试 harness 可使用 std，主库不启用
-`runtime-std`。`tiqian-tests` 默认启用的 `demo-tests` 仅用于 std 字体集成测试，并自动启用
-`std`；上述命令关闭默认 feature，排除该路径。
 
 公开类型统一使用 `tiqian::common::Arc`：`shared-auto` 在有指针宽度原子的目标使用
 `alloc::sync::Arc`，否则使用 `portable_atomic_util::Arc`；`shared-portable` 始终使用后者。
