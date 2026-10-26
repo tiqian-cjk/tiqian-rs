@@ -4,18 +4,18 @@
 // 这里把它们整理进 `LayoutOutput`（运行时数据）与 `LayoutResult.debug`
 // （诊断记录，由 `debug-info` feature 控制是否编译）。
 
-use alloc::vec::Vec;
 use crate::common::HashMap;
+use alloc::vec::Vec;
 
 use super::super::core::geometry::Size;
-use super::super::core::layout_model::{
-    AnnotationGeometry, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry,
-    EmphasisDotGeometry, InlineObjectGeometry, LineEdgeTrimDecisionInfo,
-    LineWhiteSpaceDecisionInfo, LayoutOutput, LayoutResult, ResolvedClusterGeometry,
-    ResolvedFontMetrics, ResolvedFontRole, WhiteSpaceGeometry,
-};
 #[cfg(feature = "debug-info")]
 use super::super::core::layout_model::LayoutDebugInfo;
+use super::super::core::layout_model::{
+    AnnotationGeometry, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry,
+    EmphasisDotGeometry, InlineObjectGeometry, LayoutOutput, LayoutResult,
+    LineEdgeTrimDecisionInfo, LineWhiteSpaceDecisionInfo, ResolvedClusterGeometry,
+    ResolvedFontMetrics, ResolvedFontRole, WhiteSpaceGeometry,
+};
 use super::super::shaping::font_backend::FontBackend;
 use super::annotation_geometry_stage::{
     AnnotationGeometryRequest, AnnotationGeometryStageResult, resolve_annotation_geometry,

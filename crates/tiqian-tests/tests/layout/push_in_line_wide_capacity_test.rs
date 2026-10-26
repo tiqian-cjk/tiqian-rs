@@ -5,10 +5,12 @@ use tiqian::core::layout_model::Cluster;
 use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
 use tiqian::layout::line_optimization::RepairOption;
+use tiqian::layout::line_optimization::{
+    RepairDetail, RepairKind, RepairReasonCode, RepairRejection,
+};
 use tiqian::layout::progressive_break_decisions::{
     ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
 };
-use tiqian::layout::line_optimization::{RepairDetail, RepairKind, RepairReasonCode, RepairRejection};
 
 fn cluster(index: i32, text: &str) -> Cluster {
     Cluster::new(
@@ -228,7 +230,10 @@ fn carry_previous_refuses_to_split_an_unbreakable_span() {
     let Some(RepairOption::LeaveRagged { detail, .. }) = &solution.lines[1].repair else {
         panic!("expected LeaveRagged repair")
     };
-    assert_eq!(RepairDetail::Rejected(RepairRejection::CarryWouldSplitMourningSpan), *detail);
+    assert_eq!(
+        RepairDetail::Rejected(RepairRejection::CarryWouldSplitMourningSpan),
+        *detail
+    );
     let carry = solution.lines[1]
         .repair_candidates
         .iter()

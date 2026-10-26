@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{BuiltInClreqProfileResolver, ClreqPunctuationGlyphSubstitutor};
+use tiqian::common::Arc;
 use tiqian::common::{HashMap, HashSet};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange, text_range};
@@ -29,7 +30,6 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontResolution,
 };
 use tiqian::shaping::text_shaper::{ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE};
-use tiqian::common::Arc;
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;

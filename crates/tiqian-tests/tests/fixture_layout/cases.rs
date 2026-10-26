@@ -128,7 +128,10 @@ pub fn fixtures() -> Vec<Fixture> {
         ),
         fixture("mandatory-single-newline", "第一行\n第二行", 160.0),
         white_space_fixture("white-space-collapse", WhiteSpaceMode::Collapse),
-        white_space_fixture("white-space-preserve-breaks", WhiteSpaceMode::PreserveBreaks),
+        white_space_fixture(
+            "white-space-preserve-breaks",
+            WhiteSpaceMode::PreserveBreaks,
+        ),
         white_space_fixture("white-space-preserve", WhiteSpaceMode::Preserve),
         white_space_fixture("white-space-break-spaces", WhiteSpaceMode::BreakSpaces),
         fixture("mandatory-blank-lines", "甲\n\n乙\n", 160.0),
@@ -185,11 +188,7 @@ fn fixture(id: &'static str, text: &str, width: f32) -> Fixture {
 }
 
 fn white_space_fixture(id: &'static str, mode: WhiteSpaceMode) -> Fixture {
-    let mut fixture = fixture(
-        id,
-        "01 基础组件  A\tB   \r\n02 Input 输入框   \n",
-        96.0,
-    );
+    let mut fixture = fixture(id, "01 基础组件  A\tB   \r\n02 Input 输入框   \n", 96.0);
     fixture.input.paragraph_style.white_space = mode;
     fixture.input.paragraph_style.text_wrap = TextWrapMode::Wrap;
     fixture.input.paragraph_style.tab_size = TabSize::LayoutUnits(32.0);

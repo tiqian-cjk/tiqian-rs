@@ -1,7 +1,12 @@
+use tiqian::clreq::clreq_profile::AutoSpaceMode;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, Cluster, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox, RubyGeometry};
+use tiqian::core::layout_model::{
+    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, Cluster,
+    ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox,
+    RubyGeometry,
+};
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
     get_selection_offset_for_position, get_text_for_copy, glyph_ink_bounds, positioned_clusters,
@@ -12,7 +17,6 @@ use tiqian::core::text_model::{
     InlineObjectSpan, LayoutInput, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
     RichTextSpan, TextStyle, TiqianTextContent,
 };
-use tiqian::clreq::clreq_profile::AutoSpaceMode;
 use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 fn layout_input(text: &str, max_width: f32) -> LayoutInput {

@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineBreaker.kt
 
-use alloc::{borrow::Cow, boxed::Box, vec, vec::Vec};
 use crate::common::{Arc, HashMap, HashSet};
+use alloc::{borrow::Cow, boxed::Box, vec, vec::Vec};
 
 use super::super::core::geometry::ScalarOffset;
 use super::super::core::int_range::IntRange;
@@ -101,24 +101,59 @@ impl Default for LineBreakerConfig {
 }
 
 impl LineBreakerConfig {
-    pub fn build_line(&self, range: IntRange, natural: &[Cluster], adjusted: &[Cluster], reason: LineEndReason, max_width: f32) -> LineCandidate {
+    pub fn build_line(
+        &self,
+        range: IntRange,
+        natural: &[Cluster],
+        adjusted: &[Cluster],
+        reason: LineEndReason,
+        max_width: f32,
+    ) -> LineCandidate {
         let mut line = if let Some(measurement) = &self.measurement {
-            let width = measurement.measure(range, reason, line_limit(max_width, self.first_line_indent, range.first()), &[]);
-            let mut line = LineCandidate::new(range, crate::core::geometry::TextRange::new(
-                adjusted[range.first() as usize].range.start(), adjusted[range.last() as usize].range.end()), width.natural, width.adjusted);
+            let width = measurement.measure(
+                range,
+                reason,
+                line_limit(max_width, self.first_line_indent, range.first()),
+                &[],
+            );
+            let mut line = LineCandidate::new(
+                range,
+                crate::core::geometry::TextRange::new(
+                    adjusted[range.first() as usize].range.start(),
+                    adjusted[range.last() as usize].range.end(),
+                ),
+                width.natural,
+                width.adjusted,
+            );
             line.end_reason = reason;
             line
-        } else { rebuild_line(range, natural, adjusted, reason, None, Vec::new()) };
+        } else {
+            rebuild_line(range, natural, adjusted, reason, None, Vec::new())
+        };
         line.measurement = self.measurement.clone();
         line.measurement_limit = line_limit(max_width, self.first_line_indent, range.first());
         line
     }
 
-    pub fn greedy_end(&self, adjusted: &[Cluster], start: i32, limit: f32, segment_end: i32) -> i32 {
+    pub fn greedy_end(
+        &self,
+        adjusted: &[Cluster],
+        start: i32,
+        limit: f32,
+        segment_end: i32,
+    ) -> i32 {
         let Some(measurement) = &self.measurement else {
-            return find_greedy_end(adjusted, start, limit, segment_end, &self.non_rendering_control_clusters);
+            return find_greedy_end(
+                adjusted,
+                start,
+                limit,
+                segment_end,
+                &self.non_rendering_control_clusters,
+            );
         };
-        if measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap { return segment_end; }
+        if measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap {
+            return segment_end;
+        }
         let mut fitting = None;
         let mut content_cursor = start;
         let mut has_rendering_content = false;
@@ -126,17 +161,27 @@ impl LineBreakerConfig {
         while end <= segment_end {
             end = measurement.next_boundary(end, segment_end);
             while content_cursor < end {
-                has_rendering_content = has_rendering_content || !self.non_rendering_control_clusters.contains(&content_cursor);
+                has_rendering_content = has_rendering_content
+                    || !self
+                        .non_rendering_control_clusters
+                        .contains(&content_cursor);
                 content_cursor += 1;
             }
-            let reason = if end < segment_end { LineEndReason::AutoWrap }
-                else if self.hard_break_after_clusters.contains(&(end - 1)) { LineEndReason::MandatoryBreak }
-                else { LineEndReason::ParagraphEnd };
-            let width = measurement.adjusted_width(IntRange::new(start, end - 1), reason, limit, &[]);
+            let reason = if end < segment_end {
+                LineEndReason::AutoWrap
+            } else if self.hard_break_after_clusters.contains(&(end - 1)) {
+                LineEndReason::MandatoryBreak
+            } else {
+                LineEndReason::ParagraphEnd
+            };
+            let width =
+                measurement.adjusted_width(IntRange::new(start, end - 1), reason, limit, &[]);
             if width > limit {
                 return fitting.unwrap_or(end);
             }
-            if has_rendering_content { fitting = Some(end); }
+            if has_rendering_content {
+                fitting = Some(end);
+            }
             end += 1;
         }
         segment_end
@@ -186,10 +231,18 @@ impl GreedyLineBreaker {
         breaks.sort_unstable();
         let mut break_cursor = 0;
         while line_start < adjusted_clusters.len() as i32 {
-            while break_cursor < breaks.len() && breaks[break_cursor] < line_start { break_cursor += 1; }
-            let segment_end = breaks.get(break_cursor).map_or(adjusted_clusters.len() as i32, |index| index + 1);
-            let index = config.greedy_end(adjusted_clusters, line_start,
-                line_limit(max_width, config.first_line_indent, line_start), segment_end);
+            while break_cursor < breaks.len() && breaks[break_cursor] < line_start {
+                break_cursor += 1;
+            }
+            let segment_end = breaks
+                .get(break_cursor)
+                .map_or(adjusted_clusters.len() as i32, |index| index + 1);
+            let index = config.greedy_end(
+                adjusted_clusters,
+                line_start,
+                line_limit(max_width, config.first_line_indent, line_start),
+                segment_end,
+            );
             if index < segment_end {
                 let limit = line_limit(max_width, config.first_line_indent, line_start);
                 let progressive = decide_progressive_break(
@@ -223,7 +276,9 @@ impl GreedyLineBreaker {
                     line_start,
                     &config.forbidden_line_end_clusters,
                 );
-                if let Some(measurement) = &config.measurement { break_at = measurement.next_boundary(break_at, segment_end); }
+                if let Some(measurement) = &config.measurement {
+                    break_at = measurement.next_boundary(break_at, segment_end);
+                }
                 let mut line = config.build_line(
                     IntRange::new(line_start, break_at - 1),
                     natural_clusters,
@@ -244,9 +299,20 @@ impl GreedyLineBreaker {
                 lines.push(line);
                 line_start = break_at;
             } else {
-                let mandatory = config.hard_break_after_clusters.contains(&(segment_end - 1));
-                lines.push(config.build_line(IntRange::new(line_start, segment_end - 1), natural_clusters,
-                    adjusted_clusters, if mandatory { LineEndReason::MandatoryBreak } else { LineEndReason::ParagraphEnd }, max_width));
+                let mandatory = config
+                    .hard_break_after_clusters
+                    .contains(&(segment_end - 1));
+                lines.push(config.build_line(
+                    IntRange::new(line_start, segment_end - 1),
+                    natural_clusters,
+                    adjusted_clusters,
+                    if mandatory {
+                        LineEndReason::MandatoryBreak
+                    } else {
+                        LineEndReason::ParagraphEnd
+                    },
+                    max_width,
+                ));
                 line_start = segment_end;
             }
         }
@@ -317,7 +383,8 @@ impl LineBreaker for GreedyLineBreaker {
             self.push_in_penalty,
             &gap_boundaries,
             &config.progressive_break_opportunities,
-        ).resolve_white_space()
+        )
+        .resolve_white_space()
     }
 }
 
@@ -416,7 +483,8 @@ pub fn line_adjustment_density(
     }
     let gaps = line.measurement.as_ref().map_or_else(
         || line_gap_count(line.in_measure_cluster_range(), gap_boundaries),
-        |measurement| measurement.effective_gap_count(line.in_measure_cluster_range()));
+        |measurement| measurement.effective_gap_count(line.in_measure_cluster_range()),
+    );
     if gaps == 0 {
         return 0.0;
     }
@@ -434,7 +502,8 @@ fn line_adjustment_density_with_gap_prefix(
     }
     let gaps = line.measurement.as_ref().map_or_else(
         || gap_prefix.count(line.in_measure_cluster_range()),
-        |measurement| measurement.effective_gap_count(line.in_measure_cluster_range()));
+        |measurement| measurement.effective_gap_count(line.in_measure_cluster_range()),
+    );
     if gaps == 0 {
         return 0.0;
     }
@@ -679,7 +748,10 @@ impl LookaheadLineBreaker {
                 }
                 line_start = break_at;
             } else {
-                let reason = if config.hard_break_after_clusters.contains(&(end_exclusive - 1)) {
+                let reason = if config
+                    .hard_break_after_clusters
+                    .contains(&(end_exclusive - 1))
+                {
                     LineEndReason::MandatoryBreak
                 } else {
                     LineEndReason::ParagraphEnd
@@ -788,7 +860,9 @@ impl LookaheadLineBreaker {
         };
         let in_measure = line.in_measure_cluster_range();
         let gaps = line.measurement.as_ref().map_or_else(
-            || gap_prefix.count(in_measure), |measurement| measurement.effective_gap_count(in_measure));
+            || gap_prefix.count(in_measure),
+            |measurement| measurement.effective_gap_count(in_measure),
+        );
         let residual = if gaps == 0 { ragged } else { 0.0 };
         let density = line_adjustment_density_with_gap_prefix(line, limit, is_last, gap_prefix);
         let orphan =
@@ -841,12 +915,8 @@ impl LineBreaker for LookaheadLineBreaker {
             let mandatory_end = sorted_breaks.get(break_cursor).copied();
             let segment_end_exclusive = mandatory_end.map_or(adjusted.len() as i32, |end| end + 1);
             let limit = line_limit(max_width, config.first_line_indent, line_start);
-            let raw_greedy_end = config.greedy_end(
-                adjusted,
-                line_start,
-                limit,
-                segment_end_exclusive,
-            );
+            let raw_greedy_end =
+                config.greedy_end(adjusted, line_start, limit, segment_end_exclusive);
             if raw_greedy_end >= segment_end_exclusive {
                 if let Some(mandatory_end) = mandatory_end {
                     committed.push(config.build_line(
@@ -911,7 +981,12 @@ impl LineBreaker for LookaheadLineBreaker {
                         && *end <= segment_end_exclusive
                 })
                 .filter(|end| !config.unbreakable_ranges.contains_boundary(*end))
-                .filter(|end| config.measurement.as_ref().map_or(true, |measurement| measurement.boundary_allowed(*end)))
+                .filter(|end| {
+                    config
+                        .measurement
+                        .as_ref()
+                        .map_or(true, |measurement| measurement.boundary_allowed(*end))
+                })
                 .filter(|end| {
                     progressive_candidate_allowed(
                         line_start,
@@ -941,7 +1016,9 @@ impl LineBreaker for LookaheadLineBreaker {
                     line_start,
                     &config.unbreakable_ranges,
                 );
-                candidates.push(config.measurement.as_ref().map_or(fallback, |measurement| measurement.next_boundary(fallback, segment_end_exclusive)));
+                candidates.push(config.measurement.as_ref().map_or(fallback, |measurement| {
+                    measurement.next_boundary(fallback, segment_end_exclusive)
+                }));
             }
             let mut best_end = greedy_end;
             let mut best_score = f32::INFINITY;
@@ -1049,6 +1126,7 @@ impl LineBreaker for LookaheadLineBreaker {
             self.push_in_penalty,
             &gap_boundaries,
             &config.progressive_break_opportunities,
-        ).resolve_white_space()
+        )
+        .resolve_white_space()
     }
 }

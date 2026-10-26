@@ -7,7 +7,9 @@ use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier};
+use tiqian::layout::justifier::{
+    JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier,
+};
 use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
 use tiqian::layout::punctuation_model::GlueKind;
 
@@ -541,8 +543,11 @@ fn virtual_non_sino_western_boundary_when_allow_sino_western_gap_stretch_is_fals
     );
 
     assert!(plan.allocations.iter().any(|allocation| {
-        allocation.target_cluster_index ==3
-            && allocation.reason == JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar)
+        allocation.target_cluster_index == 3
+            && allocation.reason
+                == JustificationAllocationReason::Opportunity(
+                    JustificationReason::AttachedInlineVirtualInterChar,
+                )
     }));
 }
 

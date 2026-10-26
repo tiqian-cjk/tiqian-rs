@@ -178,7 +178,7 @@ fn symbol_between_runs_keeps_them_independent() {
     assert!(
         decisions
             .iter()
-            .all(|decision| {decision.source == "DashEllipsisSurroundingScriptContext" })
+            .all(|decision| { decision.source == "DashEllipsisSurroundingScriptContext" })
     );
 }
 
@@ -213,10 +213,7 @@ fn western_context_keeps_dash_and_ellipsis_on_latin_face_and_preserves_source_di
     for decision in result.debug.font_decisions.iter().filter(|decision| {
         decision.source_text.as_str().contains('—') || decision.source_text.as_str().contains('…')
     }) {
-        assert_eq!(
-            FontRole::LatinText,
-            decision.role
-        );
+        assert_eq!(FontRole::LatinText, decision.role);
         assert_eq!(decision.source_text, decision.display_text);
     }
     assert_eq!(
@@ -255,7 +252,7 @@ fn western_context_keeps_dash_and_ellipsis_on_latin_face_and_preserves_source_di
                 decision.source_text.as_str().contains('—')
                     || decision.source_text.as_str().contains('…')
             })
-            .all(|decision|decision.source == "DashEllipsisSurroundingScriptContext")
+            .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext")
     );
 }
 
@@ -298,7 +295,8 @@ fn parenthetical_pair_shares_one_face_and_substitution() {
     assert!(
         decisions
             .iter()
-            .all(|decision| decision.role == FontRole::CjkPunctuation && decision.display_text == "⸺")
+            .all(|decision| decision.role == FontRole::CjkPunctuation
+                && decision.display_text == "⸺")
     );
 }
 
@@ -306,10 +304,7 @@ fn parenthetical_pair_shares_one_face_and_substitution() {
 fn standalone_western_ellipsis_cannot_be_rewritten_by_the_substitutor() {
     let result = layout("…", "en-US");
     let decision = result.debug.font_decisions.first().unwrap();
-    assert_eq!(
-            FontRole::LatinText,
-            decision.role
-        );
+    assert_eq!(FontRole::LatinText, decision.role);
     assert_eq!("…", decision.source_text);
     assert_eq!("…", decision.display_text);
     assert_eq!(

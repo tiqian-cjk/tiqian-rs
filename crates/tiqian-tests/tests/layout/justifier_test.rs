@@ -8,7 +8,9 @@ use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier};
+use tiqian::layout::justifier::{
+    JustificationAllocationReason, JustificationReason, JustificationRequest, Justifier,
+};
 use tiqian::layout::punctuation_model::GlueKind;
 
 const EM: f32 = 16.0;
@@ -551,10 +553,11 @@ fn western_brackets_touching_cjk_share_tier_three_stretch() {
             .map(|allocation| allocation.target_cluster_index)
             .collect::<HashSet<i32>>()
     );
-    assert!(allocations.iter().all(
-        |allocation| allocation.reason == JustificationAllocationReason::Opportunity(JustificationReason::WesternBracketCjkInterChar)
-            && (allocation.delta - 0.25 * EM).abs() < 0.001
-    ));
+    assert!(allocations.iter().all(|allocation| allocation.reason
+        == JustificationAllocationReason::Opportunity(
+            JustificationReason::WesternBracketCjkInterChar
+        )
+        && (allocation.delta - 0.25 * EM).abs() < 0.001));
     assert_eq!(0.0, plan.unfilled_deficit);
 }
 
@@ -583,7 +586,9 @@ fn attached_reference_uses_the_virtual_prose_boundary_for_stretching() {
     assert_eq!(1, middle.allocations.len());
     assert_eq!(3, middle.allocations[0].target_cluster_index);
     assert_eq!(
-        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
+        JustificationAllocationReason::Opportunity(
+            JustificationReason::AttachedInlineVirtualInterChar
+        ),
         middle.allocations[0].reason
     );
     assert_eq!(EM, middle.allocations[0].delta);

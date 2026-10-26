@@ -237,9 +237,9 @@ const ZWJ: i32 = 0x200D;
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::core::geometry::scalar_offset;
+    use alloc::{vec, vec::Vec};
 
     fn boundaries(text: &str) -> Vec<ScalarOffset> {
         let text = Text::from(text);

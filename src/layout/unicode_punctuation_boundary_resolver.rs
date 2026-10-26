@@ -1,6 +1,5 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/UnicodePunctuationBoundaryResolver.kt
 
-use alloc::vec::Vec;
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::geometry::ScalarOffset;
 use super::super::core::layout_model::{
@@ -17,6 +16,7 @@ use super::super::linebreak::unicode_punctuation_line_break::{
 };
 use super::quote_pair_analyzer::QuotePair;
 use crate::common::{HashMap, HashSet};
+use alloc::vec::Vec;
 
 const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
     leading: EastAsianSpacingValue::Other,

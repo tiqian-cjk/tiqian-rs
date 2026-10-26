@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/AnnotationGeometryStage.kt
 
-use alloc::{borrow::ToOwned, vec, vec::Vec};
 use crate::common::HashMap;
+use alloc::{borrow::ToOwned, vec, vec::Vec};
 
 use super::super::clreq::bopomofo_reading::{BopomofoTone, bopomofo_parser};
 use super::super::clreq::clreq_profile::ClreqProfile;
@@ -9,10 +9,9 @@ use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, BopomofoGlyphPlacement,
-    BopomofoGlyphRole,
-    Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo, DecorationSegmentGeometry,
-    DecorationSegmentReason, EmphasisDotReason, Glyph, InlineObjectDecisionInfo, LineBox,
-    RubyGeometry,
+    BopomofoGlyphRole, Cluster, ClusterGeometryDecisionInfo, DecorationDecisionInfo,
+    DecorationSegmentGeometry, DecorationSegmentReason, EmphasisDotReason, Glyph,
+    InlineObjectDecisionInfo, LineBox, RubyGeometry,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -114,9 +113,7 @@ pub fn resolve_annotation_geometry(
             .leading_shrink_capacity(leading.shrink_capacity)
             .leading_line_end_discardable_advance(leading.line_end_discardable_advance)
             .trailing_uniform_stretch(trailing.participates_in_uniform_stretch)
-            .trailing_preferred_stretch_kind(
-                trailing.preferred_stretch.map(|stretch| stretch.kind),
-            )
+            .trailing_preferred_stretch_kind(trailing.preferred_stretch.map(|stretch| stretch.kind))
             .trailing_preferred_stretch_natural_width(
                 trailing
                     .preferred_stretch

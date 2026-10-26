@@ -13,10 +13,10 @@ use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
-use tiqian::core::layout_model::KinsokuForbiddenPosition;
 use tiqian::core::layout_model::ContextualKinsokuRule;
-use tiqian::core::layout_model::Uax14BoundaryRule;
 use tiqian::core::layout_model::ImpossibleMeasureFallback;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
+use tiqian::core::layout_model::Uax14BoundaryRule;
 use tiqian::font::font_policy::FontRole;
 
 struct FixedKinsokuProfile {
@@ -235,13 +235,13 @@ fn cjk_attached_ascii_point_marks_cannot_start_wrapped_lines_and_stay_latin() {
                 .find(|decision| decision.range == point.range)
                 .unwrap();
             assert_eq!(
-            KinsokuForbiddenPosition::LineStart,
-            decision.forbidden_position
-        );
+                KinsokuForbiddenPosition::LineStart,
+                decision.forbidden_position
+            );
             assert_eq!(
-            ContextualKinsokuRule::AttachedAsciiPointMarkKinsoku,
-            decision.reason
-        );
+                ContextualKinsokuRule::AttachedAsciiPointMarkKinsoku,
+                decision.reason
+            );
         }
     }
 }

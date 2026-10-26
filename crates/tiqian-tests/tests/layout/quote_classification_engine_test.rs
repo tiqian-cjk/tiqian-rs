@@ -149,7 +149,7 @@ fn cjk_quote_pair_reaches_punctuation_geometry_with_outer_context_evidence() {
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext")
+            .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext")
     );
     assert_eq!(
         vec![scalar_offset(1), scalar_offset(3)],
@@ -184,7 +184,7 @@ fn mixed_paragraph_start_quote_uses_paragraph_language_fallback() {
     assert!(
         quote_overrides
             .iter()
-            .all(|override_info|override_info.source == "ParagraphLanguageQuoteContext")
+            .all(|override_info| override_info.source == "ParagraphLanguageQuoteContext")
     );
     assert_eq!("“Json是谁？”", result.input.content.text);
 }
@@ -199,10 +199,7 @@ fn contraction_apostrophe_stays_latin_inside_cjk_single_quotes() {
         .iter()
         .find(|decision| decision.source_text == "that’s")
         .unwrap();
-    assert_eq!(
-            FontRole::LatinText,
-            contraction.role
-        );
+    assert_eq!(FontRole::LatinText, contraction.role);
     assert_eq!("latin-primary", contraction.candidate_key);
     assert!(
         result
@@ -381,18 +378,16 @@ fn quote_roles_survive_style_and_source_boundaries() {
         .debug
         .role_overrides
         .iter()
-        .map(|override_info| {
-            (
-                override_info.range.start(),
-                override_info.overridden_role,
-            )
-        })
+        .map(|override_info| (override_info.range.start(), override_info.overridden_role))
         .collect::<std::collections::HashMap<_, _>>();
     assert_eq!(
         Some(&FontRole::CjkPunctuation),
         roles_by_index.get(&scalar_offset(1))
     );
-    assert_eq!(Some(&FontRole::LatinText), roles_by_index.get(&scalar_offset(6)));
+    assert_eq!(
+        Some(&FontRole::LatinText),
+        roles_by_index.get(&scalar_offset(6))
+    );
     assert_eq!(
         Some(&FontRole::CjkPunctuation),
         roles_by_index.get(&scalar_offset(8))
@@ -488,7 +483,7 @@ fn adjacent_quoted_list_items_keep_cjk_quote_geometry_across_mixed_content() {
         assert!(
             final_overrides
                 .iter()
-                .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext"),
+                .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext"),
             "{text}",
         );
         assert_eq!(text, result.input.content.text);
@@ -547,7 +542,7 @@ fn mi10s_adjacent_latin_transcriptions_keep_final_quote_pair_in_cjk_context() {
     assert!(
         final_overrides
             .iter()
-            .all(|override_info|override_info.source == "PairedPunctuationOuterScriptContext")
+            .all(|override_info| override_info.source == "PairedPunctuationOuterScriptContext")
     );
     assert!(result.lines.iter().all(|line| {
         !result
@@ -595,19 +590,10 @@ fn records_role_overrides_for_resolved_quote_pairs() {
         .iter()
         .find(|override_info| override_info.range.start().value() == 6)
         .unwrap();
-    assert_eq!(
-            FontRole::LatinText,
-            opening.overridden_role
-        );
-    assert_eq!(
-            FontRole::CjkPunctuation,
-            opening.original_role
-        );
+    assert_eq!(FontRole::LatinText, opening.overridden_role);
+    assert_eq!(FontRole::CjkPunctuation, opening.original_role);
     assert_eq!("PairedPunctuationOuterScriptContext", opening.source);
-    assert_eq!(
-            FontRole::LatinText,
-            closing.overridden_role
-        );
+    assert_eq!(FontRole::LatinText, closing.overridden_role);
 }
 
 #[test]
@@ -621,10 +607,7 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         .iter()
         .find(|decision| decision.range.start().value() == 2)
         .unwrap();
-    assert_eq!(
-            FontRole::CjkPunctuation,
-            opening.role
-        );
+    assert_eq!(FontRole::CjkPunctuation, opening.role);
     assert_eq!("cjk-primary", opening.candidate_key);
 
     let override_info = result
@@ -638,10 +621,7 @@ fn keeps_numbered_cjk_quote_pair_on_cjk_face() {
         override_info.source
     );
     assert_eq!("quoted-content-script", override_info.reason);
-    assert_eq!(
-            FontRole::CjkPunctuation,
-            override_info.overridden_role
-        );
+    assert_eq!(FontRole::CjkPunctuation, override_info.overridden_role);
 }
 
 #[test]
@@ -674,7 +654,8 @@ fn resolves_digit_bound_unmatched_quotes_as_primes() {
     assert_eq!(3, marks.len());
     assert!(marks.iter().all(|override_info| {
         override_info.overridden_role == FontRole::LatinText
-            && override_info.source == "NumericPrimeUnmatchedQuote"&& override_info.reason == "digit-bound-unmatched-quote-as-prime"
+            && override_info.source == "NumericPrimeUnmatchedQuote"
+            && override_info.reason == "digit-bound-unmatched-quote-as-prime"
     }));
 }
 
@@ -688,10 +669,7 @@ fn keeps_decade_style_apostrophe_with_letter_flank_latin() {
         .iter()
         .find(|override_info| override_info.source_text == "’")
         .unwrap();
-    assert_eq!(
-            FontRole::LatinText,
-            apostrophe.overridden_role
-        );
+    assert_eq!(FontRole::LatinText, apostrophe.overridden_role);
     assert_eq!("NonCjkInWordApostrophe", apostrophe.source);
 }
 
@@ -802,13 +780,13 @@ fn requests_full_width_cjk_quotes_and_synthesizes_cell_for_proportional_glyphs()
     );
     assert_eq!(None, closing_decision.glyph_placement_reason);
     assert_eq!(
-            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
-            opening_decision.geometry_source
-        );
+        PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+        opening_decision.geometry_source
+    );
     assert_eq!(
-            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
-            closing_decision.geometry_source
-        );
+        PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+        closing_decision.geometry_source
+    );
 
     let positioned = positioned_clusters(&result);
     let positioned_opening = positioned

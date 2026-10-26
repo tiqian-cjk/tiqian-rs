@@ -271,7 +271,9 @@ fn attached_inline_boundary_at_line_end_consumes_trailing_glue() {
     assert_eq!('」', decision.left_char);
     assert_eq!('\0', decision.right_char);
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::LineEnd),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::LineEnd
+        ),
         decision.reason
     );
     assert_eq!(8.0, decision.reduction);
@@ -383,7 +385,9 @@ fn attached_inline_boundary_skips_mandatory_break_neighbour() {
         EM,
     );
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::LineEnd),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::LineEnd
+        ),
         result.decisions[0].reason
     );
 }
@@ -433,7 +437,9 @@ fn attached_inline_boundary_without_glue_emits_no_decision() {
         EM,
     );
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::Natural),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::Natural
+        ),
         natural.decisions[0].reason
     );
     assert_eq!(8.0, natural.decisions[0].natural_inner_glue);
@@ -501,13 +507,13 @@ fn line_edge_trim_consumes_half_width_at_edges_and_skips_empty_inputs() {
 
     let trimmed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], true);
     let decision = &trimmed.decisions[0];
-    assert_eq!(
-            LineEdgeTrimSide::Trailing,
-            decision.side
-        );
+    assert_eq!(LineEdgeTrimSide::Trailing, decision.side);
     assert_eq!(8.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
-    assert_eq!(LineEdgeTrimReason::LineEndHalfWidthPunctuation, decision.reason);
+    assert_eq!(
+        LineEdgeTrimReason::LineEndHalfWidthPunctuation,
+        decision.reason
+    );
     assert_eq!(text_range(0, 1), decision.cluster_range);
     assert_eq!(8.0, trimmed.geometry.resolve_clusters()[0].advance);
 
@@ -547,10 +553,7 @@ fn line_edge_trim_consumes_centred_punctuation_once_per_line() {
     );
     let trimmed = ledger.consume_line_edge_glue(&[line(IntRange::new(0, 0), 0, 1)], true);
     let decision = &trimmed.decisions[0];
-    assert_eq!(
-            LineEdgeTrimSide::Both,
-            decision.side
-        );
+    assert_eq!(LineEdgeTrimSide::Both, decision.side);
     assert_eq!(4.0, decision.trim_amount);
     assert_eq!(8.0, decision.natural_glue);
     assert_eq!(

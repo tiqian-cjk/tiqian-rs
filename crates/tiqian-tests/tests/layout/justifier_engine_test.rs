@@ -128,7 +128,8 @@ fn inseparable_number_and_unit_boundary_remains_closed_during_justification() {
 
     assert!(decision.allocations.iter().all(|allocation| {
         allocation.cluster_range != number.range
-            || (allocation.kind != GlueKind::CjkLatinSpace && allocation.kind != GlueKind::CjkInterChar)
+            || (allocation.kind != GlueKind::CjkLatinSpace
+                && allocation.kind != GlueKind::CjkInterChar)
     }));
     assert_eq!(0.0, decision.deficit_after);
 }
@@ -584,11 +585,10 @@ fn typed_sino_western_spaces_stretch_in_tier_two() {
         }
     }
 
-    let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(
-        DeterministicStubFontBackend::default(),
-    ))
-    .clreq_profile_resolver(Box::new(TypedSinoWesternSpacesProfile))
-    .build();
+    let mut engine =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(Box::new(TypedSinoWesternSpacesProfile))
+            .build();
     let result = engine.layout(
         LayoutInput::builder(
             TiqianTextContent::new(Text::from("中文 Hello 中文中文中文")),

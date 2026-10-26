@@ -10,14 +10,14 @@ use super::text_model::{
     DecorationKind, InlineBoxOuterSpacing, InlineObjectPreferredStretchKind, LastLineAlignment,
     LayoutInput, RubyLineHeightMode,
 };
-use crate::clreq::clreq_profile::{HangingPunctuationStyle, KinsokuLevel, PunctuationClass};
 use crate::clreq::clreq_profile::AutoSpaceMode;
+use crate::clreq::clreq_profile::{HangingPunctuationStyle, KinsokuLevel, PunctuationClass};
 use crate::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
 use crate::font::font_policy::FontRole;
 use crate::layout::justifier::JustificationAllocationReason;
+use crate::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
 use crate::layout::progressive_break_decisions::ProgressiveBreakTier;
 use crate::layout::punctuation_model::PunctuationGeometrySource;
-use crate::layout::line_optimization::{RepairKind, RepairReasonCode, RepairRejection};
 use crate::layout::punctuation_model::{
     GlueKind, PunctuationAnchor, PunctuationAtom, PunctuationSpacingAdjustment, SpacingReason,
 };

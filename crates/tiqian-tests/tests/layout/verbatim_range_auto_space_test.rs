@@ -1,6 +1,8 @@
 use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver};
+use tiqian::clreq::clreq_profile::{
+    AutoSpaceMode, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver,
+};
 use tiqian::core::geometry::{LayoutConstraints, TextRange, text_range};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, LayoutProfileId, ParagraphStyle, TiqianTextContent};
@@ -54,7 +56,7 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
             .debug
             .auto_space_decisions
             .iter()
-            .filter(|decision|decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
+            .filter(|decision| decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
             .count()
     );
 
@@ -65,7 +67,7 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
             .debug
             .auto_space_decisions
             .iter()
-            .filter(|decision|decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
+            .filter(|decision| decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
             .count()
     );
     assert_eq!(
@@ -74,7 +76,8 @@ fn verbatim_internal_boundaries_are_suppressed_while_outer_edges_keep_autospace(
             .debug
             .auto_space_decisions
             .iter()
-            .filter(|decision|decision.reason == "VerbatimRangeAutoSpace:east-asian-spacing-W-N-suppressed")
+            .filter(|decision| decision.reason
+                == "VerbatimRangeAutoSpace:east-asian-spacing-W-N-suppressed")
             .count()
     );
 }
@@ -90,7 +93,7 @@ fn authored_space_inside_verbatim_range_is_not_normalized() {
             .auto_space_decisions
             .iter()
             .filter(
-                |decision|decision.reason == "TextAutoSpaceReplace:east-asian-spacing-W-space-N"
+                |decision| decision.reason == "TextAutoSpaceReplace:east-asian-spacing-W-space-N"
             )
             .count()
     );
@@ -103,7 +106,7 @@ fn authored_space_inside_verbatim_range_is_not_normalized() {
             .auto_space_decisions
             .iter()
             .filter(
-                |decision|decision.reason == "TextAutoSpaceReplace:east-asian-spacing-W-space-N"
+                |decision| decision.reason == "TextAutoSpaceReplace:east-asian-spacing-W-space-N"
             )
             .count()
     );

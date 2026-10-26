@@ -110,8 +110,8 @@ impl TiqianTextContentBuilder {
 /// 去掉 `https://` / `http://` / `mailto:` 前缀。只有这类链接使用
 /// `LineBreakPolicy::ProgressiveTechnical`；其他链接文字保留正文断行。
 pub mod link_address_display {
-    use alloc::format;
     use super::Text;
+    use alloc::format;
 
     pub fn displays_address(display: &Text, target: &str) -> bool {
         if display.is_empty() || target.is_empty() {
@@ -1204,8 +1204,8 @@ pub struct LayoutProfileId {
 }
 
 pub mod built_in_layout_profiles {
-    use alloc::borrow::ToOwned;
     use super::LayoutProfileId;
+    use alloc::borrow::ToOwned;
 
     pub fn clreq_horizontal() -> LayoutProfileId {
         LayoutProfileId {

@@ -1,10 +1,12 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{
+    ContextualKinsokuRule, KinsokuForbiddenPosition, Uax14BoundaryRule,
+};
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::FontRole;
 use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_unicode_punctuation_boundaries;
-use tiqian::core::layout_model::{ContextualKinsokuRule, KinsokuForbiddenPosition, Uax14BoundaryRule};
 
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
@@ -324,12 +326,8 @@ fn resolve_unicode_punctuation_boundaries_infix_numeric_separator_with_space_and
         &[],
     );
     assert!(result2.forbidden_line_start_clusters.contains(&2));
-    assert!(
-        result2
-            .decisions
-            .iter()
-            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
-    );
+    assert!(result2.decisions.iter().any(|decision| decision.reason
+        == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d)));
 
     let text3 = Text::from(".5");
     let result3 = resolve_unicode_punctuation_boundaries(
@@ -377,12 +375,8 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_following_variations() {
         &[],
     );
     assert!(result_hash.forbidden_line_start_clusters.contains(&2));
-    assert!(
-        result_hash
-            .decisions
-            .iter()
-            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
-    );
+    assert!(result_hash.decisions.iter().any(|decision| decision.reason
+        == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d)));
 
     let text_letter = Text::from("a .a");
     let result_letter = resolve_unicode_punctuation_boundaries(
@@ -396,7 +390,10 @@ fn resolve_unicode_punctuation_boundaries_decimal_mark_following_variations() {
         result_letter
             .decisions
             .iter()
-            .any(|decision|decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d))
+            .any(|decision| decision.reason
+                == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(
+                    Uax14BoundaryRule::Lb15d
+                ))
     );
 
     let text_inside = Text::from(" .5");

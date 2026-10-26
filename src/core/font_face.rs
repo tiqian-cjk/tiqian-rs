@@ -1,6 +1,6 @@
+use crate::common::Arc;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use core::fmt::{Display, Formatter};
-use crate::common::Arc;
 
 /// 由受控字体目录解析出的物理字体面的稳定标识。
 ///
@@ -190,8 +190,8 @@ impl FontVariationSetting {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{borrow::ToOwned, string::ToString};
     use super::{FontFaceId, FontSynthesisInstance, FontVariationInstance};
+    use alloc::{borrow::ToOwned, string::ToString};
 
     #[test]
     fn synthetic_parameters_distinguish_final_font_instances() {

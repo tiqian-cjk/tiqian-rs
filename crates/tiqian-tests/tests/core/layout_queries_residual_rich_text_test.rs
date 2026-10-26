@@ -2,13 +2,13 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{TextRange, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo};
-use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::core::layout_queries::RichTextCornerRadii;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
     RichTextLinePaint, RichTextSpan, TextSpan, TextStyle,
 };
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 use super::layout_queries_test_support::{cluster, line, metric, result_with_rich_text};
 

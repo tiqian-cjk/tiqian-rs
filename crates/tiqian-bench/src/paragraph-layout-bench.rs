@@ -1,8 +1,8 @@
 use mimalloc::MiMalloc;
 use std::alloc::{GlobalAlloc, Layout as AllocLayout};
 use std::hint::black_box;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use tiqian::api::{ParagraphLayoutEngine, ParagraphLayoutEngineBuilder};
@@ -69,12 +69,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
         unsafe { MiMalloc.dealloc(pointer, layout) }
     }
 
-    unsafe fn realloc(
-        &self,
-        pointer: *mut u8,
-        layout: AllocLayout,
-        new_size: usize,
-    ) -> *mut u8 {
+    unsafe fn realloc(&self, pointer: *mut u8, layout: AllocLayout, new_size: usize) -> *mut u8 {
         let counting = COUNT_ENABLED.load(Ordering::Relaxed);
         if counting {
             REALLOC_CALLS.fetch_add(1, Ordering::Relaxed);
@@ -583,7 +578,9 @@ fn timed_layout(
     };
     let result = engine.layout(black_box(input));
     if let Some(before) = before {
-        measurement.allocations.accumulate(AllocSnapshot::read().since(before));
+        measurement
+            .allocations
+            .accumulate(AllocSnapshot::read().since(before));
     }
     measurement.layout += start.elapsed();
     measurement.calls += 1;
@@ -650,12 +647,7 @@ fn measure_page(
                     &mut measurement,
                     counting,
                 ));
-                results.push(timed_layout(
-                    engine,
-                    body.input,
-                    &mut measurement,
-                    counting,
-                ));
+                results.push(timed_layout(engine, body.input, &mut measurement, counting));
             }
             sample::DemoDocumentDemoBlock::Section { .. } => {}
         }
@@ -889,13 +881,7 @@ fn main() -> Result<(), String> {
             } else if options.annotation_cold {
                 clear_annotation_cache(&cache_state);
             }
-            let page = measure_page(
-                &mut engine,
-                width,
-                options.scale,
-                &options,
-                &fresh_state,
-            );
+            let page = measure_page(&mut engine, width, options.scale, &options, &fresh_state);
             if (
                 page.calls,
                 page.lines,

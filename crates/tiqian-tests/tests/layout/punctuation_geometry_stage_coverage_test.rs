@@ -5,7 +5,10 @@ use tiqian::common::HashSet;
 use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{Rect, text_range};
-use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceSide, Cluster, ContextualKinsokuRule, Glyph, SyntheticClusterKind};
+use tiqian::core::layout_model::{
+    AutoSpaceBoundaryRole, AutoSpaceSide, Cluster, ContextualKinsokuRule, Glyph,
+    SyntheticClusterKind,
+};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineAttachment, InlineBoxSpan};
 use tiqian::font::font_policy::FontRole;
@@ -139,9 +142,9 @@ fn union_without_bounds_falls_back_to_the_first_glyph() {
 fn glyphless_clusters_use_the_pure_policy_path() {
     let atom = atoms(&cluster("，", 0, EM, "cjk"), &[])[0].clone();
     assert_eq!(
-            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
-            atom.geometry_source
-        );
+        PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+        atom.geometry_source
+    );
     assert_eq!(None, atom.ink_bounds_fallback);
     assert_eq!(8.0, atom.trailing_glue.natural);
 }
@@ -347,9 +350,9 @@ fn inline_object_kinsoku_protects_or_hangs_attached_marks() {
     assert_eq!(vec![(0, 1)], fits.unbreakable_ranges);
     assert_eq!(HashSet::from([1]), fits.forbidden_line_start_clusters);
     assert_eq!(
-            ContextualKinsokuRule::InlineObjectAttachedKinsoku,
-            fits.decisions[0].reason
-        );
+        ContextualKinsokuRule::InlineObjectAttachedKinsoku,
+        fits.decisions[0].reason
+    );
     let hangs = inline_object_attached_kinsoku(
         &clusters,
         &attachments,
@@ -412,9 +415,9 @@ fn inline_object_kinsoku_protects_or_hangs_attached_marks() {
     );
     assert_eq!(HashSet::from([1, 2]), result.forbidden_line_start_clusters);
     assert_eq!(
-            ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace,
-            result.decisions[0].reason
-        );
+        ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace,
+        result.decisions[0].reason
+    );
 }
 
 #[test]
@@ -588,9 +591,9 @@ fn typed_space_between_wide_and_narrow_is_replaced_by_the_gap() {
     assert_eq!(AutoSpaceSide::Gap, decision.side);
     assert_eq!(AutoSpaceMode::Replace, decision.mode);
     assert_eq!(
-            AutoSpaceBoundaryRole::EastAsianSpacingWide,
-            decision.boundary_role
-        );
+        AutoSpaceBoundaryRole::EastAsianSpacingWide,
+        decision.boundary_role
+    );
     assert_eq!(
         "TextAutoSpaceReplace:east-asian-spacing-W-space-N",
         decision.reason
@@ -710,14 +713,11 @@ fn wide_to_narrow_boundaries_insert_leading_and_trailing_gaps() {
         &HashSet::new(),
         &HashSet::new(),
     );
+    assert_eq!(AutoSpaceSide::Leading, leading_result.decisions[0].side);
     assert_eq!(
-            AutoSpaceSide::Leading,
-            leading_result.decisions[0].side
-        );
-    assert_eq!(
-            AutoSpaceBoundaryRole::EastAsianSpacingWide,
-            leading_result.decisions[0].boundary_role
-        );
+        AutoSpaceBoundaryRole::EastAsianSpacingWide,
+        leading_result.decisions[0].boundary_role
+    );
     assert_eq!(
         "TextAutoSpaceInsert:east-asian-spacing-W-N",
         leading_result.decisions[0].reason
@@ -737,10 +737,7 @@ fn wide_to_narrow_boundaries_insert_leading_and_trailing_gaps() {
         &HashSet::new(),
         &HashSet::new(),
     );
-    assert_eq!(
-            AutoSpaceSide::Trailing,
-            trailing_result.decisions[0].side
-        );
+    assert_eq!(AutoSpaceSide::Trailing, trailing_result.decisions[0].side);
     assert_eq!(10.0, trailing_result.clusters[0].advance);
 }
 
@@ -760,9 +757,9 @@ fn narrow_inline_boxes_own_their_outer_auto_space() {
         &HashSet::new(),
     );
     assert_eq!(
-            AutoSpaceBoundaryRole::InlineBoxNarrow,
-            result.decisions[0].boundary_role
-        );
+        AutoSpaceBoundaryRole::InlineBoxNarrow,
+        result.decisions[0].boundary_role
+    );
     assert_eq!(
         "InlineBoxOuterAutoSpace:leading-W-N",
         result.decisions[0].reason
@@ -781,9 +778,9 @@ fn narrow_inline_boxes_own_their_outer_auto_space() {
         &HashSet::from([0]),
     );
     assert_eq!(
-            AutoSpaceBoundaryRole::InlineBoxNarrow,
-            trailing_result.decisions[0].boundary_role
-        );
+        AutoSpaceBoundaryRole::InlineBoxNarrow,
+        trailing_result.decisions[0].boundary_role
+    );
     assert_eq!(
         "InlineBoxOuterAutoSpace:trailing-N-W",
         trailing_result.decisions[0].reason
@@ -815,14 +812,11 @@ fn attached_runs_own_one_virtual_gap_at_their_trailing_edge() {
         &HashSet::new(),
     );
     let decision = &result.decisions[0];
+    assert_eq!(AutoSpaceSide::Trailing, decision.side);
     assert_eq!(
-            AutoSpaceSide::Trailing,
-            decision.side
-        );
-    assert_eq!(
-            AutoSpaceBoundaryRole::InlineAttachmentPrevious,
-            decision.boundary_role
-        );
+        AutoSpaceBoundaryRole::InlineAttachmentPrevious,
+        decision.boundary_role
+    );
     assert_eq!(
         "AttachedInlineVirtualAutoSpace:east-asian-spacing-W-N",
         decision.reason

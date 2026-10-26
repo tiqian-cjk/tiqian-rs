@@ -27,7 +27,7 @@ fn nested_pair_inside_neutral_enclosing_inherits_the_outer_quotation() {
     assert!(
         decisions
             .iter()
-            .all(|decision|decision.source != "DelimitedWesternQuotationRun")
+            .all(|decision| decision.source != "DelimitedWesternQuotationRun")
     );
 }
 

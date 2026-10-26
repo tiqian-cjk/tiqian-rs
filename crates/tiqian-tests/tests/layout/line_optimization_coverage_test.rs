@@ -106,13 +106,23 @@ fn carry_next_records_the_moved_mark() {
     let carry_next = RepairOption::CarryNext {
         penalty: 15,
         reason_code: RepairReasonCode::ForbiddenAtLineEnd,
-        detail: RepairDetail::MovedToNextLine { moved_cluster_index: 4 },
+        detail: RepairDetail::MovedToNextLine {
+            moved_cluster_index: 4,
+        },
         moved_cluster_index: 4,
     };
 
     assert_eq!(15, carry_next.penalty());
-    assert_eq!(RepairReasonCode::ForbiddenAtLineEnd, carry_next.reason_code());
-    assert_eq!(RepairDetail::MovedToNextLine { moved_cluster_index: 4 }, carry_next.detail());
+    assert_eq!(
+        RepairReasonCode::ForbiddenAtLineEnd,
+        carry_next.reason_code()
+    );
+    assert_eq!(
+        RepairDetail::MovedToNextLine {
+            moved_cluster_index: 4
+        },
+        carry_next.detail()
+    );
     assert!(matches!(
         carry_next,
         RepairOption::CarryNext {

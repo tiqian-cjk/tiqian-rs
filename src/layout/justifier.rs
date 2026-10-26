@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/Justifier.kt
 
-use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use crate::common::{HashMap, HashSet};
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 
 use super::super::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingValue};
 use super::super::core::int_range::IntRange;
@@ -68,13 +68,9 @@ impl JustificationReason {
     /// dump 使用的原有文本。
     pub fn name(self) -> String {
         match self {
-            Self::AttachedInlineVirtualAutoSpace => {
-                "AttachedInlineVirtualAutoSpace".to_owned()
-            }
+            Self::AttachedInlineVirtualAutoSpace => "AttachedInlineVirtualAutoSpace".to_owned(),
             Self::WesternBracketCjkInterChar => "WesternBracketCjkInterChar".to_owned(),
-            Self::AttachedInlineVirtualInterChar => {
-                "AttachedInlineVirtualInterChar".to_owned()
-            }
+            Self::AttachedInlineVirtualInterChar => "AttachedInlineVirtualInterChar".to_owned(),
             Self::InlineObjectPreferredStretch(kind) => preferred_reason(kind).to_owned(),
             Self::TerminalTechnicalEmergencyTracking(reason) => {
                 format!("TerminalTechnicalEmergencyTracking:{}", reason.name())
@@ -194,7 +190,8 @@ impl JustificationStages {
                 for opportunity in opportunities {
                     if opportunity.capacity == f32::INFINITY {
                         let index = (opportunity.target_cluster_index
-                            - self.line_cluster_range.first()) as usize;
+                            - self.line_cluster_range.first())
+                            as usize;
                         if let Some(delta) = deltas.get_mut(index) {
                             *delta += share;
                         }
@@ -215,8 +212,8 @@ impl JustificationStages {
             for opportunity in opportunities {
                 let delta = opportunity.capacity.max(0.0) * factor;
                 if delta > 0.0 {
-                    let index = (opportunity.target_cluster_index
-                        - self.line_cluster_range.first()) as usize;
+                    let index = (opportunity.target_cluster_index - self.line_cluster_range.first())
+                        as usize;
                     if let Some(value) = deltas.get_mut(index) {
                         *value += delta;
                     }
@@ -289,7 +286,11 @@ impl JustificationStages {
             allocations,
             deficit_before: self.deficit_before,
             unfilled_deficit: remaining.max(0.0),
-            fallback_reason: if remaining > 0.0 { self.fallback_reason.clone() } else { None },
+            fallback_reason: if remaining > 0.0 {
+                self.fallback_reason.clone()
+            } else {
+                None
+            },
         }
     }
 }
@@ -335,9 +336,8 @@ impl Justifier {
     /// 复用同一机会收集路径，完整记录每阶段，保持内部顺序与容量上限。
     pub fn prepare_stages(&self, request: JustificationRequest<'_>) -> JustificationStages {
         let mut stages = Vec::new();
-        let plan = self.justify_with_allocator(
-            request,
-            |remaining, mut opportunities, stage, _| {
+        let plan =
+            self.justify_with_allocator(request, |remaining, mut opportunities, stage, _| {
                 if stage.has_unbounded_capacity() {
                     for opportunity in &mut opportunities {
                         opportunity.capacity = f32::INFINITY;
@@ -345,8 +345,7 @@ impl Justifier {
                 }
                 stages.push((opportunities, stage));
                 remaining
-            },
-        );
+            });
         JustificationStages {
             line_cluster_range: plan.line_cluster_range,
             deficit_before: plan.deficit_before,

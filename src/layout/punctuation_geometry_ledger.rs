@@ -1,20 +1,20 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationGeometryLedger.kt
 
-use alloc::{string::String, vec::Vec};
 use super::super::clreq::clreq_profile::PunctuationClass;
 use super::super::core::geometry::TextRange;
 use super::super::core::layout_model::{
     Cluster, ClusterGeometryDecisionInfo, GlueSpan, LineEdgeTrimDecisionInfo, LineEdgeTrimReason,
     LineEdgeTrimSide, ResolvedClusterGeometry, SpacingDecisionInfo,
 };
-use super::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
 use super::super::core::text_model::InlineAttachment;
+use super::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
 use super::punctuation_model::{
     PunctuationAnchor, PunctuationAtom, PunctuationGeometrySource, PunctuationSpacingAdjustment,
     PunctuationSpacingCompressionResult,
 };
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::{Arc, HashMap};
+use alloc::{string::String, vec::Vec};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationGeometryLedger {
@@ -675,10 +675,9 @@ fn consume_by_range(
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
     use super::*;
-    use crate::common::Arc;
     use crate::clreq::clreq_profile::{PunctuationGluePlacement, PunctuationWidthPolicy};
+    use crate::common::Arc;
     use crate::core::font_face::FontFaceId;
     use crate::core::geometry::text_range;
     use crate::core::text::Text;
@@ -686,6 +685,7 @@ mod tests {
     use crate::layout::punctuation_model::{
         PunctuationAtomBuilder, PunctuationSpacingCompressionResult,
     };
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn derived_ledger_shares_geometry_and_preserves_original_budget() {

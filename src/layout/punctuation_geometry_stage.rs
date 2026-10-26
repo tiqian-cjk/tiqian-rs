@@ -1,6 +1,5 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationGeometryStage.kt
 
-use alloc::{borrow::ToOwned, vec, vec::Vec};
 use super::super::clreq::clreq_profile::{
     AutoSpaceMode, AutoSpacePolicy, KinsokuLevel, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_policies,
@@ -19,6 +18,7 @@ use super::punctuation_geometry_ledger::cluster_index_range_for;
 use super::punctuation_model::{PunctuationAtom, PunctuationAtomBuilder, PunctuationInkInput};
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::{HashMap, HashSet};
+use alloc::{borrow::ToOwned, vec, vec::Vec};
 
 const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
     leading: EastAsianSpacingValue::Other,
@@ -67,7 +67,8 @@ pub fn inline_object_attached_marks(
         let mut separators = Vec::new();
         while previous >= 0
             && (is_space_run(&clusters[previous as usize])
-                || (clusters[previous as usize].synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+                || (clusters[previous as usize].synthetic_kind
+                    == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
                     && clusters[previous as usize].display_text.is_empty()))
             && clusters[previous as usize].range.end()
                 == clusters[previous as usize + 1].range.start()
@@ -401,23 +402,33 @@ pub fn apply_auto_space_policy(
                 } else {
                     None
                 };
-                virtual_gap[b.attached_cluster_range.1 as usize] =
-                    mode_for_narrow(narrow, policy).is_some_and(|mode| mode != AutoSpaceMode::Disabled);
+                virtual_gap[b.attached_cluster_range.1 as usize] = mode_for_narrow(narrow, policy)
+                    .is_some_and(|mode| mode != AutoSpaceMode::Disabled);
             }
         }
     }
     // 有效邻居随源顺序单调前进；跳过隐藏空白，不分配逐 cluster 邻接表。
-    let mut effective = clusters.iter().enumerate().filter(|(_, cluster)| {
-        !(cluster.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
-            && cluster.display_text.is_empty())
-    }).map(|(index, _)| index).peekable();
+    let mut effective = clusters
+        .iter()
+        .enumerate()
+        .filter(|(_, cluster)| {
+            !(cluster.synthetic_kind
+                == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+                && cluster.display_text.is_empty())
+        })
+        .map(|(index, _)| index)
+        .peekable();
     let mut previous = None;
     let updated = clusters
         .iter()
         .enumerate()
         .map(|(i, c)| {
-            if c.synthetic_kind == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
-                && c.display_text.is_empty() { return c.clone(); }
+            if c.synthetic_kind
+                == Some(super::super::core::layout_model::SyntheticClusterKind::WhiteSpace)
+                && c.display_text.is_empty()
+            {
+                return c.clone();
+            }
             effective.next();
             let next_index = effective.peek().copied();
             let previous_index = previous.replace(i);

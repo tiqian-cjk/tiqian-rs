@@ -1,4 +1,3 @@
-use alloc::{string::String, vec, vec::Vec};
 use crate::core::geometry::TextRange;
 use crate::core::text::Text;
 use crate::core::text_model::{
@@ -6,6 +5,7 @@ use crate::core::text_model::{
     LineBreakSpan, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind, RichTextLinePaint,
     RichTextPaint, RichTextSemantic, RubySpan,
 };
+use alloc::{string::String, vec, vec::Vec};
 
 use super::builder::ParagraphBuilder;
 use super::style::{InlineBoxStyle, InlineObjectMetrics, RubyAnnotation, TextStyleOverride};

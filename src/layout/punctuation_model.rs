@@ -1,12 +1,12 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/PunctuationModel.kt
 
-use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use super::super::clreq::clreq_profile::{
     GlueSide, PunctuationClass, PunctuationGluePlacement, PunctuationWidthPolicy,
     clreq_punctuation_policies,
 };
 use super::super::core::geometry::{Rect, ScalarOffset, TextRange};
 use super::super::core::text::Text;
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 
 /// 标点几何证据的来源。
 ///

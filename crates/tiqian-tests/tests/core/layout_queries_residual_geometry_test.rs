@@ -4,7 +4,6 @@ use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyGeometry,
 };
-use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 use tiqian::core::layout_queries::{
     get_bounding_box, get_bounding_boxes, get_cursor_rect, get_line_for_offset,
     get_offset_for_position, get_selection_offset_for_position, glyph_ink_bounds,
@@ -12,6 +11,7 @@ use tiqian::core::layout_queries::{
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextSpan};
+use tiqian::layout::punctuation_model::PunctuationGeometrySource;
 
 use super::layout_queries_test_support::{cluster, line, result, result_with_rich_text};
 
@@ -812,17 +812,9 @@ fn rubies_on_other_lines_do_not_affect_this_line_geometry() {
         Vec::new(),
         LayoutDebugInfo::builder()
             .ruby_decisions(vec![
-                RubyGeometry::builder(
-                    text_range(0, 2),
-                    Text::from("zhù"),
-                    1,
-                    10.0,
-                    4.0,
-                    6.0,
-                    0.0,
-                )
-                .width(30.0)
-                .build(),
+                RubyGeometry::builder(text_range(0, 2), Text::from("zhù"), 1, 10.0, 4.0, 6.0, 0.0)
+                    .width(30.0)
+                    .build(),
             ])
             .build(),
     );

@@ -1,4 +1,3 @@
-use alloc::{string::String, vec, vec::Vec};
 use crate::common::{HashMap, HashSet};
 use crate::core::geometry::{LayoutConstraints, ScalarOffset, TextRange};
 use crate::core::text::Text;
@@ -8,6 +7,7 @@ use crate::core::text_model::{
     RichTextPaint, RichTextSpan, RubySpan, TextSpan, TextStyle, TiqianTextContent,
     built_in_layout_profiles,
 };
+use alloc::{string::String, vec, vec::Vec};
 
 use super::types::ParagraphBuildError;
 

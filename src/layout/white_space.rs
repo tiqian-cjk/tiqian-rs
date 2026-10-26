@@ -1,8 +1,8 @@
-use alloc::vec::Vec;
 use crate::common::HashMap;
 use crate::core::geometry::{ScalarOffset, TextRange};
 use crate::core::text::Text;
 use crate::core::text_model::{InlineObjectSpan, WhiteSpaceMode};
+use alloc::vec::Vec;
 
 /// 单次扫描源文本，样式与源注解边界不截断空白序列。
 /// 对象覆盖的源文本不参与解析，与 cluster 角色切分保持一致。
@@ -14,11 +14,15 @@ pub fn scan_white_space(
     let mut units: Vec<WhiteSpaceUnit> = Vec::new();
     let mut offset = ScalarOffset::ZERO;
     let length = text.scalar_len();
-    let collapse = matches!(mode, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks);
+    let collapse = matches!(
+        mode,
+        WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks
+    );
     let mut previous_space = false;
     let mut after_break = false;
     while offset < length {
-        if let Some(object) = objects.get(&offset)
+        if let Some(object) = objects
+            .get(&offset)
             .filter(|object| object.range.end() > offset && object.range.end() <= length)
         {
             offset = object.range.end();
@@ -81,7 +85,11 @@ pub fn scan_white_space(
                 WhiteSpaceAction::ToSpace
             }
         };
-        units.push(WhiteSpaceUnit { range: TextRange::new(start, offset), kind, action });
+        units.push(WhiteSpaceUnit {
+            range: TextRange::new(start, offset),
+            kind,
+            action,
+        });
     }
     units
 }
@@ -142,33 +150,64 @@ pub struct LineWhiteSpaceAdjustment {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::core::geometry::text_range;
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn collapse_converts_segment_breaks_and_tabs_without_changing_source_ranges() {
         let text = Text::from("中 \t\r\n \r\nA");
         let units = scan_white_space(&text, WhiteSpaceMode::Collapse, &HashMap::new());
-        assert_eq!(units.iter().map(|unit| unit.range).collect::<Vec<_>>(), vec![
-            text_range(1, 2), text_range(2, 3), text_range(3, 5),
-            text_range(5, 6), text_range(6, 8),
-        ]);
+        assert_eq!(
+            units.iter().map(|unit| unit.range).collect::<Vec<_>>(),
+            vec![
+                text_range(1, 2),
+                text_range(2, 3),
+                text_range(3, 5),
+                text_range(5, 6),
+                text_range(6, 8),
+            ]
+        );
         assert_eq!(units[0].action, WhiteSpaceAction::Preserve);
-        assert!(units[1..].iter().all(|unit| unit.action == WhiteSpaceAction::Collapse));
-        let units = scan_white_space(&Text::from("中\r\nA\tB"), WhiteSpaceMode::Collapse, &HashMap::new());
-        assert!(units.iter().all(|unit| unit.action == WhiteSpaceAction::ToSpace));
+        assert!(
+            units[1..]
+                .iter()
+                .all(|unit| unit.action == WhiteSpaceAction::Collapse)
+        );
+        let units = scan_white_space(
+            &Text::from("中\r\nA\tB"),
+            WhiteSpaceMode::Collapse,
+            &HashMap::new(),
+        );
+        assert!(
+            units
+                .iter()
+                .all(|unit| unit.action == WhiteSpaceAction::ToSpace)
+        );
     }
 
     #[test]
     fn preserve_breaks_removes_surrounding_spaces_and_keeps_crlf_atomic() {
-        let units = scan_white_space(&Text::from("A \t\r\n \tB"), WhiteSpaceMode::PreserveBreaks, &HashMap::new());
-        assert_eq!(units[2], WhiteSpaceUnit {
-            range: text_range(3, 5), kind: WhiteSpaceKind::SegmentBreak,
-            action: WhiteSpaceAction::Preserve,
-        });
-        assert!(units.iter().enumerate().filter(|(index, _)| *index != 2)
-            .all(|(_, unit)| unit.action == WhiteSpaceAction::Remove));
+        let units = scan_white_space(
+            &Text::from("A \t\r\n \tB"),
+            WhiteSpaceMode::PreserveBreaks,
+            &HashMap::new(),
+        );
+        assert_eq!(
+            units[2],
+            WhiteSpaceUnit {
+                range: text_range(3, 5),
+                kind: WhiteSpaceKind::SegmentBreak,
+                action: WhiteSpaceAction::Preserve,
+            }
+        );
+        assert!(
+            units
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != 2)
+                .all(|(_, unit)| unit.action == WhiteSpaceAction::Remove)
+        );
     }
 
     #[test]
@@ -177,8 +216,18 @@ mod tests {
         for mode in [WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
             let units = scan_white_space(&text, mode, &HashMap::new());
             assert_eq!(10, units.len());
-            assert!(units.iter().all(|unit| unit.action == WhiteSpaceAction::Preserve));
-            assert_eq!(5, units.iter().filter(|unit| unit.kind == WhiteSpaceKind::MandatoryBreak).count());
+            assert!(
+                units
+                    .iter()
+                    .all(|unit| unit.action == WhiteSpaceAction::Preserve)
+            );
+            assert_eq!(
+                5,
+                units
+                    .iter()
+                    .filter(|unit| unit.kind == WhiteSpaceKind::MandatoryBreak)
+                    .count()
+            );
         }
     }
 

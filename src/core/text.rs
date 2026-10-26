@@ -332,9 +332,9 @@ impl Borrow<str> for Text {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
     use super::Text;
     use crate::core::geometry::{scalar_offset, text_range};
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn scalar_and_utf8_boundaries_round_trip() {

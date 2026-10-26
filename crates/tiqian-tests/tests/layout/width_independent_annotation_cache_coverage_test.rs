@@ -20,8 +20,7 @@ use tiqian::font::font_policy::CjkFontRoleClassifier;
 use tiqian::layout::default_hyphenator::default_hyphenator;
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
 use tiqian::layout::punctuation_model::{
-    AttachedInlineBoundaryCase, PunctuationAtomBuilder, PunctuationSpacingCompressor,
-    SpacingReason,
+    AttachedInlineBoundaryCase, PunctuationAtomBuilder, PunctuationSpacingCompressor, SpacingReason,
 };
 use tiqian::layout::quote_pair_analyzer::QuotePairAnalyzer;
 use tiqian::layout::width_independent_annotation_cache::{
@@ -688,10 +687,12 @@ fn centered_punct_before_attached_reference_keeps_leading_glue_only() {
         .debug
         .spacing_decisions
         .iter()
-        .find(|decision| matches!(
-            decision.reason,
-            SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
-        ))
+        .find(|decision| {
+            matches!(
+                decision.reason,
+                SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
+            )
+        })
         .unwrap();
     assert_eq!(
         SpacingReason::AttachedInlineVirtualPunctuationBoundary(
@@ -1011,7 +1012,10 @@ fn style_at_and_emphasis_italic_at_and_dynamic_shaping_branches() {
         assert!(!prep.clusters.is_empty());
     }
 
-    annotation.base_shaping_stage.segment_font_resolutions.clear();
+    annotation
+        .base_shaping_stage
+        .segment_font_resolutions
+        .clear();
     let prep_unknown_roles = build_paragraph_layout_prep(
         &input,
         &annotation,

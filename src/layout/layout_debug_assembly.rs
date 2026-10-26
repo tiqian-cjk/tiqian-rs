@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LayoutDebugAssembly.kt
 
-use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 use crate::common::HashMap;
+use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
 
 use super::super::clreq::clreq_profile::{
     CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor,
@@ -233,7 +233,12 @@ pub fn build_layout_debug_info(stage: LayoutDebugStageInput<'_>) -> LayoutDebugI
                 line.range,
                 stage.line_breaker_strategy_name,
             )
-            .repair(candidate.repair.as_ref().map(|repair| repair.kind().name().to_owned()))
+            .repair(
+                candidate
+                    .repair
+                    .as_ref()
+                    .map(|repair| repair.kind().name().to_owned()),
+            )
             .repair_penalty(candidate.repair.as_ref().map_or(0, RepairOption::penalty))
             .repair_decision(
                 candidate

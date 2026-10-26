@@ -1,6 +1,5 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphShapingStage.kt
 
-use alloc::{borrow::ToOwned, format, string::String, vec, vec::Vec};
 use super::super::clreq::clreq_profile::{
     CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
 };
@@ -20,9 +19,10 @@ use super::super::shaping::text_shaper::{
     ShapingResult, UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE,
 };
 use super::cluster_role_resolution::ResolvedClusterRange;
-use super::white_space::{WhiteSpaceAction, WhiteSpaceKind, WhiteSpaceUnit};
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
+use super::white_space::{WhiteSpaceAction, WhiteSpaceKind, WhiteSpaceUnit};
 use crate::common::{Arc, HashMap, HashSet};
+use alloc::{borrow::ToOwned, format, string::String, vec, vec::Vec};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -83,15 +83,35 @@ pub fn shape_paragraph(
         }
         if let Some(unit) = white_space_units.get(&range) {
             let source = text.slice_text(range);
-            let hidden = matches!(unit.action, WhiteSpaceAction::Collapse | WhiteSpaceAction::Remove);
+            let hidden = matches!(
+                unit.action,
+                WhiteSpaceAction::Collapse | WhiteSpaceAction::Remove
+            );
             let tab = unit.kind == WhiteSpaceKind::Tab && unit.action == WhiteSpaceAction::Preserve;
             if hidden || tab {
                 let display = if tab { source.clone() } else { Text::new() };
                 let result = ShapingResult::with_decisions(
-                    vec![Cluster::synthetic(range, source.clone(), display.clone(), SyntheticClusterKind::WhiteSpace, 0.)],
+                    vec![Cluster::synthetic(
+                        range,
+                        source.clone(),
+                        display.clone(),
+                        SyntheticClusterKind::WhiteSpace,
+                        0.,
+                    )],
                     Vec::new(),
-                    vec![ShapingDecisionInfo::builder(range, source, display, None, 0, 0.,
-                        "WhiteSpace".to_owned(), format!("WhiteSpace:{:?}:{:?}", unit.kind, unit.action)).build()],
+                    vec![
+                        ShapingDecisionInfo::builder(
+                            range,
+                            source,
+                            display,
+                            None,
+                            0,
+                            0.,
+                            "WhiteSpace".to_owned(),
+                            format!("WhiteSpace:{:?}:{:?}", unit.kind, unit.action),
+                        )
+                        .build(),
+                    ],
                 );
                 return Arc::new(result);
             }
@@ -99,7 +119,10 @@ pub fn shape_paragraph(
                 // 按实际显示内容 shaping，避免 backend 的源字符规则把 CRLF／Tab
                 // 当作待测量内容；有效显示单元是一个 U+0020。
                 let mut result = font_backend.shape(&FontBackendRequest::new(
-                    Text::from(" "), text_range(0, 1), style_at(range.start()), FontRole::LatinText,
+                    Text::from(" "),
+                    text_range(0, 1),
+                    style_at(range.start()),
+                    FontRole::LatinText,
                 ));
                 let resolution = result.resolution(range, FontRole::LatinText);
                 for cluster in &mut result.shaping.clusters {
@@ -108,7 +131,9 @@ pub fn shape_paragraph(
                 }
                 for run in &mut result.shaping.glyph_runs {
                     run.range = range;
-                    for glyph in &mut run.glyphs { glyph.cluster_range = range; }
+                    for glyph in &mut run.glyphs {
+                        glyph.cluster_range = range;
+                    }
                 }
                 for decision in &mut result.shaping.decisions {
                     decision.range = range;
@@ -172,8 +197,11 @@ pub fn shape_paragraph(
                 CjkPunctuationGlyphSubstitution {
                     source_text: source.clone(),
                     display_text: substituted.clone(),
-                    reason: punctuation_glyph_substitutor
-                        .reason_for_role(&source, role, &substituted),
+                    reason: punctuation_glyph_substitutor.reason_for_role(
+                        &source,
+                        role,
+                        &substituted,
+                    ),
                 },
             );
             shaped
@@ -198,8 +226,10 @@ pub fn shape_paragraph(
             let _ = object;
             continue;
         }
-        if resolved.mandatory_break || resolved.zero_width_soft_break
-            || white_space_units.contains_key(&resolved.range) {
+        if resolved.mandatory_break
+            || resolved.zero_width_soft_break
+            || white_space_units.contains_key(&resolved.range)
+        {
             continue;
         }
         let role = resolved.role;
@@ -400,15 +430,13 @@ pub fn shape_paragraph(
                 }
                 if !technical_emergency.is_empty() {
                     // 一次构造原因，同时用于去重比较与 decision 记录；按结构比较而非文本。
-                    let reason = match rejected_set_for_span(
-                        rejected_technical_tiers_by_span,
-                        span.range,
-                    ) {
-                        Some(tiers) => {
-                            EmergencyTrackingReason::CurrentLineTechnicalTierRejection(tiers)
-                        }
-                        None => EmergencyTrackingReason::ProgressiveTechnicalSpan,
-                    };
+                    let reason =
+                        match rejected_set_for_span(rejected_technical_tiers_by_span, span.range) {
+                            Some(tiers) => {
+                                EmergencyTrackingReason::CurrentLineTechnicalTierRejection(tiers)
+                            }
+                            None => EmergencyTrackingReason::ProgressiveTechnicalSpan,
+                        };
                     if !emergency.iter().any(
                         |decision: &EmergencyTrackingEligibilityDecisionInfo| {
                             decision.range == span.range && decision.reason == reason
@@ -559,7 +587,10 @@ pub fn shape_paragraph(
             continue;
         }
         if resolved.mandatory_break {
-            shaping_results.push(Arc::new(mandatory_break_shaping_result(text, resolved.range)));
+            shaping_results.push(Arc::new(mandatory_break_shaping_result(
+                text,
+                resolved.range,
+            )));
             continue;
         }
         if resolved.zero_width_soft_break {

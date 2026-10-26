@@ -57,19 +57,11 @@ fn visible_paint_overhang_includes_visible_glyph_dot_and_ruby_paint() {
                 .build(),
             ])
             .ruby_decisions(vec![
-                RubyGeometry::builder(
-                    text_range(0, 1),
-                    Text::from("jiǎ"),
-                    0,
-                    5.0,
-                    -3.0,
-                    5.0,
-                    0.0,
-                )
-                .ascent(5.0)
-                .descent(2.0)
-                .width(16.0)
-                .build(),
+                RubyGeometry::builder(text_range(0, 1), Text::from("jiǎ"), 0, 5.0, -3.0, 5.0, 0.0)
+                    .ascent(5.0)
+                    .descent(2.0)
+                    .width(16.0)
+                    .build(),
             ])
             .build(),
     );

@@ -1,10 +1,12 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::text_range;
 use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::{
+    ContextualKinsokuRule, KinsokuForbiddenPosition, Uax14BoundaryRule,
+};
 use tiqian::core::text::Text;
 use tiqian::font::font_policy::FontRole;
 use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_unicode_punctuation_boundaries;
-use tiqian::core::layout_model::{ContextualKinsokuRule, KinsokuForbiddenPosition, Uax14BoundaryRule};
 
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
@@ -92,12 +94,8 @@ fn resolve_unicode_punctuation_boundaries_with_close_parenthesis_class() {
         &[FontRole::CjkText; 2],
         &[],
     );
-    assert!(
-        result
-            .decisions
-            .iter()
-            .any(|decision| decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb13))
-    );
+    assert!(result.decisions.iter().any(|decision| decision.reason
+        == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb13)));
 }
 
 #[test]
@@ -114,7 +112,10 @@ fn resolve_unicode_punctuation_boundaries_with_infix_numeric_separator_rule() {
         .iter()
         .find(|decision| decision.source_text == ",")
         .unwrap();
-    assert_eq!(ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d), infix.reason);
+    assert_eq!(
+        ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
+        infix.reason
+    );
 }
 
 #[test]

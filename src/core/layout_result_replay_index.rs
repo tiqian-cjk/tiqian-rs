@@ -1,5 +1,5 @@
-use alloc::{string::String, vec, vec::Vec};
 use crate::common::{Arc, HashMap};
+use alloc::{string::String, vec, vec::Vec};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
 use super::layout_model::{Glyph, LayoutResult};

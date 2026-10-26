@@ -1,6 +1,5 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineRepair.kt
 
-use alloc::{vec, vec::Vec};
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
@@ -14,6 +13,7 @@ use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges, line_limit,
 };
 use crate::common::{HashMap, HashSet};
+use alloc::{vec, vec::Vec};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PushInResult {
@@ -157,18 +157,22 @@ pub fn apply_kinsoku_repairs(
                 && let Some(measurement) = &repaired.measurement
             {
                 let in_measure = repaired.in_measure_cluster_range();
-                let natural_width = measurement.measure(
-                    repaired.cluster_range,
-                    repaired.end_reason,
-                    repaired.measurement_limit,
-                    &[],
-                ).natural;
-                let adjusted_width = measurement.measure(
-                    in_measure,
-                    repaired.end_reason,
-                    repaired.measurement_limit,
-                    &[],
-                ).adjusted;
+                let natural_width = measurement
+                    .measure(
+                        repaired.cluster_range,
+                        repaired.end_reason,
+                        repaired.measurement_limit,
+                        &[],
+                    )
+                    .natural;
+                let adjusted_width = measurement
+                    .measure(
+                        in_measure,
+                        repaired.end_reason,
+                        repaired.measurement_limit,
+                        &[],
+                    )
+                    .adjusted;
                 repaired.natural_width = natural_width;
                 repaired.adjusted_width = adjusted_width;
             }
@@ -210,7 +214,10 @@ pub fn apply_kinsoku_repairs(
         }
         let carried = previous.cluster_range.last();
         if unbreakable.contains_boundary(carried)
-            || previous.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(carried))
+            || previous
+                .measurement
+                .as_ref()
+                .is_some_and(|measurement| !measurement.boundary_allowed(carried))
         {
             lines[i] = leave_ragged(
                 curr,
@@ -232,7 +239,8 @@ pub fn apply_kinsoku_repairs(
             Vec::new(),
         );
         next.measurement = curr.measurement.clone();
-        next.measurement_limit = line_limit(max_width, first_line_indent, next.cluster_range.first());
+        next.measurement_limit =
+            line_limit(max_width, first_line_indent, next.cluster_range.first());
         next.remeasure();
         if next.adjusted_width > max_width {
             lines[i] = leave_ragged(
@@ -318,12 +326,32 @@ pub fn try_push_in(
     });
     let range = IntRange::new(previous.cluster_range.first(), end);
     let mut expanded = if previous.measurement.is_some() {
-        LineCandidate::new(range, TextRange::new(adjusted[range.first() as usize].range.start(),
-            adjusted[end as usize].range.end()), 0.0, 0.0)
-    } else { rebuild_line(range, natural, adjusted, LineEndReason::AutoWrap, None, Vec::new()) };
+        LineCandidate::new(
+            range,
+            TextRange::new(
+                adjusted[range.first() as usize].range.start(),
+                adjusted[end as usize].range.end(),
+            ),
+            0.0,
+            0.0,
+        )
+    } else {
+        rebuild_line(
+            range,
+            natural,
+            adjusted,
+            LineEndReason::AutoWrap,
+            None,
+            Vec::new(),
+        )
+    };
     expanded.measurement = previous.measurement.clone();
     expanded.measurement_limit = max_width;
-    expanded.end_reason = if end == current.cluster_range.last() { current.end_reason } else { previous.end_reason };
+    expanded.end_reason = if end == current.cluster_range.last() {
+        current.end_reason
+    } else {
+        previous.end_reason
+    };
     expanded.remeasure();
     let overflow = expanded.adjusted_width - max_width;
     let mut in_line: Vec<_> = opportunities
@@ -333,7 +361,11 @@ pub fn try_push_in(
                 && opp.capacity > 0.
                 && (!opp.line_end_only || opp.cluster_index == offender)
                 && expanded.measurement.as_ref().is_none_or(|measurement| {
-                    measurement.shrink_is_effective(expanded.cluster_range, expanded.end_reason, opp.cluster_index)
+                    measurement.shrink_is_effective(
+                        expanded.cluster_range,
+                        expanded.end_reason,
+                        opp.cluster_index,
+                    )
                 })
         })
         .copied()
@@ -350,10 +382,17 @@ pub fn try_push_in(
     }
     let capacity: f32 = in_line.iter().map(|opp| opp.capacity).sum();
     let resolved_allocations = if let Some(measurement) = &expanded.measurement {
-        measurement.compression(expanded.cluster_range, expanded.end_reason, max_width, &in_line)
+        measurement.compression(
+            expanded.cluster_range,
+            expanded.end_reason,
+            max_width,
+            &in_line,
+        )
     } else if overflow <= capacity {
         Some(distribute_push_in_shrink(&in_line, overflow.max(0.0)))
-    } else { None };
+    } else {
+        None
+    };
     if resolved_allocations.is_none() {
         return PushInResult {
             previous: previous.clone(),
@@ -504,8 +543,7 @@ pub fn apply_fill_push_in(
                         .sum::<f32>()
                 },
                 |measurement| {
-                    measurement.adjusted_width(range, reason, limit, &[])
-                        - previous.adjusted_width
+                    measurement.adjusted_width(range, reason, limit, &[]) - previous.adjusted_width
                 },
             )
         };
@@ -576,9 +614,15 @@ pub fn apply_fill_push_in(
             if overflow > 0. {
                 let stretch = line_gap_count(previous.cluster_range, gap_boundaries);
                 let compression = line_gap_count(
-                    IntRange::new(previous.cluster_range.first(), end), gap_boundaries);
+                    IntRange::new(previous.cluster_range.first(), end),
+                    gap_boundaries,
+                );
                 if overflow / (compression.max(1) as f32)
-                    > if stretch == 0 { 0. } else { deficit / stretch as f32 }
+                    > if stretch == 0 {
+                        0.
+                    } else {
+                        deficit / stretch as f32
+                    }
                 {
                     i += 1;
                     continue;
@@ -616,7 +660,11 @@ pub fn apply_fill_push_in(
                 gap_boundaries,
             );
             if cost / (compression.max(1) as f32)
-                > if stretch == 0 { 0. } else { deficit / stretch as f32 }
+                > if stretch == 0 {
+                    0.
+                } else {
+                    deficit / stretch as f32
+                }
             {
                 i += 1;
                 continue;

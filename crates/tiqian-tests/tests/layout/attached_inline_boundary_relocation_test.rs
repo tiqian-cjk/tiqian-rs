@@ -7,8 +7,8 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LookaheadLineBreaker};
 use tiqian::layout::paragraph_dp_line_breaker::ParagraphDpLineBreaker;
-use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use tiqian::layout::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
+use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 
 use crate::support::DeterministicStubFontBackend;
 
@@ -81,11 +81,16 @@ fn punctuation_after_footnote_is_judged_against_the_preceding_punctuation() {
         .spacing_decisions
         .iter()
         .find(|decision| {
-            matches!(decision.reason, SpacingReason::AttachedInlineVirtualPunctuationBoundary(_))
+            matches!(
+                decision.reason,
+                SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
+            )
         })
         .unwrap();
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::AdjacentPunctuation),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::AdjacentPunctuation
+        ),
         decision.reason
     );
     assert!(decision.natural_inner_glue > 0.0);
@@ -100,11 +105,16 @@ fn closing_quote_before_footnote_and_body_keeps_its_natural_trailing_glue() {
         .spacing_decisions
         .iter()
         .find(|decision| {
-            matches!(decision.reason, SpacingReason::AttachedInlineVirtualPunctuationBoundary(_))
+            matches!(
+                decision.reason,
+                SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
+            )
         })
         .unwrap();
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::Natural),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::Natural
+        ),
         decision.reason
     );
     assert_eq!(decision.natural_inner_glue, decision.adjusted_inner_glue);
@@ -119,11 +129,16 @@ fn closing_quote_before_paragraph_end_footnote_has_no_trailing_glue() {
         .spacing_decisions
         .iter()
         .find(|decision| {
-            matches!(decision.reason, SpacingReason::AttachedInlineVirtualPunctuationBoundary(_))
+            matches!(
+                decision.reason,
+                SpacingReason::AttachedInlineVirtualPunctuationBoundary(_)
+            )
         })
         .unwrap();
     assert_eq!(
-        SpacingReason::AttachedInlineVirtualPunctuationBoundary(AttachedInlineBoundaryCase::LineEnd),
+        SpacingReason::AttachedInlineVirtualPunctuationBoundary(
+            AttachedInlineBoundaryCase::LineEnd
+        ),
         decision.reason
     );
     assert_eq!(0.0, decision.adjusted_inner_glue);

@@ -154,7 +154,7 @@ fn in_word_apostrophe_matrix_does_not_consume_outer_quote_pairs() {
         assert!(
             decisions
                 .iter()
-                .all(|decision|decision.source == "NonCjkInWordApostrophe"),
+                .all(|decision| decision.source == "NonCjkInWordApostrophe"),
             "{word}: {decisions:?}"
         );
 
@@ -291,7 +291,7 @@ fn whitespace_delimited_latin_quote_pair_overrides_cjk_outer_context() {
     assert!(
         decisions
             .iter()
-            .all(|decision|decision.source == "DelimitedWesternQuotationRun"),
+            .all(|decision| decision.source == "DelimitedWesternQuotationRun"),
         "{decisions:?}"
     );
 }
@@ -343,7 +343,7 @@ fn adjacent_quoted_list_items_do_not_use_previous_item_content_as_outer_context(
         assert!(
             final_pair_decisions
                 .iter()
-                .all(|decision|decision.source == "PairedPunctuationOuterScriptContext"),
+                .all(|decision| decision.source == "PairedPunctuationOuterScriptContext"),
             "{text}: {final_pair_decisions:?}"
         );
     }
@@ -436,7 +436,7 @@ fn mixed_chinese_question_at_paragraph_start_uses_paragraph_language() {
     assert!(
         decisions
             .iter()
-            .all(|decision|decision.source == "ParagraphLanguageQuoteContext"),
+            .all(|decision| decision.source == "ParagraphLanguageQuoteContext"),
         "{decisions:?}"
     );
 }
@@ -459,7 +459,7 @@ fn explicit_english_paragraph_language_wins_for_mixed_quotation() {
     assert!(
         decisions
             .iter()
-            .all(|decision|decision.source == "ParagraphLanguageQuoteContext"),
+            .all(|decision| decision.source == "ParagraphLanguageQuoteContext"),
         "{decisions:?}"
     );
 }
@@ -479,7 +479,7 @@ fn common_digits_do_not_choose_the_quote_role() {
     assert!(
         chinese
             .iter()
-            .all(|decision|decision.source == "ParagraphLanguageQuoteContext"),
+            .all(|decision| decision.source == "ParagraphLanguageQuoteContext"),
         "{chinese:?}"
     );
     let english = analyzer.classify_quote_roles(
@@ -496,7 +496,7 @@ fn common_digits_do_not_choose_the_quote_role() {
     assert!(
         english
             .iter()
-            .all(|decision|decision.source == "ParagraphLanguageQuoteContext"),
+            .all(|decision| decision.source == "ParagraphLanguageQuoteContext"),
         "{english:?}"
     );
 }

@@ -822,8 +822,7 @@ mod tests {
                         .clusters
                         .iter()
                         .filter(|cluster| {
-                            cluster.range.start() >= range_start
-                                && cluster.range.end() <= range_end
+                            cluster.range.start() >= range_start && cluster.range.end() <= range_end
                         })
                         .collect();
                     let matches_expected_face = !clusters.is_empty()

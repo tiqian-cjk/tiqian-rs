@@ -1,9 +1,9 @@
-use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use crate::core::text::Text;
 use crate::core::text_model::{
     FontSynthesis, InlineAttachment, InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
     RubyKind, TextStyle,
 };
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TextStyleOverride {
@@ -271,9 +271,9 @@ impl InlineObjectMetricsBuilder {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{borrow::ToOwned, vec};
     use crate::api::{RubyAnnotation, TextStyleOverride};
     use crate::core::text_model::{FontSynthesis, TextStyle};
+    use alloc::{borrow::ToOwned, vec};
 
     #[test]
     fn text_style_override_preserves_unspecified_fields() {

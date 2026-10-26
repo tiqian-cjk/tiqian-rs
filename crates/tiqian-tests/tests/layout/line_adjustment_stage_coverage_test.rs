@@ -14,8 +14,8 @@ use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest, FontBackend
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
-use tiqian::layout::punctuation_model::GlueKind;
 use tiqian::core::layout_model::LineEdgeTrimSide;
+use tiqian::layout::punctuation_model::GlueKind;
 
 fn layout(text: &str, max_width: f32, hyphenate: bool) -> tiqian::core::layout_model::LayoutResult {
     layout_with_content(text, max_width, hyphenate, Vec::new(), Vec::new())
@@ -201,7 +201,7 @@ fn formula_line_end_discards_the_trailing_boundary_advance() {
                 .build(),
         )],
     );
-        let discard = result
+    let discard = result
             .debug
             .line_edge_trim_decisions
         .iter()
@@ -209,10 +209,7 @@ fn formula_line_end_discards_the_trailing_boundary_advance() {
         .unwrap();
     assert_eq!(6.0, discard.trim_amount);
     assert_eq!(0.0, discard.consumed_before);
-    assert_eq!(
-            LineEdgeTrimSide::Trailing,
-            discard.side
-        );
+    assert_eq!(LineEdgeTrimSide::Trailing, discard.side);
 }
 
 #[test]
@@ -244,10 +241,7 @@ fn attached_footnote_trailing_glue_trims_when_the_line_ends_at_the_run() {
         .unwrap();
     assert_eq!(text_range(8, 11), trim.cluster_range);
     assert_eq!(8.0, trim.trim_amount);
-    assert_eq!(
-            LineEdgeTrimSide::Trailing,
-            trim.side
-        );
+    assert_eq!(LineEdgeTrimSide::Trailing, trim.side);
 }
 
 #[test]
@@ -263,10 +257,16 @@ fn lone_latin_cluster_merges_both_auto_space_edge_trims_into_one_key() {
         .debug
         .line_edge_trim_decisions
         .iter()
-        .filter(|decision|decision.reason == tiqian::core::layout_model::LineEdgeTrimReason::TextAutoSpaceLineEdgeTrim)
+        .filter(|decision| {
+            decision.reason
+                == tiqian::core::layout_model::LineEdgeTrimReason::TextAutoSpaceLineEdgeTrim
+        })
         .collect();
     assert_eq!(
-        vec![tiqian::core::layout_model::LineEdgeTrimSide::Trailing, tiqian::core::layout_model::LineEdgeTrimSide::Leading],
+        vec![
+            tiqian::core::layout_model::LineEdgeTrimSide::Trailing,
+            tiqian::core::layout_model::LineEdgeTrimSide::Leading
+        ],
         trims
             .iter()
             .map(|decision| decision.side)
@@ -356,8 +356,10 @@ fn zero_advance_edge_space_is_never_collapsed() {
             .debug
             .line_edge_trim_decisions
             .iter()
-            .all(|decision| decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::LineStartHalfWidthPunctuation
-                && decision.reason != tiqian::core::layout_model::LineEdgeTrimReason::LineEndHalfWidthPunctuation),
+            .all(|decision| decision.reason
+                != tiqian::core::layout_model::LineEdgeTrimReason::LineStartHalfWidthPunctuation
+                && decision.reason
+                    != tiqian::core::layout_model::LineEdgeTrimReason::LineEndHalfWidthPunctuation),
         "{:?}",
         result.debug.line_edge_trim_decisions
     );
@@ -569,7 +571,7 @@ fn technical_line_body_stretch_rejects_the_clean_tier_and_replays() {
             .debug
             .break_opportunity_decisions
             .iter()
-            .any(|decision|decision.reason == "CurrentLineTechnicalEmergencyBreak"),
+            .any(|decision| decision.reason == "CurrentLineTechnicalEmergencyBreak"),
         "{:?}",
         result.debug.break_opportunity_decisions
     );

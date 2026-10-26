@@ -134,7 +134,10 @@ fn inline_object_expands_only_the_boundary_with_actual_collision() {
     assert_eq!(0.0, decision.line_extras[0]);
     assert!((decision.line_extras[1] - 7.6).abs() < 0.001);
     assert_eq!(vec![1], decision.expanded_line_indices);
-    assert_eq!(tiqian::core::layout_model::InlineObjectLineHeightReason::InlineObjectInterlineCollision, decision.reason);
+    assert_eq!(
+        tiqian::core::layout_model::InlineObjectLineHeightReason::InlineObjectInterlineCollision,
+        decision.reason
+    );
     let without_clearance =
         ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
             .build()
@@ -358,7 +361,10 @@ fn formula_boundary_compression_pushes_attached_comma_into_previous_line() {
         .repair_decision
         .as_ref()
         .unwrap();
-    assert_eq!(tiqian::layout::line_optimization::RepairKind::PushIn, repair.kind);
+    assert_eq!(
+        tiqian::layout::line_optimization::RepairKind::PushIn,
+        repair.kind
+    );
     assert!(
         repair
             .push_in_allocations
@@ -579,29 +585,52 @@ fn relation_stretch_moves_both_formula_sides_by_the_same_final_geometry() {
 #[test]
 fn phase_two_object_separator_attachment_respects_white_space_mode() {
     use tiqian::core::text_model::WhiteSpaceMode;
-    for mode in [WhiteSpaceMode::Collapse, WhiteSpaceMode::PreserveBreaks,
-        WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
+    for mode in [
+        WhiteSpaceMode::Collapse,
+        WhiteSpaceMode::PreserveBreaks,
+        WhiteSpaceMode::Preserve,
+        WhiteSpaceMode::BreakSpaces,
+    ] {
         for separator in ["", " ", "  ", "\t", "\u{00A0}", "\u{3000}"] {
             let text = format!("前x{separator}，后");
             let mut paragraph_style = style();
             paragraph_style.white_space = mode;
-            let result = fixed_basic_engine(breaker(0)).layout(LayoutInput::builder(
-                TiqianTextContent::new(Text::from(text.as_str())), LayoutConstraints::with_defaults(320.))
+            let result = fixed_basic_engine(breaker(0)).layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from(text.as_str())),
+                    LayoutConstraints::with_defaults(320.),
+                )
                 .paragraph_style(paragraph_style)
-                .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(text_range(1, 2), 24., 16., 4.)])
-                .build());
-            let collapse = matches!(mode, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks);
-            let attached = separator.is_empty() || (collapse && matches!(separator, " " | "  " | "\t"));
+                .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
+                    text_range(1, 2),
+                    24.,
+                    16.,
+                    4.,
+                )])
+                .build(),
+            );
+            let collapse = matches!(
+                mode,
+                WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks
+            );
+            let attached =
+                separator.is_empty() || (collapse && matches!(separator, " " | "  " | "\t"));
             assert_eq!(attached, result.debug.contextual_kinsoku_decisions.iter()
                 .any(|decision| matches!(decision.reason,
                     tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsoku
                     | tiqian::core::layout_model::ContextualKinsokuRule::InlineObjectAttachedKinsokuAcrossCollapsedSeparatorSpace)),
                 "{mode:?}, {separator:?}");
             if !separator.is_empty() && separator.chars().all(|c| c == ' ') && !collapse {
-                assert_eq!(separator.len() as f32 * 8., result.clusters.iter()
-                    .filter(|cluster| cluster.range.start() >= scalar_offset(2)
-                        && cluster.range.end() <= scalar_offset(2 + separator.len() as i32))
-                    .map(|cluster| cluster.advance).sum::<f32>());
+                assert_eq!(
+                    separator.len() as f32 * 8.,
+                    result
+                        .clusters
+                        .iter()
+                        .filter(|cluster| cluster.range.start() >= scalar_offset(2)
+                            && cluster.range.end() <= scalar_offset(2 + separator.len() as i32))
+                        .map(|cluster| cluster.advance)
+                        .sum::<f32>()
+                );
             }
         }
     }
@@ -613,13 +642,28 @@ fn phase_two_objects_interrupt_crlf_and_hide_covered_whitespace() {
     for object_range in [text_range(1, 2), text_range(2, 3), text_range(1, 3)] {
         let mut paragraph_style = style();
         paragraph_style.white_space = WhiteSpaceMode::Collapse;
-        let result = fixed_basic_engine(breaker(0)).layout(LayoutInput::builder(
-            TiqianTextContent::new(Text::from("中\r\nA")), LayoutConstraints::with_defaults(320.))
+        let result = fixed_basic_engine(breaker(0)).layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from("中\r\nA")),
+                LayoutConstraints::with_defaults(320.),
+            )
             .paragraph_style(paragraph_style)
-            .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(object_range, 24., 16., 4.)])
-            .build());
-        assert!(result.clusters.iter().any(|cluster| cluster.range == object_range
-            && cluster.synthetic_kind == Some(tiqian::core::layout_model::SyntheticClusterKind::InlineObject)));
+            .inline_objects(vec![InlineObjectSpan::with_fixed_boundaries(
+                object_range,
+                24.,
+                16.,
+                4.,
+            )])
+            .build(),
+        );
+        assert!(
+            result
+                .clusters
+                .iter()
+                .any(|cluster| cluster.range == object_range
+                    && cluster.synthetic_kind
+                        == Some(tiqian::core::layout_model::SyntheticClusterKind::InlineObject))
+        );
         assert_eq!(1, result.lines.len());
         assert!(result.debug.mandatory_break_decisions.is_empty());
         for cluster in &result.clusters {

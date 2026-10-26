@@ -1,7 +1,7 @@
-use alloc::string::String;
 use crate::core::text_model::{
     DecorationKind, RichTextBackgroundPaint, RichTextLayer, RichTextLinePaint, RichTextPaint,
 };
+use alloc::string::String;
 
 use super::builder::ParagraphBuilder;
 use super::style::{InlineBoxStyle, RubyAnnotation, TextStyleOverride};

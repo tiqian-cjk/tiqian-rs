@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ContextualQuoteRoleResolver.kt
 
-use alloc::{format, string::String, vec::Vec};
 use crate::common::{HashMap, HashSet};
+use alloc::{format, string::String, vec::Vec};
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;
 use super::super::core::geometry::{ScalarOffset, scalar_offset};

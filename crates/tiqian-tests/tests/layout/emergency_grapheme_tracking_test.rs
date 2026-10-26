@@ -12,8 +12,8 @@ use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult
 
 use super::font_backend_test_support::stub_backend_with_transform;
 use crate::support::DeterministicStubFontBackend;
-use tiqian::layout::punctuation_model::GlueKind;
 use tiqian::layout::progressive_break_decisions::ProgressiveBreakTier;
+use tiqian::layout::punctuation_model::GlueKind;
 
 fn no_indent_style() -> ParagraphStyle {
     ParagraphStyle::builder()
@@ -108,9 +108,7 @@ fn technical_identifier_relabels_loose_letter_digit_boundary_as_emergency() {
 
     assert_eq!(text_range(0, 8), result.lines[0].range);
     assert!(
-        result.debug.line_decisions[0]
-            .technical_break
-            == Some(ProgressiveBreakTier::Emergency)
+        result.debug.line_decisions[0].technical_break == Some(ProgressiveBreakTier::Emergency)
     );
     assert_eq!(0.0, result.lines[0].hyphen_advance);
 }

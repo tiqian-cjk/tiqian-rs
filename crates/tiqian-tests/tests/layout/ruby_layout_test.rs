@@ -78,7 +78,10 @@ fn ruby_uses_existing_interline_space_without_changing_line_box() {
     assert_eq!(RubyLineHeightMode::PerLine, decision.mode);
     assert_eq!(0.0, decision.max_extra);
     assert!(decision.line_extras.iter().all(|extra| *extra == 0.0));
-    assert_eq!(tiqian::core::layout_model::RubyLineHeightReason::ExistingInterlineSpaceFitsRuby, decision.reason);
+    assert_eq!(
+        tiqian::core::layout_model::RubyLineHeightReason::ExistingInterlineSpaceFitsRuby,
+        decision.reason
+    );
     let annotation = &ruby.debug.ruby_decisions[0];
     assert_eq!("zhōng", annotation.text);
     assert!(annotation.center_x >= 0.0 && annotation.center_x <= ruby.clusters[0].advance);

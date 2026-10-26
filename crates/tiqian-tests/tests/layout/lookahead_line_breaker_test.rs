@@ -8,7 +8,9 @@ use tiqian::core::text::Text;
 use tiqian::layout::line_breaker::{
     GreedyLineBreaker, LineBreaker, LineBreakerConfig, LookaheadLineBreaker,
 };
-use tiqian::layout::line_optimization::{LineCandidate, RepairDetail, RepairOption, RepairReasonCode};
+use tiqian::layout::line_optimization::{
+    LineCandidate, RepairDetail, RepairOption, RepairReasonCode,
+};
 use tiqian::layout::progressive_break_decisions::{
     ShrinkChannel, ShrinkOpportunity, UnbreakableRanges,
 };

@@ -1,15 +1,12 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/core/LayoutQueries.kt
 
-use alloc::{format, string::String, vec, vec::Vec};
 use crate::common::{Arc, HashMap, round};
+use alloc::{format, string::String, vec, vec::Vec};
 
 use icu_properties::{CodePointSetData, props::UnifiedIdeograph};
 
 use super::geometry::{Rect, ScalarOffset, TextRange};
-use super::layout_model::{
-    AutoSpaceSide, Glyph, LayoutResult, LineBox, ResolvedFontMetrics,
-};
-use crate::font::font_metrics::MetricBox;
+use super::layout_model::{AutoSpaceSide, Glyph, LayoutResult, LineBox, ResolvedFontMetrics};
 use super::source_interaction_boundaries::{
     SourceBoundaryBias, coerce_to_interaction_boundary, interaction_boundaries,
 };
@@ -18,6 +15,7 @@ use super::text_model::{
     DecorationKind, RichTextBackgroundMetricPolicy, RichTextLayer, RichTextLayerKind, RichTextSpan,
     RubyKind, TextStyle,
 };
+use crate::font::font_metrics::MetricBox;
 
 const INTERLINEAR_UNDERLINE_OFFSET_EM: f32 = 0.18;
 
@@ -1701,7 +1699,9 @@ impl<'a> PositionedClusterLookup<'a> {
             }
         }
         for decision in &result.layout.white_space.line_adjustments {
-            if decision.adjustment.action == crate::layout::white_space::LineWhiteSpaceAction::RemoveAutoSpaceStart {
+            if decision.adjustment.action
+                == crate::layout::white_space::LineWhiteSpaceAction::RemoveAutoSpaceStart
+            {
                 let cluster = &result.clusters[decision.adjustment.cluster_index as usize];
                 leading_gap.remove(&cluster.range);
             }

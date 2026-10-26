@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ClusterRoleResolution.kt
 
-use alloc::{borrow::ToOwned, vec::Vec};
 use crate::common::{HashMap, HashSet};
+use alloc::{borrow::ToOwned, vec::Vec};
 
 use icu_properties::{
     CodePointMapData, CodePointSetData,
@@ -124,7 +124,7 @@ pub fn cluster_role_ranges_with_options(
             let end = if code_point == 0x000D
                 && index + 1 < text_length
                 && text.code_point_at_or_none(index + 1) == Some(0x000A)
-            && !options.inline_objects_by_start.contains_key(&(index + 1))
+                && !options.inline_objects_by_start.contains_key(&(index + 1))
             {
                 index + 2
             } else {
@@ -455,11 +455,11 @@ const COMBINING_ENCLOSING_KEYCAP: i32 = 0x20E3;
 
 #[cfg(test)]
 mod tests {
-    use alloc::{vec, vec::Vec};
     use super::*;
     use crate::clreq::clreq_profile::ClreqProfile;
     use crate::core::geometry::text_range;
     use crate::font::font_policy::CjkFontRoleClassifier;
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn complex_emoji_graphemes_are_single_emoji_shaping_ranges() {

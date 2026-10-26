@@ -1,5 +1,5 @@
-use alloc::vec::Vec;
 use crate::common::HashMap;
+use alloc::vec::Vec;
 
 use super::layout_model::{LayoutResult, LineBox};
 use super::layout_queries::{PositionedCluster, positioned_clusters};

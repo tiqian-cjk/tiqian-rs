@@ -71,7 +71,7 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
         assert!(
             roles
                 .iter()
-                .all(|decision|decision.source == "NonCjkInWordApostrophe")
+                .all(|decision| decision.source == "NonCjkInWordApostrophe")
         );
     }
 }
@@ -130,7 +130,7 @@ fn cjk_outer_context_classifies_paired_quotes_as_cjk() {
     assert!(
         result
             .iter()
-            .all(|decision|decision.source == "PairedPunctuationOuterScriptContext")
+            .all(|decision| decision.source == "PairedPunctuationOuterScriptContext")
     );
 }
 
@@ -176,7 +176,7 @@ fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
     assert!(
         result
             .iter()
-            .all(|decision|decision.source == "DelimitedWesternQuotationRun")
+            .all(|decision| decision.source == "DelimitedWesternQuotationRun")
     );
 }
 
@@ -195,7 +195,7 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
         assert!(
             chinese
                 .iter()
-                .all(|decision|decision.source == "ParagraphLanguageQuoteContext")
+                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
         );
         let english = analyzer.classify_quote_roles(
             &text,
@@ -210,7 +210,7 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
         assert!(
             english
                 .iter()
-                .all(|decision|decision.source == "ParagraphLanguageQuoteContext")
+                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
         );
     }
 }

@@ -3,6 +3,8 @@ use tiqian::core::east_asian_spacing::{EastAsianSpacingEdges, EastAsianSpacingVa
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{scalar_offset, text_range};
 use tiqian::core::layout_model::Cluster;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
+use tiqian::core::layout_model::{ContextualKinsokuRule, Uax14BoundaryRule};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::InlineAttachment;
 use tiqian::font::font_policy::FontRole;
@@ -11,8 +13,6 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::{
     resolve_attached_inline_inter_char_boundaries, resolve_attached_inline_virtual_boundaries,
     resolve_unicode_punctuation_boundaries,
 };
-use tiqian::core::layout_model::KinsokuForbiddenPosition;
-use tiqian::core::layout_model::{ContextualKinsokuRule, Uax14BoundaryRule};
 
 fn clusters(text: &str, resource_id: &str, advance: f32) -> Vec<Cluster> {
     let mut offset = 0;
@@ -77,9 +77,17 @@ fn resolve_unicode_punctuation_boundaries_with_paired_quotes() {
             QuoteType::Double,
         )],
     );
-    assert!(result.decisions.iter().any(|decision| {decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedOpeningQuote)
+    assert!(result.decisions.iter().any(|decision| {
+        decision.reason
+            == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(
+                Uax14BoundaryRule::PairedOpeningQuote,
+            )
     }));
-    assert!(result.decisions.iter().any(|decision| {decision.reason == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedClosingQuote)
+    assert!(result.decisions.iter().any(|decision| {
+        decision.reason
+            == ContextualKinsokuRule::Uax14WesternPunctuationBoundary(
+                Uax14BoundaryRule::PairedClosingQuote,
+            )
     }));
 }
 
@@ -303,9 +311,9 @@ fn resolve_unicode_punctuation_boundaries_with_rule_for_line_start_infix() {
         .find(|decision| decision.source_text == ",")
         .unwrap();
     assert_eq!(
-            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
-            infix.reason
-        );
+        ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb15d),
+        infix.reason
+    );
 }
 
 #[test]
@@ -610,7 +618,8 @@ fn resolve_unicode_punctuation_boundaries_with_follows_authored_boundary() {
         &[],
     );
     assert!(!result.decisions.iter().any(|decision| {
-        decision.source_text == "（" && decision.forbidden_position == KinsokuForbiddenPosition::LineStart
+        decision.source_text == "（"
+            && decision.forbidden_position == KinsokuForbiddenPosition::LineStart
     }));
 }
 

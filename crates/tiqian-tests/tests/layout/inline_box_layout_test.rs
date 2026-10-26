@@ -1,6 +1,7 @@
 use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::{LayoutConstraints, text_range};
+use tiqian::core::layout_model::AutoSpaceBoundaryRole;
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -8,7 +9,6 @@ use tiqian::core::text_model::{
     TiqianTextContent,
 };
 use tiqian::core::units::Ic;
-use tiqian::core::layout_model::AutoSpaceBoundaryRole;
 
 fn layout(text: &str, boxes: Vec<InlineBoxSpan>) -> tiqian::core::layout_model::LayoutResult {
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
@@ -96,7 +96,10 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
             .iter()
             .all(|decision| decision.boundary_role == AutoSpaceBoundaryRole::InlineBoxNarrow)
     );
-    assert_eq!(InlineBoxOuterSpacing::Narrow, narrow.debug.inline_box_decisions[0].outer_spacing);
+    assert_eq!(
+        InlineBoxOuterSpacing::Narrow,
+        narrow.debug.inline_box_decisions[0].outer_spacing
+    );
 
     let source = layout(
         "中./中",
@@ -108,5 +111,8 @@ fn narrow_outer_spacing_inserts_gap_but_source_mode_does_not() {
         )],
     );
     assert!(source.debug.auto_space_decisions.is_empty());
-    assert_eq!(InlineBoxOuterSpacing::Source, source.debug.inline_box_decisions[0].outer_spacing);
+    assert_eq!(
+        InlineBoxOuterSpacing::Source,
+        source.debug.inline_box_decisions[0].outer_spacing
+    );
 }

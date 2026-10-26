@@ -1,9 +1,9 @@
 use crate::support::DeterministicStubFontBackend;
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
+use tiqian::core::layout_model::EmphasisDotReason;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{DecorationKind, DecorationSpan, LayoutInput, TiqianTextContent};
-use tiqian::core::layout_model::EmphasisDotReason;
 
 #[test]
 fn emphasis_dots_han_but_not_western_text() {
@@ -32,6 +32,9 @@ fn emphasis_dots_han_but_not_western_text() {
     assert!(decisions[&scalar_offset(2)].applied);
     assert!(decisions[&scalar_offset(4)].applied);
     assert!(!decisions[&scalar_offset(3)].applied);
-    assert_eq!(EmphasisDotReason::NoDotOnNonHan, decisions[&scalar_offset(3)].reason);
+    assert_eq!(
+        EmphasisDotReason::NoDotOnNonHan,
+        decisions[&scalar_offset(3)].reason
+    );
     assert_eq!(0.0, decisions[&scalar_offset(3)].dot_diameter);
 }

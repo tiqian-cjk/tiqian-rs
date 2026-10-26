@@ -331,7 +331,7 @@ fn records_fallback_decisions_per_cluster() {
     assert!(result.debug.shaping_decisions.iter().any(|decision| {
         decision.source_text == "——"
             && decision.display_text == "⸺"
-            && decision.advance ==32.0
+            && decision.advance == 32.0
             && decision.source == "Stub"
     }));
     assert!(result.debug.font_decisions.iter().any(|decision| {
@@ -522,7 +522,12 @@ fn records_unicode_emoji_sequence_role_promotions() {
                 FontRole::Emoji,
                 "EmojiStyleVariationSequence"
             ),
-            (text_range(3, 6), FontRole::LatinText, FontRole::Emoji, "KeycapSequence"),
+            (
+                text_range(3, 6),
+                FontRole::LatinText,
+                FontRole::Emoji,
+                "KeycapSequence"
+            ),
         ],
         result
             .debug
@@ -543,59 +548,118 @@ fn emoji_role_matrix_separates_supported_sequences_from_adjacent_and_unrelated_t
     let tag_flag = "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
     let tag_flag_case = format!("a{tag_flag}中");
     let cases = vec![
-        ("a1️⃣", vec![("a", FontRole::LatinText), ("1️⃣", FontRole::Emoji)]),
-        ("1️⃣a", vec![("1️⃣", FontRole::Emoji), ("a", FontRole::LatinText)]),
+        (
+            "a1️⃣",
+            vec![("a", FontRole::LatinText), ("1️⃣", FontRole::Emoji)],
+        ),
+        (
+            "1️⃣a",
+            vec![("1️⃣", FontRole::Emoji), ("a", FontRole::LatinText)],
+        ),
         (
             "a😀中",
-            vec![("a", FontRole::LatinText), ("😀", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("😀", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a❤️中",
-            vec![("a", FontRole::LatinText), ("❤️", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("❤️", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a©️中",
-            vec![("a", FontRole::LatinText), ("©️", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("©️", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a⌚︎中",
-            vec![("a", FontRole::LatinText), ("⌚︎", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("⌚︎", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a1⃣中",
-            vec![("a", FontRole::LatinText), ("1⃣", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("1⃣", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a👍🏽中",
-            vec![("a", FontRole::LatinText), ("👍🏽", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("👍🏽", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a👩🏽‍💻中",
-            vec![("a", FontRole::LatinText), ("👩🏽‍💻", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("👩🏽‍💻", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a🏳️‍⚧️中",
-            vec![("a", FontRole::LatinText), ("🏳️‍⚧️", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("🏳️‍⚧️", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "a🇨🇳中",
-            vec![("a", FontRole::LatinText), ("🇨🇳", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("🇨🇳", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             tag_flag_case.as_str(),
-            vec![("a", FontRole::LatinText), (tag_flag, FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                (tag_flag, FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         ("中\u{FE0F}", vec![("中\u{FE0F}", FontRole::CjkText)]),
         ("a\u{FE0F}", vec![("a\u{FE0F}", FontRole::LatinText)]),
-        ("a⃣中", vec![("a⃣", FontRole::LatinText), ("中", FontRole::CjkText)]),
+        (
+            "a⃣中",
+            vec![("a⃣", FontRole::LatinText), ("中", FontRole::CjkText)],
+        ),
         (
             "a1\u{FE0F}中",
-            vec![("a1\u{FE0F}", FontRole::LatinText), ("中", FontRole::CjkText)],
+            vec![
+                ("a1\u{FE0F}", FontRole::LatinText),
+                ("中", FontRole::CjkText),
+            ],
         ),
-        ("中🏽", vec![("中", FontRole::CjkText), ("🏽", FontRole::Emoji)]),
+        (
+            "中🏽",
+            vec![("中", FontRole::CjkText), ("🏽", FontRole::Emoji)],
+        ),
         (
             "a👩‍中",
-            vec![("a", FontRole::LatinText), ("👩‍", FontRole::Emoji), ("中", FontRole::CjkText)],
+            vec![
+                ("a", FontRole::LatinText),
+                ("👩‍", FontRole::Emoji),
+                ("中", FontRole::CjkText),
+            ],
         ),
         (
             "中‍👩a",

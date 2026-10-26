@@ -269,19 +269,20 @@ pub fn prepare_width_independent_annotation(
     #[cfg(not(any(feature = "shared-portable", not(target_has_atomic = "ptr"))))]
     let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::new(style_at_closure);
     #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
-    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::from(
-        Box::new(style_at_closure) as Box<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync>,
-    );
+    let style_at: Arc<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync> = Arc::from(Box::new(
+        style_at_closure,
+    )
+        as Box<dyn Fn(ScalarOffset) -> TextStyle + Send + Sync>);
     let font_size_at_closure = {
         let style_at = style_at.clone();
         move |offset: ScalarOffset| style_at(offset).font_size
     };
     #[cfg(not(any(feature = "shared-portable", not(target_has_atomic = "ptr"))))]
-    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> = Arc::new(font_size_at_closure);
+    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> =
+        Arc::new(font_size_at_closure);
     #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
-    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> = Arc::from(
-        Box::new(font_size_at_closure) as Box<dyn Fn(ScalarOffset) -> f32 + Send + Sync>,
-    );
+    let font_size_at: Arc<dyn Fn(ScalarOffset) -> f32 + Send + Sync> =
+        Arc::from(Box::new(font_size_at_closure) as Box<dyn Fn(ScalarOffset) -> f32 + Send + Sync>);
     let bopomofo_font_weight_at_closure = {
         let style_at = style_at.clone();
         move |offset: ScalarOffset| {
@@ -292,10 +293,9 @@ pub fn prepare_width_independent_annotation(
     let bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync> =
         Arc::new(bopomofo_font_weight_at_closure);
     #[cfg(any(feature = "shared-portable", not(target_has_atomic = "ptr")))]
-    let bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync> = Arc::from(
-        Box::new(bopomofo_font_weight_at_closure)
-            as Box<dyn Fn(ScalarOffset) -> i32 + Send + Sync>,
-    );
+    let bopomofo_font_weight_at: Arc<dyn Fn(ScalarOffset) -> i32 + Send + Sync> =
+        Arc::from(Box::new(bopomofo_font_weight_at_closure)
+            as Box<dyn Fn(ScalarOffset) -> i32 + Send + Sync>);
     let emphasis_ranges: Vec<_> = input
         .decorations
         .iter()
@@ -421,7 +421,8 @@ pub fn prepare_width_independent_annotation(
             }
         })
         .collect();
-    let white_space_units = scan_white_space(&text, input.paragraph_style.white_space, &inline_by_start);
+    let white_space_units =
+        scan_white_space(&text, input.paragraph_style.white_space, &inline_by_start);
     for unit in &white_space_units {
         boundaries.insert(unit.range.start());
         boundaries.insert(unit.range.end());
@@ -450,13 +451,17 @@ pub fn prepare_width_independent_annotation(
         );
         cluster_role_ranges_with_options(&text, &aware, &context, &profile, &options)
     };
-    let white_space_units: HashMap<_, _> = white_space_units.into_iter()
-        .map(|unit| (unit.range, unit)).collect();
+    let white_space_units: HashMap<_, _> = white_space_units
+        .into_iter()
+        .map(|unit| (unit.range, unit))
+        .collect();
     for resolved in &mut cluster_ranges {
         if let Some(unit) = white_space_units.get(&resolved.range) {
-            resolved.mandatory_break = unit.kind == super::white_space::WhiteSpaceKind::MandatoryBreak
+            resolved.mandatory_break = unit.kind
+                == super::white_space::WhiteSpaceKind::MandatoryBreak
                 || (unit.kind == super::white_space::WhiteSpaceKind::SegmentBreak
-                    && input.paragraph_style.white_space != super::super::core::text_model::WhiteSpaceMode::Collapse);
+                    && input.paragraph_style.white_space
+                        != super::super::core::text_model::WhiteSpaceMode::Collapse);
             if !resolved.mandatory_break {
                 resolved.role = FontRole::LatinText;
             }
@@ -1024,9 +1029,11 @@ pub fn build_paragraph_layout_prep(
         resolved_kinsoku.level,
         &kinsoku_rule,
     );
-    if matches!(input.paragraph_style.white_space,
+    if matches!(
+        input.paragraph_style.white_space,
         super::super::core::text_model::WhiteSpaceMode::Preserve
-        | super::super::core::text_model::WhiteSpaceMode::BreakSpaces) {
+            | super::super::core::text_model::WhiteSpaceMode::BreakSpaces
+    ) {
         attached_marks.retain(|attachment| attachment.separator_cluster_indices.is_empty());
     }
     let separator_trims: HashMap<i32, f32> = attached_marks
@@ -1258,7 +1265,10 @@ pub fn build_paragraph_layout_prep(
                 }
             }
         } else if !cluster.display_text.is_empty()
-            && cluster.display_text.chars().all(|character| character == ' ')
+            && cluster
+                .display_text
+                .chars()
+                .all(|character| character == ' ')
             && !separator_trims.contains_key(&index)
         {
             if gap_ranges.contains(&cluster.range) {

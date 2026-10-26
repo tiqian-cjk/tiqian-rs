@@ -2,7 +2,9 @@ use tiqian::clreq::clreq_profile::{
     InteriorPunctuationStyle, PunctuationGluePlacement, PunctuationWidthPolicy,
 };
 use tiqian::core::geometry::{Rect, text_range};
-use tiqian::layout::punctuation_model::{PunctuationAnchor, PunctuationAtomBuilder, PunctuationGeometrySource, PunctuationInkInput};
+use tiqian::layout::punctuation_model::{
+    PunctuationAnchor, PunctuationAtomBuilder, PunctuationGeometrySource, PunctuationInkInput,
+};
 
 const EM: f32 = 16.0;
 
@@ -33,9 +35,9 @@ fn halt_advance_without_placement_uses_named_profile_fallback() {
     assert_eq!(0.0, result.leading_glue.natural);
     assert_eq!(8.5, result.trailing_glue.natural);
     assert_eq!(
-            PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback,
-            result.geometry_source
-        );
+        PunctuationGeometrySource::FontHaltAdvanceWithProfileFallback,
+        result.geometry_source
+    );
 }
 
 #[test]
@@ -61,9 +63,9 @@ fn halt_placement_defines_both_compression_sides() {
     assert_eq!(8.0, result.body_width);
     assert_eq!(PunctuationAnchor::Center, result.anchor);
     assert_eq!(
-            PunctuationGeometrySource::FontHaltFittedBodyCompression,
-            result.geometry_source
-        );
+        PunctuationGeometrySource::FontHaltFittedBodyCompression,
+        result.geometry_source
+    );
     assert_eq!(None, result.halt_validation);
 }
 
@@ -193,9 +195,9 @@ fn equal_halt_advance_falls_through_to_ink_bounds() {
     assert_eq!(4.0, result.leading_glue.natural);
     assert_eq!(4.0, result.trailing_glue.natural);
     assert_eq!(
-            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
-            result.geometry_source
-        );
+        PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+        result.geometry_source
+    );
 }
 
 fn font_unit_atom(

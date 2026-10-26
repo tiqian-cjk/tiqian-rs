@@ -3,12 +3,12 @@ use tiqian::clreq::clreq_profile::{
     AdjustmentStylePolicy, AutoSpaceMode, AutoSpacePolicy, BuiltInClreqProfileResolver,
     CjkPunctuationGlyphPolicy, CjkPunctuationGlyphSubstitutionReason, ClreqProfile,
     ClreqProfileResolver, ClreqRegion, ClreqStrictness, GlueSide, HangingPunctuationStyle,
-    InteriorPunctuationStyle, KinsokuLevel, KinsokuMode,
-    LineAdjustmentStrategy, LineEndPunctuationStyle, PunctuationClass, PunctuationGluePlacement,
-    PunctuationWidthPolicy, clreq_punctuation_advance_policy, clreq_punctuation_policies,
+    InteriorPunctuationStyle, KinsokuLevel, KinsokuMode, LineAdjustmentStrategy,
+    LineEndPunctuationStyle, PunctuationClass, PunctuationGluePlacement, PunctuationWidthPolicy,
+    clreq_punctuation_advance_policy, clreq_punctuation_policies,
 };
-use tiqian::core::text::Text;
 use tiqian::core::layout_model::KinsokuPolicySource;
+use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutProfileId, built_in_layout_profiles};
 
 #[test]

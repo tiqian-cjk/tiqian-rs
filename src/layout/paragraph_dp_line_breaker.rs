@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphDpLineBreaker.kt
 
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use crate::common::{HashMap, HashSet};
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
@@ -94,7 +94,11 @@ impl<'a> DpContext<'a> {
         candidate_window: i32,
     ) -> Self {
         // 共享测量已保存宽度与间隙前缀；这些索引仅供未接入共享测量的独立调用使用。
-        let count = if config.measurement.is_some() { 0 } else { adjusted_clusters.len() };
+        let count = if config.measurement.is_some() {
+            0
+        } else {
+            adjusted_clusters.len()
+        };
         let mut gap_boundaries = config.cjk_inter_char_boundaries.clone();
         gap_boundaries.extend(&config.sino_western_boundaries);
         let mut gap_prefix = vec![0; count + 1];
@@ -201,7 +205,8 @@ impl<'a> DpContext<'a> {
         line.measurement = self.config.measurement.clone();
         line.measurement_limit = line_limit(self.max_width, self.first_line_indent, first as i32);
         if let Some(measurement) = &line.measurement {
-            let measured = measurement.measure(cluster_range, end_reason, line.measurement_limit, &[]);
+            let measured =
+                measurement.measure(cluster_range, end_reason, line.measurement_limit, &[]);
             line.natural_width = measured.natural;
             line.adjusted_width = measured.adjusted;
         }
@@ -213,17 +218,25 @@ impl<'a> DpContext<'a> {
         range: IntRange,
         reason: LineEndReason,
     ) -> Vec<ShrinkOpportunity> {
-        let mut opportunities: Vec<_> = self.shrink_opportunities.iter().filter(|opp| {
-            range.contains(opp.cluster_index)
-                && opp.capacity > 0.0
-                && (!opp.line_end_only || opp.cluster_index == range.last())
-                && self.config.measurement.as_ref().is_none_or(|measurement| {
-                    measurement.shrink_is_effective(range, reason, opp.cluster_index)
-                })
-        }).copied().collect();
+        let mut opportunities: Vec<_> = self
+            .shrink_opportunities
+            .iter()
+            .filter(|opp| {
+                range.contains(opp.cluster_index)
+                    && opp.capacity > 0.0
+                    && (!opp.line_end_only || opp.cluster_index == range.last())
+                    && self.config.measurement.as_ref().is_none_or(|measurement| {
+                        measurement.shrink_is_effective(range, reason, opp.cluster_index)
+                    })
+            })
+            .copied()
+            .collect();
         for opp in &mut opportunities {
             if opp.cluster_index == range.last()
-                && matches!(opp.channel, ShrinkChannel::TrailingGlue | ShrinkChannel::LeadingAndTrailingGlue)
+                && matches!(
+                    opp.channel,
+                    ShrinkChannel::TrailingGlue | ShrinkChannel::LeadingAndTrailingGlue
+                )
             {
                 opp.tier = 1;
             }
@@ -250,10 +263,21 @@ impl<'a> DpContext<'a> {
             distribute_push_in_shrink(&opportunities, total_shrink.max(0.0))
         };
         allocations.sort_by_key(|allocation| allocation.cluster_index);
-        let width = self.config.measurement.as_ref().map_or_else(|| self.adjusted_prefix[range.last() as usize + 1]
-            - self.adjusted_prefix[range.first() as usize]
-            - allocations.iter().map(|allocation| allocation.shrink).sum::<f32>(),
-            |measurement| measurement.measure(range, reason, limit, &allocations).adjusted);
+        let width = self.config.measurement.as_ref().map_or_else(
+            || {
+                self.adjusted_prefix[range.last() as usize + 1]
+                    - self.adjusted_prefix[range.first() as usize]
+                    - allocations
+                        .iter()
+                        .map(|allocation| allocation.shrink)
+                        .sum::<f32>()
+            },
+            |measurement| {
+                measurement
+                    .measure(range, reason, limit, &allocations)
+                    .adjusted
+            },
+        );
         (width <= limit).then_some((width, allocations))
     }
 
@@ -361,12 +385,23 @@ impl ParagraphDpLineBreaker {
             let first_end = raw_greedy + 1;
             let last_end = (first_end + context.candidate_window).min(segment_end_exclusive);
             for end in first_end..=last_end {
-                if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+                if context
+                    .config
+                    .measurement
+                    .as_ref()
+                    .is_some_and(|measurement| !measurement.boundary_allowed(end))
+                {
                     continue;
                 }
                 let reason = if end == segment_end_exclusive {
-                    if ends_with_mandatory { LineEndReason::MandatoryBreak } else { LineEndReason::ParagraphEnd }
-                } else { LineEndReason::AutoWrap };
+                    if ends_with_mandatory {
+                        LineEndReason::MandatoryBreak
+                    } else {
+                        LineEndReason::ParagraphEnd
+                    }
+                } else {
+                    LineEndReason::AutoWrap
+                };
                 let range = IntRange::new(start, end - 1);
                 let line = context.candidate_line(range, reason);
                 let feasible = if context.config.measurement.is_some() {
@@ -375,7 +410,9 @@ impl ParagraphDpLineBreaker {
                 } else {
                     line.adjusted_width - limit <= context.shrink_capacity(range)
                 };
-                if feasible { compressed.push(end); }
+                if feasible {
+                    compressed.push(end);
+                }
             }
         }
         let is_compressed_promotion = |candidate_end: i32| {
@@ -406,7 +443,12 @@ impl ParagraphDpLineBreaker {
             if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
-            if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+            if context
+                .config
+                .measurement
+                .as_ref()
+                .is_some_and(|measurement| !measurement.boundary_allowed(end))
+            {
                 continue;
             }
             if !is_compressed_promotion(end)
@@ -444,7 +486,12 @@ impl ParagraphDpLineBreaker {
             if context.unbreakable_ranges.contains_boundary(end) {
                 continue;
             }
-            if context.config.measurement.as_ref().is_some_and(|measurement| !measurement.boundary_allowed(end)) {
+            if context
+                .config
+                .measurement
+                .as_ref()
+                .is_some_and(|measurement| !measurement.boundary_allowed(end))
+            {
                 continue;
             }
             if !is_compressed_promotion(end)
@@ -526,11 +573,21 @@ impl ParagraphDpLineBreaker {
             }
         };
         let mut candidates = tier_preferred_pool;
-        let baseline = context.config.measurement.as_ref().map_or(baseline, |measurement| {
-            measurement.next_boundary(baseline, segment_end_exclusive)
-        });
-        if baseline > start && baseline <= segment_end_exclusive && promotions.is_empty()
-            && context.config.measurement.as_ref().is_none_or(|measurement| measurement.boundary_allowed(baseline))
+        let baseline = context
+            .config
+            .measurement
+            .as_ref()
+            .map_or(baseline, |measurement| {
+                measurement.next_boundary(baseline, segment_end_exclusive)
+            });
+        if baseline > start
+            && baseline <= segment_end_exclusive
+            && promotions.is_empty()
+            && context
+                .config
+                .measurement
+                .as_ref()
+                .is_none_or(|measurement| measurement.boundary_allowed(baseline))
         {
             candidates.push(baseline);
         }
@@ -542,9 +599,15 @@ impl ParagraphDpLineBreaker {
         }
         if result.is_empty() {
             let fallback = baseline.max(start + 1);
-            vec![context.config.measurement.as_ref().map_or(fallback, |measurement| {
-                measurement.next_boundary(fallback, segment_end_exclusive)
-            })]
+            vec![
+                context
+                    .config
+                    .measurement
+                    .as_ref()
+                    .map_or(fallback, |measurement| {
+                        measurement.next_boundary(fallback, segment_end_exclusive)
+                    }),
+            ]
         } else {
             result
         }
@@ -580,8 +643,8 @@ impl ParagraphDpLineBreaker {
                 Some(RepairOption::PushIn { total_shrink, .. }) => *total_shrink,
                 _ => overflow,
             };
-            let density = shrink / context.gap_count(in_measure).max(1) as f32
-                * self.compression_visibility;
+            let density =
+                shrink / context.gap_count(in_measure).max(1) as f32 * self.compression_visibility;
             return EdgeGeometry {
                 base_cost: orphan
                     + hyphen_flat
@@ -666,22 +729,38 @@ impl ParagraphDpLineBreaker {
                     limit,
                     segment_end_exclusive,
                 );
-                let forced_natural_overflow = context.config.measurement.as_ref().is_some_and(|measurement| {
-                    measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
-                }) || greedy_end == end || (greedy_end == segment_end_exclusive && end == segment_end_exclusive);
+                let forced_natural_overflow =
+                    context
+                        .config
+                        .measurement
+                        .as_ref()
+                        .is_some_and(|measurement| {
+                            measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
+                        })
+                        || greedy_end == end
+                        || (greedy_end == segment_end_exclusive && end == segment_end_exclusive);
                 if line.adjusted_width > limit
                     && context.allow_compression_edges
                     && !forced_natural_overflow
                 {
-                    if let Some((width, allocations)) = context.compressed_width(range, reason, limit) {
+                    if let Some((width, allocations)) =
+                        context.compressed_width(range, reason, limit)
+                    {
                         line.adjusted_width = width;
                         line.repair = Some(RepairOption::PushIn {
                             penalty: self.push_in_penalty,
                             reason_code: RepairReasonCode::LineAdjustmentPushInDpFeasibility,
                             detail: RepairDetail::PushedIn,
                             offender_cluster_index: range.last(),
-                            total_shrink: allocations.iter().map(|allocation| allocation.shrink).sum(),
-                            total_available_capacity: context.compression_opportunities(range, reason).iter().map(|opp| opp.capacity).sum(),
+                            total_shrink: allocations
+                                .iter()
+                                .map(|allocation| allocation.shrink)
+                                .sum(),
+                            total_available_capacity: context
+                                .compression_opportunities(range, reason)
+                                .iter()
+                                .map(|opp| opp.capacity)
+                                .sum(),
                             allocations,
                         });
                     } else {
@@ -816,9 +895,13 @@ impl ParagraphDpLineBreaker {
                 )
                 .max(start + 1)
             };
-            let end = context.config.measurement.as_ref().map_or(end, |measurement| {
-                measurement.next_boundary(end, segment_end_exclusive)
-            });
+            let end = context
+                .config
+                .measurement
+                .as_ref()
+                .map_or(end, |measurement| {
+                    measurement.next_boundary(end, segment_end_exclusive)
+                });
             ends.push(end);
             start = end;
         }
@@ -856,42 +939,47 @@ impl ParagraphDpLineBreaker {
                 chosen_end - 1
             };
             let limit = line_limit(context.max_width, context.first_line_indent, line_start);
-            let segment_end_exclusive = mandatory_end.map_or(
-                context.adjusted_clusters.len() as i32,
-                |end| end + 1,
-            );
+            let segment_end_exclusive =
+                mandatory_end.map_or(context.adjusted_clusters.len() as i32, |end| end + 1);
             let range = IntRange::new(line_start, last_index);
             let mut line = context.build_line(range, end_reason);
             line.remeasure();
             let mut compression_failed = false;
             let raw_greedy = context.config.greedy_end(
-                    context.adjusted_clusters,
-                    line_start,
-                    limit,
-                    segment_end_exclusive,
-                );
-            let forced_natural_overflow = context.config.measurement.as_ref().is_some_and(|measurement| {
-                measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
-            }) || raw_greedy == *chosen_end
-                || (raw_greedy == last_end && *chosen_end == last_end);
+                context.adjusted_clusters,
+                line_start,
+                limit,
+                segment_end_exclusive,
+            );
+            let forced_natural_overflow =
+                context
+                    .config
+                    .measurement
+                    .as_ref()
+                    .is_some_and(|measurement| {
+                        measurement.wrap == crate::core::text_model::TextWrapMode::NoWrap
+                    })
+                    || raw_greedy == *chosen_end
+                    || (raw_greedy == last_end && *chosen_end == last_end);
             if line.adjusted_width > limit
                 && context.allow_compression_edges
                 && !forced_natural_overflow
             {
-                let original_break = context.progressive_break_opportunities.get(
-                    &decide_progressive_break(
-                        line_start,
-                        raw_greedy,
-                        context.progressive_break_opportunities,
-                        Some(context.adjusted_clusters),
-                        limit,
-                        context.cjk_inter_char_boundaries,
-                        context.max_cjk_stretch_per_gap,
-                        context.sino_western_boundaries,
-                        context.sino_western_stretch_cap,
-                        context.config.measurement.as_deref(),
-                    ),
-                );
+                let original_break =
+                    context
+                        .progressive_break_opportunities
+                        .get(&decide_progressive_break(
+                            line_start,
+                            raw_greedy,
+                            context.progressive_break_opportunities,
+                            Some(context.adjusted_clusters),
+                            limit,
+                            context.cjk_inter_char_boundaries,
+                            context.max_cjk_stretch_per_gap,
+                            context.sino_western_boundaries,
+                            context.sino_western_stretch_cap,
+                            context.config.measurement.as_deref(),
+                        ));
                 let promotes_tier = original_break
                     .zip(context.progressive_break_opportunities.get(chosen_end))
                     .is_some_and(|(original, resulting)| {
@@ -915,7 +1003,11 @@ impl ParagraphDpLineBreaker {
                     let total_shrink = allocations.iter().map(|allocation| allocation.shrink).sum();
                     let width = context.config.measurement.as_ref().map_or(
                         line.adjusted_width - total_shrink,
-                        |measurement| measurement.measure(range, end_reason, limit, &allocations).adjusted,
+                        |measurement| {
+                            measurement
+                                .measure(range, end_reason, limit, &allocations)
+                                .adjusted
+                        },
                     );
                     if width <= limit {
                         line.adjusted_width = width;
@@ -930,7 +1022,10 @@ impl ParagraphDpLineBreaker {
                             offender_cluster_index: range.last(),
                             allocations,
                             total_shrink,
-                            total_available_capacity: opportunities.iter().map(|opp| opp.capacity).sum(),
+                            total_available_capacity: opportunities
+                                .iter()
+                                .map(|opp| opp.capacity)
+                                .sum(),
                         });
                         line.remeasure();
                     } else {
@@ -1006,8 +1101,13 @@ impl ParagraphDpLineBreaker {
                 line_start = committed_end + 1;
                 continue;
             }
-            let committed_end = context.config.measurement.as_ref().map_or(committed_end,
-                |measurement| measurement.next_boundary(committed_end, last_end));
+            let committed_end = context
+                .config
+                .measurement
+                .as_ref()
+                .map_or(committed_end, |measurement| {
+                    measurement.next_boundary(committed_end, last_end)
+                });
             if committed_end != *chosen_end {
                 line = context.build_line(IntRange::new(line_start, committed_end - 1), end_reason);
             }
@@ -1090,6 +1190,7 @@ impl LineBreaker for ParagraphDpLineBreaker {
             &config.extendable_hang_ranges,
             5,
             config.forbidden_line_start_clusters.as_ref(),
-        ).resolve_white_space()
+        )
+        .resolve_white_space()
     }
 }

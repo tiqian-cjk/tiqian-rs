@@ -1,10 +1,16 @@
+use tiqian::clreq::clreq_profile::AutoSpaceMode;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph, GlyphRun, InlineObjectGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox, MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole, RubyGeometry, WhiteSpaceGeometry};
+use tiqian::core::layout_model::{
+    AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
+    ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph,
+    GlyphRun, InlineObjectGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox,
+    MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole,
+    RubyGeometry, WhiteSpaceGeometry,
+};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, RichTextSpan, TextSpan, TextStyle, TiqianTextContent};
-use tiqian::clreq::clreq_profile::AutoSpaceMode;
 use tiqian::font::font_metrics::{BaselineClass, FontMetricSource, MetricBox};
 use tiqian::font::font_policy::FontRole;
 use tiqian::layout::punctuation_model::PunctuationGeometrySource;
@@ -202,7 +208,11 @@ pub fn metric(range: TextRange, ascent: f32, descent: f32, metric_box: &str) -> 
         layout_ascent: ascent,
         layout_descent: descent,
         baseline_class: BaselineClass::Roman,
-        metric_box: match metric_box { "IdeographicEmBox" => MetricBox::IdeographicEmBox, "LatinBox" => MetricBox::RawFontBox, _ => MetricBox::RawFontBox },
+        metric_box: match metric_box {
+            "IdeographicEmBox" => MetricBox::IdeographicEmBox,
+            "LatinBox" => MetricBox::RawFontBox,
+            _ => MetricBox::RawFontBox,
+        },
         layout_source: FontMetricSource::RawTables,
         reason: "test".to_owned(),
     }

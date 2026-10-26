@@ -7,9 +7,7 @@ use tiqian::core::layout_model::{Cluster, LineEndReason};
 use tiqian::core::text::Text;
 use tiqian::layout::kinsoku_rule::KinsokuRule;
 use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LineBreakerConfig};
-use tiqian::layout::line_optimization::{
-    RepairKind, RepairOption, RepairRejection,
-};
+use tiqian::layout::line_optimization::{RepairKind, RepairOption, RepairRejection};
 use tiqian::layout::progressive_break_decisions::{ShrinkChannel, ShrinkOpportunity};
 
 fn cluster(start: i32, end: i32, text: &str, advance: f32) -> Cluster {
@@ -113,13 +111,19 @@ fn kinsoku_carries_previous_when_push_in_capacity_cannot_cover_overflow() {
         Some(RepairOption::CarryPrevious { .. })
     ));
     assert_eq!(2, solution.lines[1].repair_candidates.len());
-    assert_eq!(RepairKind::PushIn, solution.lines[1].repair_candidates[0].kind);
+    assert_eq!(
+        RepairKind::PushIn,
+        solution.lines[1].repair_candidates[0].kind
+    );
     assert!(!solution.lines[1].repair_candidates[0].accepted);
     assert_eq!(
         Some(RepairRejection::InsufficientCapacity),
         solution.lines[1].repair_candidates[0].rejection_reason
     );
-    assert_eq!(RepairKind::CarryPrevious, solution.lines[1].repair_candidates[1].kind);
+    assert_eq!(
+        RepairKind::CarryPrevious,
+        solution.lines[1].repair_candidates[1].kind
+    );
     assert!(solution.lines[1].repair_candidates[1].accepted);
 }
 

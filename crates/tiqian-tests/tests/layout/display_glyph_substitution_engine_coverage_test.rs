@@ -254,9 +254,9 @@ fn shaping_without_bounds_produces_named_profile_fallback() {
     assert_eq!(1, result.debug.punctuation_decisions.len());
     let punctuation = &result.debug.punctuation_decisions[0];
     assert_eq!(
-            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
-            punctuation.geometry_source
-        );
+        PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+        punctuation.geometry_source
+    );
     assert_eq!(
         Some("shaper-no-ink-bounds".to_owned()),
         punctuation.ink_bounds_fallback

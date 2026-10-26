@@ -8,8 +8,8 @@ use tiqian::layout::line_breaker::{GreedyLineBreaker, LineBreaker, LookaheadLine
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
-use tiqian::core::layout_model::KinsokuForbiddenPosition;
 use tiqian::core::layout_model::ContextualKinsokuRule;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
 use tiqian::core::layout_model::Uax14BoundaryRule;
 
 struct FixedKinsokuProfile(KinsokuLevel);
@@ -219,19 +219,27 @@ fn unmatched_elision_apostrophe_binds_forward_instead_of_being_guessed_as_a_clos
         Box::new(GreedyLineBreaker::default()),
         KinsokuLevel::Basic,
     );
-    assert!(result.debug.contextual_kinsoku_decisions.iter().all(
-        |decision| !(decision.source_text == "’" && decision.forbidden_position == KinsokuForbiddenPosition::LineStart)
-    ));
+    assert!(
+        result
+            .debug
+            .contextual_kinsoku_decisions
+            .iter()
+            .all(|decision| !(decision.source_text == "’"
+                && decision.forbidden_position == KinsokuForbiddenPosition::LineStart))
+    );
     let decision = result
         .debug
         .contextual_kinsoku_decisions
         .iter()
-        .find(|decision| decision.source_text == "’" && decision.forbidden_position == KinsokuForbiddenPosition::LineEnd)
+        .find(|decision| {
+            decision.source_text == "’"
+                && decision.forbidden_position == KinsokuForbiddenPosition::LineEnd
+        })
         .unwrap();
     assert_eq!(
-            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb19),
-            decision.reason
-        );
+        ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb19),
+        decision.reason
+    );
 }
 
 #[test]
@@ -243,13 +251,13 @@ fn western_baseline_survives_clreq_kinsoku_none() {
         KinsokuLevel::None,
     );
     assert_eq!(
-            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb13),
-            result
+        ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::Lb13),
+        result
             .debug
             .contextual_kinsoku_decisions
             .iter()
             .find(|decision| decision.source_text == ")")
             .unwrap()
             .reason
-        );
+    );
 }

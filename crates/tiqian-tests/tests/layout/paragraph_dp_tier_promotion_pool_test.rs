@@ -59,7 +59,13 @@ fn foreign_span_candidate_survives_the_promotion_pool_purge() {
     let solution =
         ParagraphDpLineBreaker::default().break_lines(&clusters, &clusters, 80.0, &config);
     assert!(
-        matches!(&solution.lines[0].repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::ProgressiveTechnicalTierPromotion, .. })),
+        matches!(
+            &solution.lines[0].repair,
+            Some(RepairOption::PushIn {
+                reason_code: RepairReasonCode::ProgressiveTechnicalTierPromotion,
+                ..
+            })
+        ),
         "{:?}",
         solution.lines
     );
@@ -99,7 +105,14 @@ fn committed_compressed_line_with_foreign_span_opportunities_keeps_plain_push_in
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
+        matches!(
+            &first.repair,
+            Some(RepairOption::PushIn {
+                reason_code: RepairReasonCode::LineAdjustmentPushIn
+                    | RepairReasonCode::LineAdjustmentPushInDpFeasibility,
+                ..
+            })
+        ),
         "{:?}",
         solution.lines
     );
@@ -133,7 +146,14 @@ fn committed_compressed_end_without_opportunity_keeps_plain_push_in_reason() {
         solution.lines
     );
     assert!(
-        matches!(&first.repair, Some(RepairOption::PushIn { reason_code: RepairReasonCode::LineAdjustmentPushIn | RepairReasonCode::LineAdjustmentPushInDpFeasibility, .. })),
+        matches!(
+            &first.repair,
+            Some(RepairOption::PushIn {
+                reason_code: RepairReasonCode::LineAdjustmentPushIn
+                    | RepairReasonCode::LineAdjustmentPushInDpFeasibility,
+                ..
+            })
+        ),
         "{:?}",
         solution.lines
     );

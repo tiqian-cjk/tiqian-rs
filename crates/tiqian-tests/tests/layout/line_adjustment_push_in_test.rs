@@ -10,7 +10,9 @@ use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, TiqianTextContent};
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 use tiqian::layout::line_breaker::rebuild_line;
-use tiqian::layout::line_optimization::{LineCandidate, RepairDetail, RepairOption, RepairReasonCode};
+use tiqian::layout::line_optimization::{
+    LineCandidate, RepairDetail, RepairOption, RepairReasonCode,
+};
 use tiqian::layout::line_repair::apply_fill_push_in;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -287,7 +289,10 @@ fn source_space_compression_promotes_emergency_break_to_syllable() {
     else {
         unreachable!()
     };
-    assert_eq!(RepairReasonCode::ProgressiveTechnicalTierPromotion, *reason_code);
+    assert_eq!(
+        RepairReasonCode::ProgressiveTechnicalTierPromotion,
+        *reason_code
+    );
     assert_eq!(RepairDetail::PushedIn, *detail);
     assert_eq!(5.0, *total_shrink);
     assert_eq!(1, allocations.len());

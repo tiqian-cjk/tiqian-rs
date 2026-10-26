@@ -3,10 +3,12 @@ use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::clreq::clreq_profile::{ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode};
 use tiqian::core::geometry::{LayoutConstraints, scalar_offset, text_range};
 use tiqian::core::text::Text;
-use tiqian::core::text_model::{DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent};
+use tiqian::core::text_model::{
+    DecorationKind, DecorationSpan, LayoutInput, LineLengthGrid, ParagraphStyle, TiqianTextContent,
+};
 use tiqian::core::units::{Ic, IcLiteral};
-use tiqian::layout::punctuation_model::GlueKind;
 use tiqian::font::font_policy::FontRole;
+use tiqian::layout::punctuation_model::GlueKind;
 
 struct FixedBasicProfile;
 
@@ -90,14 +92,28 @@ fn authored_space_at_line_end_is_removed_without_changing_the_internal_space() {
         .debug
         .line_white_space_adjustments
         .iter()
-        .find(|decision| result.clusters[decision.adjustment.cluster_index as usize].range == text_range(5, 6))
+        .find(|decision| {
+            result.clusters[decision.adjustment.cluster_index as usize].range == text_range(5, 6)
+        })
         .unwrap();
-    assert_eq!(tiqian::layout::white_space::LineWhiteSpaceAction::RemoveEnd, collapse.adjustment.action);
+    assert_eq!(
+        tiqian::layout::white_space::LineWhiteSpaceAction::RemoveEnd,
+        collapse.adjustment.action
+    );
     assert_eq!(0.0, collapse.adjustment.occupied_advance);
-    let internal = result.clusters.iter().find(|cluster| cluster.range == text_range(2, 3)).unwrap();
+    let internal = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.range == text_range(2, 3))
+        .unwrap();
     assert_eq!(12.0, internal.advance);
-    let natural: f32 = result.glyph_runs.iter().flat_map(|run| &run.glyphs)
-        .filter(|glyph| glyph.cluster_range == internal.range).map(|glyph| glyph.advance).sum();
+    let natural: f32 = result
+        .glyph_runs
+        .iter()
+        .flat_map(|run| &run.glyphs)
+        .filter(|glyph| glyph.cluster_range == internal.range)
+        .map(|glyph| glyph.advance)
+        .sum();
     assert_eq!(8.0, natural);
 }
 
@@ -131,12 +147,9 @@ fn emphasis_span_produces_dot_anchors_for_han_and_skips_punctuation() {
         .filter(|decision| decision.applied)
         .collect();
     assert_eq!(11, applied.len());
-    assert!(
-        applied.iter().all(|decision| {
-            decision.reason
-                == tiqian::core::layout_model::EmphasisDotReason::EmphasisDotOnHanText
-        })
-    );
+    assert!(applied.iter().all(|decision| {
+        decision.reason == tiqian::core::layout_model::EmphasisDotReason::EmphasisDotOnHanText
+    }));
     let comma = decisions
         .iter()
         .find(|decision| decision.source_text == "，")
@@ -444,7 +457,11 @@ fn mourning_span_is_kept_unbroken_and_framed_per_line() {
     assert_eq!(scalar_offset(3), result.lines[0].range.end());
     let segments = &result.debug.decoration_segments;
     assert_eq!(2, segments.len());
-    assert!(segments.iter().all(|segment| {segment.reason == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanKeptUnbroken && !segment.open_start && !segment.open_end
+    assert!(segments.iter().all(|segment| {
+        segment.reason
+            == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanKeptUnbroken
+            && !segment.open_start
+            && !segment.open_end
     }));
     let first = segments
         .iter()
@@ -482,11 +499,8 @@ fn mourning_span_wider_than_measure_splits_with_open_edges() {
 
     let segments = &result.debug.decoration_segments;
     assert_eq!(2, segments.len());
-    assert!(
-        segments
-            .iter()
-            .all(|segment|segment.reason == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanSplitAcrossLines)
-    );
+    assert!(segments.iter().all(|segment| segment.reason
+        == tiqian::core::layout_model::DecorationSegmentReason::MourningSpanSplitAcrossLines));
     assert!(!segments[0].open_start);
     assert!(segments[0].open_end);
     assert!(segments[1].open_start);

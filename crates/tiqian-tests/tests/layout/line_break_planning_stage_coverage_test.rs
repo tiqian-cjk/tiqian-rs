@@ -10,8 +10,8 @@ use tiqian::core::units::Ic;
 use tiqian::layout::line_breaker::LookaheadLineBreaker;
 
 use crate::support::DeterministicStubFontBackend;
-use tiqian::layout::punctuation_model::GlueKind;
 use tiqian::layout::line_optimization::RepairReasonCode;
+use tiqian::layout::punctuation_model::GlueKind;
 
 struct AdjustmentProfile(LineAdjustmentStrategy);
 
@@ -129,7 +129,8 @@ fn dash_and_solidus_boundaries_inside_technical_spans_never_stretch() {
                 .iter()
                 .flat_map(|decision| &decision.allocations)
                 .all(|allocation| {
-                    allocation.kind != GlueKind::EmergencyGraphemeTracking || allocation.delta <= 0.0
+                    allocation.kind != GlueKind::EmergencyGraphemeTracking
+                        || allocation.delta <= 0.0
                 })
         );
     }
@@ -181,10 +182,9 @@ fn push_out_first_takes_fewer_fill_push_ins_than_push_in_first() {
             .line_decisions
             .iter()
             .filter(|decision| {
-                decision
-                    .repair_decision
-                    .as_ref()
-                    .is_some_and(|repair| repair.reason_code == RepairReasonCode::LineAdjustmentPushIn)
+                decision.repair_decision.as_ref().is_some_and(|repair| {
+                    repair.reason_code == RepairReasonCode::LineAdjustmentPushIn
+                })
             })
             .count()
     };

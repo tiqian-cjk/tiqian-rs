@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/LineOptimization.kt
 
-use alloc::{collections::BTreeSet, string::String, vec::Vec};
 use crate::common::{Arc, HashSet};
+use alloc::{collections::BTreeSet, string::String, vec::Vec};
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
@@ -250,13 +250,20 @@ impl LineCandidate {
 
     /// 改变行范围或 repair 分配后，使用相同索引重解析 Tab 与行边宽度。
     pub fn remeasure(&mut self) {
-        if self.cluster_range.is_empty() { return; }
+        if self.cluster_range.is_empty() {
+            return;
+        }
         if let Some(measurement) = &self.measurement {
             let allocations = match &self.repair {
                 Some(RepairOption::PushIn { allocations, .. }) => allocations.as_slice(),
                 _ => &[],
             };
-            let width = measurement.measure(self.cluster_range, self.end_reason, self.measurement_limit, allocations);
+            let width = measurement.measure(
+                self.cluster_range,
+                self.end_reason,
+                self.measurement_limit,
+                allocations,
+            );
             self.natural_width = width.natural;
             self.adjusted_width = width.adjusted;
         }
@@ -370,14 +377,20 @@ impl LineSolution {
     /// 行解确定后才分配逐空白记录，候选计宽只保留索引与标量宽度。
     pub(crate) fn resolve_white_space(mut self) -> Self {
         for line in &mut self.lines {
-            if line.cluster_range.is_empty() { continue; }
+            if line.cluster_range.is_empty() {
+                continue;
+            }
             if let Some(measurement) = &line.measurement {
                 let allocations = match &line.repair {
                     Some(RepairOption::PushIn { allocations, .. }) => allocations.as_slice(),
                     _ => &[],
                 };
-                line.white_space_adjustments = measurement.adjustments(line.cluster_range,
-                    line.end_reason, line.measurement_limit, allocations);
+                line.white_space_adjustments = measurement.adjustments(
+                    line.cluster_range,
+                    line.end_reason,
+                    line.measurement_limit,
+                    allocations,
+                );
             }
         }
         self

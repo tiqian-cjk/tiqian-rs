@@ -1,11 +1,11 @@
 use tiqian::api::ParagraphLayoutEngineBuilder;
+use tiqian::clreq::clreq_profile::PunctuationClass;
 use tiqian::clreq::clreq_profile::{CjkPunctuationGlyphPolicy, ClreqProfile, ClreqProfileResolver};
 use tiqian::core::geometry::{LayoutConstraints, Rect};
 use tiqian::core::layout_model::{Glyph, GlyphRun};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{LayoutInput, ParagraphStyle, TiqianTextContent};
 use tiqian::core::units::Ic;
-use tiqian::clreq::clreq_profile::PunctuationClass;
 use tiqian::shaping::font_backend::{FontBackendRequest, FontBackendShapingResult};
 
 use super::font_backend_test_support::stub_backend_with_transform;

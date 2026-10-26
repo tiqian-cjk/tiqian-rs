@@ -1,5 +1,8 @@
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{AdjustmentStylePolicy, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver, KinsokuLevel, KinsokuMode, LineEndPunctuationStyle, PunctuationClass, PunctuationWidthPolicy};
+use tiqian::clreq::clreq_profile::{
+    AdjustmentStylePolicy, AutoSpacePolicy, ClreqProfile, ClreqProfileResolver, KinsokuLevel,
+    KinsokuMode, LineEndPunctuationStyle, PunctuationClass, PunctuationWidthPolicy,
+};
 use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange, text_range};
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, LineEdgeTrimReason, LineEdgeTrimSide};
 use tiqian::core::layout_queries::positioned_clusters;
@@ -246,9 +249,9 @@ fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
     assert_eq!(0.0, punctuation.leading_glue_natural);
     assert_eq!(8.0, punctuation.trailing_glue_natural);
     assert_eq!(
-            PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
-            punctuation.geometry_source
-        );
+        PunctuationGeometrySource::ProfileGlueFallbackWithoutFontGeometry,
+        punctuation.geometry_source
+    );
 
     let geometry = result
         .debug
@@ -265,10 +268,7 @@ fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
         .iter()
         .find(|decision| decision.cluster_range == geometry.range)
         .unwrap();
-    assert_eq!(
-            LineEdgeTrimSide::Trailing,
-            trim.side
-        );
+    assert_eq!(LineEdgeTrimSide::Trailing, trim.side);
     assert_eq!(8.0, trim.trim_amount);
     assert_eq!(LineEdgeTrimReason::LineEndHalfWidthPunctuation, trim.reason);
 }
@@ -305,9 +305,9 @@ fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
     assert_eq!(4.0, punctuation.leading_glue_natural);
     assert_eq!(4.0, punctuation.trailing_glue_natural);
     assert_eq!(
-            PunctuationGeometrySource::InkBoundsFittedBodyCompression,
-            punctuation.geometry_source
-        );
+        PunctuationGeometrySource::InkBoundsFittedBodyCompression,
+        punctuation.geometry_source
+    );
 
     let geometry = result.debug.geometry_decisions.first().unwrap();
     assert_eq!(
@@ -322,10 +322,7 @@ fn records_ink_calibrated_punctuation_geometry_in_layout_debug() {
     assert_eq!(8.0, geometry.resolved_advance);
 
     let edge = result.debug.line_edge_trim_decisions.first().unwrap();
-    assert_eq!(
-            LineEdgeTrimSide::Both,
-            edge.side
-        );
+    assert_eq!(LineEdgeTrimSide::Both, edge.side);
     assert_eq!(8.0, edge.trim_amount);
     assert_eq!(
         LineEdgeTrimReason::LineEndCenteredPunctuationPairedCompression,
@@ -452,7 +449,9 @@ fn compresses_adjacent_cjk_single_quote_comma_sequence() {
     );
     assert_eq!(3, result.debug.punctuation_decisions.len());
     assert_eq!(2, result.debug.spacing_decisions.len());
-    assert!(result.debug.spacing_decisions.iter().all(|decision| {decision.reason == SpacingReason::CollapseAdjacentPunctuationInnerGlue && decision.reduction == 8.0
+    assert!(result.debug.spacing_decisions.iter().all(|decision| {
+        decision.reason == SpacingReason::CollapseAdjacentPunctuationInnerGlue
+            && decision.reduction == 8.0
     }));
     assert_eq!(32.0, result.lines[0].visual_width);
     assert_eq!(32.0, result.size.width);
@@ -484,12 +483,9 @@ fn compresses_cjk_closing_before_ascii_point_mark_without_reclassifying_ascii() 
         .debug
         .spacing_decisions
         .iter()
-        .find(|decision|decision.reason == SpacingReason::CollapseCjkClosingBeforeAsciiPointMark)
+        .find(|decision| decision.reason == SpacingReason::CollapseCjkClosingBeforeAsciiPointMark)
         .unwrap();
-    assert_eq!(
-            FontRole::LatinText,
-            comma_font.role
-        );
+    assert_eq!(FontRole::LatinText, comma_font.role);
     assert_eq!(8.0, closing.advance);
     assert_eq!('」', spacing.left_char);
     assert_eq!(',', spacing.right_char);
@@ -516,9 +512,9 @@ fn halt_advance_from_shaper_drives_punctuation_body_end_to_end() {
     assert_eq!(Some(7.0), stop.halt_advance);
     assert_eq!(7.0, stop.body_width);
     assert_eq!(
-            PunctuationGeometrySource::FontHaltFittedBodyCompression,
-            stop.geometry_source
-        );
+        PunctuationGeometrySource::FontHaltFittedBodyCompression,
+        stop.geometry_source
+    );
     assert_eq!(9.0, stop.trailing_glue_natural);
     assert_eq!(
         7.0,
@@ -564,7 +560,7 @@ fn loose_line_end_style_keeps_full_width_punctuation() {
             .debug
             .line_edge_trim_decisions
             .iter()
-            .all(|decision|decision.reason != LineEdgeTrimReason::LineEndHalfWidthPunctuation)
+            .all(|decision| decision.reason != LineEdgeTrimReason::LineEndHalfWidthPunctuation)
     );
 
     let strict = layout("中文中文。");
@@ -763,10 +759,7 @@ fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
     assert_eq!(4.0, geometry.trailing_glue_consumed);
     assert_eq!(8.0, geometry.resolved_advance);
     let trim = result.debug.line_edge_trim_decisions.first().unwrap();
-    assert_eq!(
-            LineEdgeTrimSide::Both,
-            trim.side
-        );
+    assert_eq!(LineEdgeTrimSide::Both, trim.side);
     assert_eq!(
         LineEdgeTrimReason::LineEndCenteredPunctuationPairedCompression,
         trim.reason

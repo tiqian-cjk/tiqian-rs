@@ -10,8 +10,8 @@ use tiqian::core::text_model::{
 use tiqian::core::units::Ic;
 
 use crate::support::DeterministicStubFontBackend;
-use tiqian::core::layout_model::AutoSpaceSide;
 use tiqian::core::layout_model::AutoSpaceBoundaryRole;
+use tiqian::core::layout_model::AutoSpaceSide;
 
 struct LetterOnlyAutoSpace;
 
@@ -88,7 +88,9 @@ fn auto_space_replaces_typed_space_at_cjk_latin_boundary() {
     assert!(spaces.iter().all(|space| space.advance == 2.0));
     assert_eq!(2, result.debug.auto_space_decisions.len());
     assert!(result.debug.auto_space_decisions.iter().all(|decision| {
-        decision.mode == AutoSpaceMode::Replace && decision.side == AutoSpaceSide::Gap && decision.total_reduction == 6.0
+        decision.mode == AutoSpaceMode::Replace
+            && decision.side == AutoSpaceSide::Gap
+            && decision.total_reduction == 6.0
     }));
 }
 
@@ -119,10 +121,7 @@ fn numbered_labels_keep_the_same_natural_space_before_cjk_and_latin() {
             builder = builder.clreq_profile_resolver(Box::new(DisabledAutoSpace));
         }
         let mut engine = builder.build();
-        for (text, expected_width) in [
-            ("01 基础组件", 8.0),
-            ("02 Input 输入框", 8.0),
-        ] {
+        for (text, expected_width) in [("01 基础组件", 8.0), ("02 Input 输入框", 8.0)] {
             let result = engine.layout(
                 LayoutInput::builder(
                     TiqianTextContent::new(Text::from(text)),
@@ -139,16 +138,29 @@ fn numbered_labels_keep_the_same_natural_space_before_cjk_and_latin() {
             assert_eq!(1, result.lines.len(), "{text}");
             // 两段原文中数字后的空格均位于 scalar range 2..3。
             let space_range = text_range(2, 3);
-            let space = result.clusters.iter().find(|c| c.range == space_range).unwrap();
+            let space = result
+                .clusters
+                .iter()
+                .find(|c| c.range == space_range)
+                .unwrap();
             assert_eq!(" ", space.text.as_str());
-            assert_eq!(expected_width, space.advance, "{text}, auto_space={auto_space_enabled}");
+            assert_eq!(
+                expected_width, space.advance,
+                "{text}, auto_space={auto_space_enabled}"
+            );
             let positioned = tiqian::core::layout_queries::positioned_clusters(&result);
             let occupied = positioned.iter().find(|c| c.range == space_range).unwrap();
             assert_eq!(expected_width, occupied.width(), "{text}");
-            let decision = result.debug.auto_space_decisions.iter()
+            let decision = result
+                .debug
+                .auto_space_decisions
+                .iter()
                 .find(|decision| decision.cluster_range == space_range);
             assert!(decision.is_none(), "{text}");
-            println!("{text}: auto_space={auto_space_enabled}, space_width={}", space.advance);
+            println!(
+                "{text}: auto_space={auto_space_enabled}, space_width={}",
+                space.advance
+            );
             widths.push(space.advance);
         }
     }
@@ -271,14 +283,11 @@ fn attached_reference_before_latin_text_gets_the_virtual_cjk_latin_gap() {
     let decision = &layout_with_attached_reference("正文1ABC")
         .debug
         .auto_space_decisions[0];
+    assert_eq!(AutoSpaceSide::Trailing, decision.side);
     assert_eq!(
-            AutoSpaceSide::Trailing,
-            decision.side
-        );
-    assert_eq!(
-            AutoSpaceBoundaryRole::InlineAttachmentPrevious,
-            decision.boundary_role
-        );
+        AutoSpaceBoundaryRole::InlineAttachmentPrevious,
+        decision.boundary_role
+    );
     assert_eq!(
         "AttachedInlineVirtualAutoSpace:east-asian-spacing-W-N",
         decision.reason
@@ -322,7 +331,7 @@ fn unicode_east_asian_spacing_covers_narrow_scripts_without_script_whitelists() 
                 .debug
                 .auto_space_decisions
                 .iter()
-                .all(|decision|decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
+                .all(|decision| decision.reason == "TextAutoSpaceInsert:east-asian-spacing-W-N")
         );
     }
 }
@@ -358,19 +367,32 @@ fn autospace_does_not_fire_before_slash_led_latin_technical_run() {
         .iter()
         .find(|cluster| cluster.text == "/TERFism")
         .unwrap();
-    assert!(result.debug.auto_space_decisions.iter().all(|decision| decision.cluster_range != technical.range || decision.side != AutoSpaceSide::Leading));
+    assert!(
+        result
+            .debug
+            .auto_space_decisions
+            .iter()
+            .all(|decision| decision.cluster_range != technical.range
+                || decision.side != AutoSpaceSide::Leading)
+    );
 }
 
 #[test]
 fn autospace_still_fires_between_latin_and_cjk_text_even_with_punctuation_nearby() {
-    let decisions = &layout_with_mode("中文 shaping 之后", AutoSpaceMode::Replace).debug.auto_space_decisions;
+    let decisions = &layout_with_mode("中文 shaping 之后", AutoSpaceMode::Replace)
+        .debug
+        .auto_space_decisions;
     assert_eq!(2, decisions.len());
     assert!(
         decisions
             .iter()
             .all(|decision| decision.boundary_role == AutoSpaceBoundaryRole::EastAsianSpacingWide)
     );
-    assert!(decisions.iter().all(|decision| decision.side == AutoSpaceSide::Gap));
+    assert!(
+        decisions
+            .iter()
+            .all(|decision| decision.side == AutoSpaceSide::Gap)
+    );
 }
 
 #[test]
@@ -460,9 +482,20 @@ struct PhaseTwoAutoSpace(AutoSpaceMode);
 
 fn layout_with_mode(text: &str, mode: AutoSpaceMode) -> tiqian::core::layout_model::LayoutResult {
     ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(mode))).build().layout(
-            LayoutInput::builder(TiqianTextContent::new(Text::from(text)), LayoutConstraints::with_defaults(320.0))
-                .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build()).build())
+        .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(mode)))
+        .build()
+        .layout(
+            LayoutInput::builder(
+                TiqianTextContent::new(Text::from(text)),
+                LayoutConstraints::with_defaults(320.0),
+            )
+            .paragraph_style(
+                ParagraphStyle::builder()
+                    .first_line_indent(Some(Ic::ZERO))
+                    .build(),
+            )
+            .build(),
+        )
 }
 
 impl ClreqProfileResolver for PhaseTwoAutoSpace {
@@ -477,35 +510,82 @@ impl ClreqProfileResolver for PhaseTwoAutoSpace {
 #[test]
 fn phase_two_white_space_and_auto_space_matrix() {
     use tiqian::core::text_model::WhiteSpaceMode;
-    for white_space in [WhiteSpaceMode::Collapse, WhiteSpaceMode::PreserveBreaks,
-        WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
-        for mode in [AutoSpaceMode::Disabled, AutoSpaceMode::Insert, AutoSpaceMode::Replace] {
-            let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-                .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(mode))).build();
+    for white_space in [
+        WhiteSpaceMode::Collapse,
+        WhiteSpaceMode::PreserveBreaks,
+        WhiteSpaceMode::Preserve,
+        WhiteSpaceMode::BreakSpaces,
+    ] {
+        for mode in [
+            AutoSpaceMode::Disabled,
+            AutoSpaceMode::Insert,
+            AutoSpaceMode::Replace,
+        ] {
+            let mut engine = ParagraphLayoutEngineBuilder::new(Box::new(
+                DeterministicStubFontBackend::default(),
+            ))
+            .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(mode)))
+            .build();
             for narrow in ["A", "9"] {
                 for reverse in [false, true] {
                     for count in 0..=3 {
                         let spaces = " ".repeat(count);
-                        let text = if reverse { format!("{narrow}{spaces}中") }
-                            else { format!("中{spaces}{narrow}") };
-                        let result = engine.layout(LayoutInput::builder(
-                            TiqianTextContent::new(Text::from(text.as_str())),
-                            LayoutConstraints::with_defaults(320.))
-                            .paragraph_style(ParagraphStyle::builder().white_space(white_space)
-                                .first_line_indent(Some(Ic::ZERO)).build()).build());
-                        let effective = if matches!(white_space, WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks) {
+                        let text = if reverse {
+                            format!("{narrow}{spaces}中")
+                        } else {
+                            format!("中{spaces}{narrow}")
+                        };
+                        let result = engine.layout(
+                            LayoutInput::builder(
+                                TiqianTextContent::new(Text::from(text.as_str())),
+                                LayoutConstraints::with_defaults(320.),
+                            )
+                            .paragraph_style(
+                                ParagraphStyle::builder()
+                                    .white_space(white_space)
+                                    .first_line_indent(Some(Ic::ZERO))
+                                    .build(),
+                            )
+                            .build(),
+                        );
+                        let effective = if matches!(
+                            white_space,
+                            WhiteSpaceMode::Collapse | WhiteSpaceMode::PreserveBreaks
+                        ) {
                             count.min(1)
-                        } else { count };
+                        } else {
+                            count
+                        };
                         let expected = if count == 0 {
-                            if mode == AutoSpaceMode::Disabled { 32. } else { 34. }
+                            if mode == AutoSpaceMode::Disabled {
+                                32.
+                            } else {
+                                34.
+                            }
                         } else if mode == AutoSpaceMode::Replace && effective == 1 {
                             34.
-                        } else { 32. + effective as f32 * 8. };
-                        assert_eq!(expected, result.clusters.iter().map(|cluster| cluster.advance).sum::<f32>(),
-                            "{text:?}, {white_space:?}, {mode:?}");
+                        } else {
+                            32. + effective as f32 * 8.
+                        };
+                        assert_eq!(
+                            expected,
+                            result
+                                .clusters
+                                .iter()
+                                .map(|cluster| cluster.advance)
+                                .sum::<f32>(),
+                            "{text:?}, {white_space:?}, {mode:?}"
+                        );
                         assert_eq!(text, result.input.content.text.as_str());
                         if count > 0 {
-                            assert_eq!(effective, result.clusters.iter().filter(|cluster| cluster.display_text == " ").count());
+                            assert_eq!(
+                                effective,
+                                result
+                                    .clusters
+                                    .iter()
+                                    .filter(|cluster| cluster.display_text == " ")
+                                    .count()
+                            );
                         }
                     }
                 }
@@ -518,19 +598,47 @@ fn phase_two_white_space_and_auto_space_matrix() {
 fn phase_two_folded_whitespace_keeps_source_and_first_style() {
     use tiqian::core::text_model::WhiteSpaceMode;
     let text = Text::from("中 \t\r\n A");
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(Box::new(DisabledAutoSpace)).build().layout(
-            LayoutInput::builder(TiqianTextContent::builder(text.clone()).spans(vec![
-                TextSpan { range: text_range(1, 2), style: TextStyle::builder().font_size(24.).build() },
-                TextSpan { range: text_range(2, 6), style: TextStyle::builder().font_size(32.).build() },
-            ]).build(), LayoutConstraints::with_defaults(320.))
-                .paragraph_style(ParagraphStyle::builder().white_space(WhiteSpaceMode::Collapse)
-                    .first_line_indent(Some(Ic::ZERO)).build()).build());
-    let space = result.clusters.iter().find(|cluster| cluster.range == text_range(1, 2)).unwrap();
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(Box::new(DisabledAutoSpace))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::builder(text.clone())
+                        .spans(vec![
+                            TextSpan {
+                                range: text_range(1, 2),
+                                style: TextStyle::builder().font_size(24.).build(),
+                            },
+                            TextSpan {
+                                range: text_range(2, 6),
+                                style: TextStyle::builder().font_size(32.).build(),
+                            },
+                        ])
+                        .build(),
+                    LayoutConstraints::with_defaults(320.),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .white_space(WhiteSpaceMode::Collapse)
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
+                .build(),
+            );
+    let space = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.range == text_range(1, 2))
+        .unwrap();
     assert_eq!(12., space.advance);
     assert_eq!(" ", space.display_text.as_str());
     for range in [text_range(2, 3), text_range(3, 5), text_range(5, 6)] {
-        let folded = result.clusters.iter().find(|cluster| cluster.range == range).unwrap();
+        let folded = result
+            .clusters
+            .iter()
+            .find(|cluster| cluster.range == range)
+            .unwrap();
         assert_eq!(0., folded.advance);
         assert!(folded.display_text.is_empty());
     }
@@ -541,18 +649,38 @@ fn phase_two_folded_whitespace_keeps_source_and_first_style() {
 #[test]
 fn phase_two_converted_crlf_shapes_one_space_with_original_glyph_range() {
     use tiqian::core::text_model::WhiteSpaceMode;
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(Box::new(DisabledAutoSpace)).build().layout(
-            LayoutInput::builder(TiqianTextContent::new(Text::from("中\r\nA")), LayoutConstraints::with_defaults(320.))
-                .paragraph_style(ParagraphStyle::builder().white_space(WhiteSpaceMode::Collapse)
-                    .first_line_indent(Some(Ic::ZERO)).build()).build());
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(Box::new(DisabledAutoSpace))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from("中\r\nA")),
+                    LayoutConstraints::with_defaults(320.),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .white_space(WhiteSpaceMode::Collapse)
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
+                .build(),
+            );
     let range = text_range(1, 3);
-    let space = result.clusters.iter().find(|cluster| cluster.range == range).unwrap();
+    let space = result
+        .clusters
+        .iter()
+        .find(|cluster| cluster.range == range)
+        .unwrap();
     assert_eq!("\r\n", space.text.as_str());
     assert_eq!(" ", space.display_text.as_str());
     assert_eq!(8., space.advance);
-    let glyphs: Vec<_> = result.glyph_runs.iter().flat_map(|run| &run.glyphs)
-        .filter(|glyph| glyph.cluster_range == range).collect();
+    let glyphs: Vec<_> = result
+        .glyph_runs
+        .iter()
+        .flat_map(|run| &run.glyphs)
+        .filter(|glyph| glyph.cluster_range == range)
+        .collect();
     assert_eq!(1, glyphs.len());
     assert_eq!(8., glyphs[0].advance);
 }
@@ -560,22 +688,60 @@ fn phase_two_converted_crlf_shapes_one_space_with_original_glyph_range() {
 #[test]
 fn phase_two_hard_breaks_tabs_and_suppression_block_auto_space() {
     use tiqian::core::text_model::WhiteSpaceMode;
-    for mode in [WhiteSpaceMode::PreserveBreaks, WhiteSpaceMode::Preserve, WhiteSpaceMode::BreakSpaces] {
+    for mode in [
+        WhiteSpaceMode::PreserveBreaks,
+        WhiteSpaceMode::Preserve,
+        WhiteSpaceMode::BreakSpaces,
+    ] {
         for text in ["中\nA", "A\r\n中", "中\u{2028}A", "中\tA"] {
-            let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-                .build().layout(LayoutInput::builder(TiqianTextContent::new(Text::from(text)),
-                    LayoutConstraints::with_defaults(320.))
-                    .paragraph_style(ParagraphStyle::builder().white_space(mode)
-                        .first_line_indent(Some(Ic::ZERO)).build()).build());
-            assert!(result.debug.auto_space_decisions.is_empty(), "{mode:?}, {text:?}");
+            let result = ParagraphLayoutEngineBuilder::new(Box::new(
+                DeterministicStubFontBackend::default(),
+            ))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::new(Text::from(text)),
+                    LayoutConstraints::with_defaults(320.),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .white_space(mode)
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
+                .build(),
+            );
+            assert!(
+                result.debug.auto_space_decisions.is_empty(),
+                "{mode:?}, {text:?}"
+            );
         }
     }
-    let result = ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
-        .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(AutoSpaceMode::Replace))).build().layout(
-            LayoutInput::builder(TiqianTextContent::builder(Text::from("中  A"))
-                .auto_space_suppressed_ranges(vec![text_range(0, 4)]).build(),
-                LayoutConstraints::with_defaults(320.))
-                .paragraph_style(ParagraphStyle::builder().first_line_indent(Some(Ic::ZERO)).build()).build());
+    let result =
+        ParagraphLayoutEngineBuilder::new(Box::new(DeterministicStubFontBackend::default()))
+            .clreq_profile_resolver(Box::new(PhaseTwoAutoSpace(AutoSpaceMode::Replace)))
+            .build()
+            .layout(
+                LayoutInput::builder(
+                    TiqianTextContent::builder(Text::from("中  A"))
+                        .auto_space_suppressed_ranges(vec![text_range(0, 4)])
+                        .build(),
+                    LayoutConstraints::with_defaults(320.),
+                )
+                .paragraph_style(
+                    ParagraphStyle::builder()
+                        .first_line_indent(Some(Ic::ZERO))
+                        .build(),
+                )
+                .build(),
+            );
     assert!(result.debug.auto_space_decisions.is_empty());
-    assert_eq!(40., result.clusters.iter().map(|cluster| cluster.advance).sum::<f32>());
+    assert_eq!(
+        40.,
+        result
+            .clusters
+            .iter()
+            .map(|cluster| cluster.advance)
+            .sum::<f32>()
+    );
 }

@@ -7,7 +7,10 @@ use tiqian::core::layout_model::{Cluster, EmergencyTrackingReason};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{InlineObjectPreferredStretch, InlineObjectPreferredStretchKind};
 use tiqian::font::font_policy::FontRole;
-use tiqian::layout::justifier::{JustificationAllocationReason, JustificationPlan, JustificationReason, JustificationRequest, JustificationStage, Justifier};
+use tiqian::layout::justifier::{
+    JustificationAllocationReason, JustificationPlan, JustificationReason, JustificationRequest,
+    JustificationStage, Justifier,
+};
 use tiqian::layout::line_optimization::PushInAllocation;
 use tiqian::layout::progressive_break_decisions::{
     ProgressiveBreakTier, ShrinkChannel, ShrinkOpportunity,
@@ -329,7 +332,12 @@ fn technical_whitespace_stretch_fills_and_stops_the_tier_chain() {
     };
     assert_eq!(1, allocation.target_cluster_index);
     assert_eq!(GlueKind::ProgressiveTechnical, allocation.kind);
-    assert_eq!(JustificationAllocationReason::Stage(JustificationStage::ProgressiveTechnicalWhitespaceStretch), allocation.reason);
+    assert_eq!(
+        JustificationAllocationReason::Stage(
+            JustificationStage::ProgressiveTechnicalWhitespaceStretch
+        ),
+        allocation.reason
+    );
     assert_eq!(4.0, allocation.delta);
     assert_eq!(0.0, plan.unfilled_deficit);
 }
@@ -430,7 +438,10 @@ fn word_space_stretches_within_its_cap() {
     assert_eq!(GlueKind::WordSpace, allocation.kind);
     assert_eq!(1, allocation.target_cluster_index);
     assert_eq!(2.0, allocation.delta);
-    assert_eq!(JustificationAllocationReason::Stage(JustificationStage::WordSpace), allocation.reason);
+    assert_eq!(
+        JustificationAllocationReason::Stage(JustificationStage::WordSpace),
+        allocation.reason
+    );
 }
 
 #[test]
@@ -686,7 +697,12 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         panic!("expected exactly one allocation: {:?}", happy.allocations);
     };
     assert_eq!(GlueKind::CjkLatinSpace, allocation.kind);
-    assert_eq!(JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace), allocation.reason);
+    assert_eq!(
+        JustificationAllocationReason::Opportunity(
+            JustificationReason::AttachedInlineVirtualAutoSpace
+        ),
+        allocation.reason
+    );
     assert_eq!(2, allocation.target_cluster_index);
     assert_eq!(4.0, allocation.delta);
 
@@ -706,7 +722,10 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         no_previous
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
+            .all(|allocation| allocation.reason
+                != JustificationAllocationReason::Opportunity(
+                    JustificationReason::AttachedInlineVirtualAutoSpace
+                ))
     );
 
     let target_out_of_range = justify(
@@ -726,7 +745,10 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         target_out_of_range
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
+            .all(|allocation| allocation.reason
+                != JustificationAllocationReason::Opportunity(
+                    JustificationReason::AttachedInlineVirtualAutoSpace
+                ))
     );
 
     let next_out_of_range = justify(
@@ -746,7 +768,10 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
         next_out_of_range
             .allocations
             .iter()
-            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
+            .all(|allocation| allocation.reason
+                != JustificationAllocationReason::Opportunity(
+                    JustificationReason::AttachedInlineVirtualAutoSpace
+                ))
     );
 
     for protected in [HashSet::from([0]), HashSet::from([3])] {
@@ -764,11 +789,10 @@ fn attached_inline_virtual_auto_space_joins_tier_two() {
                 request.no_stretch_boundary_clusters = protected;
             },
         );
-        assert!(
-            plan.allocations
-                .iter()
-                .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualAutoSpace))
-        );
+        assert!(plan.allocations.iter().all(|allocation| allocation.reason
+            != JustificationAllocationReason::Opportunity(
+                JustificationReason::AttachedInlineVirtualAutoSpace
+            )));
     }
 }
 
@@ -1035,17 +1059,23 @@ fn preferred_inline_object_stretch_runs_by_semantic_kind() {
     for (kind, reason, glue) in [
         (
             InlineObjectPreferredStretchKind::PunctuationTrailing,
-            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::PunctuationTrailing)),
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(
+                InlineObjectPreferredStretchKind::PunctuationTrailing,
+            )),
             GlueKind::InlineObjectPunctuationTrailing,
         ),
         (
             InlineObjectPreferredStretchKind::Relation,
-            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::Relation)),
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(
+                InlineObjectPreferredStretchKind::Relation,
+            )),
             GlueKind::InlineObjectRelation,
         ),
         (
             InlineObjectPreferredStretchKind::BinaryOperator,
-            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(InlineObjectPreferredStretchKind::BinaryOperator)),
+            JustificationAllocationReason::Stage(JustificationStage::InlineObjectPreferredStretch(
+                InlineObjectPreferredStretchKind::BinaryOperator,
+            )),
             GlueKind::InlineObjectBinaryOperator,
         ),
     ] {
@@ -1416,7 +1446,9 @@ fn uniform_text_boundaries_exclude_protected_classes() {
         },
     );
     assert_eq!(
-        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
+        JustificationAllocationReason::Opportunity(
+            JustificationReason::AttachedInlineVirtualInterChar
+        ),
         virtual_owned
             .allocations
             .first()
@@ -1530,7 +1562,9 @@ fn attached_inline_virtual_inter_char_honours_no_stretch_protection() {
         },
     );
     assert_eq!(
-        JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar),
+        JustificationAllocationReason::Opportunity(
+            JustificationReason::AttachedInlineVirtualInterChar
+        ),
         happy
             .allocations
             .first()
@@ -1557,11 +1591,10 @@ fn attached_inline_virtual_inter_char_honours_no_stretch_protection() {
                 request.no_stretch_boundary_after_clusters = no_stretch_after;
             },
         );
-        assert!(
-            plan.allocations
-                .iter()
-                .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar))
-        );
+        assert!(plan.allocations.iter().all(|allocation| allocation.reason
+            != JustificationAllocationReason::Opportunity(
+                JustificationReason::AttachedInlineVirtualInterChar
+            )));
         assert!(plan.unfilled_deficit > 0.0);
     }
 
@@ -1638,11 +1671,10 @@ fn attached_inline_virtual_sino_western_needs_stretch_enabled() {
             request.allow_sino_western_gap_stretch = false;
         },
     );
-    assert!(
-        plan.allocations
-            .iter()
-            .all(|allocation| allocation.reason != JustificationAllocationReason::Opportunity(JustificationReason::AttachedInlineVirtualInterChar))
-    );
+    assert!(plan.allocations.iter().all(|allocation| allocation.reason
+        != JustificationAllocationReason::Opportunity(
+            JustificationReason::AttachedInlineVirtualInterChar
+        )));
     assert!(plan.unfilled_deficit > 0.0);
 }
 

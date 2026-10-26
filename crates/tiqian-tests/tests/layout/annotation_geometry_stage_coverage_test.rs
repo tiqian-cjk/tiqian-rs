@@ -1,12 +1,17 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use tiqian::api::ParagraphLayoutEngineBuilder;
-use tiqian::clreq::clreq_profile::{AutoSpaceMode, BuiltInClreqProfileResolver, ClreqProfileResolver};
+use tiqian::clreq::clreq_profile::{
+    AutoSpaceMode, BuiltInClreqProfileResolver, ClreqProfileResolver,
+};
 use tiqian::common::HashMap;
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDecisionInfo, EmphasisDotReason, Glyph, LineBox, LineEndReason};
+use tiqian::core::layout_model::{
+    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
+    ClusterGeometryDecisionInfo, EmphasisDotReason, Glyph, LineBox, LineEndReason,
+};
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
     DecorationKind, DecorationSpan, InlineObjectBoundaryAdjustment, InlineObjectPreferredStretch,
@@ -185,8 +190,7 @@ fn inline_object_decisions_with_preferred_stretch_and_fixed() {
     assert_eq!(2, result.debug.inline_object_decisions.len());
     assert_eq!(
         Some(InlineObjectPreferredStretchKind::PunctuationTrailing),
-        result.debug.inline_object_decisions[0]
-            .leading_preferred_stretch_kind
+        result.debug.inline_object_decisions[0].leading_preferred_stretch_kind
     );
     assert_eq!(
         "MeasurableOpaqueInlineObject",

@@ -14,8 +14,8 @@ use tiqian::layout::unicode_punctuation_boundary_resolver::resolve_western_brack
 use tiqian::linebreak::hyphenation::NoHyphenator;
 
 use crate::support::DeterministicStubFontBackend;
-use tiqian::core::layout_model::KinsokuForbiddenPosition;
 use tiqian::core::layout_model::ContextualKinsokuRule;
+use tiqian::core::layout_model::KinsokuForbiddenPosition;
 use tiqian::core::layout_model::Uax14BoundaryRule;
 
 struct KinsokuNoneProfile;
@@ -254,7 +254,9 @@ fn paired_latin_curly_quotes_keep_content_across_both_line_edges() {
             .find(|decision| decision.source_text == "”")
             .unwrap();
         assert_eq!(
-            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(Uax14BoundaryRule::PairedClosingQuote),
+            ContextualKinsokuRule::Uax14WesternPunctuationBoundary(
+                Uax14BoundaryRule::PairedClosingQuote
+            ),
             decision.reason
         );
     }

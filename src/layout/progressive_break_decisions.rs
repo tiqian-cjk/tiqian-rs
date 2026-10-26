@@ -1,7 +1,7 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ProgressiveBreakDecisions.kt
 
-use alloc::vec::Vec;
 use crate::common::{HashMap, HashSet};
+use alloc::vec::Vec;
 
 use super::super::core::geometry::TextRange;
 use super::super::core::int_range::IntRange;
@@ -257,48 +257,52 @@ fn progressive_candidate_stretch_density(
         .get(&boundary)
         .map(|opportunity| opportunity.span_range);
     // 按候选行的空白策略计价；不可生效的空白与对应间隙不参与容量估算。
-    let (width, technical_whitespace_capacity, sino_western_gap_count, terminal_technical_source_units) =
-        if let Some(measurement) = measurement {
-            let range = IntRange::new(line_start, boundary - 1);
-            let width = measurement
-                .measure(range, LineEndReason::AutoWrap, line_limit, &[])
-                .adjusted;
-            let (capacity, sino, _, units) = measurement.progressive_stats(range, active_span);
-            (width, capacity, sino as f32, units)
-        } else {
-            let mut width = 0.0;
-            let mut technical_whitespace_capacity = 0.0;
-            let mut sino_western_gap_count = 0.0;
-            let mut terminal_technical_source_units = 0;
-            for index in line_start..boundary {
-                let cluster = &adjusted_clusters[index as usize];
-                width += cluster.advance;
-                if index > line_start {
-                    if let Some(opportunity) = opportunities.get(&index)
-                        && opportunity.tier == ProgressiveBreakTier::Whitespace
-                    {
-                        technical_whitespace_capacity +=
-                            opportunity.preceding_whitespace_stretch_capacity;
-                    }
-                    if sino_western_boundaries.contains(&index) {
-                        sino_western_gap_count += 1.0;
-                    }
+    let (
+        width,
+        technical_whitespace_capacity,
+        sino_western_gap_count,
+        terminal_technical_source_units,
+    ) = if let Some(measurement) = measurement {
+        let range = IntRange::new(line_start, boundary - 1);
+        let width = measurement
+            .measure(range, LineEndReason::AutoWrap, line_limit, &[])
+            .adjusted;
+        let (capacity, sino, _, units) = measurement.progressive_stats(range, active_span);
+        (width, capacity, sino as f32, units)
+    } else {
+        let mut width = 0.0;
+        let mut technical_whitespace_capacity = 0.0;
+        let mut sino_western_gap_count = 0.0;
+        let mut terminal_technical_source_units = 0;
+        for index in line_start..boundary {
+            let cluster = &adjusted_clusters[index as usize];
+            width += cluster.advance;
+            if index > line_start {
+                if let Some(opportunity) = opportunities.get(&index)
+                    && opportunity.tier == ProgressiveBreakTier::Whitespace
+                {
+                    technical_whitespace_capacity +=
+                        opportunity.preceding_whitespace_stretch_capacity;
                 }
-                if active_span.is_some_and(|span| {
-                    cluster.range.start() >= span.start()
-                        && cluster.range.end() <= span.end()
-                        && !cluster.text.chars().any(char::is_whitespace)
-                }) {
-                    terminal_technical_source_units += cluster.text.scalar_len().value();
+                if sino_western_boundaries.contains(&index) {
+                    sino_western_gap_count += 1.0;
                 }
             }
-            (
-                width,
-                technical_whitespace_capacity,
-                sino_western_gap_count,
-                terminal_technical_source_units,
-            )
-        };
+            if active_span.is_some_and(|span| {
+                cluster.range.start() >= span.start()
+                    && cluster.range.end() <= span.end()
+                    && !cluster.text.chars().any(char::is_whitespace)
+            }) {
+                terminal_technical_source_units += cluster.text.scalar_len().value();
+            }
+        }
+        (
+            width,
+            technical_whitespace_capacity,
+            sino_western_gap_count,
+            terminal_technical_source_units,
+        )
+    };
     let deficit = (line_limit - width).max(0.0);
     let cjk_deficit = (deficit
         - technical_whitespace_capacity

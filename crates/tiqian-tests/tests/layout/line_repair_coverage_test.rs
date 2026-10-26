@@ -329,13 +329,18 @@ fn push_in_reports_infinity_capacity_with_a_portable_debug_string() {
     assert!(result.candidate.accepted);
     assert!(result.candidate.shrink.is_infinite());
     let RepairOption::PushIn {
-        reason_code, detail, ..
+        reason_code,
+        detail,
+        ..
     } = result.previous.repair.as_ref().unwrap()
     else {
         panic!()
     };
     assert_eq!(
-        (RepairReasonCode::ForbiddenAtLineStart, RepairDetail::PushedIn),
+        (
+            RepairReasonCode::ForbiddenAtLineStart,
+            RepairDetail::PushedIn
+        ),
         (*reason_code, *detail)
     );
 }
@@ -1533,10 +1538,7 @@ fn fill_push_in_honours_progressive_tier_promotion_boundaries() {
         &HashSet::new(),
         &HashMap::from([(2, emergency), (3, whitespace)]),
     );
-    let RepairOption::PushIn {
-        reason_code, ..
-    } = promoted[0].repair.as_ref().unwrap()
-    else {
+    let RepairOption::PushIn { reason_code, .. } = promoted[0].repair.as_ref().unwrap() else {
         panic!()
     };
     assert_eq!(

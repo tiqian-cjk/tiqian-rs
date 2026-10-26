@@ -10,9 +10,7 @@ use tiqian::core::layout_model::{
     DecorationSegmentReason, EmphasisDotGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult,
     RubyGeometry,
 };
-use tiqian::core::layout_queries::{
-    get_bounding_boxes, get_text_for_copy, positioned_clusters,
-};
+use tiqian::core::layout_queries::{get_bounding_boxes, get_text_for_copy, positioned_clusters};
 use tiqian::core::layout_result_replay_index::to_replay_index;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::DecorationKind;
@@ -23,33 +21,33 @@ use super::layout_queries_test_support::{cluster, line, result_with_rich_text};
 fn annotation_layout() -> LayoutOutput {
     LayoutOutput {
         annotations: tiqian::core::layout_model::AnnotationGeometry {
-            ruby: vec![RubyGeometry::builder(
-                text_range(0, 2),
-                Text::from("tíqiàn"),
-                0,
-                10.0,
-                0.0,
-                8.0,
-                0.0,
-            )
-            .ascent(6.0)
-            .descent(2.0)
-            .width(30.0)
-            .build()],
+            ruby: vec![
+                RubyGeometry::builder(
+                    text_range(0, 2),
+                    Text::from("tíqiàn"),
+                    0,
+                    10.0,
+                    0.0,
+                    8.0,
+                    0.0,
+                )
+                .ascent(6.0)
+                .descent(2.0)
+                .width(30.0)
+                .build(),
+            ],
             bopomofo: vec![tiqian::core::layout_model::BopomofoGeometry::new(
                 text_range(2, 3),
                 Text::from("ㄋㄧㄣˊ"),
                 0,
-                vec![
-                    BopomofoGlyphPlacement::new(
-                        Text::from("ㄋ"),
-                        10.0,
-                        0.0,
-                        5.0,
-                        5.0,
-                        BopomofoGlyphRole::Symbol,
-                    ),
-                ],
+                vec![BopomofoGlyphPlacement::new(
+                    Text::from("ㄋ"),
+                    10.0,
+                    0.0,
+                    5.0,
+                    5.0,
+                    BopomofoGlyphRole::Symbol,
+                )],
             )],
         },
         decorations: tiqian::core::layout_model::DecorationGeometry {
@@ -113,7 +111,13 @@ fn functional_queries_ignore_debug_contents() {
     let with_debug = (
         positioned_clusters(&result)
             .iter()
-            .map(|cluster| (cluster.range, cluster.left.to_bits(), cluster.right.to_bits()))
+            .map(|cluster| {
+                (
+                    cluster.range,
+                    cluster.left.to_bits(),
+                    cluster.right.to_bits(),
+                )
+            })
             .collect::<Vec<_>>(),
         get_bounding_boxes(&result, text_range(0, 3)),
         get_text_for_copy(&result, text_range(0, 3)),
@@ -126,7 +130,13 @@ fn functional_queries_ignore_debug_contents() {
     let without_debug = (
         positioned_clusters(&result)
             .iter()
-            .map(|cluster| (cluster.range, cluster.left.to_bits(), cluster.right.to_bits()))
+            .map(|cluster| {
+                (
+                    cluster.range,
+                    cluster.left.to_bits(),
+                    cluster.right.to_bits(),
+                )
+            })
             .collect::<Vec<_>>(),
         get_bounding_boxes(&result, text_range(0, 3)),
         get_text_for_copy(&result, text_range(0, 3)),
