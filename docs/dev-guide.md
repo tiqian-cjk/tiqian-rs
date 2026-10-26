@@ -43,6 +43,45 @@ cargo run -p tiqian-demo --release
 
 示例使用 HarfRust、SkRifa 和 Vello 实现 `FontBackend` 并完成字体接入、字形 shaping 与绘制；生产引擎通过 `ParagraphLayoutEngineBuilder` 显式接收该 backend。
 
+## no-std
+
+主库默认启用 `std` 预设。依赖方使用 no-std 时，设置 `default-features = false`，并选择
+`features = ["no-std"]`。该配置仍需要 `alloc`，分配器及最终程序的 panic 处理由宿主提供。
+
+| feature | 作用 |
+| --- | --- |
+| `runtime-std` | 允许主库使用标准库，不选择组件实现 |
+| `collections-hashbrown` / `collections-std` | 选择集合；后者启用 `runtime-std` |
+| `math-std` / `math-libm` | 选择浮点数学实现；前者启用 `runtime-std` |
+| `shared-auto` / `shared-portable` | 按目标原子能力选择 Arc / 强制使用 portable Arc |
+| `debug-info` | 结构化诊断，独立于运行环境 |
+
+`std` 预设选择 `runtime-std,collections-hashbrown,math-std,shared-auto`；`no-std` 预设选择
+`collections-hashbrown,math-libm,shared-auto`。Cargo feature 只能叠加：每类组件必须且只能选一个，
+`no-std` 与 `runtime-std`（含 `std`、`collections-std`、`math-std`）互斥。
+自定义组合须关闭默认 feature、不选预设，再直接选择各组件，不能用另一组件覆盖预设。
+
+在仓库根目录验证：
+
+```shell
+cargo test -p tiqian --lib --no-default-features --features no-std
+cargo test -p tiqian-tests --no-default-features --features no-std
+```
+
+no-std CI 仅选择主库和 tests，不引入 demo 或 bench；测试 harness 可使用 std，主库不启用
+`runtime-std`。`tiqian-tests` 默认启用的 `demo-tests` 仅用于 std 字体集成测试，并自动启用
+`std`；上述命令关闭默认 feature，排除该路径。
+
+公开类型统一使用 `tiqian::common::Arc`：`shared-auto` 在有指针宽度原子的目标使用
+`alloc::sync::Arc`，否则使用 `portable_atomic_util::Arc`；`shared-portable` 始终使用后者。
+portable Arc 不支持标准 Arc 的自动 unsizing；构造 trait object 时先得到 `Box<dyn Trait>`，
+再调用 `Arc::from`。当前 portable 路径每次 annotation 构建因此增加 3 次临时 Box 分配。
+
+无原子目标需要用户配置 portable-atomic 的宿主回退机制；库不默认假设单核，也不提供临界区实现。
+用户暂不添加无原子验证目标，该路径尚未验证。文本索引和英文断词表统一使用
+`once_cell::race::OnceBox`：每个成功初始化的 cell 额外保留一次 Box 分配，竞争时可能重复
+初始化并释放未发布候选，初始化函数须允许重复执行。
+
 ## Fixture 与 golden
 
 `crates/tiqian-tests/tests/fixture_layout/` 保存 deterministic stub fixture 与完整 layout decision golden。日常回归测试使用 Rust 仓库内的 fixture，不依赖 Kotlin 仓库。
@@ -70,7 +109,18 @@ cargo run -p tiqian-bench --release --bin paragraph-layout-bench
 cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --iterations 1000 --warmup 50 --widths 672,360,960 --scale 1
 ```
 
-比较实现时保持构建配置和参数一致，主要观察各宽度的 `layout` 指标。`--replay` 可以额外测量整页重放索引；`--cluster-queries` 会在每页布局后调用两个逐 cluster 查询并单独计时：
+比较实现时保持构建配置和参数一致，主要观察各宽度的 `layout` 指标。
+
+bench 默认选择 std 主库；测量 no-std 主库时，关闭默认 feature 并选择 `no-std`：
+
+```shell
+cargo run --release -p tiqian-bench --no-default-features --features no-std --bin paragraph-layout-bench -- --count-allocations --widths 672 --warmup 10 --iterations 30
+```
+
+该 feature 同时转发给 demo 复用依赖，确保主库配置一致。bench、demo 字体后端本身仍使用 std；
+不需要修改根 manifest。计时测量去掉 `--count-allocations`，分配计数运行的时间不用于比较。
+
+`--replay` 可以额外测量整页重放索引；`--cluster-queries` 会在每页布局后调用两个逐 cluster 查询并单独计时：
 
 ```shell
 cargo run -p tiqian-bench --release --bin paragraph-layout-bench -- --replay
