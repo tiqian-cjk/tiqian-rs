@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.8.0 (2026-10-27)
+
+### New Features
+
+ - <csr-id-d5556944a246e1b8f9aa49b315bb1751edc01cce/> add no-std support with composable features
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 day passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add no-std support with composable features ([`d555694`](https://github.com/tiqian-cjk/tiqian-rs/commit/d5556944a246e1b8f9aa49b315bb1751edc01cce))
+</details>
+
 ## v0.7.0 (2026-10-26)
 
 ### New Features
@@ -36,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 13 commits contributed to the release over the course of 29 calendar days.
- - 30 days passed between releases.
+ - 31 days passed between releases.
  - 12 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -91,10 +116,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-083573754b0e3f1c9d297e977cf865143c8eda1d/>
 
-### Chore
-
- - <csr-id-083573754b0e3f1c9d297e977cf865143c8eda1d/> format
-
 ### New Features
 
  - <csr-id-87063ff1ac4bef2792966517527c9e4ceb25f0e6/> add IDs to rich-text links and inline objects
@@ -104,6 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -150,11 +172,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-48d1dbe3d1ec8811c0015aa27e33fea05095c900/>
 <csr-id-bd4542a9b72c1f46329281e1bfbbeafcbb22f914/>
 
-### Documentation
-
- - <csr-id-96c4ab21ad821bfea004762eb2e11f7dd81a2168/> document runtime layout local fallback policy
- - <csr-id-40d2a87a9395a9e1ee6471e24f0fbfa7403da958/> define runtime validation and layout pipeline tradeoffs
-
 ### New Features
 
  - <csr-id-9f5b131e283e7034c6bc2e93b5ae5dc08e9e6902/> remove unused prepared paragraph JSON API
@@ -171,21 +188,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-9ad61d5f7a83f3c2214038eea57c8aa152232811/> normalize invalid geometry inputs without panicking
  - <csr-id-19cdb19ed53c3e01ff8dcb34f131c04ab0cff15a/> ignore paragraph configuration updates after text is appended
  - <csr-id-5efcf4e372f99ac0bdfc0f5aa0716dbfa8b1f8d0/> handle invalid layout input gracefully
- - <csr-id-3371e844f1dbfdd605e43bb47b588d1e3c0af7cd/> import ControlBoundsPen from skrifa
-
-### Refactor
-
- - <csr-id-bdc815816f06ef003a9d8677bcd95dce034c580a/> move unimplemented text shaper to test helper
- - <csr-id-d93271648ffab558ed70ba5fc00db59705171a34/> use char-based Unicode classification APIs
- - <csr-id-48d1dbe3d1ec8811c0015aa27e33fea05095c900/> scope mimalloc to example binaries
- - <csr-id-bd4542a9b72c1f46329281e1bfbbeafcbb22f914/> require layout traits to be thread-safe
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 15 commits contributed to the release.
- - 1 day passed between releases.
+ - 2 days passed between releases.
  - 15 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -256,41 +265,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-569d5fb463944e408908dbbc090e53da50c20f70/>
 <csr-id-fbed5db7adc04e0f3170ef372a679ea8a7ac3ab5/>
 
-### Chore
-
- - <csr-id-29fd8374983c26d351698e519b783cb37d5ecc30/> adjust folder structure of tests
- - <csr-id-211969777a0b417293afd604336fa704e15d5790/> adjust folder structure
- - <csr-id-403648fc60e7d37deefdbad05e00779964a5d9fd/> move fixture-layout-dump to example
- - <csr-id-2024b725fc82bb3c5b69a3b7bd887120501a1794/> measure paragraph demo layout time
- - <csr-id-56631b631edffa529fca00d39b3f21da54cf5aab/> clippy
- - <csr-id-cec61ff6bb49e5235e2defe622c6b79163453279/> format
-
-### Documentation
-
- - <csr-id-7977e18ba51f4b1db901ea45eed1edf1af461834/> update readme
- - <csr-id-fbe5eaeaa285f33a03f06f4f5259d2cec1399fe2/> update unified font backend integration guidance
- - <csr-id-874297031a7a10344b4dccc180ef1ef84d1e8451/> add project overview and development guide
- - <csr-id-21f3b29bdb7c7cecb734aaded7e5a2a6a0a4ef43/> clarify interaction query divergence wording
- - <csr-id-fe2798778825641b302b72203e5eeb530cf83289/> standardize iteration naming and update references
- - <csr-id-bed2d4036597df7079843c1878dd573df74eda37/> clarify API design report and builder integration
- - <csr-id-2a29658f367bf0719c2aff5c1dc86b482ce28cad/> consolidate layout performance optimization notes
- - <csr-id-5cdc0a34226d29b732c848d5a27961823d5fd505/> update docs
- - <csr-id-36edff56044a4cad42d9fad4116f53a4a5fbbd48/> document rich-text output through LayoutResult
- - <csr-id-d0b0467d52e52346c864678b3897dbae646807a1/> document unified rich-text paint model
- - <csr-id-6f4f18caf6f7a3822c8bfb3798f76be628a1699f/> add paragraph builder API design and usage guide
- - <csr-id-d5543fb9d76dfd4188c15e0d50a69c6926a32e82/> finalize Unicode scalar source coordinate migration records
- - <csr-id-b3986c31b7c0a10b11a4e9746b5a469ec071d283/> update docs
- - <csr-id-ba9de1fc186a25247de863a491297d6999c9518c/> update docs
- - <csr-id-0ae1c5e88f39973b4154e03ef6781236d8e5629f/> mark P3 giant-token optimization complete
- - <csr-id-2ef2352eec57a23bcf24d4e7c28f7ad63de76cbb/> document T5 audit completion and remaining P3 performance work
- - <csr-id-060d3e5d6408765fe7d1d1891a1345fb02e6390f/> document Kotlin upstream audit and test mapping
- - <csr-id-5ecb03c00ea081650639a7e22a9bcecad631c394/> document recorded shaping verification and fixture count
- - <csr-id-df07fe1f517bd571b7eaa2cb488f843f15c886cd/> document Unicode data and UTF-16 text migrations
- - <csr-id-8f6afb841cd931e0f224e7fb7ff9600eefd6d541/> document key Kotlin/Rust differences
- - <csr-id-34200e8046e081e5ff67bdfdf1dfa062fd4f0b67/> document large-span sync workflow
- - <csr-id-c74b4410379f87742e0a290d401ca1401c7b6882/> record Kotlin upstream sync by commit range
- - <csr-id-3808ea72f216a01ce6e0d6f21435de4b2be05e4a/> add Kotlin upstream sync tracking records
-
 ### New Features
 
  - <csr-id-0fb6f2048d5f00282a8705110d0f6ad79c743b61/> add layout replay index and paint geometry utilities
@@ -298,16 +272,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-153c6ef4cb939055c6ab174c09abce19c11b739a/> support layered rich-text spans and semantic markers
  - <csr-id-e9ece62bd89073f5d124bf4a2b8e16e9c20a5288/> expose paragraph builder API and migrate demo content
  - <csr-id-d7e1869f0ab94fdfc80564d9565455bb7ca5d018/> add shaping diagnostics to prepared paragraph JSON
- - <csr-id-08cdf41a8d141b58c548c6d0f62d695617f7d182/> verify recorded fixtures with shaping evidence
  - <csr-id-0ab1bef222e5cc75f9d1aa45f3bec648fc943745/> add optional render evidence to prepared paragraph JSON
  - <csr-id-997569a35d895a19221ac645bc236662235cbdd3/> resolve dash and ellipsis roles from script context
  - <csr-id-64643e1e4e9a24633e58567cdca0657efdd63f46/> support configurable collection implementations
  - <csr-id-7888614dab606dd8b4106b5965e5c8946f65df2d/> add Unicode emoji sequence role promotion
- - <csr-id-48f938bcd96cbab870e293f2218295a714613e7a/> add multilingual paragraph samples
 
 ### Bug Fixes
 
- - <csr-id-e74321e3eef249798a472acfe1e9735482706783/> resolve README package include path
  - <csr-id-b6ef5c1a6a25591fe9139cfa2f029999294559ca/> generate inline boxes for padded rich text
  - <csr-id-a15254964a91a6cbd5af8b93e478a84f6a095bac/> apply technical breaking rules to inline code
  - <csr-id-fa3afcd87d9bb1858154eceb557dd1a1115ce6a3/> emit rich text spans for technical scopes
@@ -320,17 +291,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-c4b09e5407034b22d431876223b5a9e61ee73f53/> handle NaN surplus in compression
  - <csr-id-be17584a4fc4702d6171f95701a8acb2ed7ed399/> exclude fullwidth characters from word-internal quote pairs
  - <csr-id-ad2bc23e69868ff0e607fa82d12b88e066dad642/> exclude numeric boundaries from word-internal quote pairs
- - <csr-id-e82aa51d8a262f2e6d1c1aa46d8a982bdcb33c12/> align CJK dashes with ideograph centers
  - <csr-id-b2f47772af52f8d14deff4fbdefd1676021533cf/> classify non-CJK word-internal quote pairs as Latin text
- - <csr-id-61906cdeb76ee686e047a00b7396f560c2e3cae0/> keep shaping clusters within layout ranges
-
-### Other
-
- - <csr-id-a6c40095c360e57d41c6d560ab8147bfb4fd368d/> add coverage runner and preserve custom RUSTFLAGS
- - <csr-id-dd82894507083d684d1ac1f86d5d1c3b12dbd3ff/> add Cargo build configuration
- - <csr-id-6f8631f8175d66f65f3b6df549d8e198aec12605/> enable Git LFS checkout
- - <csr-id-8300137b8d2a92518a0196935f7ce9b096fbdaf1/> add GitHub Actions workflow to build and test
- - <csr-id-933891078b7e6c21fb9585d170a2a124d39c56b6/> add GitHub Actions build and test workflow
 
 ### Performance
 
@@ -344,41 +305,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-7a8492f6bbd64cfafac6e2e59d6fa2af01268d52/> use mimalloc as the global allocator
  - <csr-id-a499bcf337bccc48c2b2d7dd047b1efce3e64f0d/> reuse shared Text views for sliced ranges
  - <csr-id-47b511d767f7e19c9fbddff1b652d57965b3fb35/> optimize UTF-16 indexing and ASCII font classification
-
-### Refactor
-
- - <csr-id-c4b4c88b50582c0e641b1663d43e112a19e8f7fb/> require explicit font backends for paragraph layout engines
- - <csr-id-e6b297272991c8a28a030adfc6686310efd31d4f/> migrate layout tests to unified font backend
- - <csr-id-4acc4e032783417fdfe46b0039778fb128f759bb/> migrate demos and benchmarks to the unified font backend
- - <csr-id-02d95fbd3afd82e9ffda379cd279c767e84e472d/> unify font resolution, shaping, and metrics behind backend
- - <csr-id-26cd353ce45b102aa1780aad695d3ccac33a790a/> reuse layout replay index in paragraph demo rendering
- - <csr-id-b42acc56e171d61bb74b8d293219ce6596c4482e/> unify rich-text data with layout input
- - <csr-id-14c093beb10389b6468910c56f48b86616c0ab46/> migrate source coordinates from UTF-16 to Unicode scalars
- - <csr-id-abde2acfa6afb1f3cd82d5597a1f917813e02039/> pass borrowed data to justification requests
- - <csr-id-301de9b33ced0b6ea2279f9a94e18a3156c3892e/> index unbreakable ranges and cluster lookups
- - <csr-id-a3e572b55b4dbde8afa77faff249ed9a98f79a9c/> use shared collection type aliases
- - <csr-id-1a1099c1bdc24dbc98da2c5945ba44a6475fc288/> reuse boundary scanning helper and cached text length
- - <csr-id-14f9e8d0fc6efdd475ec34d0486dfa62f7b3588b/> introduce UTF-16-optimized `Text` implemention
- - <csr-id-25c6139eeef72a9c54bb2ee080427804ad4deac7/> replace generated Unicode tables with ICU properties
-
-### Test
-
- - <csr-id-fe36609907245d8a4693684c9c5c9301fbe62f7c/> fix test
- - <csr-id-e468356a2c3e70940cf71039ca60fba0b7e14966/> expand coverage for layout and text processing contracts
- - <csr-id-920a1d4ba5ceb9a68635987ccc5823e0c4b38d17/> migrate rich-text coverage to layered spans and semantics
- - <csr-id-ca08d0942880f1110af749382ef5f1f9b0a15c89/> add Unicode scalar source coordinate fixture coverage
- - <csr-id-06855beb2d11127d7fe517df81664450cf7d2a6f/> fix tests
- - <csr-id-246b2146954697e2612b4dccac78e91d138b6d13/> migrate fixture verification into Rust
- - <csr-id-df0d2a10c23d13747ed04e441c7195e0fa810e94/> cover recorded shaping and hyphenation behavior
- - <csr-id-9f7aed70c462202a23d321008ef294cd60d570a1/> expand layout, line breaking, and justification coverage
- - <csr-id-e65278e7a82867516462f2594861c6495583fdf5/> add Kotlin test audit inventory tool
- - <csr-id-d834015446d3c16c6c9342dd493b669052354be9/> expand layout, shaping, and font backend coverage
- - <csr-id-46b89c6c8b4b8587377d359be26f65694acc2deb/> expand layout coverage for annotations, punctuation, and line breaking
- - <csr-id-0d53353c97bb6fd7e092f49e1c1d944d3aa0659f/> expand coverage for layout, CLREQ, font, Unicode, and linebreak behavior
- - <csr-id-95317310630489ce22332e7260f4f1dc2068551a/> expand layout and interaction boundary coverage
- - <csr-id-b8ed5d75c646053f7aad0fdf3ca2af4c96586736/> classify fullwidth letter-bounded quotes as CJK punctuation
- - <csr-id-569d5fb463944e408908dbbc090e53da50c20f70/> distinguish letter- and digit-bounded word-internal quotes
- - <csr-id-fbed5db7adc04e0f3170ef372a679ea8a7ac3ab5/> cover mixed-script quote classification and geometry
 
 ### Commit Statistics
 
@@ -459,24 +385,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-89f9c0a7a7109a1e3b7b03f983913cd258eab81c/>
 <csr-id-3a862f5b8616dca69939a8bb8774e7b6259c3298/>
 
-### Chore
-
- - <csr-id-a94b09a38ae71ff52da8d64b9e6e7e15d5b66da8/> include package resources and metadata
- - <csr-id-205b80fd6c796bf3ca8b3fdddf7fbb0e5d7b8c3c/> update repository URL
- - <csr-id-a1d715e4341898cfdfeef276ab6a96f240482f33/> add font resources and Git LFS tracking
- - <csr-id-5caba540355d4d5741a298db54d6dceb24c5185f/> add Mozilla Public License
- - <csr-id-89f9c0a7a7109a1e3b7b03f983913cd258eab81c/> format package manifest
-
 ### New Features
 
- - <csr-id-8f3b66ae3c2da26b0cc336e679b77184a633dfd5/> migrate paragraph demo from CPU to GPU rendering
- - <csr-id-581cd67c2436c976b970c613ad7d523363f03707/> add ligature font samples to paragraph demo
- - <csr-id-df751f9d4f61b52ec6978c050fd9fb065549efa4/> group narrow layout samples under boundary appendix
- - <csr-id-d5ec991fb4f7117485be681e8e16f4a25f6ac296/> add Vello rendering and color emoji support
- - <csr-id-577f75a0448c9eb57e794f84cb8506acd0e7338d/> support explicit font family selection in paragraph demo
- - <csr-id-0b82611d344826e8138b5db44105868d8c6db805/> expand paragraph demo feature coverage
- - <csr-id-e609d8a9e052383eeaaf01ce9e47438c0edf79fc/> add paragraph rendering demo
- - <csr-id-811b6bc3e28f0fa749c2957a31a9436898709e6f/> add all-fixture verification command
  - <csr-id-e66101202aafced6c9f65f270c1fe39b9080adae/> add fixture verification tooling
  - <csr-id-560ceec1c4cbd0816d9290b2cec633a9a5f499dc/> initialize project
 
@@ -486,10 +396,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-041461f2bb69f0e50936f1861752576097401a34/> classify emoji using Unicode properties
  - <csr-id-23594057159d5c45e7fc177eae5aa2307fd4896f/> preserve complex emoji graphemes during shaping
  - <csr-id-332ae2408b4929a26e44f518561383da95965f01/> preserve positive zero for empty line widths
-
-### Test
-
- - <csr-id-3a862f5b8616dca69939a8bb8774e7b6259c3298/> porting unit tests
 
 ### Commit Statistics
 
