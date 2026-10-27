@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.8.1 (2026-10-27)
+
+### Chore
+
+ - <csr-id-62befbce014f945ba6ecf6a11d939222e5b164f2/> fix clippy
+ - <csr-id-aac95011d6b6d6d539857eb0389a5233cea349a2/> format
+
+### Performance
+
+ - <csr-id-844a4e365050e020f56adb744637dcac08d66c92/> gate upstream diagnostic payloads behind debug-info
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Gate upstream diagnostic payloads behind debug-info ([`844a4e3`](https://github.com/tiqian-cjk/tiqian-rs/commit/844a4e365050e020f56adb744637dcac08d66c92))
+    - Fix clippy ([`62befbc`](https://github.com/tiqian-cjk/tiqian-rs/commit/62befbce014f945ba6ecf6a11d939222e5b164f2))
+    - Format ([`aac9501`](https://github.com/tiqian-cjk/tiqian-rs/commit/aac95011d6b6d6d539857eb0389a5233cea349a2))
+</details>
+
 ## v0.8.0 (2026-10-27)
 
 ### New Features
