@@ -1,13 +1,16 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ParagraphShapingStage.kt
 
+#[cfg(feature = "debug-info")]
+use super::super::clreq::clreq_profile::CjkPunctuationGlyphSubstitution;
 use super::super::clreq::clreq_profile::{
-    CjkPunctuationGlyphSubstitution, ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
+    ClreqPunctuationGlyphSubstitutor, clreq_punctuation_policies,
 };
 use super::super::core::geometry::{ScalarOffset, TextRange, text_range};
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::{BreakOpportunityDecisionInfo, ShapingDecisionDebugInfo};
 use super::super::core::layout_model::{
-    BreakOpportunityDecisionInfo, Cluster, EmergencyTrackingEligibilityDecisionInfo,
-    EmergencyTrackingReason, Glyph, RejectedTierSet, ShapingDecisionInfo, StrongNonLexicalReason,
-    SyntheticClusterKind,
+    Cluster, EmergencyTrackingEligibilityDecisionInfo, EmergencyTrackingReason, Glyph,
+    RejectedTierSet, ShapingDecisionInfo, StrongNonLexicalReason, SyntheticClusterKind,
 };
 use super::super::core::source_interaction_boundaries::source_grapheme_boundaries;
 use super::super::core::text::Text;
@@ -22,7 +25,9 @@ use super::cluster_role_resolution::ResolvedClusterRange;
 use super::progressive_break_decisions::{ProgressiveBreakOpportunity, ProgressiveBreakTier};
 use super::white_space::{WhiteSpaceAction, WhiteSpaceKind, WhiteSpaceUnit};
 use crate::common::{Arc, HashMap, HashSet};
-use alloc::{borrow::ToOwned, format, string::String, vec, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::format;
+use alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
 use icu_properties::{CodePointMapData, props::GeneralCategory};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,12 +36,15 @@ pub struct ParagraphShapingStageResult {
     pub hyphen_offsets: HashSet<ScalarOffset>,
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
+    #[cfg(feature = "debug-info")]
     pub substitution_rollbacks: HashMap<TextRange, String>,
     /// shaping 实际采用的显示替换，按 segment range 记录。
     ///
     /// debug 汇编直接复用这些结果，不再第二次调用替换器；`display_text` 因此
     /// 与测量、绘制使用的那份是同源的。
+    #[cfg(feature = "debug-info")]
     pub substitutions: HashMap<TextRange, CjkPunctuationGlyphSubstitution>,
+    #[cfg(feature = "debug-info")]
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
@@ -62,15 +70,17 @@ pub fn shape_paragraph(
     rejected_technical_tiers_by_span: &HashMap<TextRange, HashSet<ProgressiveBreakTier>>,
     cached_segment_shaping: &HashMap<TextRange, Arc<ShapingResult>>,
     cached_segment_font_resolutions: &HashMap<TextRange, FontResolution>,
-    cached_substitution_rollbacks: &HashMap<TextRange, String>,
+    #[cfg(feature = "debug-info")] cached_substitution_rollbacks: &HashMap<TextRange, String>,
 ) -> ParagraphShapingStageResult {
     // `ShapingResult` clone 会复制 cluster、glyph run 与 decision 三个向量，是这里最贵的一项。
     // 它只用于 segment 命中复用，不会被下游消费，因此改为「本次新增项」局部表：
     // 查询时先查新增项，再查传入的基础缓存，不再整份复制。
     let mut added_shaping: HashMap<TextRange, Arc<ShapingResult>> = HashMap::new();
-    // 这两份会被下游与 debug 读取，需要完整集合，保持原有语义。
+    // 字体解析供下游读取，需要完整集合，保持原有语义。
     let mut segment_font_resolutions = cached_segment_font_resolutions.clone();
+    #[cfg(feature = "debug-info")]
     let mut rollbacks = cached_substitution_rollbacks.clone();
+    #[cfg(feature = "debug-info")]
     let mut substitutions: HashMap<TextRange, CjkPunctuationGlyphSubstitution> = HashMap::new();
     let mut shape_segment = |role: FontRole, range: TextRange| -> Arc<ShapingResult> {
         if let Some(cached) = added_shaping
@@ -90,29 +100,30 @@ pub fn shape_paragraph(
             let tab = unit.kind == WhiteSpaceKind::Tab && unit.action == WhiteSpaceAction::Preserve;
             if hidden || tab {
                 let display = if tab { source.clone() } else { Text::new() };
-                let result = ShapingResult::with_decisions(
-                    vec![Cluster::synthetic(
-                        range,
-                        source.clone(),
-                        display.clone(),
-                        SyntheticClusterKind::WhiteSpace,
-                        0.,
-                    )],
-                    Vec::new(),
-                    vec![
-                        ShapingDecisionInfo::builder(
-                            range,
-                            source,
-                            display,
-                            None,
-                            0,
-                            0.,
-                            "WhiteSpace".to_owned(),
-                            format!("WhiteSpace:{:?}:{:?}", unit.kind, unit.action),
-                        )
-                        .build(),
-                    ],
+                let cluster = Cluster::synthetic(
+                    range,
+                    source.clone(),
+                    display.clone(),
+                    SyntheticClusterKind::WhiteSpace,
+                    0.,
                 );
+                let builder = ShapingDecisionInfo::builder(range);
+                #[cfg(feature = "debug-info")]
+                let builder = builder.debug_info(ShapingDecisionDebugInfo {
+                    source_text: source,
+                    display_text: display,
+                    font_face: None,
+                    glyph_count: 0,
+                    advance: 0.,
+                    source: "WhiteSpace".to_owned(),
+                    reason: format!("WhiteSpace:{:?}:{:?}", unit.kind, unit.action),
+                    script: None,
+                    language: None,
+                    strategy: None,
+                    feature_evidence: None,
+                });
+                let result =
+                    ShapingResult::with_decisions(vec![cluster], Vec::new(), vec![builder.build()]);
                 return Arc::new(result);
             }
             if unit.action == WhiteSpaceAction::ToSpace {
@@ -137,8 +148,12 @@ pub fn shape_paragraph(
                 }
                 for decision in &mut result.shaping.decisions {
                     decision.range = range;
-                    decision.source_text = source.clone();
-                    decision.reason = format!("WhiteSpaceToSpace:{}", decision.reason);
+                    #[cfg(feature = "debug-info")]
+                    {
+                        decision.debug.source_text = source.clone();
+                        decision.debug.reason =
+                            format!("WhiteSpaceToSpace:{}", decision.debug.reason);
+                    }
                 }
                 segment_font_resolutions.insert(range, resolution);
                 let shape = Arc::new(result.shaping);
@@ -179,8 +194,9 @@ pub fn shape_paragraph(
         } else {
             None
         };
-        let result = if let Some(cause) = rollback {
-            rollbacks.insert(range, cause.to_owned());
+        let result = if let Some(_cause) = rollback {
+            #[cfg(feature = "debug-info")]
+            rollbacks.insert(range, _cause.to_owned());
             font_backend.shape(
                 &FontBackendRequest::builder(text.clone(), range, style, role)
                     .display_text(source.clone())
@@ -192,6 +208,7 @@ pub fn shape_paragraph(
             )
         } else {
             // 记录实际采用的替换，供 debug 汇编直接复用。
+            #[cfg(feature = "debug-info")]
             substitutions.insert(
                 range,
                 CjkPunctuationGlyphSubstitution {
@@ -215,6 +232,7 @@ pub fn shape_paragraph(
     let mut hyphen_offsets = HashSet::new();
     let mut hyphen_advance = None;
     let mut hyphen_glyphs = Vec::new();
+    #[cfg(feature = "debug-info")]
     let mut decisions = Vec::new();
     let mut emergency = Vec::new();
     let mut progressive: HashMap<ScalarOffset, ProgressiveBreakOpportunity> = HashMap::new();
@@ -222,6 +240,7 @@ pub fn shape_paragraph(
     let mut cuts_by_segment: HashMap<TextRange, Vec<ScalarOffset>> = HashMap::new();
     for resolved in cluster_ranges {
         if let Some(object) = inline_object_by_range.get(&resolved.range) {
+            #[cfg(feature = "debug-info")]
             decisions.shrink_to_fit();
             let _ = object;
             continue;
@@ -367,6 +386,7 @@ pub fn shape_paragraph(
                     {
                         continue;
                     }
+                    #[cfg(feature = "debug-info")]
                     if !offsets.is_empty() {
                         decisions.push(BreakOpportunityDecisionInfo::with_tier(
                             segment,
@@ -416,6 +436,7 @@ pub fn shape_paragraph(
                             ProgressiveBreakOpportunity::new(tier, span.range),
                         );
                     }
+                    #[cfg(feature = "debug-info")]
                     decisions.push(BreakOpportunityDecisionInfo::with_tier(
                         segment,
                         word.clone(),
@@ -444,6 +465,7 @@ pub fn shape_paragraph(
                     ) {
                         emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                             range: span.range,
+                            #[cfg(feature = "debug-info")]
                             source_text: text.slice_text(span.range),
                             reason,
                         })
@@ -472,6 +494,7 @@ pub fn shape_paragraph(
             } else {
                 Vec::new()
             };
+            #[cfg(feature = "debug-info")]
             if progressive_span.is_none() && latin && (word.as_str().contains('-') || !all_letters)
             {
                 let locator = bibliographic_numeric_locator_break_offsets(&word);
@@ -538,6 +561,7 @@ pub fn shape_paragraph(
                             ) {
                                 emergency.push(EmergencyTrackingEligibilityDecisionInfo {
                                     range,
+                                    #[cfg(feature = "debug-info")]
                                     source_text: piece,
                                     reason,
                                 });
@@ -625,8 +649,11 @@ pub fn shape_paragraph(
         hyphen_offsets,
         hyphen_advance: hyphen_advance.unwrap_or(0.),
         hyphen_glyphs,
+        #[cfg(feature = "debug-info")]
         substitution_rollbacks: rollbacks,
+        #[cfg(feature = "debug-info")]
         substitutions,
+        #[cfg(feature = "debug-info")]
         break_opportunity_decisions: decisions,
         emergency_tracking_eligibility_decisions: emergency,
         progressive_break_offsets: progressive,
@@ -1079,29 +1106,29 @@ fn mandatory_break_shaping_result(text: &Text, range: TextRange) -> ShapingResul
 }
 fn zero_width_soft_break_shaping_result(text: &Text, range: TextRange) -> ShapingResult {
     let source = text.slice_text(range);
-    ShapingResult::with_decisions(
-        vec![Cluster::synthetic(
-            range,
-            source.clone(),
-            Text::new(),
-            SyntheticClusterKind::ZeroWidthSoftBreak,
-            0.,
-        )],
-        Vec::new(),
-        vec![
-            ShapingDecisionInfo::builder(
-                range,
-                source,
-                Text::new(),
-                None,
-                0,
-                0.,
-                "StructuralControl".to_owned(),
-                "ZeroWidthSpaceSoftBreakNoShape".to_owned(),
-            )
-            .build(),
-        ],
-    )
+    let cluster = Cluster::synthetic(
+        range,
+        source.clone(),
+        Text::new(),
+        SyntheticClusterKind::ZeroWidthSoftBreak,
+        0.,
+    );
+    let builder = ShapingDecisionInfo::builder(range);
+    #[cfg(feature = "debug-info")]
+    let builder = builder.debug_info(ShapingDecisionDebugInfo {
+        source_text: source,
+        display_text: Text::new(),
+        font_face: None,
+        glyph_count: 0,
+        advance: 0.,
+        source: "StructuralControl".to_owned(),
+        reason: "ZeroWidthSpaceSoftBreakNoShape".to_owned(),
+        script: None,
+        language: None,
+        strategy: None,
+        feature_evidence: None,
+    });
+    ShapingResult::with_decisions(vec![cluster], Vec::new(), vec![builder.build()])
 }
 fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> ShapingResult {
     let source = text.slice_text(object.range);
@@ -1111,29 +1138,29 @@ fn inline_object_shaping_result(text: &Text, object: &InlineObjectSpan) -> Shapi
         log::warn!("invalid inline object advance; using zero advance");
         0.
     };
-    ShapingResult::with_decisions(
-        vec![Cluster::synthetic(
-            object.range,
-            source.clone(),
-            Text::new(),
-            SyntheticClusterKind::InlineObject,
-            advance,
-        )],
-        Vec::new(),
-        vec![
-            ShapingDecisionInfo::builder(
-                object.range,
-                source,
-                Text::new(),
-                None,
-                0,
-                advance,
-                "InlineObject".to_owned(),
-                "MeasurableOpaqueInlineObject:no-font-shaping".to_owned(),
-            )
-            .build(),
-        ],
-    )
+    let cluster = Cluster::synthetic(
+        object.range,
+        source.clone(),
+        Text::new(),
+        SyntheticClusterKind::InlineObject,
+        advance,
+    );
+    let builder = ShapingDecisionInfo::builder(object.range);
+    #[cfg(feature = "debug-info")]
+    let builder = builder.debug_info(ShapingDecisionDebugInfo {
+        source_text: source,
+        display_text: Text::new(),
+        font_face: None,
+        glyph_count: 0,
+        advance,
+        source: "InlineObject".to_owned(),
+        reason: "MeasurableOpaqueInlineObject:no-font-shaping".to_owned(),
+        script: None,
+        language: None,
+        strategy: None,
+        feature_evidence: None,
+    });
+    ShapingResult::with_decisions(vec![cluster], Vec::new(), vec![builder.build()])
 }
 pub fn is_mandatory_break_cluster(cluster: &Cluster) -> bool {
     cluster.synthetic_kind == Some(SyntheticClusterKind::MandatoryBreak)
@@ -1168,3 +1195,246 @@ const PROGRESSIVE_TECHNICAL_BREAK_AFTER_CHARS: &[char] = &[
     '/', '\\', '.', '-', '_', ':', ';', ',', '?', '&', '=', '#', '%', '~', '+', '*', '|', ')', ']',
     '}',
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::font_face::FontFaceId;
+    use crate::core::geometry::LayoutConstraints;
+    use crate::core::layout_model::GlyphRun;
+    use crate::core::text_model::TiqianTextContent;
+    use crate::font::font_metrics::FontMetricsRequest;
+    use crate::font::font_policy::RawFontMetrics;
+    use crate::linebreak::hyphenation::NoHyphenator;
+    use crate::shaping::font_backend::{FontBackendShapingResult, FontCandidateAttempt};
+    use crate::shaping::replayable_font_backend::{
+        FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
+    };
+
+    struct SubstitutionBackend {
+        missing_glyphs: i32,
+        capability_issue: Option<&'static str>,
+        report: FontBackendCapabilityReport,
+    }
+
+    impl ReplayableFontCatalog for SubstitutionBackend {
+        fn faces(&self) -> &[ReplayableFontFaceDescriptor] {
+            &self.report.faces
+        }
+
+        fn capability_report(&self) -> &FontBackendCapabilityReport {
+            &self.report
+        }
+
+        fn face(&self, id: &FontFaceId) -> Option<&ReplayableFontFaceDescriptor> {
+            self.report.faces.iter().find(|face| &face.id == id)
+        }
+    }
+
+    impl FontBackend for SubstitutionBackend {
+        fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult {
+            let source = request.text.slice_text(request.range);
+            let substituted = request.display_text != source;
+            let face = self.report.faces[0].id.clone();
+            let glyphs: Vec<_> = request
+                .display_text
+                .chars()
+                .enumerate()
+                .map(|(index, ch)| {
+                    Glyph::builder(ch as u32, request.range, request.style.font_size)
+                        .x(index as f32 * request.style.font_size)
+                        .render_font_face(Some(face.clone()))
+                        .build()
+                })
+                .collect();
+            let advance = glyphs.len() as f32 * request.style.font_size;
+            let builder = ShapingDecisionInfo::builder(request.range)
+                .missing_glyphs(if substituted { self.missing_glyphs } else { 0 })
+                .capability_issue(if substituted {
+                    self.capability_issue.map(str::to_owned)
+                } else {
+                    None
+                });
+            #[cfg(feature = "debug-info")]
+            let builder = builder.debug_info(ShapingDecisionDebugInfo {
+                source_text: source.clone(),
+                display_text: request.display_text.clone(),
+                font_face: Some(face.clone()),
+                glyph_count: glyphs.len() as i32,
+                advance,
+                source: "TestBackend".to_owned(),
+                reason: "DisplayTextShaping".to_owned(),
+                script: None,
+                language: None,
+                strategy: None,
+                feature_evidence: None,
+            });
+            let decision = builder.build();
+            let shaping = ShapingResult::with_decisions(
+                vec![Cluster::with_display_text(
+                    request.range,
+                    source,
+                    request.display_text.clone(),
+                    face.clone(),
+                    advance,
+                )],
+                vec![GlyphRun::new(request.range, face.clone(), glyphs, advance)],
+                vec![decision],
+            );
+            // 候选证据始终完整，让回滚只能由 runtime decision 触发。
+            FontBackendShapingResult::new(
+                face.clone(),
+                shaping,
+                vec![FontCandidateAttempt::new("test-face".to_owned(), face, 0)],
+            )
+        }
+
+        fn metrics(&self, _request: &FontMetricsRequest) -> RawFontMetrics {
+            panic!("段落 shaping 测试不应请求 metrics")
+        }
+    }
+
+    // 使用非零 source 起点，覆盖双字符 source 替换成单字符 display 时的范围保真。
+    fn shape_substitution(
+        missing_glyphs: i32,
+        capability_issue: Option<&'static str>,
+    ) -> (ParagraphShapingStageResult, FontResolution) {
+        let range = text_range(1, 3);
+        let role = FontRole::CjkPunctuation;
+        let face = FontFaceId::with_resource_id("test-face");
+        let backend = SubstitutionBackend {
+            missing_glyphs,
+            capability_issue,
+            report: FontBackendCapabilityReport::new(
+                "TestBackend".to_owned(),
+                "Test".to_owned(),
+                vec![ReplayableFontFaceDescriptor::new(
+                    face.clone(),
+                    HashSet::new(),
+                    [role].into_iter().collect(),
+                    "测试字体".to_owned(),
+                )],
+            ),
+        };
+        let text = Text::from("前——后");
+        let input = LayoutInput::builder(
+            TiqianTextContent::new(text.clone()),
+            LayoutConstraints::with_defaults(200.),
+        )
+        .build();
+        let result = shape_paragraph(
+            &backend,
+            &NoHyphenator,
+            &input,
+            &text,
+            input.text_style.font_size,
+            200.,
+            &[ResolvedClusterRange::new(range, role)],
+            &HashMap::new(),
+            &HashMap::new(),
+            &ClreqPunctuationGlyphSubstitutor::default(),
+            &|_| input.text_style.clone(),
+            &|_| false,
+            &HashMap::new(),
+            &HashMap::new(),
+            &HashMap::new(),
+            #[cfg(feature = "debug-info")]
+            &HashMap::new(),
+        );
+        let expected_resolution = FontResolution::new(
+            range,
+            role,
+            face.clone(),
+            vec![FontCandidateAttempt::new("test-face".to_owned(), face, 0)],
+        );
+        (result, expected_resolution)
+    }
+
+    fn assert_retained_shape(
+        result: &ParagraphShapingStageResult,
+        resolution: &FontResolution,
+        display: &str,
+    ) {
+        assert_eq!(result.shaping_results.len(), 1);
+        let shaped = &result.shaping_results[0];
+        assert_eq!(shaped.clusters.len(), 1);
+        let cluster = &shaped.clusters[0];
+        assert_eq!(cluster.range, resolution.range);
+        assert_eq!(cluster.text, Text::from("——"));
+        assert_eq!(cluster.display_text, Text::from(display));
+        assert_eq!(cluster.font_face.as_ref(), Some(&resolution.face));
+        assert_eq!(cluster.advance, display.chars().count() as f32 * 16.);
+        assert_eq!(shaped.glyph_runs.len(), 1);
+        let run = &shaped.glyph_runs[0];
+        assert_eq!(run.range, resolution.range);
+        assert_eq!(run.font_face, resolution.face);
+        assert_eq!(run.advance, cluster.advance);
+        assert_eq!(
+            run.glyphs.iter().map(|glyph| glyph.id).collect::<Vec<_>>(),
+            display.chars().map(|ch| ch as u32).collect::<Vec<_>>()
+        );
+        assert!(run.glyphs.iter().all(|glyph| {
+            glyph.cluster_range == resolution.range
+                && glyph.advance > 0.
+                && glyph.render_font_face.as_ref() == Some(&resolution.face)
+        }));
+        assert_eq!(shaped.decisions.len(), 1);
+        assert_eq!(shaped.decisions[0].range, resolution.range);
+        assert_eq!(shaped.decisions[0].missing_glyphs, 0);
+        assert_eq!(shaped.decisions[0].capability_issue, None);
+        assert_eq!(result.segment_font_resolutions.len(), 1);
+        assert_eq!(
+            result.segment_font_resolutions.get(&resolution.range),
+            Some(resolution)
+        );
+        assert_eq!(result.segment_shaping_cache.len(), 1);
+        assert!(Arc::ptr_eq(
+            &result.segment_shaping_cache[&resolution.range],
+            shaped
+        ));
+    }
+
+    #[test]
+    fn missing_glyph_runtime_decision_rolls_back_to_source_without_losing_shape() {
+        let (result, resolution) = shape_substitution(1, None);
+        assert_retained_shape(&result, &resolution, "——");
+        #[cfg(feature = "debug-info")]
+        {
+            assert_eq!(result.substitution_rollbacks.len(), 1);
+            assert_eq!(
+                result.substitution_rollbacks[&resolution.range],
+                "SubstitutionRollbackOnMissingGlyph"
+            );
+            assert!(!result.substitutions.contains_key(&resolution.range));
+        }
+    }
+
+    #[test]
+    fn unverified_coverage_runtime_decision_rolls_back_to_source_without_losing_shape() {
+        let (result, resolution) =
+            shape_substitution(0, Some(UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE));
+        assert_retained_shape(&result, &resolution, "——");
+        #[cfg(feature = "debug-info")]
+        {
+            assert_eq!(result.substitution_rollbacks.len(), 1);
+            assert_eq!(
+                result.substitution_rollbacks[&resolution.range],
+                "SubstitutionRollbackOnUnverifiedGlyphCoverage"
+            );
+            assert!(!result.substitutions.contains_key(&resolution.range));
+        }
+    }
+
+    #[test]
+    fn verified_display_substitution_retains_substituted_glyph_and_source_range() {
+        let (result, resolution) = shape_substitution(0, None);
+        assert_retained_shape(&result, &resolution, "⸺");
+        #[cfg(feature = "debug-info")]
+        {
+            assert!(result.substitution_rollbacks.is_empty());
+            let substitution = &result.substitutions[&resolution.range];
+            assert_eq!(substitution.source_text, Text::from("——"));
+            assert_eq!(substitution.display_text, Text::from("⸺"));
+        }
+    }
+}

@@ -65,7 +65,7 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
         assert_eq!(1, decisions.len(), "{text}");
         assert_eq!(role, decisions[0].role, "{text}");
         assert_eq!(
-            "DashEllipsisSurroundingScriptContext", decisions[0].source,
+            "DashEllipsisSurroundingScriptContext", decisions[0].debug.source,
             "{text}"
         );
     }
@@ -84,7 +84,10 @@ fn conflicting_or_absent_script_falls_back_to_paragraph_language() {
                 &FontRoleContext::with_locale(locale.to_owned()),
             );
             assert_eq!(role, decisions[0].role, "{locale}: {text}");
-            assert_eq!("ParagraphLanguageDashEllipsisContext", decisions[0].source);
+            assert_eq!(
+                "ParagraphLanguageDashEllipsisContext",
+                decisions[0].debug.source
+            );
         }
     }
 }
@@ -99,10 +102,11 @@ fn mandatory_break_stops_context_search_and_preserves_supplementary_evidence() {
     assert_eq!(FontRole::CjkPunctuation, break_decision[0].role);
     assert_eq!(
         "ParagraphLanguageDashEllipsisContext",
-        break_decision[0].source
+        break_decision[0].debug.source
     );
     assert!(
         break_decision[0]
+            .debug
             .reason
             .starts_with("no-strong-script-context")
     );
@@ -127,8 +131,9 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
     assert_eq!(2, cjk.len());
     assert!(cjk.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "ParagraphLanguageDashEllipsisContext"
+            && decision.debug.source == "ParagraphLanguageDashEllipsisContext"
             && decision
+                .debug
                 .reason
                 .starts_with("parenthetical-pair-conflicting-outer-script")
     }));
@@ -139,8 +144,8 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
     );
     assert!(latin.iter().all(|decision| {
         decision.role == FontRole::LatinText
-            && decision.source == "ParentheticalDashPairContext"
-            && decision.reason == "matching-outer-script"
+            && decision.debug.source == "ParentheticalDashPairContext"
+            && decision.debug.reason == "matching-outer-script"
     }));
 
     let independent = resolver.resolve(
@@ -150,7 +155,7 @@ fn parenthetical_dash_pairs_resolve_from_outer_script_only() {
     assert!(
         independent
             .iter()
-            .all(|decision| decision.source == "DashEllipsisSurroundingScriptContext")
+            .all(|decision| decision.debug.source == "DashEllipsisSurroundingScriptContext")
     );
 }
 
@@ -163,8 +168,8 @@ fn parenthetical_pair_with_only_left_outer_script_takes_the_left_role() {
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "ParentheticalDashPairContext"
-            && decision.reason.starts_with("only-left-outer-script")
+            && decision.debug.source == "ParentheticalDashPairContext"
+            && decision.debug.reason.starts_with("only-left-outer-script")
     }));
 }
 
@@ -177,8 +182,8 @@ fn parenthetical_pair_with_only_right_outer_script_takes_the_right_role() {
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "ParentheticalDashPairContext"
-            && decision.reason.starts_with("only-right-outer-script")
+            && decision.debug.source == "ParentheticalDashPairContext"
+            && decision.debug.reason.starts_with("only-right-outer-script")
     }));
 }
 
@@ -191,8 +196,9 @@ fn parenthetical_pair_without_outer_script_falls_back_to_paragraph_language() {
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "ParagraphLanguageDashEllipsisContext"
+            && decision.debug.source == "ParagraphLanguageDashEllipsisContext"
             && decision
+                .debug
                 .reason
                 .starts_with("parenthetical-pair-no-outer-context")
     }));

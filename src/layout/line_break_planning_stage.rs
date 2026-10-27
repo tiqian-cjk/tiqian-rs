@@ -12,10 +12,13 @@ use super::super::core::east_asian_spacing::EastAsianSpacingEdges;
 use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
-    AutoSpaceDecisionInfo, BreakOpportunityDecisionInfo, Cluster,
-    EmergencyTrackingEligibilityDecisionInfo, EmergencyTrackingReason, FirstLineIndentSource,
-    Glyph, LineSpacingReason, MandatoryBreakDecisionInfo, RoleOverrideInfo, ShapingDecisionInfo,
-    ZeroWidthBreakDecisionInfo,
+    AutoSpaceDecisionInfo, Cluster, EmergencyTrackingEligibilityDecisionInfo,
+    EmergencyTrackingReason, FirstLineIndentSource, Glyph, LineSpacingReason,
+};
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::{
+    BreakOpportunityDecisionInfo, MandatoryBreakDecisionInfo, RoleOverrideInfo,
+    ShapingDecisionInfo, ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -74,20 +77,25 @@ pub struct ParagraphLayoutPrep {
     pub grid_body_offset: f32,
     pub line_length_grid_decision: super::super::core::layout_model::LineLengthGridDecisionInfo,
     pub quote_pairs: Vec<QuotePair>,
+    #[cfg(feature = "debug-info")]
     pub role_override_infos: Vec<RoleOverrideInfo>,
     pub font_resolutions: HashMap<TextRange, FontResolution>,
     pub hyphen_offsets: HashSet<ScalarOffset>,
     pub hyphen_advance: f32,
     pub hyphen_glyphs: Vec<Glyph>,
+    #[cfg(feature = "debug-info")]
     pub substitution_rollbacks: HashMap<TextRange, String>,
     /// shaping 实际采用的显示替换，供 debug 汇编复用。
+    #[cfg(feature = "debug-info")]
     pub substitutions:
         HashMap<TextRange, super::super::clreq::clreq_profile::CjkPunctuationGlyphSubstitution>,
+    #[cfg(feature = "debug-info")]
     pub break_opportunity_decisions: Vec<BreakOpportunityDecisionInfo>,
     pub emergency_tracking_eligibility_decisions: Vec<EmergencyTrackingEligibilityDecisionInfo>,
     pub progressive_break_offsets: HashMap<ScalarOffset, ProgressiveBreakOpportunity>,
     pub shaped_glyphs_by_cluster_range: HashMap<TextRange, Vec<Glyph>>,
     pub open_type_features_by_cluster_range: HashMap<TextRange, Vec<String>>,
+    #[cfg(feature = "debug-info")]
     pub shaping_decisions: Vec<ShapingDecisionInfo>,
     pub east_asian_spacing_edges: Vec<EastAsianSpacingEdges>,
     pub auto_space_decisions: Vec<AutoSpaceDecisionInfo>,
@@ -103,11 +111,14 @@ pub struct ParagraphLayoutPrep {
     pub inline_object_attached_marks: Vec<InlineObjectAttachedMark>,
     pub inline_object_separator_space_trims: HashMap<i32, f32>,
     pub inline_object_attachment_no_stretch_boundaries: HashSet<i32>,
+    #[cfg(feature = "debug-info")]
     pub inline_object_punctuation_attachment_decisions:
         Vec<super::super::core::layout_model::InlineObjectPunctuationAttachmentDecisionInfo>,
     pub mandatory_break_clusters: HashSet<i32>,
     pub zero_width_break_clusters: HashSet<i32>,
+    #[cfg(feature = "debug-info")]
     pub mandatory_break_decisions: Vec<MandatoryBreakDecisionInfo>,
+    #[cfg(feature = "debug-info")]
     pub zero_width_break_decisions: Vec<ZeroWidthBreakDecisionInfo>,
     pub punctuation_atoms: Vec<PunctuationAtom>,
     pub spacing_plan: PunctuationSpacingCompressionResult,

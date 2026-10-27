@@ -2,7 +2,8 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{Rect, TextRange, scalar_offset, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, RubyGeometry,
+    ClusterGeometryDebugInfo, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo,
+    RubyGeometry,
 };
 use tiqian::core::layout_queries::{
     get_bounding_box, get_bounding_boxes, get_cursor_rect, get_line_for_offset,
@@ -619,8 +620,6 @@ fn ruby_spread_shifts_selection_boxes_and_zero_width_rubies_are_ignored() {
     let geometry = |range, text, spread, advance| {
         ClusterGeometryDecisionInfo::builder(
             range,
-            Text::from(text),
-            Text::from(text),
             advance - spread,
             advance - spread,
             0.0,
@@ -632,6 +631,11 @@ fn ruby_spread_shifts_selection_boxes_and_zero_width_rubies_are_ignored() {
             "test",
             PunctuationGeometrySource::PolicyDerived,
         )
+        .debug_info(ClusterGeometryDebugInfo {
+            source_text: Text::from(text),
+            display_text: Text::from(text),
+            ..Default::default()
+        })
         .ruby_spread(spread)
         .build()
     };

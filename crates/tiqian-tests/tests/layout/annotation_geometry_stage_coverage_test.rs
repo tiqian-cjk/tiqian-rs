@@ -9,7 +9,7 @@ use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
-    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
+    AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster, ClusterGeometryDebugInfo,
     ClusterGeometryDecisionInfo, EmphasisDotReason, Glyph, LineBox, LineEndReason,
 };
 use tiqian::core::text::Text;
@@ -506,8 +506,6 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
     let ceshi = RubySpan::new(text_range(3, 5), Text::from("cèshì"));
     let geometry = ClusterGeometryDecisionInfo::builder(
         text_range(0, 2),
-        Text::from("汉字"),
-        Text::from("汉字"),
         32.0,
         32.0,
         4.0,
@@ -519,6 +517,11 @@ fn direct_resolve_annotation_geometry_fallback_branches() {
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from("汉字"),
+        display_text: Text::from("汉字"),
+        ..Default::default()
+    })
     .build();
     let leading = InlineObjectBoundaryAdjustment::builder()
         .preferred_stretch(InlineObjectPreferredStretch::new(
@@ -792,8 +795,6 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
     ];
     let geometry = ClusterGeometryDecisionInfo::builder(
         text_range(0, 2),
-        Text::from("汉字"),
-        Text::from("汉字"),
         32.0,
         32.0,
         4.0,
@@ -805,6 +806,11 @@ fn direct_resolve_annotation_geometry_empty_line_ranges_and_gap_at_line_edges() 
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from("汉字"),
+        display_text: Text::from("汉字"),
+        ..Default::default()
+    })
     .build();
     let metric_cjk = ClusterMetricDecision {
         range: text_range(0, 2),

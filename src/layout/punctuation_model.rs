@@ -56,6 +56,7 @@ pub struct PunctuationAtom {
     /// 字体测得的 `halt` advance；None 表示走 ink/policy 路径。
     pub halt_advance: Option<f32>,
     /// 默认 glyph ink bounds 无法安全重放字体请求的 `halt` trim 时的原因。
+    #[cfg(feature = "debug-info")]
     pub halt_validation: Option<String>,
     pub leading_glue: Glue,
     pub trailing_glue: Glue,
@@ -72,12 +73,14 @@ pub struct PunctuationAtom {
     /// 具名 `InkContainmentBodyFloor` 决策；policy/halt 已充分时为 false。
     pub ink_containment_applied: bool,
     /// `MissingInkBoundsFallback` 原因；见 [`PunctuationInkInput::bounds_fallback_reason`]。
+    #[cfg(feature = "debug-info")]
     pub ink_bounds_fallback: Option<String>,
     /// `UnderwidthPunctuationAdvanceExpansion` 添加的 layout advance。
     pub advance_expansion: f32,
     /// underwidth font-owned glyph box 在合成全宽 cell 内的位置。
     pub glyph_inline_shift: f32,
     /// glyph_inline_shift 非零时的具名 placement heuristic。
+    #[cfg(feature = "debug-info")]
     pub glyph_placement_reason: Option<String>,
     /// 固定半宽标点在断行前已消耗的 leading glue。
     pub leading_glue_initially_consumed: f32,
@@ -94,6 +97,7 @@ pub struct PunctuationInkInput {
     /// 字体在 `halt` 下施加的 x placement shift；与 halt_advance 一起直接决定两侧压缩预算。
     pub halt_placement_x: Option<f32>,
     /// `MissingInkBoundsFallback` 的具名原因。仅在 shaping 已运行但没有 ink_bounds 时非 None。
+    #[cfg(feature = "debug-info")]
     pub bounds_fallback_reason: Option<String>,
 }
 
@@ -104,6 +108,7 @@ impl PunctuationInkInput {
             ink_bounds: None,
             halt_advance: None,
             halt_placement_x: None,
+            #[cfg(feature = "debug-info")]
             bounds_fallback_reason: None,
         }
     }
@@ -131,6 +136,7 @@ impl PunctuationInkInputBuilder {
         self.input.halt_placement_x = value;
         self
     }
+    #[cfg(feature = "debug-info")]
     pub fn bounds_fallback_reason(mut self, value: Option<String>) -> Self {
         self.input.bounds_fallback_reason = value;
         self
@@ -526,6 +532,7 @@ impl PunctuationAtomBuilder {
             ink_bounds,
             body_width: compression.body_width,
             halt_advance: halt_body,
+            #[cfg(feature = "debug-info")]
             halt_validation: compression.halt_validation,
             leading_glue: Glue::new(
                 GlueKind::PunctuationLeading,
@@ -551,6 +558,7 @@ impl PunctuationAtomBuilder {
             ink_center,
             ink_containment_body_floor: compression.ink_body_floor,
             ink_containment_applied: compression.ink_containment_applied,
+            #[cfg(feature = "debug-info")]
             ink_bounds_fallback: if ink_bounds.is_none() {
                 ink_input
                     .as_ref()
@@ -560,6 +568,7 @@ impl PunctuationAtomBuilder {
             },
             advance_expansion,
             glyph_inline_shift: synthesized_full_width_placement,
+            #[cfg(feature = "debug-info")]
             glyph_placement_reason: (synthesized_full_width_placement != 0.0)
                 .then(|| "UnderwidthPunctuationFullWidthBoxPlacement".to_owned()),
             leading_glue_initially_consumed,
@@ -606,6 +615,7 @@ impl PunctuationAtomBuilder {
                 source: PunctuationGeometrySource::FontHaltFittedBodyCompression,
                 ink_body_floor: ink_bounds.map(|_| advance - leading - trailing),
                 ink_containment_applied: limited,
+                #[cfg(feature = "debug-info")]
                 halt_validation: limited
                     .then(|| "halt-trim-limited-by-default-ink-bounds".to_owned()),
             };
@@ -624,6 +634,7 @@ impl PunctuationAtomBuilder {
                 },
                 ink_body_floor: Some(frame.width),
                 ink_containment_applied: frame.width > target_body + PLACEMENT_EPSILON,
+                #[cfg(feature = "debug-info")]
                 halt_validation: None,
             };
         }
@@ -641,6 +652,7 @@ impl PunctuationAtomBuilder {
             },
             ink_body_floor: None,
             ink_containment_applied: false,
+            #[cfg(feature = "debug-info")]
             halt_validation: None,
         }
     }
@@ -661,6 +673,7 @@ struct CompressionGeometry {
     source: PunctuationGeometrySource,
     ink_body_floor: Option<f32>,
     ink_containment_applied: bool,
+    #[cfg(feature = "debug-info")]
     halt_validation: Option<String>,
 }
 

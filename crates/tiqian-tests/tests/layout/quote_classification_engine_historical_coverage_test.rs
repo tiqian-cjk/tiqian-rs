@@ -1,7 +1,7 @@
 use tiqian::api::ParagraphLayoutEngineBuilder;
 use tiqian::common::HashSet;
 use tiqian::core::geometry::{LayoutConstraints, Rect, ScalarOffset, scalar_offset, text_range};
-use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
+use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun};
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -705,9 +705,9 @@ fn proportional_quote_backend() -> impl FontBackend {
                 .shaping
                 .decisions
                 .into_iter()
-                .map(|decision| ShapingDecisionInfo {
-                    advance,
-                    ..decision
+                .map(|mut decision| {
+                    decision.debug.advance = advance;
+                    decision
                 })
                 .collect();
             result

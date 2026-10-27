@@ -61,7 +61,7 @@ fn stub_backend_keeps_a_replayable_placeholder_for_empty_display_text() {
     let shaped = backend.shape(&request("甲", "", FontRole::CjkText));
 
     assert_eq!(1, shaped.shaping.glyph_runs[0].glyphs.len());
-    assert_eq!(1, shaped.shaping.decisions[0].glyph_count);
+    assert_eq!(1, shaped.shaping.decisions[0].debug.glyph_count);
     assert_eq!(1, shaped.shaping.decisions[0].glyphs_without_ink_bounds);
     assert_eq!(20.0, shaped.shaping.glyph_runs[0].advance);
 }

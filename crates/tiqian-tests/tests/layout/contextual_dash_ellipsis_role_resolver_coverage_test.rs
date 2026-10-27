@@ -71,7 +71,7 @@ fn resolves_by_surrounding_script_rather_than_mark_count() {
             "{text}",
         );
         assert_eq!(
-            "DashEllipsisSurroundingScriptContext", decision.source,
+            "DashEllipsisSurroundingScriptContext", decision.debug.source,
             "{text}"
         );
     }
@@ -87,7 +87,7 @@ fn conflicting_or_absent_script_falls_back_to_paragraph_language() {
             let decision = resolve(text, locale).pop().unwrap();
             assert_eq!(role, decision.role, "{locale}: {text}");
             assert_eq!(
-                "ParagraphLanguageDashEllipsisContext", decision.source,
+                "ParagraphLanguageDashEllipsisContext", decision.debug.source,
                 "{locale}: {text}"
             );
         }
@@ -98,15 +98,15 @@ fn conflicting_or_absent_script_falls_back_to_paragraph_language() {
 fn decision_reason_names_the_evidence_shape() {
     assert_eq!(
         "matching-surrounding-script",
-        resolve("A—B", "zh-Hans")[0].reason
+        resolve("A—B", "zh-Hans")[0].debug.reason
     );
     assert_eq!(
         "only-left-strong-script",
-        resolve("中文……", "zh-Hans")[0].reason
+        resolve("中文……", "zh-Hans")[0].debug.reason
     );
     assert_eq!(
         "only-right-strong-script",
-        resolve("— English", "zh-Hans")[0].reason
+        resolve("— English", "zh-Hans")[0].debug.reason
     );
 }
 
@@ -114,8 +114,16 @@ fn decision_reason_names_the_evidence_shape() {
 fn mandatory_break_stops_context_search() {
     let decision = resolve("—\nEnglish", "zh-Hans").pop().unwrap();
     assert_eq!(FontRole::CjkPunctuation, decision.role);
-    assert_eq!("ParagraphLanguageDashEllipsisContext", decision.source);
-    assert!(decision.reason.starts_with("no-strong-script-context"));
+    assert_eq!(
+        "ParagraphLanguageDashEllipsisContext",
+        decision.debug.source
+    );
+    assert!(
+        decision
+            .debug
+            .reason
+            .starts_with("no-strong-script-context")
+    );
 }
 
 #[test]
@@ -145,8 +153,9 @@ fn pairs_parenthetical_dashes_across_inserted_content() {
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "ParagraphLanguageDashEllipsisContext"
+            && decision.debug.source == "ParagraphLanguageDashEllipsisContext"
             && decision
+                .debug
                 .reason
                 .starts_with("parenthetical-pair-conflicting-outer-script")
     }));
@@ -157,7 +166,8 @@ fn matching_outer_script_resolves_the_parenthetical_pair_directly() {
     let decisions = resolve("word——and stuff——word", "zh-Hans");
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
-        decision.role == FontRole::LatinText && decision.source == "ParentheticalDashPairContext"
+        decision.role == FontRole::LatinText
+            && decision.debug.source == "ParentheticalDashPairContext"
     }));
 }
 
@@ -167,7 +177,7 @@ fn punctuation_between_runs_keeps_them_independent() {
     assert_eq!(2, decisions.len());
     assert!(decisions.iter().all(|decision| {
         decision.role == FontRole::CjkPunctuation
-            && decision.source == "DashEllipsisSurroundingScriptContext"
+            && decision.debug.source == "DashEllipsisSurroundingScriptContext"
     }));
 }
 
@@ -178,7 +188,7 @@ fn symbol_between_runs_keeps_them_independent() {
     assert!(
         decisions
             .iter()
-            .all(|decision| { decision.source == "DashEllipsisSurroundingScriptContext" })
+            .all(|decision| { decision.debug.source == "DashEllipsisSurroundingScriptContext" })
     );
 }
 

@@ -21,13 +21,16 @@ fn nested_pair_inside_neutral_enclosing_inherits_the_outer_quotation() {
         .iter()
         .find(|decision| decision.index.value() == 2)
         .unwrap();
-    assert_eq!("PairedPunctuationEnclosingQuoteContext", inner.source);
-    assert_eq!("quote-pair-inherits-enclosing-quotation", inner.reason);
+    assert_eq!("PairedPunctuationEnclosingQuoteContext", inner.debug.source);
+    assert_eq!(
+        "quote-pair-inherits-enclosing-quotation",
+        inner.debug.reason
+    );
     assert_eq!(outer.role, inner.role);
     assert!(
         decisions
             .iter()
-            .all(|decision| decision.source != "DelimitedWesternQuotationRun")
+            .all(|decision| decision.debug.source != "DelimitedWesternQuotationRun")
     );
 }
 
@@ -37,7 +40,10 @@ fn space_before_unmatched_quote_with_cjk_right_skips_the_delimited_rule() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("UnmatchedQuoteSurroundingScriptContext", decision.source);
+    assert_eq!(
+        "UnmatchedQuoteSurroundingScriptContext",
+        decision.debug.source
+    );
     assert_eq!(FontRole::CjkPunctuation, decision.role);
 }
 
@@ -47,7 +53,7 @@ fn tab_before_a_wholly_western_pair_delimits_like_a_space() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("DelimitedWesternQuotationRun", decision.source);
+    assert_eq!("DelimitedWesternQuotationRun", decision.debug.source);
 }
 
 #[test]
@@ -56,7 +62,10 @@ fn space_before_a_pair_with_non_western_content_skips_the_delimited_rule() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("PairedPunctuationContentScriptContext", decision.source);
+    assert_eq!(
+        "PairedPunctuationContentScriptContext",
+        decision.debug.source
+    );
     assert_eq!(FontRole::CjkPunctuation, decision.role);
 }
 
@@ -66,8 +75,8 @@ fn space_before_a_mixed_content_pair_reports_mixed_content() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("ParagraphLanguageQuoteContext", decision.source);
-    assert!(decision.reason.contains("mixed-quoted-content"));
+    assert_eq!("ParagraphLanguageQuoteContext", decision.debug.source);
+    assert!(decision.debug.reason.contains("mixed-quoted-content"));
 }
 
 #[test]
@@ -76,8 +85,13 @@ fn mixed_enclosing_level_falls_back_to_paragraph_language() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("ParagraphLanguageQuoteContext", decision.source);
-    assert!(decision.reason.contains("mixed-enclosing-level-script"));
+    assert_eq!("ParagraphLanguageQuoteContext", decision.debug.source);
+    assert!(
+        decision
+            .debug
+            .reason
+            .contains("mixed-enclosing-level-script")
+    );
 }
 
 #[test]
@@ -86,7 +100,12 @@ fn non_chinese_locale_resolves_neutral_context_to_latin_text() {
     let context = FontRoleContext::with_locale("en-US".to_owned());
     let decisions = ContextualQuoteRoleResolver::new(&text, &[], &context).resolve();
     assert_eq!(FontRole::LatinText, decisions[0].role);
-    assert!(decisions[0].reason.contains("paragraph-language=en-US"));
+    assert!(
+        decisions[0]
+            .debug
+            .reason
+            .contains("paragraph-language=en-US")
+    );
 }
 
 #[test]
@@ -95,7 +114,10 @@ fn private_use_char_before_a_quote_fails_the_low_surrogate_range_above() {
         .into_iter()
         .find(|decision| decision.index.value() == 1)
         .unwrap();
-    assert_eq!("UnmatchedQuoteSurroundingScriptContext", decision.source);
+    assert_eq!(
+        "UnmatchedQuoteSurroundingScriptContext",
+        decision.debug.source
+    );
     assert_eq!(FontRole::CjkPunctuation, decision.role);
 }
 
@@ -110,7 +132,10 @@ fn sibling_pairs_inside_one_quotation_each_inherit_the_outer_role() {
         .iter()
         .find(|decision| decision.index.value() == 4)
         .unwrap();
-    assert_eq!("PairedPunctuationEnclosingQuoteContext", first.source);
-    assert_eq!("PairedPunctuationEnclosingQuoteContext", second.source);
+    assert_eq!("PairedPunctuationEnclosingQuoteContext", first.debug.source);
+    assert_eq!(
+        "PairedPunctuationEnclosingQuoteContext",
+        second.debug.source
+    );
     assert_eq!(first.role, second.role);
 }

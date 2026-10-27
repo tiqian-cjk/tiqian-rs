@@ -50,7 +50,7 @@ cargo run -p tiqian-demo --release
 | `collections-hashbrown` / `collections-std` | 选择集合；后者启用 `runtime-std` |
 | `math-std` / `math-libm` | 选择浮点数学实现；前者启用 `runtime-std` |
 | `shared-auto` / `shared-portable` | 按目标原子能力选择 Arc / 强制使用 portable Arc |
-| `debug-info` | 结构化诊断，独立于运行环境 |
+| `debug-info` | 结构化诊断及上游原因文本，独立于运行环境；默认关闭 |
 
 `std` 预设选择 `runtime-std,collections-hashbrown,math-std,shared-auto`；`no-std` 预设选择
 `collections-hashbrown,math-libm,shared-auto`。Cargo feature 只能叠加：每类组件必须且只能选一个，
@@ -156,6 +156,7 @@ HTML 报告位于 `target/llvm-cov/html/index.html`。
 
 ## API 接入注意事项
 
+- shaping、cluster 几何与角色解析的运行时构造签名保持固定，成组诊断字段存入条件编译的 `debug` 结构。`ShapingDecisionInfo::builder(range)` 通过 `.debug_info(ShapingDecisionDebugInfo { ... })` 附加诊断；该附加表达式仅在诊断开启时编译。自定义 backend 在跨 crate 附加诊断时，使用 `tiqian::with_debug_info!(开启表达式, 关闭表达式)` 按主库实际 feature 选择路径；未选中的表达式不会生成代码。只检查调用方自身的同名 feature 无法覆盖 Cargo 对主库 feature 的合并。
 - 优先使用 `api::ParagraphBuilder` 按内容顺序构造段落；`build()` 返回 `LayoutInput`。
 - `TextRange` 和布局查询使用 Unicode scalar offset；UTF-8 byte offset 仅用于 Rust 字符串的底层索引。
 - `ParagraphLayoutEngineBuilder::new(Box<dyn FontBackend>)` 是生产引擎的唯一构造入口；`FontBackend` 及 builder 可替换的 profile、断行器、hyphenator 和 annotation cache 实现必须为 `Send + Sync`，以使引擎可安全跨线程转移或置于外部同步容器。确定性 backend 仅位于 `tests/support/`，供 fixture、golden 和 integration test 使用。

@@ -1,7 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ClusterRoleResolution.kt
 
 use crate::common::{HashMap, HashSet};
-use alloc::{borrow::ToOwned, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::borrow::ToOwned;
+use alloc::vec::Vec;
 
 use icu_properties::{
     CodePointMapData, CodePointSetData,
@@ -10,7 +12,9 @@ use icu_properties::{
 
 use super::super::clreq::clreq_profile::{ClreqProfile, clreq_punctuation_policies};
 use super::super::core::geometry::{ScalarOffset, TextRange};
-use super::super::core::layout_model::{Cluster, RoleOverrideInfo};
+use super::super::core::layout_model::Cluster;
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::RoleOverrideInfo;
 use super::super::core::source_interaction_boundaries::interaction_boundaries;
 use super::super::core::text::Text;
 use super::super::core::text_model::InlineObjectSpan;
@@ -258,11 +262,13 @@ pub fn cluster_role_ranges_with_options(
         }
 
         let range = TextRange::new(start, index);
-        ranges.push(ResolvedClusterRange::with_role_override(
-            range,
-            role,
-            (role == FontRole::Emoji && classified_role != FontRole::Emoji).then(|| {
-                RoleOverrideInfo {
+        #[allow(unused_mut)]
+        let mut resolved = ResolvedClusterRange::new(range, role);
+        #[cfg(feature = "debug-info")]
+        {
+            resolved.role_override = (role == FontRole::Emoji
+                && classified_role != FontRole::Emoji)
+                .then(|| RoleOverrideInfo {
                     range,
                     source_text: text.slice_text(range),
                     original_role: classified_role,
@@ -271,9 +277,9 @@ pub fn cluster_role_ranges_with_options(
                     reason: promotion_reason
                         .unwrap_or("EmojiPresentationCodePoint")
                         .to_owned(),
-                }
-            }),
-        ));
+                });
+        }
+        ranges.push(resolved);
     }
     ranges
 }
@@ -314,6 +320,7 @@ pub struct ResolvedClusterRange {
     pub role: FontRole,
     pub mandatory_break: bool,
     pub zero_width_soft_break: bool,
+    #[cfg(feature = "debug-info")]
     pub role_override: Option<RoleOverrideInfo>,
 }
 
@@ -324,21 +331,8 @@ impl ResolvedClusterRange {
             role,
             mandatory_break: false,
             zero_width_soft_break: false,
+            #[cfg(feature = "debug-info")]
             role_override: None,
-        }
-    }
-
-    pub fn with_role_override(
-        range: TextRange,
-        role: FontRole,
-        role_override: Option<RoleOverrideInfo>,
-    ) -> Self {
-        Self {
-            range,
-            role,
-            mandatory_break: false,
-            zero_width_soft_break: false,
-            role_override,
         }
     }
 
@@ -348,6 +342,7 @@ impl ResolvedClusterRange {
             role: FontRole::Unknown,
             mandatory_break: true,
             zero_width_soft_break: false,
+            #[cfg(feature = "debug-info")]
             role_override: None,
         }
     }
@@ -358,6 +353,7 @@ impl ResolvedClusterRange {
             role: FontRole::Unknown,
             mandatory_break: false,
             zero_width_soft_break: true,
+            #[cfg(feature = "debug-info")]
             role_override: None,
         }
     }

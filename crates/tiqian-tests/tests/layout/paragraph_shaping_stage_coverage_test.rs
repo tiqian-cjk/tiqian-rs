@@ -7,7 +7,7 @@ use tiqian::common::{HashMap, HashSet};
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{LayoutConstraints, Rect, TextRange, text_range};
 use tiqian::core::layout_model::{
-    Cluster, Glyph, GlyphRun, ShapingDecisionInfo, SyntheticClusterKind,
+    Cluster, Glyph, GlyphRun, ShapingDecisionDebugInfo, ShapingDecisionInfo, SyntheticClusterKind,
 };
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -196,21 +196,23 @@ fn dash_substitution_rollback_and_coverage_branches() {
                     face.clone(),
                     16.0,
                 );
-                let decision = ShapingDecisionInfo::builder(
-                    input.range,
-                    source,
-                    input.display_text.clone(),
-                    Some(face.clone()),
-                    1,
-                    16.0,
-                    "Test".to_owned(),
-                    "test".to_owned(),
-                )
-                .capability_issue(
-                    (call == 1).then(|| UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.to_owned()),
-                )
-                .missing_glyphs(if call == 2 { 1 } else { 0 })
-                .build();
+                let decision = ShapingDecisionInfo::builder(input.range)
+                    .debug_info(ShapingDecisionDebugInfo {
+                        source_text: source,
+                        display_text: input.display_text.clone(),
+                        font_face: Some(face.clone()),
+                        glyph_count: 1,
+                        advance: 16.0,
+                        source: "Test".to_owned(),
+                        reason: "test".to_owned(),
+                        ..Default::default()
+                    })
+                    .capability_issue(
+                        (call == 1)
+                            .then(|| UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.to_owned()),
+                    )
+                    .missing_glyphs(if call == 2 { 1 } else { 0 })
+                    .build();
                 if call == 2 {
                     result.attempts[0].missing_glyphs = 1;
                 }

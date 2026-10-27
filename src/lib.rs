@@ -7,6 +7,30 @@
 
 extern crate alloc;
 
+/// 根据主库实际启用的 `debug-info` feature，原样展开开启或关闭诊断时的表达式。
+///
+/// Cargo 可能跨 crate 合并主库的 feature，使主库与调用方自身的 feature 状态不同。
+/// 由主库选择宏定义可保持调用表达式与主库 API 一致，未选中的表达式会被裁剪。
+#[cfg(feature = "debug-info")]
+#[macro_export]
+macro_rules! with_debug_info {
+    ($enabled_expr:expr, $disabled_expr:expr $(,)?) => {
+        $enabled_expr
+    };
+}
+
+/// 根据主库实际启用的 `debug-info` feature，原样展开开启或关闭诊断时的表达式。
+///
+/// Cargo 可能跨 crate 合并主库的 feature，使主库与调用方自身的 feature 状态不同。
+/// 由主库选择宏定义可保持调用表达式与主库 API 一致，未选中的表达式会被裁剪。
+#[cfg(not(feature = "debug-info"))]
+#[macro_export]
+macro_rules! with_debug_info {
+    ($enabled_expr:expr, $disabled_expr:expr $(,)?) => {
+        $disabled_expr
+    };
+}
+
 #[path = "api/mod.rs"]
 pub mod api;
 pub mod common;
@@ -64,6 +88,7 @@ pub mod layout {
     pub mod justifier;
     pub mod kinsoku_rule;
     pub mod layout_assembly_stage;
+    #[cfg(feature = "debug-info")]
     pub mod layout_debug_assembly;
     pub mod line_adjustment_stage;
     pub mod line_break_planning_stage;

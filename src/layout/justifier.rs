@@ -29,6 +29,7 @@ pub struct JustificationRequest<'a> {
     pub max_width: f32,
     pub font_size: f32,
     pub skip: bool,
+    #[cfg(feature = "debug-info")]
     pub skip_reason: Option<String>,
     pub allow_sino_western_gap_stretch: bool,
     pub cjk_latin_space_base_em: f32,
@@ -162,12 +163,14 @@ pub struct JustificationPlan {
     pub allocations: Vec<JustificationAllocation>,
     pub deficit_before: f32,
     pub unfilled_deficit: f32,
+    #[cfg(feature = "debug-info")]
     pub fallback_reason: Option<String>,
 }
 /// 含 Tab 的最终行只收集一次机会，数值试算复用阶段与容量。
 pub struct JustificationStages {
     pub line_cluster_range: IntRange,
     pub deficit_before: f32,
+    #[cfg(feature = "debug-info")]
     pub fallback_reason: Option<String>,
     stages: Vec<(Vec<JustificationOpportunity>, JustificationStage)>,
 }
@@ -286,6 +289,7 @@ impl JustificationStages {
             allocations,
             deficit_before: self.deficit_before,
             unfilled_deficit: remaining.max(0.0),
+            #[cfg(feature = "debug-info")]
             fallback_reason: if remaining > 0.0 {
                 self.fallback_reason.clone()
             } else {
@@ -349,6 +353,7 @@ impl Justifier {
         JustificationStages {
             line_cluster_range: plan.line_cluster_range,
             deficit_before: plan.deficit_before,
+            #[cfg(feature = "debug-info")]
             fallback_reason: plan.fallback_reason,
             stages,
         }
@@ -376,6 +381,7 @@ impl Justifier {
                 deficit_before,
                 deficit_before,
                 Vec::new(),
+                #[cfg(feature = "debug-info")]
                 if request.skip {
                     request.skip_reason
                 } else {
@@ -426,6 +432,7 @@ impl Justifier {
                 deficit_before,
                 remaining,
                 allocations,
+                #[cfg(feature = "debug-info")]
                 None,
             );
         }
@@ -464,6 +471,7 @@ impl Justifier {
                 deficit_before,
                 remaining,
                 allocations,
+                #[cfg(feature = "debug-info")]
                 None,
             );
         }
@@ -556,6 +564,7 @@ impl Justifier {
                     deficit_before,
                     remaining,
                     allocations,
+                    #[cfg(feature = "debug-info")]
                     None,
                 );
             }
@@ -598,6 +607,7 @@ impl Justifier {
                     deficit_before,
                     remaining,
                     allocations,
+                    #[cfg(feature = "debug-info")]
                     None,
                 );
             }
@@ -641,6 +651,7 @@ impl Justifier {
                 deficit_before,
                 remaining,
                 allocations,
+                #[cfg(feature = "debug-info")]
                 None,
             );
         }
@@ -667,6 +678,7 @@ impl Justifier {
                 deficit_before,
                 remaining,
                 allocations,
+                #[cfg(feature = "debug-info")]
                 Some("WesternDominantLineNaturalSpacing".to_owned()),
             );
         }
@@ -802,6 +814,7 @@ impl Justifier {
                 deficit_before,
                 remaining,
                 allocations,
+                #[cfg(feature = "debug-info")]
                 None,
             );
         }
@@ -845,6 +858,7 @@ impl Justifier {
             deficit_before,
             remaining,
             allocations,
+            #[cfg(feature = "debug-info")]
             if remaining > 0.0 && has_emergency_boundary {
                 Some("EmergencyTrackingNoOpenBoundary".to_owned())
             } else {
@@ -1001,13 +1015,14 @@ impl Justifier {
         deficit_before: f32,
         unfilled: f32,
         allocations: Vec<JustificationAllocation>,
-        fallback_reason: Option<String>,
+        #[cfg(feature = "debug-info")] fallback_reason: Option<String>,
     ) -> JustificationPlan {
         JustificationPlan {
             line_cluster_range,
             allocations,
             deficit_before,
             unfilled_deficit: unfilled.max(0.0),
+            #[cfg(feature = "debug-info")]
             fallback_reason,
         }
     }

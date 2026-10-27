@@ -16,7 +16,7 @@ use tiqian::shaping::font_backend::{
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
+use tiqian::shaping::text_shaper::ShapingResult;
 use vello::kurbo::Affine;
 use vello::peniko::color::{AlphaColor, Srgb};
 use vello::peniko::{Blob, Fill, FontData};
@@ -403,14 +403,14 @@ impl DemoFontFace {
         if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id))
             && let Some(bounds) =
                 color_glyph.bounding_box(LocationRef::new(location.coords()), Size::unscaled())
-            {
-                return Some(Rect {
-                    left: bounds.x_min * scale,
-                    top: -bounds.y_max * scale,
-                    right: bounds.x_max * scale,
-                    bottom: -bounds.y_min * scale,
-                });
-            }
+        {
+            return Some(Rect {
+                left: bounds.x_min * scale,
+                top: -bounds.y_max * scale,
+                right: bounds.x_max * scale,
+                bottom: -bounds.y_min * scale,
+            });
+        }
         let glyph = font.outline_glyphs().get(GlyphId::new(glyph_id))?;
         let mut pen = ControlBoundsPen::new();
         glyph
@@ -473,28 +473,34 @@ impl DemoFontCatalog {
         let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as u32;
         let glyphs_without_ink_bounds =
             glyphs.iter().filter(|glyph| glyph.bounds.is_none()).count() as i32;
-        let source_text = Text::from(input.text.slice(input.range));
-        let glyph_count = glyphs.len() as i32;
-        let decision = ShapingDecisionInfo::builder(
-            input.range,
-            source_text,
-            input.display_text.clone(),
-            Some(font_face.clone()),
-            glyph_count,
-            shaped.advance,
-            format!("{:?}", ShapingSource::HarfBuzz),
-            "ParagraphDemoHarfRustFontBackend:complete-shaping".to_owned(),
+        let decision = ShapingDecisionInfo::builder(input.range)
+            .glyphs_without_ink_bounds(glyphs_without_ink_bounds)
+            .missing_glyphs(missing_glyphs as i32);
+        let decision = tiqian::with_debug_info!(
+            decision.debug_info(tiqian::core::layout_model::ShapingDecisionDebugInfo {
+                source_text: Text::from(input.text.slice(input.range)),
+                display_text: input.display_text.clone(),
+                font_face: Some(font_face.clone()),
+                glyph_count: glyphs.len() as i32,
+                advance: shaped.advance,
+                source: format!(
+                    "{:?}",
+                    tiqian::shaping::text_shaper::ShapingSource::HarfBuzz
+                ),
+                reason: "ParagraphDemoHarfRustFontBackend:complete-shaping".to_owned(),
+                script: None,
+                language: Some(input.style.locale.clone()),
+                strategy: None,
+                feature_evidence: (!features.is_empty()).then(|| {
+                    features
+                        .iter()
+                        .map(String::as_str)
+                        .collect::<Vec<_>>()
+                        .join(",")
+                }),
+            }),
+            decision
         )
-        .glyphs_without_ink_bounds(glyphs_without_ink_bounds)
-        .missing_glyphs(missing_glyphs as i32)
-        .language(Some(input.style.locale.clone()))
-        .feature_evidence((!features.is_empty()).then(|| {
-            features
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-                .join(",")
-        }))
         .build();
         let result = ShapingResult::with_decisions(
             clusters
@@ -826,9 +832,12 @@ mod tests {
             halt.shaping.glyph_runs[0].open_type_features,
             vec!["fwid=1"]
         );
-        assert_eq!(
-            halt.shaping.decisions[0].feature_evidence.as_deref(),
-            Some("fwid=1")
+        tiqian::with_debug_info!(
+            assert_eq!(
+                halt.shaping.decisions[0].debug.feature_evidence.as_deref(),
+                Some("fwid=1")
+            ),
+            ()
         );
         assert!(
             halt.shaping.glyph_runs[0]
@@ -851,9 +860,15 @@ mod tests {
             vertical.shaping.glyph_runs[0].open_type_features,
             vec!["vert=1"]
         );
-        assert_eq!(
-            vertical.shaping.decisions[0].feature_evidence.as_deref(),
-            Some("vert=1")
+        tiqian::with_debug_info!(
+            assert_eq!(
+                vertical.shaping.decisions[0]
+                    .debug
+                    .feature_evidence
+                    .as_deref(),
+                Some("vert=1")
+            ),
+            ()
         );
         assert!(
             vertical.shaping.glyph_runs[0]

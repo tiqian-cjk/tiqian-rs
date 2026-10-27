@@ -941,6 +941,7 @@ pub fn tier_name(tier: ProgressiveBreakTier) -> &'static str {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EmergencyTrackingEligibilityDecisionInfo {
     pub range: TextRange,
+    #[cfg(feature = "debug-info")]
     pub source_text: Text,
     pub reason: EmergencyTrackingReason,
 }
@@ -2066,9 +2067,10 @@ pub struct FontDecisionInfo {
     pub substitution_reason: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ShapingDecisionInfo {
-    pub range: TextRange,
+/// shaping 的诊断载荷，仅在开启诊断时构造。
+#[cfg(feature = "debug-info")]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ShapingDecisionDebugInfo {
     pub source_text: Text,
     pub display_text: Text,
     pub font_face: Option<FontFaceId>,
@@ -2076,13 +2078,6 @@ pub struct ShapingDecisionInfo {
     pub advance: f32,
     pub source: String,
     pub reason: String,
-    /// shaper 未返回 ink bound 的 `glyph_count` glyph 数。非零值将下游的 `MissingInkBoundsFallback`
-    /// heuristic 送入——punctuation geometry 退化为仅 shaped-advance。
-    pub glyphs_without_ink_bounds: i32,
-    /// 解析为 font `.notdef` glyph 的 `glyph_count` glyph 数。CLREQ-substituted cluster 上的非零值触发
-    /// `SubstitutionRollbackOnMissingGlyph`：engine 改以 source text shape 而非显示 tofu（例如 `⸺` 在
-    /// PingFang SC / Hiragino / Heiti 中不存在）。
-    pub missing_glyphs: i32,
     /// 显式时提供给 shaping engine 的 script 与 language。
     pub script: Option<String>,
     pub language: Option<String>,
@@ -2090,75 +2085,71 @@ pub struct ShapingDecisionInfo {
     pub strategy: Option<String>,
     /// OpenType feature decision 的 evidence，而不只是 requested tag。
     pub feature_evidence: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShapingDecisionInfo {
+    pub range: TextRange,
+    /// shaper 未返回 ink bound 的 `glyph_count` glyph 数。非零值将下游的 `MissingInkBoundsFallback`
+    /// heuristic 送入——punctuation geometry 退化为仅 shaped-advance。
+    pub glyphs_without_ink_bounds: i32,
+    /// 解析为 font `.notdef` glyph 的 `glyph_count` glyph 数。CLREQ-substituted cluster 上的非零值触发
+    /// `SubstitutionRollbackOnMissingGlyph`：engine 改以 source text shape 而非显示 tofu（例如 `⸺` 在
+    /// PingFang SC / Hiragino / Heiti 中不存在）。
+    pub missing_glyphs: i32,
     /// frontend 必须保持 source content native 的具名原因。
     pub capability_issue: Option<String>,
+    #[cfg(feature = "debug-info")]
+    pub debug: ShapingDecisionDebugInfo,
 }
 impl ShapingDecisionInfo {
-    pub fn builder(
-        range: TextRange,
-        source_text: Text,
-        display_text: Text,
-        font_face: Option<FontFaceId>,
-        glyph_count: i32,
-        advance: f32,
-        source: String,
-        reason: String,
-    ) -> ShapingDecisionInfoBuilder {
+    pub fn builder(range: TextRange) -> ShapingDecisionInfoBuilder {
         ShapingDecisionInfoBuilder {
-            decision: Self {
-                range,
-                source_text,
-                display_text,
-                font_face,
-                glyph_count,
-                advance,
-                source,
-                reason,
-                glyphs_without_ink_bounds: 0,
-                missing_glyphs: 0,
-                script: None,
-                language: None,
-                strategy: None,
-                feature_evidence: None,
-                capability_issue: None,
-            },
+            range,
+            glyphs_without_ink_bounds: 0,
+            missing_glyphs: 0,
+            capability_issue: None,
+            #[cfg(feature = "debug-info")]
+            debug: None,
         }
     }
 }
 pub struct ShapingDecisionInfoBuilder {
-    decision: ShapingDecisionInfo,
+    range: TextRange,
+    glyphs_without_ink_bounds: i32,
+    missing_glyphs: i32,
+    capability_issue: Option<String>,
+    // 仅在未提供诊断载荷时构造默认文本，避免先分配再覆盖。
+    #[cfg(feature = "debug-info")]
+    debug: Option<ShapingDecisionDebugInfo>,
 }
 impl ShapingDecisionInfoBuilder {
     pub fn glyphs_without_ink_bounds(mut self, value: i32) -> Self {
-        self.decision.glyphs_without_ink_bounds = value;
+        self.glyphs_without_ink_bounds = value;
         self
     }
     pub fn missing_glyphs(mut self, value: i32) -> Self {
-        self.decision.missing_glyphs = value;
+        self.missing_glyphs = value;
         self
     }
-    pub fn script(mut self, value: Option<String>) -> Self {
-        self.decision.script = value;
-        self
-    }
-    pub fn language(mut self, value: Option<String>) -> Self {
-        self.decision.language = value;
-        self
-    }
-    pub fn strategy(mut self, value: Option<String>) -> Self {
-        self.decision.strategy = value;
-        self
-    }
-    pub fn feature_evidence(mut self, value: Option<String>) -> Self {
-        self.decision.feature_evidence = value;
+    #[cfg(feature = "debug-info")]
+    pub fn debug_info(mut self, value: ShapingDecisionDebugInfo) -> Self {
+        self.debug = Some(value);
         self
     }
     pub fn capability_issue(mut self, value: Option<String>) -> Self {
-        self.decision.capability_issue = value;
+        self.capability_issue = value;
         self
     }
     pub fn build(self) -> ShapingDecisionInfo {
-        self.decision
+        ShapingDecisionInfo {
+            range: self.range,
+            glyphs_without_ink_bounds: self.glyphs_without_ink_bounds,
+            missing_glyphs: self.missing_glyphs,
+            capability_issue: self.capability_issue,
+            #[cfg(feature = "debug-info")]
+            debug: self.debug.unwrap_or_default(),
+        }
     }
 }
 
@@ -2333,11 +2324,19 @@ impl PunctuationDecisionInfoBuilder {
     }
 }
 
+/// cluster 几何的诊断载荷，仅在开启诊断时构造。
+#[cfg(feature = "debug-info")]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ClusterGeometryDebugInfo {
+    pub source_text: Text,
+    pub display_text: Text,
+    /// `glyph_inline_shift` 的具名来源；未施加 shift 时为 None。
+    pub glyph_placement_reason: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClusterGeometryDecisionInfo {
     pub range: TextRange,
-    pub source_text: Text,
-    pub display_text: Text,
     pub base_advance: f32,
     pub body_width: f32,
     pub leading_glue_natural: f32,
@@ -2350,19 +2349,17 @@ pub struct ClusterGeometryDecisionInfo {
     pub ruby_spread: f32,
     /// 应用于此 cluster 的、由 layout 拥有的 glyph-origin shift。
     pub glyph_inline_shift: f32,
-    /// `glyph_inline_shift` 的具名来源；未施加 shift 时为 None。
-    pub glyph_placement_reason: Option<String>,
     pub resolved_advance: f32,
     /// 产生该记录的组件名称（内置常量）。
     pub source: &'static str,
     /// 该 cluster 的几何证据来源。
     pub reason: PunctuationGeometrySource,
+    #[cfg(feature = "debug-info")]
+    pub debug: ClusterGeometryDebugInfo,
 }
 impl ClusterGeometryDecisionInfo {
     pub fn builder(
         range: TextRange,
-        source_text: Text,
-        display_text: Text,
         base_advance: f32,
         body_width: f32,
         leading_glue_natural: f32,
@@ -2375,45 +2372,74 @@ impl ClusterGeometryDecisionInfo {
         reason: PunctuationGeometrySource,
     ) -> ClusterGeometryDecisionInfoBuilder {
         ClusterGeometryDecisionInfoBuilder {
-            decision: Self {
-                range,
-                source_text,
-                display_text,
-                base_advance,
-                body_width,
-                leading_glue_natural,
-                leading_glue_consumed,
-                trailing_glue_natural,
-                trailing_glue_consumed,
-                justification_delta,
-                ruby_spread: 0.0,
-                glyph_inline_shift: 0.0,
-                glyph_placement_reason: None,
-                resolved_advance,
-                source,
-                reason,
-            },
+            range,
+            base_advance,
+            body_width,
+            leading_glue_natural,
+            leading_glue_consumed,
+            trailing_glue_natural,
+            trailing_glue_consumed,
+            justification_delta,
+            ruby_spread: 0.0,
+            glyph_inline_shift: 0.0,
+            resolved_advance,
+            source,
+            reason,
+            #[cfg(feature = "debug-info")]
+            debug: None,
         }
     }
 }
 pub struct ClusterGeometryDecisionInfoBuilder {
-    decision: ClusterGeometryDecisionInfo,
+    range: TextRange,
+    base_advance: f32,
+    body_width: f32,
+    leading_glue_natural: f32,
+    leading_glue_consumed: f32,
+    trailing_glue_natural: f32,
+    trailing_glue_consumed: f32,
+    justification_delta: f32,
+    ruby_spread: f32,
+    glyph_inline_shift: f32,
+    resolved_advance: f32,
+    source: &'static str,
+    reason: PunctuationGeometrySource,
+    // 仅在未提供诊断载荷时构造默认文本，避免先分配再覆盖。
+    #[cfg(feature = "debug-info")]
+    debug: Option<ClusterGeometryDebugInfo>,
 }
 impl ClusterGeometryDecisionInfoBuilder {
     pub fn ruby_spread(mut self, value: f32) -> Self {
-        self.decision.ruby_spread = value;
+        self.ruby_spread = value;
         self
     }
     pub fn glyph_inline_shift(mut self, value: f32) -> Self {
-        self.decision.glyph_inline_shift = value;
+        self.glyph_inline_shift = value;
         self
     }
-    pub fn glyph_placement_reason(mut self, value: Option<String>) -> Self {
-        self.decision.glyph_placement_reason = value;
+    #[cfg(feature = "debug-info")]
+    pub fn debug_info(mut self, value: ClusterGeometryDebugInfo) -> Self {
+        self.debug = Some(value);
         self
     }
     pub fn build(self) -> ClusterGeometryDecisionInfo {
-        self.decision
+        ClusterGeometryDecisionInfo {
+            range: self.range,
+            base_advance: self.base_advance,
+            body_width: self.body_width,
+            leading_glue_natural: self.leading_glue_natural,
+            leading_glue_consumed: self.leading_glue_consumed,
+            trailing_glue_natural: self.trailing_glue_natural,
+            trailing_glue_consumed: self.trailing_glue_consumed,
+            justification_delta: self.justification_delta,
+            ruby_spread: self.ruby_spread,
+            glyph_inline_shift: self.glyph_inline_shift,
+            resolved_advance: self.resolved_advance,
+            source: self.source,
+            reason: self.reason,
+            #[cfg(feature = "debug-info")]
+            debug: self.debug.unwrap_or_default(),
+        }
     }
 }
 

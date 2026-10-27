@@ -218,6 +218,7 @@ pub struct LineCandidate {
     pub adjusted_width: f32,
     pub end_reason: LineEndReason,
     pub repair: Option<RepairOption>,
+    #[cfg(feature = "debug-info")]
     pub repair_candidates: Vec<RepairCandidate>,
     pub hanging_cluster_indices: HashSet<i32>,
     pub white_space_adjustments: Vec<super::white_space::LineWhiteSpaceAdjustment>,
@@ -238,6 +239,7 @@ impl LineCandidate {
             adjusted_width,
             end_reason: LineEndReason::AutoWrap,
             repair: None,
+            #[cfg(feature = "debug-info")]
             repair_candidates: Vec::new(),
             hanging_cluster_indices: HashSet::new(),
             white_space_adjustments: Vec::new(),
@@ -317,6 +319,7 @@ impl LineCandidate {
     }
 }
 
+#[cfg(feature = "debug-info")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepairCandidate {
     pub kind: RepairKind,
@@ -331,6 +334,7 @@ pub struct RepairCandidate {
     pub required_shrink: f32,
     pub available_capacity: f32,
 }
+#[cfg(feature = "debug-info")]
 impl RepairCandidate {
     pub fn new(
         kind: RepairKind,

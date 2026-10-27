@@ -317,6 +317,7 @@ fn dump_result(label: &str, result: LayoutResult) -> String {
                 String::new()
             },
             geometry
+                .debug
                 .glyph_placement_reason
                 .as_ref()
                 .map(|value| format!(" placement={value}"))

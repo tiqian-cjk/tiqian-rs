@@ -216,10 +216,10 @@ fn inline_object_skips_font_shaping_and_owns_its_line_metrics() {
         .iter()
         .find(|decision| decision.range == object.range)
         .unwrap();
-    assert_eq!(0, shaping.glyph_count);
+    assert_eq!(0, shaping.debug.glyph_count);
     assert_eq!(
         "MeasurableOpaqueInlineObject:no-font-shaping",
-        shaping.reason
+        shaping.debug.reason
     );
     assert!(result.lines[0].baseline - result.lines[0].top >= 30.0);
     assert!(result.lines[0].bottom - result.lines[0].baseline >= 4.0);
@@ -303,8 +303,8 @@ fn inline_object_keeps_alternate_source_text_while_skipping_its_glyph_shaping() 
         .iter()
         .find(|decision| decision.range == object.range)
         .unwrap();
-    assert_eq!("图片", shaping.source_text);
-    assert_eq!("", shaping.display_text);
+    assert_eq!("图片", shaping.debug.source_text);
+    assert_eq!("", shaping.debug.display_text);
 }
 
 #[test]

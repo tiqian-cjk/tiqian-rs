@@ -337,6 +337,7 @@ pub fn finish_paragraph_layout(request: LineAdjustmentRequest<'_>) -> LineAdjust
                 }) - line_hyphen_advance_at(line_index),
                 font_size: prep.font_size,
                 skip: false,
+                #[cfg(feature = "debug-info")]
                 skip_reason: None,
                 allow_sino_western_gap_stretch: prep
                     .adjustment_style

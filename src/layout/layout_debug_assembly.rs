@@ -343,8 +343,8 @@ pub fn quote_role_decisions_to_role_override_infos(
                 source_text,
                 original_role,
                 overridden_role: decision.role,
-                source: decision.source,
-                reason: decision.reason,
+                source: decision.debug.source,
+                reason: decision.debug.reason,
             }
         })
         .collect()

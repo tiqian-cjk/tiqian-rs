@@ -384,7 +384,7 @@ fn dash_ink_backend(
                 }
                 if let Some(body_advance) = body_advance {
                     for decision in &mut result.shaping.decisions {
-                        decision.advance = body_advance;
+                        decision.debug.advance = body_advance;
                     }
                 }
             }

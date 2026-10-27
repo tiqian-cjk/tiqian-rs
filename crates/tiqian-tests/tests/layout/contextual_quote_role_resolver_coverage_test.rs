@@ -100,7 +100,7 @@ fn whitespace_delimited_western_quote_unmatched() {
     assert!(
         classify_without_pairs("中文 ’90s")
             .iter()
-            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+            .any(|decision| decision.debug.source == "DelimitedUnmatchedWesternQuote")
     );
 }
 
@@ -146,7 +146,10 @@ fn enclosing_pair_resolved_before_inner_pair() {
         .find(|decision| decision.index.value() == 1)
         .unwrap();
     assert_eq!(FontRole::CjkPunctuation, inner_open.role);
-    assert_eq!("PairedPunctuationEnclosingQuoteContext", inner_open.source);
+    assert_eq!(
+        "PairedPunctuationEnclosingQuoteContext",
+        inner_open.debug.source
+    );
 }
 
 #[test]
@@ -199,7 +202,7 @@ fn unmatched_quote_with_whitespace_before_and_latin_right() {
     assert!(
         classify_without_pairs(" ’abc")
             .iter()
-            .any(|decision| decision.source == "DelimitedUnmatchedWesternQuote")
+            .any(|decision| decision.debug.source == "DelimitedUnmatchedWesternQuote")
     );
 }
 

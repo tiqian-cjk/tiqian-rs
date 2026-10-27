@@ -1,6 +1,8 @@
 use tiqian::common::HashSet;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance};
-use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
+use tiqian::core::layout_model::{
+    Cluster, Glyph, GlyphRun, ShapingDecisionDebugInfo, ShapingDecisionInfo,
+};
 use tiqian::font::font_metrics::{FontMetricSource, FontMetricsRequest};
 use tiqian::font::font_policy::{FontRole, RawFontMetrics};
 use tiqian::shaping::font_backend::{
@@ -66,18 +68,19 @@ impl FontBackend for DeterministicStubFontBackend {
             })
             .collect();
         let run = GlyphRun::new(request.range, face.id.clone(), glyphs, advance);
-        let decision = ShapingDecisionInfo::builder(
-            request.range,
-            source_text,
-            request.display_text.clone(),
-            Some(face.id.clone()),
-            glyph_count,
-            advance,
-            "Stub".to_owned(),
-            "DeterministicStubFontBackend:nominal-em-advance".to_owned(),
-        )
-        .glyphs_without_ink_bounds(glyph_count)
-        .build();
+        let decision = ShapingDecisionInfo::builder(request.range)
+            .debug_info(ShapingDecisionDebugInfo {
+                source_text,
+                display_text: request.display_text.clone(),
+                font_face: Some(face.id.clone()),
+                glyph_count,
+                advance,
+                source: "Stub".to_owned(),
+                reason: "DeterministicStubFontBackend:nominal-em-advance".to_owned(),
+                ..Default::default()
+            })
+            .glyphs_without_ink_bounds(glyph_count)
+            .build();
         FontBackendShapingResult::new(
             face.id.clone(),
             tiqian::shaping::text_shaper::ShapingResult::with_decisions(

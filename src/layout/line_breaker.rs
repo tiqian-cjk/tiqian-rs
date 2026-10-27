@@ -8,9 +8,9 @@ use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::{ClreqKinsokuRule, KinsokuRule};
 pub use super::line_optimization::LineCandidate;
-use super::line_optimization::{
-    LineSolution, RepairCandidate, RepairDetail, RepairOption, RepairReasonCode,
-};
+#[cfg(feature = "debug-info")]
+use super::line_optimization::RepairCandidate;
+use super::line_optimization::{LineSolution, RepairDetail, RepairOption, RepairReasonCode};
 use super::line_repair::{apply_kinsoku_repairs, with_fill_push_in};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkOpportunity, UnbreakableRanges,
@@ -128,7 +128,15 @@ impl LineBreakerConfig {
             line.end_reason = reason;
             line
         } else {
-            rebuild_line(range, natural, adjusted, reason, None, Vec::new())
+            rebuild_line(
+                range,
+                natural,
+                adjusted,
+                reason,
+                None,
+                #[cfg(feature = "debug-info")]
+                Vec::new(),
+            )
         };
         line.measurement = self.measurement.clone();
         line.measurement_limit = line_limit(max_width, self.first_line_indent, range.first());
@@ -319,12 +327,13 @@ impl GreedyLineBreaker {
         if config
             .hard_break_after_clusters
             .contains(&(adjusted_clusters.len() as i32 - 1))
-            && let Some(last) = adjusted_clusters.last() {
-                lines.push(empty_line_candidate(
-                    last.range.end(),
-                    LineEndReason::ParagraphEnd,
-                ));
-            }
+            && let Some(last) = adjusted_clusters.last()
+        {
+            lines.push(empty_line_candidate(
+                last.range.end(),
+                LineEndReason::ParagraphEnd,
+            ));
+        }
         lines
     }
 }
@@ -399,6 +408,7 @@ pub fn close_filled_line(
         adjusted_clusters,
         LineEndReason::AutoWrap,
         None,
+        #[cfg(feature = "debug-info")]
         Vec::new(),
     );
     if range.last() + 1 == natural_break_at {
@@ -560,7 +570,7 @@ pub fn rebuild_line(
     adjusted: &[Cluster],
     end_reason: LineEndReason,
     repair: Option<RepairOption>,
-    repair_candidates: Vec<RepairCandidate>,
+    #[cfg(feature = "debug-info")] repair_candidates: Vec<RepairCandidate>,
 ) -> LineCandidate {
     assert!(
         !range.is_empty(),
@@ -582,6 +592,7 @@ pub fn rebuild_line(
             .sum(),
         end_reason,
         repair,
+        #[cfg(feature = "debug-info")]
         repair_candidates,
         hanging_cluster_indices: HashSet::new(),
         white_space_adjustments: Vec::new(),
@@ -928,12 +939,13 @@ impl LineBreaker for LookaheadLineBreaker {
                     committed_synthetic_hyphen_run = 0;
                     line_start = mandatory_end + 1;
                     if line_start == adjusted.len() as i32
-                        && let Some(last) = adjusted.last() {
-                            committed.push(empty_line_candidate(
-                                last.range.end(),
-                                LineEndReason::ParagraphEnd,
-                            ));
-                        }
+                        && let Some(last) = adjusted.last()
+                    {
+                        committed.push(empty_line_candidate(
+                            last.range.end(),
+                            LineEndReason::ParagraphEnd,
+                        ));
+                    }
                     continue;
                 }
                 committed.push(config.build_line(
@@ -1060,12 +1072,13 @@ impl LineBreaker for LookaheadLineBreaker {
                 committed_synthetic_hyphen_run = 0;
                 line_start = committed_end + 1;
                 if line_start == adjusted.len() as i32
-                    && let Some(last) = adjusted.last() {
-                        committed.push(empty_line_candidate(
-                            last.range.end(),
-                            LineEndReason::ParagraphEnd,
-                        ));
-                    }
+                    && let Some(last) = adjusted.last()
+                {
+                    committed.push(empty_line_candidate(
+                        last.range.end(),
+                        LineEndReason::ParagraphEnd,
+                    ));
+                }
                 continue;
             }
             let mut line = config.build_line(

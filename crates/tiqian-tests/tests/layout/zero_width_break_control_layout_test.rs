@@ -76,6 +76,7 @@ fn zero_width_space_is_unshaped_soft_break_for_both_breakers() {
                 .iter()
                 .find(|decision| decision.range == control.range)
                 .unwrap()
+                .debug
                 .reason,
             "{name}",
         );

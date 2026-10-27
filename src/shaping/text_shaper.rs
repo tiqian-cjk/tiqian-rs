@@ -1,6 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/shaping/TextShaper.kt
 
-use alloc::{borrow::ToOwned, string::String, vec, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::borrow::ToOwned;
+use alloc::{string::String, vec, vec::Vec};
 
 use super::super::core::font_face::{FontFaceId, FontVariationInstance};
 use super::super::core::geometry::TextRange;
@@ -154,19 +156,25 @@ impl TextShaper for ExplainableStubTextShaper {
             })
             .collect();
         let run = GlyphRun::new(input.range, font_face.clone(), glyphs, advance);
-        let decision = ShapingDecisionInfo::builder(
-            input.range,
-            source_text,
-            input.display_text.clone(),
-            Some(font_face),
-            glyph_count,
-            advance,
-            "Stub".to_owned(),
-            "ExplainableStubTextShaper:nominal-em-advance".to_owned(),
-        )
-        // stub 从不测量 ink；将所有 glyph 报告为无 bounds，使 dump 如实表明此路径不提供 ink diagnostics。
-        .glyphs_without_ink_bounds(glyph_count)
-        .build();
+        // stub 从不测量 ink；所有 glyph 均报告为无 bounds。
+        let decision =
+            ShapingDecisionInfo::builder(input.range).glyphs_without_ink_bounds(glyph_count);
+        #[cfg(feature = "debug-info")]
+        let decision =
+            decision.debug_info(super::super::core::layout_model::ShapingDecisionDebugInfo {
+                source_text,
+                display_text: input.display_text.clone(),
+                font_face: Some(font_face),
+                glyph_count,
+                advance,
+                source: "Stub".to_owned(),
+                reason: "ExplainableStubTextShaper:nominal-em-advance".to_owned(),
+                script: None,
+                language: None,
+                strategy: None,
+                feature_evidence: None,
+            });
+        let decision = decision.build();
         ShapingResult::with_decisions(vec![cluster], vec![run], vec![decision])
     }
 }

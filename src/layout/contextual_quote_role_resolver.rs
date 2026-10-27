@@ -1,7 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ContextualQuoteRoleResolver.kt
 
 use crate::common::{HashMap, HashSet};
-use alloc::{format, string::String, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::format;
+use alloc::vec::Vec;
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;
 use super::super::core::geometry::{ScalarOffset, scalar_offset};
@@ -10,6 +12,8 @@ use super::super::core::unicode_script_evidence::{
     UnicodeScriptEvidence, unicode_script_evidence_classifier,
 };
 use super::super::font::font_policy::{FontRole, FontRoleContext};
+#[cfg(feature = "debug-info")]
+use super::quote_pair_analyzer::RoleResolutionDebugInfo;
 use super::quote_pair_analyzer::{
     QuotePair, QuoteRoleDecision, is_digit_bound_closing_quote, is_non_cjk_in_word_apostrophe,
     is_non_cjk_word_internal_quote_pair,
@@ -78,18 +82,17 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         for pair in sorted_pairs {
             let decision = self.resolve_pair(pair, &resolved_pairs);
             resolved_pairs.insert(pair, decision.role);
-            decisions.push(QuoteRoleDecision::new(
-                pair.open_index,
-                decision.role,
-                decision.source.clone(),
-                decision.reason.clone(),
-            ));
-            decisions.push(QuoteRoleDecision::new(
-                pair.close_index,
-                decision.role,
-                decision.source,
-                decision.reason,
-            ));
+            #[allow(unused_mut)]
+            let mut open_decision = QuoteRoleDecision::new(pair.open_index, decision.role);
+            #[allow(unused_mut)]
+            let mut close_decision = QuoteRoleDecision::new(pair.close_index, decision.role);
+            #[cfg(feature = "debug-info")]
+            {
+                open_decision.debug = decision.debug.clone();
+                close_decision.debug = decision.debug;
+            }
+            decisions.push(open_decision);
+            decisions.push(close_decision);
         }
 
         let paired_indices: HashSet<ScalarOffset> = self
@@ -106,12 +109,13 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
                 continue;
             }
             let decision = self.resolve_unmatched(index);
-            decisions.push(QuoteRoleDecision::new(
-                index,
-                decision.role,
-                decision.source,
-                decision.reason,
-            ));
+            #[allow(unused_mut)]
+            let mut quote_decision = QuoteRoleDecision::new(index, decision.role);
+            #[cfg(feature = "debug-info")]
+            {
+                quote_decision.debug = decision.debug;
+            }
+            decisions.push(quote_decision);
         }
 
         decisions.sort_by_key(|decision| decision.index);
@@ -209,10 +213,8 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
             );
         }
 
-        // `NumericPrimeUnmatchedQuote`: an unmatched closing quote directly
-        // after a digit is minute/second/inch notation (`1’30”`, `6.1”`), not
-        // a quotation; a genuine accent pair (`“1‘2’3”`) never reaches this
-        // branch because its marks pair up.
+        // `NumericPrimeUnmatchedQuote`：数字后的未配对右引号表示分、秒或英寸记号，不是引文；
+        // 真正的引号对会在前面的配对阶段处理。
         if is_digit_bound_closing_quote(self.text, index) {
             return Resolution::new(
                 FontRole::LatinText,
@@ -299,18 +301,21 @@ impl<'a> ContextualQuoteRoleResolver<'a> {
         None
     }
 
-    fn paragraph_language_resolution(&self, reason: &str) -> Resolution {
+    fn paragraph_language_resolution(&self, _reason: &'static str) -> Resolution {
         let role = if unicode_east_asian_spacing::is_chinese_language_context(&self.context.locale)
         {
             FontRole::CjkPunctuation
         } else {
             FontRole::LatinText
         };
-        Resolution::new(
+        Resolution {
             role,
-            "ParagraphLanguageQuoteContext",
-            format!("{reason}; paragraph-language={}", self.context.locale),
-        )
+            #[cfg(feature = "debug-info")]
+            debug: RoleResolutionDebugInfo {
+                source: "ParagraphLanguageQuoteContext".into(),
+                reason: format!("{_reason}; paragraph-language={}", self.context.locale),
+            },
+        }
     }
 
     fn find_parent(pairs: &[QuotePair], pair: QuotePair) -> Option<QuotePair> {
@@ -382,16 +387,19 @@ impl ScriptEvidence {
 #[derive(Clone, Debug)]
 struct Resolution {
     role: FontRole,
-    source: String,
-    reason: String,
+    #[cfg(feature = "debug-info")]
+    debug: RoleResolutionDebugInfo,
 }
 
 impl Resolution {
-    fn new(role: FontRole, source: impl Into<String>, reason: impl Into<String>) -> Self {
+    fn new(role: FontRole, _source: &'static str, _reason: &'static str) -> Self {
         Self {
             role,
-            source: source.into(),
-            reason: reason.into(),
+            #[cfg(feature = "debug-info")]
+            debug: RoleResolutionDebugInfo {
+                source: _source.into(),
+                reason: _reason.into(),
+            },
         }
     }
 }

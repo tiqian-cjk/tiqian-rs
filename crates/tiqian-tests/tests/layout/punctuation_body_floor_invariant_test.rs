@@ -36,7 +36,7 @@ fn punctuation_resolved_advance_never_falls_below_body_width() {
                 assert!(
                     geometry.resolved_advance >= geometry.body_width - 0.001,
                     "body floor violated for {:?} ({:?}) at max_width={max_width}: resolved={} < body={}",
-                    geometry.source_text,
+                    geometry.debug.source_text,
                     geometry.range,
                     geometry.resolved_advance,
                     geometry.body_width,

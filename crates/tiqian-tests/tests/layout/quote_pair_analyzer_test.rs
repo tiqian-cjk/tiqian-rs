@@ -71,7 +71,7 @@ fn in_word_apostrophe_does_not_consume_outer_single_quote_pair() {
         assert!(
             roles
                 .iter()
-                .all(|decision| decision.source == "NonCjkInWordApostrophe")
+                .all(|decision| decision.debug.source == "NonCjkInWordApostrophe")
         );
     }
 }
@@ -99,7 +99,7 @@ fn letter_flanked_decade_apostrophe_stays_in_word() {
     let roles = analyzer.classify_quote_roles(&text, &[], &FontRoleContext::default());
     assert_eq!(1, roles.len());
     assert_eq!(FontRole::LatinText, roles[0].role);
-    assert_eq!("NonCjkInWordApostrophe", roles[0].source);
+    assert_eq!("NonCjkInWordApostrophe", roles[0].debug.source);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn cjk_outer_context_classifies_paired_quotes_as_cjk() {
     assert!(
         result
             .iter()
-            .all(|decision| decision.source == "PairedPunctuationOuterScriptContext")
+            .all(|decision| decision.debug.source == "PairedPunctuationOuterScriptContext")
     );
 }
 
@@ -176,7 +176,7 @@ fn whitespace_delimited_western_quotation_overrides_cjk_outer_context() {
     assert!(
         result
             .iter()
-            .all(|decision| decision.source == "DelimitedWesternQuotationRun")
+            .all(|decision| decision.debug.source == "DelimitedWesternQuotationRun")
     );
 }
 
@@ -195,7 +195,7 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
         assert!(
             chinese
                 .iter()
-                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
+                .all(|decision| decision.debug.source == "ParagraphLanguageQuoteContext")
         );
         let english = analyzer.classify_quote_roles(
             &text,
@@ -210,7 +210,7 @@ fn paragraph_language_breaks_mixed_or_digit_only_quote_ties() {
         assert!(
             english
                 .iter()
-                .all(|decision| decision.source == "ParagraphLanguageQuoteContext")
+                .all(|decision| decision.debug.source == "ParagraphLanguageQuoteContext")
         );
     }
 }
@@ -238,6 +238,6 @@ fn unmatched_quotes_use_directional_script_context() {
         let result = decisions(text);
         assert_eq!(1, result.len(), "{text}");
         assert_eq!(role, result[0].role, "{text}");
-        assert_eq!(source, result[0].source, "{text}");
+        assert_eq!(source, result[0].debug.source, "{text}");
     }
 }

@@ -104,11 +104,12 @@ fn complex_emoji_graphemes_reach_the_text_shaper_as_complete_ranges() {
             .iter()
             .filter(|decision| {
                 decision
+                    .debug
                     .font_face
                     .as_ref()
                     .is_some_and(|face| face.resource_id() == "symbol-fallback")
             })
-            .map(|decision| (decision.range, decision.source_text.as_str()))
+            .map(|decision| (decision.range, decision.debug.source_text.as_str()))
             .collect::<Vec<_>>(),
         vec![
             (text_range(1, 5), "👩🏽‍💻"),

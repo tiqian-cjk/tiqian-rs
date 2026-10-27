@@ -18,7 +18,9 @@ use super::punctuation_geometry_ledger::cluster_index_range_for;
 use super::punctuation_model::{PunctuationAtom, PunctuationAtomBuilder, PunctuationInkInput};
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::{HashMap, HashSet};
-use alloc::{borrow::ToOwned, vec, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::borrow::ToOwned;
+use alloc::{vec, vec::Vec};
 
 const MISSING_EAST_ASIAN_SPACING_EDGES: EastAsianSpacingEdges = EastAsianSpacingEdges {
     leading: EastAsianSpacingValue::Other,
@@ -307,12 +309,11 @@ fn punctuation_ink_input_for(
         None
     };
     let Some(g) = glyph else {
-        return Some(
-            PunctuationInkInput::builder(0.)
-                .ink_bounds(None)
-                .bounds_fallback_reason(Some("glyph-cluster-mapping-ambiguous".to_owned()))
-                .build(),
-        );
+        let input = PunctuationInkInput::builder(0.).ink_bounds(None);
+        #[cfg(feature = "debug-info")]
+        let input =
+            input.bounds_fallback_reason(Some("glyph-cluster-mapping-ambiguous".to_owned()));
+        return Some(input.build());
     };
     let bounds = g.bounds.map(|b| Rect {
         left: b.left + g.x,
@@ -320,18 +321,17 @@ fn punctuation_ink_input_for(
         right: b.right + g.x,
         bottom: b.bottom + g.y,
     });
-    Some(
-        PunctuationInkInput::builder(g.advance)
-            .ink_bounds(bounds)
-            .bounds_fallback_reason(
-                g.bounds
-                    .is_none()
-                    .then(|| "shaper-no-ink-bounds".to_owned()),
-            )
-            .halt_advance(g.halt_advance)
-            .halt_placement_x(g.halt_placement_x)
-            .build(),
-    )
+    let input = PunctuationInkInput::builder(g.advance)
+        .ink_bounds(bounds)
+        .halt_advance(g.halt_advance)
+        .halt_placement_x(g.halt_placement_x);
+    #[cfg(feature = "debug-info")]
+    let input = input.bounds_fallback_reason(
+        g.bounds
+            .is_none()
+            .then(|| "shaper-no-ink-bounds".to_owned()),
+    );
+    Some(input.build())
 }
 fn union_as_single_glyph(glyphs: &[Glyph]) -> Option<Glyph> {
     let mut first = glyphs.first()?.clone();

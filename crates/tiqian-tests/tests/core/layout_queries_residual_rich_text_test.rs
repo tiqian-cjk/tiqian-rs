@@ -1,7 +1,9 @@
 use tiqian::core::font_face::FontFaceId;
 use tiqian::core::geometry::{TextRange, text_range};
 use tiqian::core::int_range::IntRange;
-use tiqian::core::layout_model::{ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo};
+use tiqian::core::layout_model::{
+    ClusterGeometryDebugInfo, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo,
+};
 use tiqian::core::layout_queries::RichTextCornerRadii;
 use tiqian::core::text::Text;
 use tiqian::core::text_model::{
@@ -307,8 +309,6 @@ fn trimmed_decoration_segments_keep_only_decoration_roles() {
 fn background_segments_trim_glue_apply_padding_and_use_glyph_advances() {
     let glue = ClusterGeometryDecisionInfo::builder(
         text_range(0, 1),
-        Text::from("，"),
-        Text::from("，"),
         10.0,
         5.0,
         4.0,
@@ -320,6 +320,11 @@ fn background_segments_trim_glue_apply_padding_and_use_glyph_advances() {
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from("，"),
+        display_text: Text::from("，"),
+        ..Default::default()
+    })
     .build();
     let content = result_with_rich_text(
         "，字",
@@ -768,8 +773,6 @@ fn decoration_style_resolves_inside_spans_and_at_their_edges() {
 fn glue_trim_skips_interior_segment_edges() {
     let glue = ClusterGeometryDecisionInfo::builder(
         text_range(0, 2),
-        Text::from("ab"),
-        Text::from("ab"),
         20.0,
         10.0,
         4.0,
@@ -781,6 +784,11 @@ fn glue_trim_skips_interior_segment_edges() {
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from("ab"),
+        display_text: Text::from("ab"),
+        ..Default::default()
+    })
     .build();
     let right_content = result_with_rich_text(
         "ab",

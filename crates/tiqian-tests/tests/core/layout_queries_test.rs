@@ -4,8 +4,8 @@ use tiqian::core::geometry::{LayoutConstraints, Rect, Size, TextRange, scalar_of
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, BopomofoGeometry, Cluster,
-    ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo, LayoutResult, LineBox,
-    RubyGeometry,
+    ClusterGeometryDebugInfo, ClusterGeometryDecisionInfo, Glyph, GlyphRun, LayoutDebugInfo,
+    LayoutResult, LineBox, RubyGeometry,
 };
 use tiqian::core::layout_queries::{
     coerce_selection_offset, get_bounding_box, get_bounding_boxes, get_offset_for_position,
@@ -515,8 +515,6 @@ fn punctuation_geometry(
 ) -> ClusterGeometryDecisionInfo {
     ClusterGeometryDecisionInfo::builder(
         range,
-        Text::from(text),
-        Text::from(text),
         10.0,
         10.0 - leading_glue_natural - trailing_glue_natural,
         leading_glue_natural,
@@ -528,5 +526,10 @@ fn punctuation_geometry(
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from(text),
+        display_text: Text::from(text),
+        ..Default::default()
+    })
     .build()
 }

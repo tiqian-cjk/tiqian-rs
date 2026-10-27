@@ -2,9 +2,12 @@
 
 use super::super::clreq::clreq_profile::PunctuationClass;
 use super::super::core::geometry::TextRange;
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::ClusterGeometryDebugInfo;
+use super::super::core::layout_model::ClusterGeometryDecisionInfo;
 use super::super::core::layout_model::{
-    Cluster, ClusterGeometryDecisionInfo, GlueSpan, LineEdgeTrimDecisionInfo, LineEdgeTrimReason,
-    LineEdgeTrimSide, ResolvedClusterGeometry, SpacingDecisionInfo,
+    Cluster, GlueSpan, LineEdgeTrimDecisionInfo, LineEdgeTrimReason, LineEdgeTrimSide,
+    ResolvedClusterGeometry, SpacingDecisionInfo,
 };
 use super::super::core::text_model::InlineAttachment;
 use super::punctuation_model::{AttachedInlineBoundaryCase, SpacingReason};
@@ -14,7 +17,9 @@ use super::punctuation_model::{
 };
 use super::unicode_punctuation_boundary_resolver::resolve_attached_inline_virtual_boundaries;
 use crate::common::{Arc, HashMap};
-use alloc::{string::String, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationGeometryLedger {
@@ -390,8 +395,6 @@ impl PunctuationGeometryLedger {
                 let b = self.budgets[&i];
                 Some(ClusterGeometryDecisionInfo {
                     range: g.range,
-                    source_text: g.source_text.clone(),
-                    display_text: g.display_text.clone(),
                     base_advance: g.base_advance,
                     body_width: g.body_width,
                     leading_glue_natural: b.leading_natural,
@@ -405,10 +408,15 @@ impl PunctuationGeometryLedger {
                         .unwrap_or(0.),
                     ruby_spread: self.ruby_spread_by_cluster.get(&i).copied().unwrap_or(0.),
                     glyph_inline_shift: g.glyph_inline_shift,
-                    glyph_placement_reason: g.glyph_placement_reason.clone(),
                     resolved_advance: self.resolved_advance(i, cluster),
                     source: "PunctuationGeometryLedger",
                     reason: g.reason,
+                    #[cfg(feature = "debug-info")]
+                    debug: ClusterGeometryDebugInfo {
+                        source_text: cluster.text.clone(),
+                        display_text: cluster.display_text.clone(),
+                        glyph_placement_reason: g.glyph_placement_reason.clone(),
+                    },
                 })
             })
             .collect()
@@ -528,8 +536,6 @@ pub struct AttachedInlinePunctuationBoundaryResult {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PunctuationClusterGeometry {
     pub range: TextRange,
-    pub source_text: super::super::core::text::Text,
-    pub display_text: super::super::core::text::Text,
     pub base_advance: f32,
     pub body_width: f32,
     pub leading_glue_natural: f32,
@@ -537,6 +543,7 @@ pub struct PunctuationClusterGeometry {
     pub leading_glue_initially_consumed: f32,
     pub trailing_glue_initially_consumed: f32,
     pub glyph_inline_shift: f32,
+    #[cfg(feature = "debug-info")]
     pub glyph_placement_reason: Option<String>,
     pub anchor: Option<PunctuationAnchor>,
     /// 该 cluster 的几何证据来源。
@@ -606,8 +613,6 @@ fn build_geometries(
             i as i32,
             PunctuationClusterGeometry {
                 range: c.range,
-                source_text: c.text.clone(),
-                display_text: c.display_text.clone(),
                 base_advance: c.advance,
                 body_width: v.iter().map(|a| a.body_width).sum(),
                 leading_glue_natural: v[0].leading_glue.natural,
@@ -615,6 +620,7 @@ fn build_geometries(
                 leading_glue_initially_consumed: v[0].leading_glue_initially_consumed,
                 trailing_glue_initially_consumed: v[v.len() - 1].trailing_glue_initially_consumed,
                 glyph_inline_shift: one.map_or(0., |a| a.glyph_inline_shift),
+                #[cfg(feature = "debug-info")]
                 glyph_placement_reason: one.and_then(|a| a.glyph_placement_reason.clone()),
                 anchor: one.map(|a| a.anchor),
                 reason: v[0].geometry_source,

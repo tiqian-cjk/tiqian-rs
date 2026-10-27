@@ -1,7 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/QuotePairAnalyzer.kt
 
 use crate::common::HashMap;
-use alloc::{string::String, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::string::String;
+use alloc::vec::Vec;
 use icu_properties::{CodePointMapData, props::EastAsianWidth};
 
 use super::super::core::geometry::{ScalarOffset, TextRange, scalar_offset};
@@ -36,17 +38,25 @@ pub enum QuoteType {
 pub struct QuoteRoleDecision {
     pub index: ScalarOffset,
     pub role: FontRole,
+    #[cfg(feature = "debug-info")]
+    pub debug: RoleResolutionDebugInfo,
+}
+
+/// 引号、破折号和省略号角色解析共享的诊断信息。
+#[cfg(feature = "debug-info")]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RoleResolutionDebugInfo {
     pub source: String,
     pub reason: String,
 }
 
 impl QuoteRoleDecision {
-    pub fn new(index: ScalarOffset, role: FontRole, source: String, reason: String) -> Self {
+    pub fn new(index: ScalarOffset, role: FontRole) -> Self {
         Self {
             index,
             role,
-            source,
-            reason,
+            #[cfg(feature = "debug-info")]
+            debug: RoleResolutionDebugInfo::default(),
         }
     }
 }

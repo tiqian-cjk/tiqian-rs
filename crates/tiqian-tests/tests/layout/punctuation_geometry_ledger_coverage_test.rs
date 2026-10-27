@@ -135,7 +135,7 @@ fn decision_info_lists_every_geometry_with_budgets() {
     assert_eq!(1, infos.len());
     let info = &infos[0];
     assert_eq!(text_range(0, 1), info.range);
-    assert_eq!("。", info.source_text);
+    assert_eq!("。", info.debug.source_text);
     assert_eq!(16.0, info.base_advance);
     assert_eq!(8.0, info.body_width);
     assert_eq!(0.0, info.leading_glue_natural);

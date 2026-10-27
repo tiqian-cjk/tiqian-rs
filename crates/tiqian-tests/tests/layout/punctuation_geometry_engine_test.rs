@@ -257,7 +257,7 @@ fn engine_records_profile_fallback_geometry_and_line_end_ledger() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "。")
+        .find(|decision| decision.debug.source_text == "。")
         .unwrap();
     assert_eq!("PunctuationGeometryLedger", geometry.source);
     assert_eq!(8.0, geometry.trailing_glue_consumed);
@@ -352,7 +352,7 @@ fn push_in_keeps_font_centered_punctuation_compression_paired() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "，")
+        .find(|decision| decision.debug.source_text == "，")
         .unwrap();
     assert_eq!(4.0, comma.leading_glue_consumed);
     assert_eq!(4.0, comma.trailing_glue_consumed);
@@ -426,7 +426,7 @@ fn line_start_lenticular_bracket_consumes_opening_glue() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "【")
+        .find(|decision| decision.debug.source_text == "【")
         .unwrap();
     assert_eq!(8.0, geometry.leading_glue_natural);
     assert_eq!(8.0, geometry.leading_glue_consumed);
@@ -609,7 +609,7 @@ fn gb_fixed_separators_are_half_width_and_unadjustable() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "·")
+        .find(|decision| decision.debug.source_text == "·")
         .unwrap();
     assert_eq!(mid.trailing_glue_natural, mid.trailing_glue_consumed);
     assert_eq!(mid.leading_glue_natural, mid.leading_glue_consumed);
@@ -640,7 +640,7 @@ fn push_in_drains_bracket_outer_glue_before_inline_comma() {
             .debug
             .geometry_decisions
             .iter()
-            .find(|decision| decision.source_text == text)
+            .find(|decision| decision.debug.source_text == text)
             .unwrap()
     };
     assert_eq!(8.0, geometry("。").trailing_glue_consumed);
@@ -753,7 +753,7 @@ fn taiwan_profile_centres_pause_stop_glue_and_trims_both_sides() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "。")
+        .find(|decision| decision.debug.source_text == "。")
         .unwrap();
     assert_eq!(4.0, geometry.leading_glue_consumed);
     assert_eq!(4.0, geometry.trailing_glue_consumed);
@@ -819,7 +819,7 @@ fn push_in_consumes_punctuation_glue_before_carrying_line_start_stop() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "。")
+        .find(|decision| decision.debug.source_text == "。")
         .unwrap();
     assert_eq!(8.0, geometry.trailing_glue_consumed);
     assert_eq!(8.0, geometry.resolved_advance);

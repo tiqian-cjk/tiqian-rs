@@ -1067,12 +1067,13 @@ impl ParagraphDpLineBreaker {
                 committed.push(line);
                 line_start = mandatory_end + 1;
                 if line_start == context.adjusted_clusters.len() as i32
-                    && let Some(last) = context.adjusted_clusters.last() {
-                        committed.push(empty_line_candidate(
-                            last.range.end(),
-                            LineEndReason::ParagraphEnd,
-                        ));
-                    }
+                    && let Some(last) = context.adjusted_clusters.last()
+                {
+                    committed.push(empty_line_candidate(
+                        last.range.end(),
+                        LineEndReason::ParagraphEnd,
+                    ));
+                }
                 continue;
             }
             if is_final {

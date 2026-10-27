@@ -46,7 +46,7 @@ fn shapes_single_cjk_cluster_with_one_em_advance() {
     assert_eq!("中", result.clusters[0].display_text);
     assert_eq!(16.0, result.clusters[0].advance);
     assert_eq!(1, result.glyph_runs[0].glyphs.len());
-    assert_eq!("Stub", result.decisions[0].source);
+    assert_eq!("Stub", result.decisions[0].debug.source);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn keeps_latin_run_as_single_shaped_cluster_with_nominal_glyphs() {
     assert_eq!("Hello", result.clusters[0].text);
     assert_eq!(80.0, result.clusters[0].advance);
     assert_eq!(5, result.glyph_runs[0].glyphs.len());
-    assert_eq!(5, result.decisions[0].glyph_count);
+    assert_eq!(5, result.decisions[0].debug.glyph_count);
 }
 
 #[test]
@@ -95,13 +95,13 @@ fn shaping_input_with_features_and_constants() {
     assert_eq!("Test", input.display_text);
 
     let result = ExplainableStubTextShaper.shape(&input);
-    assert_eq!(4, result.decisions[0].glyph_count);
+    assert_eq!(4, result.decisions[0].debug.glyph_count);
     assert_eq!(4, result.decisions[0].glyphs_without_ink_bounds);
     assert_eq!(
         "ExplainableStubTextShaper:nominal-em-advance",
-        result.decisions[0].reason
+        result.decisions[0].debug.reason
     );
-    assert_eq!("Stub", result.decisions[0].source);
+    assert_eq!("Stub", result.decisions[0].debug.source);
     assert!(!UNVERIFIED_DISPLAY_SUBSTITUTION_COVERAGE_ISSUE.is_empty());
     assert!(!PLATFORM_MULTI_FACE_STRING_DRAW_ISSUE.is_empty());
 }
@@ -190,10 +190,10 @@ fn explainable_stub_nominal_advance_branches() {
 fn surrogate_pair_handling_in_code_point_count() {
     let shaper = ExplainableStubTextShaper;
     let pair = shaper.shape(&input("😀", FontRole::LatinText, "😀"));
-    assert_eq!(1, pair.decisions[0].glyph_count);
+    assert_eq!(1, pair.decisions[0].debug.glyph_count);
     assert_eq!(16.0, pair.clusters[0].advance);
 
     let multiple_pairs = shaper.shape(&input("😀𠀋", FontRole::LatinText, "😀𠀋"));
-    assert_eq!(2, multiple_pairs.decisions[0].glyph_count);
+    assert_eq!(2, multiple_pairs.decisions[0].debug.glyph_count);
     assert_eq!(32.0, multiple_pairs.clusters[0].advance);
 }

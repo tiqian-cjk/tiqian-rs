@@ -1,7 +1,9 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/layout/ContextualDashEllipsisRoleResolver.kt
 
 use crate::common::HashMap;
-use alloc::{format, string::String, vec, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::format;
+use alloc::{vec, vec::Vec};
 
 use super::super::core::east_asian_spacing::unicode_east_asian_spacing;
 use super::super::core::geometry::{ScalarOffset, TextRange};
@@ -12,13 +14,15 @@ use super::super::core::unicode_script_evidence::{
 use super::super::core::unicode_word_character::unicode_word_character;
 use super::super::font::font_policy::{FontRole, FontRoleClassifier, FontRoleContext};
 use super::super::linebreak::line_break::is_mandatory_break_code_point;
+#[cfg(feature = "debug-info")]
+use super::quote_pair_analyzer::RoleResolutionDebugInfo;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DashEllipsisRoleDecision {
     pub range: TextRange,
     pub role: FontRole,
-    pub source: String,
-    pub reason: String,
+    #[cfg(feature = "debug-info")]
+    pub debug: RoleResolutionDebugInfo,
 }
 
 /**
@@ -59,8 +63,8 @@ impl ContextualDashEllipsisRoleResolver {
                 DashEllipsisRoleDecision {
                     range,
                     role: resolution.role,
-                    source: resolution.source,
-                    reason: resolution.reason,
+                    #[cfg(feature = "debug-info")]
+                    debug: resolution.debug,
                 }
             })
             .collect()
@@ -155,16 +159,19 @@ pub fn with_contextual_dash_ellipsis_roles<'a>(
 #[derive(Clone, Debug)]
 struct Resolution {
     role: FontRole,
-    source: String,
-    reason: String,
+    #[cfg(feature = "debug-info")]
+    debug: RoleResolutionDebugInfo,
 }
 
 impl Resolution {
-    fn new(role: FontRole, source: impl Into<String>, reason: impl Into<String>) -> Self {
+    fn new(role: FontRole, _source: &'static str, _reason: &'static str) -> Self {
         Self {
             role,
-            source: source.into(),
-            reason: reason.into(),
+            #[cfg(feature = "debug-info")]
+            debug: RoleResolutionDebugInfo {
+                source: _source.into(),
+                reason: _reason.into(),
+            },
         }
     }
 }
@@ -268,17 +275,20 @@ fn resolve_parenthetical_pairs(
     resolutions
 }
 
-fn paragraph_language_resolution(context: &FontRoleContext, reason: &str) -> Resolution {
+fn paragraph_language_resolution(context: &FontRoleContext, _reason: &'static str) -> Resolution {
     let role = if unicode_east_asian_spacing::is_chinese_language_context(&context.locale) {
         FontRole::CjkPunctuation
     } else {
         FontRole::LatinText
     };
-    Resolution::new(
+    Resolution {
         role,
-        "ParagraphLanguageDashEllipsisContext",
-        format!("{reason}; paragraph-language={}", context.locale),
-    )
+        #[cfg(feature = "debug-info")]
+        debug: RoleResolutionDebugInfo {
+            source: "ParagraphLanguageDashEllipsisContext".into(),
+            reason: format!("{_reason}; paragraph-language={}", context.locale),
+        },
+    }
 }
 
 fn is_parenthetical_dash_pair(text: &Text, first: TextRange, second: TextRange) -> bool {

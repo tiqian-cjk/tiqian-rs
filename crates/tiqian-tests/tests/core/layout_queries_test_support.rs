@@ -4,9 +4,9 @@ use tiqian::core::geometry::{LayoutConstraints, Size, TextRange, text_range};
 use tiqian::core::int_range::IntRange;
 use tiqian::core::layout_model::{
     AnnotationGeometry, AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
-    ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry, GlueSpan, Glyph,
-    GlyphRun, InlineObjectGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult, LineBox,
-    MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole,
+    ClusterGeometryDebugInfo, ClusterGeometryDecisionInfo, DecorationGeometry, EmphasisDotGeometry,
+    GlueSpan, Glyph, GlyphRun, InlineObjectGeometry, LayoutDebugInfo, LayoutOutput, LayoutResult,
+    LineBox, MetricDecisionInfo, ResolvedClusterGeometry, ResolvedFontMetrics, ResolvedFontRole,
     RubyGeometry, WhiteSpaceGeometry,
 };
 use tiqian::core::text::Text;
@@ -227,8 +227,6 @@ pub fn punctuation_geometry(
 ) -> ClusterGeometryDecisionInfo {
     ClusterGeometryDecisionInfo::builder(
         range,
-        Text::from(text),
-        Text::from(text),
         10.0,
         10.0 - leading_glue - trailing_glue,
         leading_glue,
@@ -240,6 +238,11 @@ pub fn punctuation_geometry(
         "test",
         PunctuationGeometrySource::PolicyDerived,
     )
+    .debug_info(ClusterGeometryDebugInfo {
+        source_text: Text::from(text),
+        display_text: Text::from(text),
+        ..Default::default()
+    })
     .build()
 }
 
@@ -457,8 +460,6 @@ pub fn ruby_selection_result() -> LayoutResult {
             .geometry_decisions(vec![
                 ClusterGeometryDecisionInfo::builder(
                     text_range(0, 1),
-                    Text::from("张"),
-                    Text::from("张"),
                     20.0,
                     20.0,
                     0.0,
@@ -470,12 +471,15 @@ pub fn ruby_selection_result() -> LayoutResult {
                     "test",
                     PunctuationGeometrySource::PolicyDerived,
                 )
+                .debug_info(ClusterGeometryDebugInfo {
+                    source_text: Text::from("张"),
+                    display_text: Text::from("张"),
+                    ..Default::default()
+                })
                 .ruby_spread(15.0)
                 .build(),
                 ClusterGeometryDecisionInfo::builder(
                     text_range(1, 2),
-                    Text::from("王"),
-                    Text::from("王"),
                     20.0,
                     20.0,
                     0.0,
@@ -487,12 +491,15 @@ pub fn ruby_selection_result() -> LayoutResult {
                     "test",
                     PunctuationGeometrySource::PolicyDerived,
                 )
+                .debug_info(ClusterGeometryDebugInfo {
+                    source_text: Text::from("王"),
+                    display_text: Text::from("王"),
+                    ..Default::default()
+                })
                 .ruby_spread(15.0)
                 .build(),
                 ClusterGeometryDecisionInfo::builder(
                     text_range(2, 3),
-                    Text::from("李"),
-                    Text::from("李"),
                     20.0,
                     20.0,
                     0.0,
@@ -504,6 +511,11 @@ pub fn ruby_selection_result() -> LayoutResult {
                     "test",
                     PunctuationGeometrySource::PolicyDerived,
                 )
+                .debug_info(ClusterGeometryDebugInfo {
+                    source_text: Text::from("李"),
+                    display_text: Text::from("李"),
+                    ..Default::default()
+                })
                 .build(),
             ])
             .ruby_decisions(vec![

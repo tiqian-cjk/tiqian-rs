@@ -361,7 +361,7 @@ fn justify_distributes_deficit_across_priority_chain() {
         .debug
         .geometry_decisions
         .iter()
-        .find(|decision| decision.source_text == "」")
+        .find(|decision| decision.debug.source_text == "」")
         .expect("expected closing punctuation geometry");
     assert_eq!(8.0, geometry.trailing_glue_consumed);
     assert_eq!(2.0, geometry.justification_delta);

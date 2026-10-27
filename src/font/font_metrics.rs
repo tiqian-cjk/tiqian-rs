@@ -1,6 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontMetrics.kt
 
-use alloc::{format, string::String};
+#[cfg(feature = "debug-info")]
+use alloc::format;
+use alloc::string::String;
 
 use super::super::core::font_face::FontFaceId;
 use super::font_policy::{
@@ -70,6 +72,7 @@ impl FontMetricsNormalizer for ScriptAwareFontMetricsNormalizer {
                     baseline_class: BaselineClass::IdeographicLow,
                     metric_box: MetricBox::IdeographicEmBox,
                     source: input.raw_metrics.source,
+                    #[cfg(feature = "debug-info")]
                     reason: format!(
                         "ScriptAwareFontMetricsNormalizer:{:?}:{}",
                         request.role,
@@ -90,6 +93,7 @@ impl FontMetricsNormalizer for ScriptAwareFontMetricsNormalizer {
                 baseline_class: BaselineClass::Roman,
                 metric_box: MetricBox::RawFontBox,
                 source: input.raw_metrics.source,
+                #[cfg(feature = "debug-info")]
                 reason: format!(
                     "ScriptAwareFontMetricsNormalizer:{:?}:roman-raw",
                     request.role
@@ -104,6 +108,7 @@ impl FontMetricsNormalizer for ScriptAwareFontMetricsNormalizer {
                 baseline_class: BaselineClass::Roman,
                 metric_box: MetricBox::RawFontBox,
                 source: input.raw_metrics.source,
+                #[cfg(feature = "debug-info")]
                 reason: format!(
                     "ScriptAwareFontMetricsNormalizer:{:?}:fallback-raw",
                     request.role

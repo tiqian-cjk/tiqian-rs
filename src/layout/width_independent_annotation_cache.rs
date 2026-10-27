@@ -17,8 +17,12 @@ use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::int_range::IntRange;
 use super::super::core::layout_model::{
     AutoSpaceBoundaryRole, AutoSpaceDecisionInfo, AutoSpaceSide, Cluster,
-    InlineObjectPunctuationAttachmentDecisionInfo, LineLengthGridDecisionInfo,
-    MandatoryBreakDecisionInfo, RoleOverrideInfo, ZeroWidthBreakDecisionInfo,
+    LineLengthGridDecisionInfo,
+};
+#[cfg(feature = "debug-info")]
+use super::super::core::layout_model::{
+    InlineObjectPunctuationAttachmentDecisionInfo, MandatoryBreakDecisionInfo, RoleOverrideInfo,
+    ZeroWidthBreakDecisionInfo,
 };
 use super::super::core::text::Text;
 use super::super::core::text_model::{
@@ -107,6 +111,7 @@ pub struct WidthIndependentParagraphAnnotation {
     pub clreq_profile: ClreqProfile,
     pub punctuation_glyph_substitutor: ClreqPunctuationGlyphSubstitutor,
     pub quote_pairs: Vec<QuotePair>,
+    #[cfg(feature = "debug-info")]
     pub role_override_infos: Vec<RoleOverrideInfo>,
     pub cluster_ranges: Vec<ResolvedClusterRange>,
     pub white_space_units: HashMap<TextRange, WhiteSpaceUnit>,
@@ -386,6 +391,7 @@ pub fn prepare_width_independent_annotation(
         .iter()
         .map(|decision| (decision.index, decision.role))
         .collect();
+    #[cfg(feature = "debug-info")]
     let quote_role_override_infos: Vec<_> = quote_decisions
         .iter()
         .map(|decision| {
@@ -395,12 +401,13 @@ pub fn prepare_width_independent_annotation(
                 source_text: text.slice_text(range),
                 original_role: font_role_classifier.classify(&text, range, &context),
                 overridden_role: decision.role,
-                source: decision.source.clone(),
-                reason: decision.reason.clone(),
+                source: decision.debug.source.clone(),
+                reason: decision.debug.reason.clone(),
             }
         })
         .collect();
     let dash_ellipsis_role_decisions = ContextualDashEllipsisRoleResolver.resolve(&text, &context);
+    #[cfg(feature = "debug-info")]
     let dash_ellipsis_role_override_infos: Vec<_> = dash_ellipsis_role_decisions
         .iter()
         .map(|decision| {
@@ -416,8 +423,8 @@ pub fn prepare_width_independent_annotation(
                         .classify(&text, first_code_point_range, &context)
                 },
                 overridden_role: decision.role,
-                source: decision.source.clone(),
-                reason: decision.reason.clone(),
+                source: decision.debug.source.clone(),
+                reason: decision.debug.reason.clone(),
             }
         })
         .collect();
@@ -478,14 +485,18 @@ pub fn prepare_width_independent_annotation(
                 .map(|object| (range.range, object))
         })
         .collect();
-    let mut role_override_infos = quote_role_override_infos;
-    role_override_infos.extend(dash_ellipsis_role_override_infos);
-    role_override_infos.extend(
-        cluster_ranges
-            .iter()
-            .filter_map(|range| range.role_override.clone()),
-    );
-    role_override_infos.sort_by_key(|info| info.range.start());
+    #[cfg(feature = "debug-info")]
+    let role_override_infos = {
+        let mut infos = quote_role_override_infos;
+        infos.extend(dash_ellipsis_role_override_infos);
+        infos.extend(
+            cluster_ranges
+                .iter()
+                .filter_map(|range| range.role_override.clone()),
+        );
+        infos.sort_by_key(|info| info.range.start());
+        infos
+    };
     let base = shape_paragraph(
         font_backend,
         hyphenator,
@@ -502,6 +513,7 @@ pub fn prepare_width_independent_annotation(
         rejected,
         &HashMap::new(),
         &HashMap::new(),
+        #[cfg(feature = "debug-info")]
         &HashMap::new(),
     );
     let mut ruby_geometry = HashMap::new();
@@ -580,6 +592,7 @@ pub fn prepare_width_independent_annotation(
         clreq_profile: profile,
         punctuation_glyph_substitutor: substitutor,
         quote_pairs: pairs,
+        #[cfg(feature = "debug-info")]
         role_override_infos,
         cluster_ranges,
         white_space_units,
@@ -692,6 +705,7 @@ pub fn build_paragraph_layout_prep(
             rejected,
             &annotation.base_shaping_stage.segment_shaping_cache,
             &annotation.base_shaping_stage.segment_font_resolutions,
+            #[cfg(feature = "debug-info")]
             &annotation.base_shaping_stage.substitution_rollbacks,
         );
         &dynamic_shaping_stage
@@ -1049,6 +1063,7 @@ pub fn build_paragraph_layout_prep(
         .iter()
         .flat_map(|attachment| attachment.object_cluster_index..attachment.mark_cluster_index)
         .collect();
+    #[cfg(feature = "debug-info")]
     let attachment_decisions: Vec<_> = attached_marks
         .iter()
         .filter(|attachment| !attachment.separator_cluster_indices.is_empty())
@@ -1087,6 +1102,7 @@ pub fn build_paragraph_layout_prep(
         .filter(|(_, cluster)| is_zero_width_soft_break_cluster(cluster))
         .map(|(index, _)| index as i32)
         .collect();
+    #[cfg(feature = "debug-info")]
     let mandatory_decisions: Vec<_> = natural
         .iter()
         .enumerate()
@@ -1098,15 +1114,18 @@ pub fn build_paragraph_layout_prep(
             reason: "MandatoryBreakNoShape",
         })
         .collect();
-    let mut zero_indexes: Vec<_> = zero_width.iter().copied().collect();
-    zero_indexes.sort();
-    let zero_decisions: Vec<_> = zero_indexes
-        .iter()
-        .map(|index| {
-            let cluster = &natural[*index as usize];
-            ZeroWidthBreakDecisionInfo::new(cluster.range, cluster.text.clone(), *index)
-        })
-        .collect();
+    #[cfg(feature = "debug-info")]
+    let zero_decisions: Vec<_> = {
+        let mut zero_indexes: Vec<_> = zero_width.iter().copied().collect();
+        zero_indexes.sort();
+        zero_indexes
+            .iter()
+            .map(|index| {
+                let cluster = &natural[*index as usize];
+                ZeroWidthBreakDecisionInfo::new(cluster.range, cluster.text.clone(), *index)
+            })
+            .collect()
+    };
     let atoms: Vec<_> = natural
         .iter()
         .enumerate()
@@ -1324,13 +1343,17 @@ pub fn build_paragraph_layout_prep(
         grid_body_offset,
         line_length_grid_decision,
         quote_pairs: annotation.quote_pairs.clone(),
+        #[cfg(feature = "debug-info")]
         role_override_infos: annotation.role_override_infos.clone(),
         font_resolutions: shaping_stage.segment_font_resolutions.clone(),
         hyphen_offsets: shaping_stage.hyphen_offsets.clone(),
         hyphen_advance: shaping_stage.hyphen_advance,
         hyphen_glyphs: shaping_stage.hyphen_glyphs.clone(),
+        #[cfg(feature = "debug-info")]
         substitution_rollbacks: shaping_stage.substitution_rollbacks.clone(),
+        #[cfg(feature = "debug-info")]
         substitutions: shaping_stage.substitutions.clone(),
+        #[cfg(feature = "debug-info")]
         break_opportunity_decisions: shaping_stage.break_opportunity_decisions.clone(),
         emergency_tracking_eligibility_decisions: shaping_stage
             .emergency_tracking_eligibility_decisions
@@ -1338,6 +1361,7 @@ pub fn build_paragraph_layout_prep(
         progressive_break_offsets: shaping_stage.progressive_break_offsets.clone(),
         shaped_glyphs_by_cluster_range: shaped_glyphs,
         open_type_features_by_cluster_range: features,
+        #[cfg(feature = "debug-info")]
         shaping_decisions: shaping_results
             .iter()
             .flat_map(|result| result.decisions.iter().cloned())
@@ -1356,10 +1380,13 @@ pub fn build_paragraph_layout_prep(
         inline_object_attached_marks: attached_marks,
         inline_object_separator_space_trims: separator_trims,
         inline_object_attachment_no_stretch_boundaries: attachment_no_stretch,
+        #[cfg(feature = "debug-info")]
         inline_object_punctuation_attachment_decisions: attachment_decisions,
         mandatory_break_clusters: mandatory,
         zero_width_break_clusters: zero_width,
+        #[cfg(feature = "debug-info")]
         mandatory_break_decisions: mandatory_decisions,
+        #[cfg(feature = "debug-info")]
         zero_width_break_decisions: zero_decisions,
         punctuation_atoms: atoms,
         spacing_plan,

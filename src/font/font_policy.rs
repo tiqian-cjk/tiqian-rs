@@ -1,6 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/font/FontPolicy.kt
 
-use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::format;
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 
 use icu_properties::{
     CodePointMapData, CodePointSetData,
@@ -73,6 +75,7 @@ pub struct FontDecision {
     pub range: TextRange,
     pub candidate: FontCandidate,
     pub role: FontRole,
+    #[cfg(feature = "debug-info")]
     pub reason: String,
 }
 
@@ -331,6 +334,7 @@ impl FallbackResolver for PreferCjkForAmbiguousPunctuationResolver {
             range,
             candidate,
             role,
+            #[cfg(feature = "debug-info")]
             reason: format!("PreferCjkForAmbiguousPunctuationResolver:{role:?}"),
         }
     }
@@ -426,6 +430,7 @@ pub struct LayoutFontMetrics {
     pub baseline_class: BaselineClass,
     pub metric_box: MetricBox,
     pub source: FontMetricSource,
+    #[cfg(feature = "debug-info")]
     pub reason: String,
 }
 
@@ -446,6 +451,7 @@ impl LayoutFontMetrics {
             baseline_class: BaselineClass::Roman,
             metric_box: MetricBox::RawFontBox,
             source: FontMetricSource::RawTables,
+            #[cfg(feature = "debug-info")]
             reason: String::new(),
         }
     }
@@ -483,6 +489,7 @@ impl LayoutFontMetricsBuilder {
         self
     }
 
+    #[cfg(feature = "debug-info")]
     pub fn reason(mut self, value: String) -> Self {
         self.metrics.reason = value;
         self

@@ -329,10 +329,10 @@ fn records_fallback_decisions_per_cluster() {
             && decision.candidate_key == "latin-primary"
     }));
     assert!(result.debug.shaping_decisions.iter().any(|decision| {
-        decision.source_text == "——"
-            && decision.display_text == "⸺"
-            && decision.advance == 32.0
-            && decision.source == "Stub"
+        decision.debug.source_text == "——"
+            && decision.debug.display_text == "⸺"
+            && decision.debug.advance == 32.0
+            && decision.debug.source == "Stub"
     }));
     assert!(result.debug.font_decisions.iter().any(|decision| {
         decision.source_text == "English"
@@ -364,22 +364,18 @@ fn combining_marks_stay_in_their_base_shaping_runs() {
             .debug
             .shaping_decisions
             .iter()
-            .any(|decision| decision.source_text == "༎ຶ")
+            .any(|decision| decision.debug.source_text == "༎ຶ")
     );
     assert!(
         result
             .debug
             .shaping_decisions
             .iter()
-            .any(|decision| decision.source_text == "Ỏ̷")
+            .any(|decision| decision.debug.source_text == "Ỏ̷")
     );
-    assert!(
-        result
-            .debug
-            .shaping_decisions
-            .iter()
-            .all(|decision| { decision.source_text != "ຶ" && decision.source_text != "̷" })
-    );
+    assert!(result.debug.shaping_decisions.iter().all(|decision| {
+        decision.debug.source_text != "ຶ" && decision.debug.source_text != "̷"
+    }));
 }
 
 #[test]
@@ -417,7 +413,7 @@ fn complex_emoji_graphemes_stay_atomic_across_geometry_only_boundaries() {
             .debug
             .shaping_decisions
             .iter()
-            .map(|decision| decision.source_text.as_str())
+            .map(|decision| decision.debug.source_text.as_str())
             .collect::<Vec<_>>()
     );
 }
@@ -448,13 +444,14 @@ fn complex_emoji_sequences_reach_the_shaper_as_complete_emoji_ranges() {
             .iter()
             .filter(|decision| {
                 decision
+                    .debug
                     .font_face
                     .as_ref()
                     .expect("shaping decision must have a font face")
                     .resource_id()
                     == "symbol-fallback"
             })
-            .map(|decision| decision.source_text.as_str())
+            .map(|decision| decision.debug.source_text.as_str())
             .collect::<Vec<_>>(),
     );
 }

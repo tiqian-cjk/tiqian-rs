@@ -1,6 +1,8 @@
 // 对应 Kotlin 源文件：engine/src/commonMain/kotlin/org/tiqian/linebreak/LineBreak.kt
 
-use alloc::{borrow::ToOwned, string::String, vec::Vec};
+use alloc::vec::Vec;
+#[cfg(feature = "debug-info")]
+use alloc::{borrow::ToOwned, string::String};
 
 use super::super::core::geometry::{ScalarOffset, TextRange};
 use super::super::core::text::Text;
@@ -10,15 +12,21 @@ pub struct BreakOpportunity {
     pub index: ScalarOffset,
     pub kind: BreakKind,
     pub penalty: i32,
+    #[cfg(feature = "debug-info")]
     pub reason: String,
 }
 
 impl BreakOpportunity {
-    pub fn new(index: ScalarOffset, kind: BreakKind, reason: String) -> Self {
+    pub fn new(
+        index: ScalarOffset,
+        kind: BreakKind,
+        #[cfg(feature = "debug-info")] reason: String,
+    ) -> Self {
         Self {
             index,
             kind,
             penalty: 0,
+            #[cfg(feature = "debug-info")]
             reason,
         }
     }
@@ -27,12 +35,13 @@ impl BreakOpportunity {
         index: ScalarOffset,
         kind: BreakKind,
         penalty: i32,
-        reason: String,
+        #[cfg(feature = "debug-info")] reason: String,
     ) -> Self {
         Self {
             index,
             kind,
             penalty,
+            #[cfg(feature = "debug-info")]
             reason,
         }
     }
@@ -102,6 +111,7 @@ impl LineBreakAnalyzer for SimpleCharacterLineBreakAnalyzer {
                 } else {
                     BreakKind::Allowed
                 },
+                #[cfg(feature = "debug-info")]
                 if mandatory {
                     "MandatoryBreak".to_owned()
                 } else {
@@ -116,5 +126,6 @@ impl LineBreakAnalyzer for SimpleCharacterLineBreakAnalyzer {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ForbiddenBreak {
     pub range: TextRange,
+    #[cfg(feature = "debug-info")]
     pub reason: String,
 }

@@ -6,19 +6,26 @@ use super::super::core::layout_model::{Cluster, LineEndReason};
 use super::kinsoku_rule::KinsokuRule;
 use super::line_breaker::{line_gap_count, rebuild_line};
 use super::line_optimization::{
-    LineCandidate, LineSolution, PushInAllocation, RepairCandidate, RepairDetail, RepairKind,
-    RepairOption, RepairReasonCode, RepairRejection,
+    LineCandidate, LineSolution, PushInAllocation, RepairDetail, RepairOption, RepairReasonCode,
+    RepairRejection,
 };
+#[cfg(feature = "debug-info")]
+use super::line_optimization::{RepairCandidate, RepairKind};
 use super::progressive_break_decisions::{
     ProgressiveBreakOpportunity, ShrinkChannel, ShrinkOpportunity, UnbreakableRanges, line_limit,
 };
 use crate::common::{HashMap, HashSet};
-use alloc::{vec, vec::Vec};
+#[cfg(feature = "debug-info")]
+use alloc::vec;
+use alloc::vec::Vec;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PushInResult {
     pub previous: LineCandidate,
     pub current: Option<LineCandidate>,
+    pub accepted: bool,
+    pub shrink: f32,
+    #[cfg(feature = "debug-info")]
     pub candidate: RepairCandidate,
 }
 
@@ -64,6 +71,7 @@ pub fn apply_kinsoku_repairs(
         }
         let curr = curr.clone();
         let previous = previous.clone();
+        #[cfg(feature = "debug-info")]
         let mut candidates = Vec::new();
         let pushed = try_push_in(
             &previous,
@@ -76,8 +84,9 @@ pub fn apply_kinsoku_repairs(
             None,
             RepairReasonCode::ForbiddenAtLineStart,
         );
+        #[cfg(feature = "debug-info")]
         candidates.push(pushed.candidate.clone());
-        if pushed.candidate.accepted {
+        if pushed.accepted {
             lines[i - 1] = pushed.previous;
             if let Some(current) = pushed.current {
                 lines[i] = current;
@@ -103,6 +112,7 @@ pub fn apply_kinsoku_repairs(
             let end = previous.measurement.as_ref().map_or(end, |measurement| {
                 measurement.next_boundary(end + 1, curr.cluster_range.last() + 1) - 1
             });
+            #[cfg(feature = "debug-info")]
             let candidate = RepairCandidate::new(
                 RepairKind::Hang,
                 RepairReasonCode::ForbiddenAtLineStart,
@@ -110,6 +120,7 @@ pub fn apply_kinsoku_repairs(
                 hang_penalty,
                 true,
             );
+            #[cfg(feature = "debug-info")]
             candidates.push(candidate.clone());
             let range = IntRange::new(previous.cluster_range.first(), end);
             let mut hanging = previous.hanging_cluster_indices.clone();
@@ -136,6 +147,7 @@ pub fn apply_kinsoku_repairs(
                     detail: RepairDetail::Hang,
                     offender_cluster_index: offender,
                 }),
+                #[cfg(feature = "debug-info")]
                 repair_candidates: [
                     previous.repair_candidates.clone(),
                     vec![pushed.candidate, candidate],
@@ -187,6 +199,7 @@ pub fn apply_kinsoku_repairs(
                     adjusted,
                     curr.end_reason,
                     None,
+                    #[cfg(feature = "debug-info")]
                     Vec::new(),
                 );
                 remainder.measurement = curr.measurement.clone();
@@ -204,9 +217,12 @@ pub fn apply_kinsoku_repairs(
             lines[i] = leave_ragged(
                 curr,
                 leave_ragged_penalty,
+                #[cfg(feature = "debug-info")]
                 carry_previous_penalty,
                 RepairRejection::NoRoomToCarry,
+                #[cfg(feature = "debug-info")]
                 None,
+                #[cfg(feature = "debug-info")]
                 candidates,
             );
             i += 1;
@@ -222,9 +238,12 @@ pub fn apply_kinsoku_repairs(
             lines[i] = leave_ragged(
                 curr,
                 leave_ragged_penalty,
+                #[cfg(feature = "debug-info")]
                 carry_previous_penalty,
                 RepairRejection::CarryWouldSplitMourningSpan,
+                #[cfg(feature = "debug-info")]
                 Some(carried),
+                #[cfg(feature = "debug-info")]
                 candidates,
             );
             i += 1;
@@ -236,6 +255,7 @@ pub fn apply_kinsoku_repairs(
             adjusted,
             curr.end_reason,
             None,
+            #[cfg(feature = "debug-info")]
             Vec::new(),
         );
         next.measurement = curr.measurement.clone();
@@ -246,14 +266,18 @@ pub fn apply_kinsoku_repairs(
             lines[i] = leave_ragged(
                 curr,
                 leave_ragged_penalty,
+                #[cfg(feature = "debug-info")]
                 carry_previous_penalty,
                 RepairRejection::CarryOverflows,
+                #[cfg(feature = "debug-info")]
                 Some(carried),
+                #[cfg(feature = "debug-info")]
                 candidates,
             );
             i += 1;
             continue;
         }
+        #[cfg(feature = "debug-info")]
         candidates.push(RepairCandidate {
             kind: RepairKind::CarryPrevious,
             reason_code: RepairReasonCode::ForbiddenAtLineStart,
@@ -273,6 +297,7 @@ pub fn apply_kinsoku_repairs(
             adjusted,
             previous.end_reason,
             None,
+            #[cfg(feature = "debug-info")]
             Vec::new(),
         );
         shortened_previous.measurement = previous.measurement.clone();
@@ -293,7 +318,10 @@ pub fn apply_kinsoku_repairs(
             offender_cluster_index: first,
             carried_cluster_index: carried,
         });
-        next.repair_candidates = candidates;
+        #[cfg(feature = "debug-info")]
+        {
+            next.repair_candidates = candidates;
+        }
         lines[i] = next;
         i += 1
     }
@@ -342,6 +370,7 @@ pub fn try_push_in(
             adjusted,
             LineEndReason::AutoWrap,
             None,
+            #[cfg(feature = "debug-info")]
             Vec::new(),
         )
     };
@@ -397,6 +426,9 @@ pub fn try_push_in(
         return PushInResult {
             previous: previous.clone(),
             current: Some(current.clone()),
+            accepted: false,
+            shrink: 0.,
+            #[cfg(feature = "debug-info")]
             candidate: RepairCandidate {
                 kind: RepairKind::PushIn,
                 reason_code,
@@ -435,23 +467,26 @@ pub fn try_push_in(
         total_available_capacity: capacity,
     });
     repaired.remeasure();
-    repaired.repair_candidates = [
-        previous.repair_candidates.clone(),
-        vec![RepairCandidate {
-            kind: RepairKind::PushIn,
-            reason_code,
-            offender_cluster_index: offender,
-            penalty,
-            accepted: true,
-            rejection_reason: None,
-            target_cluster_index: Some(offender),
-            carried_cluster_index: None,
-            shrink,
-            required_shrink: shrink,
-            available_capacity: capacity,
-        }],
-    ]
-    .concat();
+    #[cfg(feature = "debug-info")]
+    {
+        repaired.repair_candidates = [
+            previous.repair_candidates.clone(),
+            vec![RepairCandidate {
+                kind: RepairKind::PushIn,
+                reason_code,
+                offender_cluster_index: offender,
+                penalty,
+                accepted: true,
+                rejection_reason: None,
+                target_cluster_index: Some(offender),
+                carried_cluster_index: None,
+                shrink,
+                required_shrink: shrink,
+                available_capacity: capacity,
+            }],
+        ]
+        .concat();
+    }
     let following = (end < current.cluster_range.last()).then(|| {
         let mut line = rebuild_line(
             IntRange::new(end + 1, current.cluster_range.last()),
@@ -459,6 +494,7 @@ pub fn try_push_in(
             adjusted,
             current.end_reason,
             None,
+            #[cfg(feature = "debug-info")]
             Vec::new(),
         );
         line.measurement = current.measurement.clone();
@@ -469,6 +505,9 @@ pub fn try_push_in(
     PushInResult {
         previous: repaired,
         current: following,
+        accepted: true,
+        shrink,
+        #[cfg(feature = "debug-info")]
         candidate: RepairCandidate {
             kind: RepairKind::PushIn,
             reason_code,
@@ -644,11 +683,11 @@ pub fn apply_fill_push_in(
                 RepairReasonCode::LineAdjustmentPushIn
             },
         );
-        if !result.candidate.accepted {
+        if !result.accepted {
             i += 1;
             continue;
         }
-        let cost = result.candidate.shrink;
+        let cost = result.shrink;
         if has_tabs && !promotes && cost >= deficit * compress_bias {
             i += 1;
             continue;
@@ -670,7 +709,7 @@ pub fn apply_fill_push_in(
                 continue;
             }
         }
-        if result.candidate.accepted {
+        if result.accepted {
             let continues = matches!(&result.previous.repair, Some(RepairOption::PushIn { total_shrink, reason_code, .. }) if *total_shrink <= 0.001 && *reason_code == RepairReasonCode::LineAdjustmentPushIn);
             out[i] = result.previous;
             if let Some(current) = result.current {
@@ -728,44 +767,50 @@ pub fn with_fill_push_in(
 fn leave_ragged(
     mut line: LineCandidate,
     penalty: i32,
-    carry_penalty: i32,
+    #[cfg(feature = "debug-info")] carry_penalty: i32,
     cause: RepairRejection,
-    carried: Option<i32>,
-    mut candidates: Vec<RepairCandidate>,
+    #[cfg(feature = "debug-info")] carried: Option<i32>,
+    #[cfg(feature = "debug-info")] mut candidates: Vec<RepairCandidate>,
 ) -> LineCandidate {
-    candidates.push(RepairCandidate {
-        kind: RepairKind::CarryPrevious,
-        reason_code: RepairReasonCode::ForbiddenAtLineStart,
-        offender_cluster_index: line.cluster_range.first(),
-        penalty: carry_penalty,
-        accepted: false,
-        rejection_reason: Some(cause),
-        target_cluster_index: None,
-        carried_cluster_index: carried,
-        shrink: 0.,
-        required_shrink: 0.,
-        available_capacity: 0.,
-    });
-    candidates.push(RepairCandidate {
-        kind: RepairKind::LeaveRagged,
-        reason_code: RepairReasonCode::ForbiddenAtLineStart,
-        offender_cluster_index: line.cluster_range.first(),
-        penalty,
-        accepted: true,
-        rejection_reason: None,
-        target_cluster_index: None,
-        carried_cluster_index: None,
-        shrink: 0.,
-        required_shrink: 0.,
-        available_capacity: 0.,
-    });
+    #[cfg(feature = "debug-info")]
+    {
+        candidates.push(RepairCandidate {
+            kind: RepairKind::CarryPrevious,
+            reason_code: RepairReasonCode::ForbiddenAtLineStart,
+            offender_cluster_index: line.cluster_range.first(),
+            penalty: carry_penalty,
+            accepted: false,
+            rejection_reason: Some(cause),
+            target_cluster_index: None,
+            carried_cluster_index: carried,
+            shrink: 0.,
+            required_shrink: 0.,
+            available_capacity: 0.,
+        });
+        candidates.push(RepairCandidate {
+            kind: RepairKind::LeaveRagged,
+            reason_code: RepairReasonCode::ForbiddenAtLineStart,
+            offender_cluster_index: line.cluster_range.first(),
+            penalty,
+            accepted: true,
+            rejection_reason: None,
+            target_cluster_index: None,
+            carried_cluster_index: None,
+            shrink: 0.,
+            required_shrink: 0.,
+            available_capacity: 0.,
+        });
+    }
     line.repair = Some(RepairOption::LeaveRagged {
         penalty,
         reason_code: RepairReasonCode::ForbiddenAtLineStart,
         detail: RepairDetail::Rejected(cause),
         offender_cluster_index: line.cluster_range.first(),
     });
-    line.repair_candidates = candidates;
+    #[cfg(feature = "debug-info")]
+    {
+        line.repair_candidates = candidates;
+    }
     line
 }
 fn mandatory_break_tail_end(current: &LineCandidate, through: i32, adjusted: &[Cluster]) -> i32 {

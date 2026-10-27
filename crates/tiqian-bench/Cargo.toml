@@ -14,7 +14,7 @@ publish = false
 default = ["std"]
 std = ["tiqian/std", "tiqian-demo/std"]
 no-std = ["tiqian/no-std", "tiqian-demo/no-std"]
-debug-info = ["tiqian/debug-info"]
+debug-info = ["tiqian/debug-info", "tiqian-demo/debug-info"]
 
 [dependencies]
 tiqian = { path = "../..", default-features = false }
