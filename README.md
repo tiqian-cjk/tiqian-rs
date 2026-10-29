@@ -1,4 +1,9 @@
-# 提椠 Tíqiàn（Rust）
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/tiqian_rust_wordmark_with_logo_white.svg">
+    <img src="docs/images/tiqian_rust_wordmark_with_logo_black.svg" alt="提椠 Tíqiàn" height="48">
+  </picture>
+</h1>
 
 [English](https://github.com/tiqian-cjk/tiqian-rs/blob/main/README_EN.md)
 
