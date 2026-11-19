@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/tiqian_rust_wordmark_with_logo_white.svg">
-    <img src="docs/images/tiqian_rust_wordmark_with_logo_black.svg" alt="提椠 Tíqiàn" height="48">
+    <img src="docs/images/tiqian_rust_wordmark_with_logo_white.svg#gh-dark-mode-only" alt="提椠 Tíqiàn" height="48">
+    <img src="docs/images/tiqian_rust_wordmark_with_logo_black.svg#gh-light-mode-only" alt="提椠 Tíqiàn" height="48">
   </picture>
 </h1>
 
